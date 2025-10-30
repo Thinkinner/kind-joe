@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import EmailCaptureModal from "@/components/email-capture-modal";
+import EmailCaptureModal from "@/components/modals/email-capture-modal";
 
 // Load Poppins with variable support
 const poppins = Poppins({

@@ -1,55 +1,98 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ArticleCard({
+export type BigArticleCardProps = {
+  title?: string;
+  category?: string;
+  date?: string;
+  readTime?: string;
+  imageSrc?: string;
+  href?: string;
+};
+
+export default function BigArticleCard({
   title = "Amazon just kicked off the new era of giant AI layoffs",
   category = "EXCLUSIVE",
   date = "Oct 27 2025",
   readTime = "7 min read",
-  imageSrc = "/cb52c0e1-fc79-4556-9644-28626a1b9333.png",
+  imageSrc = "https://placehold.co/800x450/png",
   href = "#",
-}) {
+}: BigArticleCardProps) {
   return (
     <Card className="overflow-hidden p-2 lg:p-4">
-      {/* Image (16:9) */}
       <div className="relative w-full aspect-video bg-slate-900">
-        <Image
-          src="https://placehold.co/800x450/png"
-          alt={title}
-          fill
-          className="object-cover"
-        />
+        {imageSrc ? (
+          <Image src={imageSrc} alt={title} fill className="object-cover" />
+        ) : (
+          <Skeleton className="w-full h-full" />
+        )}
       </div>
 
       <CardContent className="py-6">
         <div className="flex items-center gap-3">
-          <Badge className="px-2 py-1 text-xs uppercase tracking-wider">
-            {category}
-          </Badge>
+          {category ? (
+            <Badge className="px-2 py-1 text-xs uppercase tracking-wider">
+              {category}
+            </Badge>
+          ) : (
+            <Skeleton className="h-5 w-24 rounded" />
+          )}
 
-          <div className="text-sm text-slate-400">
-            <span className="font-bold text-slate-950">{date}</span>
-            <span className="mx-2">·</span>
-            <span>{readTime}</span>
+          <div className="text-sm text-slate-400 flex items-center gap-2">
+            {date ? (
+              <span className="font-bold text-slate-950">{date}</span>
+            ) : (
+              <Skeleton className="h-4 w-24" />
+            )}
+            <span>·</span>
+            {readTime ? (
+              <span>{readTime}</span>
+            ) : (
+              <Skeleton className="h-4 w-20" />
+            )}
           </div>
         </div>
 
         <h3 className="mt-4 text-lg sm:text-2xl font-semibold leading-tight">
-          <Link href={href} className="block hover:underline">
-            {title}
-          </Link>
+          {title ? (
+            <Link href={href} className="block hover:underline">
+              {title}
+            </Link>
+          ) : (
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-4/5" />
+              <Skeleton className="h-6 w-2/3" />
+            </div>
+          )}
         </h3>
-
-        <p className="mt-3 text-sm text-slate-400">
-          A crisp, minimal article card built with shadcn components and
-          Tailwind — optimized for clear hierarchy, contrast, and subtle
-          surfaces.
-        </p>
-
       </CardContent>
     </Card>
   );
 }
+
+BigArticleCard.Skeleton = function BigArticleCardSkeleton() {
+  return (
+    <Card className="overflow-hidden p-2 lg:p-4">
+      <div className="relative w-full aspect-video">
+        <Skeleton className="w-full h-full" />
+      </div>
+      <CardContent className="py-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-5 w-24 rounded" />
+          <div className="text-sm text-slate-400 flex items-center gap-2">
+            <Skeleton className="h-4 w-24" />
+            <span>·</span>
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <Skeleton className="h-6 w-4/5" />
+          <Skeleton className="h-6 w-2/3" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};

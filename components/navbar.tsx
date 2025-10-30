@@ -28,7 +28,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="p-6 flex items-center justify-between border-b border-b-slate-200">
+      <nav className="p-6 flex items-center justify-between border-b border-b-slate-200 bg-slate-900">
         <Link href="/">
           <Image
             src="/brand/horizontal-logo.svg"
@@ -44,8 +44,8 @@ export default function Navbar() {
           onClick={() => setOpen((s) => !s)}
           className={`rounded-full p-3 transition cursor-pointer ${
             open
-              ? "bg-white text-black hover:bg-slate-100"
-              : "bg-black text-white hover:bg-slate-900"
+              ? "bg-black text-white hover:bg-slate-100"
+              : "bg-white text-black hover:bg-slate-200"
           }`}
         >
           {open ? (
