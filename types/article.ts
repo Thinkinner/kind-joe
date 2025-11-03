@@ -1,3 +1,4 @@
+// Shared types for news UI
 export type Article = {
   id: string | number;
   title: string;
@@ -7,9 +8,5 @@ export type Article = {
   date?: string;
   readTime?: string;
   featured?: boolean;
-};
-
-export type NewsPayload = {
-  featured?: Article; // optional single featured article
-  articles: Article[]; // list of small articles
+  author?: string;
 };

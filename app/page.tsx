@@ -1,43 +1,53 @@
 import { Suspense } from "react";
-import Navbar from "@/components/navbar";
 import LatestNews from "@/components/sections/latest-news";
+import { listArticles } from "@/db/queries/articles";
+import type { Article } from "@/types/article";
 
-// Server-side fetch (no cache to always get fresh news)
+export const revalidate = 60; // ISR
+
+// --- Helpers (inline; no separate mapper) ---
+function toCard(r: any): Article {
+  const cover = (r.coverImage ?? {}) as { src?: string | null; alt?: string | null };
+
+  return {
+    id: r.id,
+    title: r.title,
+    category: r.category ?? "General",
+    imageSrc: cover.src ?? undefined,
+    href: `/${r.slug}`,
+    date: r.publishedAt
+      ? new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }).format(new Date(r.publishedAt))
+      : "",
+    readTime: r.readingMinutes ? `${r.readingMinutes} min read` : undefined,
+  };
+}
+
 async function fetchNews() {
-  const url = process.env.NEXT_PUBLIC_NEWS_JSON_URL || "/api/news";
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return { featured: undefined, articles: [] as any[] };
-    const json = await res.json();
-    return {
-      featured: json.featured,
-      articles: Array.isArray(json.articles) ? json.articles : [],
-    };
-  } catch {
-    return { featured: undefined, articles: [] as any[] };
-  }
+  const rows = await listArticles(); // your Drizzle query
+  const items = rows.map(toCard);
+  const [featured, ...articles] = items;
+  return { featured, articles };
 }
 
 export default function Home() {
   return (
-    <>
-      <Navbar />
-      <Suspense
-        fallback={
-          typeof LatestNews?.Skeleton === "function" ? (
-            <LatestNews.Skeleton />
-          ) : null
-        }
-      >
-        <Content />
-      </Suspense>
-    </>
+    <Suspense fallback={typeof LatestNews?.Skeleton === "function" ? <LatestNews.Skeleton /> : null}>
+      <Content />
+    </Suspense>
   );
 }
 
 async function Content() {
   const data = await fetchNews();
-  // Assumes LatestNews accepts { featured?, articles } props.
-  // If your LatestNews wraps a grid, just pass these through to it.
-  return <LatestNews featured={data.featured} articles={data.articles} />;
+
+  return (
+    <LatestNews
+      featured={data.featured}
+      articles={data.articles}
+    />
+  );
 }

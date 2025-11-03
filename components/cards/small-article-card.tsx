@@ -15,7 +15,7 @@ export type SmallArticleCardProps = {
 export default function SmallArticleCard({
   title = "Female founders say sexual harassment is still common while seeking VC funding",
   category = "EXCLUSIVE",
-  imageSrc = "https://placehold.co/500x550/png",
+  imageSrc = "https://placehold.co/500x281/png", // 16:9 placeholder
   href = "#",
 }: SmallArticleCardProps) {
   return (
@@ -44,11 +44,18 @@ export default function SmallArticleCard({
           </h3>
         </div>
 
-        <div className="relative w-30 h-30 flex-shrink-0 overflow-hidden">
+        {/* ✅ Maintain 16:9 aspect ratio */}
+        <div className="relative w-40 aspect-video flex-shrink-0 overflow-hidden rounded-md">
           {imageSrc ? (
-            <Image src={imageSrc} alt={title} fill className="object-cover" />
+            <Image
+              src={imageSrc}
+              alt={title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 160px"
+            />
           ) : (
-            <Skeleton className="h-[120px] w-[120px]" />
+            <Skeleton className="w-full h-full" />
           )}
         </div>
       </CardContent>
@@ -56,7 +63,7 @@ export default function SmallArticleCard({
   );
 }
 
-// 👇 attach skeleton to the default export
+// 👇 Skeleton version with 16:9 ratio
 SmallArticleCard.Skeleton = function SmallArticleCardSkeleton() {
   return (
     <Card className="overflow-hidden">
@@ -68,7 +75,11 @@ SmallArticleCard.Skeleton = function SmallArticleCardSkeleton() {
             <Skeleton className="h-4 w-2/3" />
           </div>
         </div>
-        <Skeleton className="h-[120px] w-[120px]" />
+
+        {/* ✅ 16:9 aspect ratio skeleton */}
+        <div className="relative w-40 aspect-video flex-shrink-0 overflow-hidden rounded-md">
+          <Skeleton className="w-full h-full" />
+        </div>
       </CardContent>
     </Card>
   );
