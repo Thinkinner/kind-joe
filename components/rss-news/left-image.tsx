@@ -10,7 +10,7 @@ export default function CardOne() {
           </span>
         </div>
         <img
-          className="w-36 h-36 object-cover shrink-0 rounded"
+          className="w-auto h-auto object-cover shrink-0 rounded"
           src="https://placehold.co/148x148"
           alt="News image"
         />

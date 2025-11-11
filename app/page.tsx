@@ -11,14 +11,16 @@ export default function NewsPage() {
 
       {/* 
         Full-page 3-column layout:
-        - Fills viewport height (min-h-screen on container)
-        - Mobile: flex-col, middle column first (order-1)
-        - Desktop: grid (3 columns) with vertical dividers
+        - Fills viewport height (min-h-screen)
+        - Mobile: flex-col (middle column first)
+        - Desktop: grid with custom column widths
+        - Middle column = larger (1.5fr)
       */}
       <div
         className="
           flex flex-col gap-8 flex-grow
-          md:grid md:grid-cols-2 lg:grid-cols-3
+          md:grid md:grid-cols-2
+          lg:grid-cols-[1fr_1.5fr_1fr]
           md:gap-x-0 md:gap-y-0
           w-full
         "
@@ -36,7 +38,7 @@ export default function NewsPage() {
           <Main_Image />
         </div>
 
-        {/* MIDDLE COLUMN (mobile first) */}
+        MIDDLE COLUMN (mobile first, bigger width on desktop)
         <div
           className="
             order-1 md:order-2
@@ -49,7 +51,7 @@ export default function NewsPage() {
           <Left_Image />
         </div>
 
-        {/* RIGHT COLUMN (mobile third) */}
+        RIGHT COLUMN (mobile third)
         <div
           className="
             order-3 md:order-3
