@@ -33,12 +33,13 @@ export default function NewsPage() {
             md:border-r md:border-neutral-300 md:pr-6
           "
         >
+          <h1>left</h1>
           <Left_Image />
           <Right_Image />
           <Main_Image />
         </div>
 
-        MIDDLE COLUMN (mobile first, bigger width on desktop)
+        {/* MIDDLE COLUMN (mobile first, bigger width on desktop) */}
         <div
           className="
             order-1 md:order-2
@@ -46,12 +47,13 @@ export default function NewsPage() {
             md:border-r md:border-neutral-300 md:px-6
           "
         >
-          <Right_Image />
+          <h1>middle</h1>
           <Main_Image />
+          <Right_Image />
           <Left_Image />
         </div>
 
-        RIGHT COLUMN (mobile third)
+        {/* RIGHT COLUMN (mobile third)*/}
         <div
           className="
             order-3 md:order-3
@@ -59,6 +61,7 @@ export default function NewsPage() {
             md:pl-6
           "
         >
+          <h1>right</h1>
           <Left_Image />
           <Main_Image />
           <Right_Image />
