@@ -1,9 +1,67 @@
-import React from 'react'
+import Left_Image from "@/components/rss-news/left-image";
+import Right_Image from "@/components/rss-news/right-image";
+import Main_Image from "@/components/rss-news/main-image";
 
-const page = () => {
+export default function NewsPage() {
   return (
-    <div>page</div>
-  )
-}
+    <div className="w-full min-h-screen flex flex-col items-center justify-start bg-gray-50 py-10 px-4">
+      <h1 className="text-3xl font-bold font-['Poppins'] text-gray-900 mb-8">
+        Daily Highlights
+      </h1>
 
-export default page
+      {/* 
+        Full-page 3-column layout:
+        - Fills viewport height (min-h-screen on container)
+        - Mobile: flex-col, middle column first (order-1)
+        - Desktop: grid (3 columns) with vertical dividers
+      */}
+      <div
+        className="
+          flex flex-col gap-8 flex-grow
+          md:grid md:grid-cols-2 lg:grid-cols-3
+          md:gap-x-0 md:gap-y-0
+          w-full
+        "
+      >
+        {/* LEFT COLUMN (mobile second) */}
+        <div
+          className="
+            order-2 md:order-1
+            flex flex-col gap-6 items-stretch
+            md:border-r md:border-neutral-300 md:pr-6
+          "
+        >
+          <Left_Image />
+          <Right_Image />
+          <Main_Image />
+        </div>
+
+        {/* MIDDLE COLUMN (mobile first) */}
+        <div
+          className="
+            order-1 md:order-2
+            flex flex-col gap-6 items-stretch
+            md:border-r md:border-neutral-300 md:px-6
+          "
+        >
+          <Right_Image />
+          <Main_Image />
+          <Left_Image />
+        </div>
+
+        {/* RIGHT COLUMN (mobile third) */}
+        <div
+          className="
+            order-3 md:order-3
+            flex flex-col gap-6 items-stretch
+            md:pl-6
+          "
+        >
+          <Left_Image />
+          <Main_Image />
+          <Right_Image />
+        </div>
+      </div>
+    </div>
+  );
+}
