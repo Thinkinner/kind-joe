@@ -120,3 +120,47 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+.tiptap {
+  /* Paragraph spacing */
+  p { margin: 0.75rem 0; }
+
+  /* Headings spacing */
+  h1,h2,h3,h4,h5,h6 { scroll-margin-top: 6rem; }
+  h1 { margin: 2rem 0 1rem; }
+  h2 { margin: 1.75rem 0 0.875rem; }
+  h3 { margin: 1.25rem 0 0.75rem; }
+
+  /* Lists */
+  ul, ol { padding-left: 1.5rem; margin: 1rem 0; }
+  li > p { margin: 0.25rem 0; }
+  ul ul, ol ol, ul ol, ol ul { margin: 0.5rem 0; }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 4px solid rgb(229 231 235);
+    padding-left: 1rem;
+    color: rgb(75 85 99);
+    margin: 1rem 0;
+    font-style: italic;
+  }
+
+  /* Code */
+  pre {
+    background: #111827;
+    color: #f3f4f6;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  code {
+    background: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.375rem;
+  }
+
+  /* Images */
+  img { border-radius: 0.75rem; margin: 1rem 0; }
+}

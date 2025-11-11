@@ -1,36 +1,36 @@
-// db/index.ts
-import "server-only";
-import { neon, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+// db.ts
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
-import * as schema from "./schema"; // <- your /db/schema.ts from earlier
-
-// Reuse HTTP connections across invocations (helps in serverless & dev)
-neonConfig.fetchConnectionCache = true;
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is missing. Add it to your environment.");
+declare global {
+  // prevent multiple pools in dev/hot-reload
+  // eslint-disable-next-line no-var
+  var __pgPool__: Pool | undefined;
+  // eslint-disable-next-line no-var
+  var __drizzle__: ReturnType<typeof drizzle> | undefined;
 }
 
-// Create the Neon HTTP sql client
-const sql = neon(connectionString);
-
-// Create a singleton Drizzle instance (prevents duplicates in dev)
-const globalForDb = globalThis as unknown as {
-  __DRIZZLE__?: ReturnType<typeof drizzle<typeof schema>>;
-};
-
-export const db =
-  globalForDb.__DRIZZLE__ ??
-  drizzle(sql, {
-    schema,           // typed queries from your tables
-    logger: false,    // set true to debug SQL in dev
+const pool =
+  global.__pgPool__ ??
+  new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // keep the pool small in serverless/dev to avoid connection timeouts
+    max: Number(process.env.PG_MAX ?? 3),
+    idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? 30_000),
+    connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT_MS ?? 10_000),
+    // toggle SSL via env; for Neon/Render use true (and skip cert)
+    ssl:
+      process.env.PGSSL?.toLowerCase() === "true"
+        ? { rejectUnauthorized: false }
+        : undefined,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__DRIZZLE__ = db;
-}
+if (process.env.NODE_ENV !== "production") global.__pgPool__ = pool;
 
-// Optional: export schema for convenience
-export * from "./schema";
+export const db =
+  global.__drizzle__ ??
+  drizzle(pool, {
+    logger: false,
+  });
+
+if (process.env.NODE_ENV !== "production") global.__drizzle__ = db;
