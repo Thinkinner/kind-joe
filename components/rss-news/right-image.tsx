@@ -1,42 +1,34 @@
-export default function CardTwo() {
+// components/rss-news/right-image.tsx
+import SourceBadge from './source-badge';
+import type { CardGroup } from '@/lib/rss-news/type';
+import SafeImage from './safe-image';
+
+export default function Right_Image({ data }: { data: CardGroup }) {
+  const { main, links } = data;
   return (
     <div className="w-full flex flex-col justify-start items-start gap-4 p-4 rounded-2xl overflow-hidden">
-      {/* Image + headline */}
       <div className="w-full flex items-start gap-2.5">
-        <img
+        <SafeImage
+          src={main.imageUrl || null}
+          alt={main.title}
           className="w-36 h-36 object-cover shrink-0 rounded"
-          src="https://placehold.co/148x148"
-          alt="News thumbnail"
+          alwaysProxy
         />
-        <div className="flex-1 min-w-0 text-blue-950 text-xl font-bold font-['Poppins'] underline leading-snug">
-          South Park’ Creators Break Silence on Why This Season Keeps Slamming Trump
+        <div className="flex-1 min-w-0">
+          <a href={main.href} className="text-blue-950 text-xl font-bold font-['Poppins'] underline leading-snug line-clamp-3">
+            {main.title}
+          </a>
         </div>
       </div>
 
-      {/* Divider */}
       <div className="border-t border-neutral-300 w-full my-2" />
 
-      {/* Links */}
-      <a
-        href="#"
-        className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90"
-      >
-        South Park’ Creators Break Silence on Why This Season Keeps Slamming Trump
-      </a>
-      <a
-        href="#"
-        className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90"
-      >
-        FEDERALIST Boss Savages &apos;Weak and Rudderless&apos; Don in Scathing Rant
-      </a>
-      <a
-        href="#"
-        className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90"
-      >
-        TRAVEL HELL DAY 41: FAA &apos;Effectively Prohibits&apos; Private Jets at Major Airports...
-      </a>
+      {links.slice(0, 3).map((l, i) => (
+        <a key={i} href={l.href} className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2">
+          {l.title}
+        </a>
+      ))}
 
-      {/* Bottom divider */}
       <div className="border-t border-neutral-300 w-full mt-2" />
     </div>
   );

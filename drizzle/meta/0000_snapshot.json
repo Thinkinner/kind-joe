@@ -1,5 +1,5 @@
 {
-  "id": "b4b37608-da52-4d5f-9302-953a1cfc865b",
+  "id": "8959f749-0ba2-417a-b8a4-90a202e17483",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -447,8 +447,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.news_aggregator_posts": {
-      "name": "news_aggregator_posts",
+    "public.news_rss_articles": {
+      "name": "news_rss_articles",
       "schema": "",
       "columns": {
         "id": {
@@ -461,49 +461,25 @@
           "name": "source_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "source_name": {
-          "name": "source_name",
-          "type": "varchar(160)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_url": {
-          "name": "source_url",
+        "title": {
+          "name": "title",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "original_title": {
-          "name": "original_title",
+        "modified_title": {
+          "name": "modified_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link": {
+          "name": "link",
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "ai_title": {
-          "name": "ai_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "final_title": {
-          "name": "final_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "image_url": {
           "name": "image_url",
@@ -511,81 +487,73 @@
           "primaryKey": false,
           "notNull": false
         },
-        "display_image": {
-          "name": "display_image",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "tags": {
-          "name": "tags",
-          "type": "jsonb",
+        "content_snippet": {
+          "name": "content_snippet",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
         "published_at": {
           "name": "published_at",
-          "type": "timestamp with time zone",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp with time zone",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "status": {
-          "name": "status",
-          "type": "varchar(16)",
+        "ai_processed": {
+          "name": "ai_processed",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": "'published'"
+          "default": false
         }
       },
       "indexes": {
-        "news_aggregator_posts_published_idx": {
-          "name": "news_aggregator_posts_published_idx",
+        "news_rss_articles_link_unique": {
+          "name": "news_rss_articles_link_unique",
           "columns": [
             {
-              "expression": "published_at",
+              "expression": "link",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "news_aggregator_posts_status_idx": {
-          "name": "news_aggregator_posts_status_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "news_rss_articles_source_id_news_rss_sources_id_fk": {
+          "name": "news_rss_articles_source_id_news_rss_sources_id_fk",
+          "tableFrom": "news_rss_articles",
+          "tableTo": "news_rss_sources",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.news_aggregator_sources": {
-      "name": "news_aggregator_sources",
+    "public.news_rss_sources": {
+      "name": "news_rss_sources",
       "schema": "",
       "columns": {
         "id": {
@@ -596,7 +564,7 @@
         },
         "name": {
           "name": "name",
-          "type": "varchar(160)",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
@@ -606,63 +574,40 @@
           "primaryKey": false,
           "notNull": true
         },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "default_category_slug": {
-          "name": "default_category_slug",
-          "type": "varchar(120)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "default_tags": {
-          "name": "default_tags",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "last_fetched_at": {
           "name": "last_fetched_at",
-          "type": "timestamp with time zone",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
-        "show_images": {
-          "name": "show_images",
-          "type": "boolean",
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "default": true
-        },
-        "image_allowlist": {
-          "name": "image_allowlist",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "image_blocklist": {
-          "name": "image_blocklist",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
+          "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "news_rss_sources_url_unique": {
+          "name": "news_rss_sources_url_unique",
+          "columns": [
+            {
+              "expression": "url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "news_aggregator_sources_url_unique": {
-          "name": "news_aggregator_sources_url_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "url"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

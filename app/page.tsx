@@ -1,70 +1,70 @@
-import Left_Image from "@/components/rss-news/left-image";
-import Right_Image from "@/components/rss-news/right-image";
-import Main_Image from "@/components/rss-news/main-image";
+// app/news/page.tsx
+import Left_Image from '@/components/rss-news/left-image';
+import Right_Image from '@/components/rss-news/right-image';
+import Main_Image from '@/components/rss-news/main-image';
+import { getRenderableArticles, toCardPayloads, pickHeroAndGroups } from '@/lib/rss-news/news';
 
-export default function NewsPage() {
+export const revalidate = 300;
+
+export default async function NewsPage() {
+  // Fetch & score
+  const articles = await getRenderableArticles(36);
+  const { hero, rest } = pickHeroAndGroups(articles);
+
+  // Build groups for the remaining items using your existing grouping logic
+  const groupedRest = toCardPayloads(rest)
+    .map((g) => ({
+      main: {
+        title: g.main?.modifiedTitle || g.main?.title || '',
+        href: g.main?.link || '#',
+        imageUrl: g.main?.imageUrl || null,
+        sourceName: g.main?.source.name || 'Unknown',
+      },
+      links: g.links.slice(0, 3).map((l) => ({
+        title: l.modifiedTitle || l.title,
+        href: l.link,
+      })),
+    }))
+    .slice(0, 9);
+
+  // Prepare a hero group mapped to the CardGroup shape your components expect
+  const heroGroup =
+    hero
+      ? {
+          main: {
+            title: hero.modifiedTitle || hero.title,
+            href: hero.link || '#',
+            imageUrl: hero.imageUrl || null,
+            sourceName: hero.source.name || 'Unknown',
+          },
+          links: groupedRest[0]?.links ?? [],
+        }
+      : undefined;
+
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-start bg-gray-50 py-10 px-4">
-      <h1 className="text-3xl font-bold font-['Poppins'] text-gray-900 mb-8">
-        Daily Highlights
-      </h1>
+      <h1 className="text-3xl font-bold font-['Poppins'] text-gray-900 mb-8">Daily Highlights</h1>
 
-      {/* 
-        Full-page 3-column layout:
-        - Fills viewport height (min-h-screen)
-        - Mobile: flex-col (middle column first)
-        - Desktop: grid with custom column widths
-        - Middle column = larger (1.5fr)
-      */}
-      <div
-        className="
-          flex flex-col gap-8 flex-grow
-          md:grid md:grid-cols-2
-          lg:grid-cols-[1fr_1.5fr_1fr]
-          md:gap-x-0 md:gap-y-0
-          w-full
-        "
-      >
-        {/* LEFT COLUMN (mobile second) */}
-        <div
-          className="
-            order-2 md:order-1
-            flex flex-col gap-6 items-stretch
-            md:border-r md:border-neutral-300 md:pr-6
-          "
-        >
-          <h1>left</h1>
-          <Left_Image />
-          <Right_Image />
-          <Main_Image />
+      <div className="flex flex-col gap-8 flex-grow md:grid md:grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr] md:gap-x-0 md:gap-y-0 w-full">
+        {/* Left column */}
+        <div className="order-2 md:order-1 flex flex-col gap-6 items-stretch md:border-r md:border-neutral-300 md:pr-6">
+          {groupedRest[0] && <Left_Image data={groupedRest[0]} />}
+          {groupedRest[1] && <Right_Image data={groupedRest[1]} />}
+          {groupedRest[2] && <Main_Image data={groupedRest[2]} />}
         </div>
 
-        {/* MIDDLE COLUMN (mobile first, bigger width on desktop) */}
-        <div
-          className="
-            order-1 md:order-2
-            flex flex-col gap-6 items-stretch
-            md:border-r md:border-neutral-300 md:px-6
-          "
-        >
-          <h1>middle</h1>
-          <Main_Image />
-          <Right_Image />
-          <Left_Image />
+        {/* Middle column — now uses the single best-quality hero */}
+        <div className="order-1 md:order-2 flex flex-col gap-6 items-stretch md:border-r md:border-neutral-300 md:px-6">
+          {heroGroup && <Main_Image data={heroGroup} />}
+          {groupedRest[3] && <Right_Image data={groupedRest[3]} />}
+          {groupedRest[4] && <Left_Image data={groupedRest[4]} />}
         </div>
 
-        {/* RIGHT COLUMN (mobile third)*/}
-        <div
-          className="
-            order-3 md:order-3
-            flex flex-col gap-6 items-stretch
-            md:pl-6
-          "
-        >
-          <h1>right</h1>
-          <Left_Image />
-          <Main_Image />
-          <Right_Image />
+        {/* Right column */}
+        <div className="order-3 md:order-3 flex flex-col gap-6 items-stretch md:pl-6">
+          {groupedRest[5] && <Left_Image data={groupedRest[5]} />}
+          {groupedRest[6] && <Main_Image data={groupedRest[6]} />}
+          {groupedRest[7] && <Right_Image data={groupedRest[7]} />}
         </div>
       </div>
     </div>

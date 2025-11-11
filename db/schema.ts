@@ -137,7 +137,9 @@ export const rssItems = pgTable(
   "rss_items",
   {
     id: serial("id").primaryKey(),
-    sourceId: integer("source_id").references(() => rssSources.id, { onDelete: "cascade" }).notNull(),
+    sourceId: integer("source_id")
+      .references(() => rssSources.id, { onDelete: "cascade" })
+      .notNull(),
     guid: text("guid").notNull(),
     link: text("link").notNull(),
     title: text("title"),
@@ -149,14 +151,20 @@ export const rssItems = pgTable(
   },
   (t) => ({
     // ensures we only process a guid/link once per source
-    uniquePerSource: uniqueIndex("rss_item_guid_or_link").on(t.sourceId, t.guid, t.link),
+    uniquePerSource: uniqueIndex("rss_item_guid_or_link").on(
+      t.sourceId,
+      t.guid,
+      t.link
+    ),
   })
 );
 
 // --- Optional: AI job log
 export const aiJobs = pgTable("ai_jobs", {
   id: serial("id").primaryKey(),
-  rssItemId: integer("rss_item_id").references(() => rssItems.id, { onDelete: "cascade" }),
+  rssItemId: integer("rss_item_id").references(() => rssItems.id, {
+    onDelete: "cascade",
+  }),
   status: varchar("status", { length: 40 }).notNull().default("queued"),
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -165,43 +173,49 @@ export const aiJobs = pgTable("ai_jobs", {
 
 // Drudge Report Referrence
 
-export const newsAggregatorSources = pgTable("news_aggregator_sources", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 160 }).notNull(),
-  url: text("url").notNull().unique(),
-  enabled: boolean("enabled").notNull().default(true),
-  defaultCategorySlug: varchar("default_category_slug", { length: 120 }),
-  defaultTags: jsonb("default_tags"),
-  lastFetchedAt: timestamp("last_fetched_at", { withTimezone: true }),
-
-  // image policy per source
-  showImages: boolean("show_images").notNull().default(true),
-  imageAllowlist: jsonb("image_allowlist"),
-  imageBlocklist: jsonb("image_blocklist"),
-});
-
-/** Aggregated and AI-rewritten news posts */
-export const newsAggregatorPosts = pgTable(
-  "news_aggregator_posts",
+export const newsRssSource = pgTable(
+  "news_rss_sources",
   {
     id: serial("id").primaryKey(),
-    sourceId: integer("source_id"),
-    sourceName: varchar("source_name", { length: 160 }),
-    sourceUrl: text("source_url").notNull(),
-    originalTitle: text("original_title").notNull(),
-    aiTitle: text("ai_title"),
-    finalTitle: text("final_title").notNull(),
-    summary: text("summary"),
-    content: text("content"),
-    imageUrl: text("image_url"),
-    displayImage: boolean("display_image").notNull().default(true),
-    tags: jsonb("tags"),
-    publishedAt: timestamp("published_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    status: varchar("status", { length: 16 }).notNull().default("published"),
+    name: varchar("name", { length: 255 }).notNull(),
+    url: text("url").notNull(),
+    lastFetchedAt: timestamp("last_fetched_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
-    idxPub: index("news_aggregator_posts_published_idx").on(t.publishedAt),
-    idxStatus: index("news_aggregator_posts_status_idx").on(t.status),
+    // unique index name scoped to this table name to avoid collisions
+    urlUnique: uniqueIndex("news_rss_sources_url_unique").on(t.url),
+  })
+);
+
+// Articles
+export const newsRssArticles = pgTable(
+  "news_rss_articles",
+  {
+    id: serial("id").primaryKey(),
+
+    // FK should be integer, not serial; must reference the correct table
+    sourceId: integer("source_id")
+      .notNull()
+      .references(() => newsRssSource.id, { onDelete: "cascade" }),
+
+    title: text("title").notNull(),
+    modifiedTitle: text("modified_title"),
+    link: text("link").notNull(),
+    imageUrl: text("image_url"),
+    contentSnippet: text("content_snippet"),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    aiProcessed: boolean("ai_processed").default(false).notNull(),
+  },
+  (t) => ({
+    // choose ONE of these depending on your de-dupe strategy:
+
+    // If a link is globally unique across all sources:
+    linkUnique: uniqueIndex("news_rss_articles_link_unique").on(t.link),
+
+    // OR if the same link can appear in multiple sources, comment the above
+    // and use a composite unique per source:
+    // perSourceLinkUnique: uniqueIndex("news_rss_articles_source_link_unique").on(t.sourceId, t.link),
   })
 );

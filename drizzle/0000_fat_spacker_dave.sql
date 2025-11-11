@@ -51,36 +51,25 @@ CREATE TABLE "categories" (
 	CONSTRAINT "categories_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "news_aggregator_posts" (
+CREATE TABLE "news_rss_articles" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"source_id" integer,
-	"source_name" varchar(160),
-	"source_url" text NOT NULL,
-	"original_title" text NOT NULL,
-	"ai_title" text,
-	"final_title" text NOT NULL,
-	"summary" text,
-	"content" text,
+	"source_id" integer NOT NULL,
+	"title" text NOT NULL,
+	"modified_title" text,
+	"link" text NOT NULL,
 	"image_url" text,
-	"display_image" boolean DEFAULT true NOT NULL,
-	"tags" jsonb,
-	"published_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"status" varchar(16) DEFAULT 'published' NOT NULL
+	"content_snippet" text,
+	"published_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"ai_processed" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "news_aggregator_sources" (
+CREATE TABLE "news_rss_sources" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"name" varchar(160) NOT NULL,
+	"name" varchar(255) NOT NULL,
 	"url" text NOT NULL,
-	"enabled" boolean DEFAULT true NOT NULL,
-	"default_category_slug" varchar(120),
-	"default_tags" jsonb,
-	"last_fetched_at" timestamp with time zone,
-	"show_images" boolean DEFAULT true NOT NULL,
-	"image_allowlist" jsonb,
-	"image_blocklist" jsonb,
-	CONSTRAINT "news_aggregator_sources_url_unique" UNIQUE("url")
+	"last_fetched_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "rss_items" (
@@ -129,10 +118,11 @@ ALTER TABLE "article_tags" ADD CONSTRAINT "article_tags_article_id_articles_id_f
 ALTER TABLE "article_tags" ADD CONSTRAINT "article_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "articles" ADD CONSTRAINT "articles_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "articles" ADD CONSTRAINT "articles_published_by_users_id_fk" FOREIGN KEY ("published_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "news_rss_articles" ADD CONSTRAINT "news_rss_articles_source_id_news_rss_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."news_rss_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rss_items" ADD CONSTRAINT "rss_items_source_id_rss_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."rss_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "articles_slug_idx" ON "articles" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "articles_published_idx" ON "articles" USING btree ("published_at");--> statement-breakpoint
 CREATE INDEX "articles_list_idx" ON "articles" USING btree ("is_draft","published_at");--> statement-breakpoint
-CREATE INDEX "news_aggregator_posts_published_idx" ON "news_aggregator_posts" USING btree ("published_at");--> statement-breakpoint
-CREATE INDEX "news_aggregator_posts_status_idx" ON "news_aggregator_posts" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "news_rss_articles_link_unique" ON "news_rss_articles" USING btree ("link");--> statement-breakpoint
+CREATE UNIQUE INDEX "news_rss_sources_url_unique" ON "news_rss_sources" USING btree ("url");--> statement-breakpoint
 CREATE UNIQUE INDEX "rss_item_guid_or_link" ON "rss_items" USING btree ("source_id","guid","link");
