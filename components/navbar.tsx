@@ -78,11 +78,12 @@ export default function Navbar() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-slate-950/95 shadow-2xl border-l border-l-slate-800 p-6"
+              className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-slate-950/95 shadow-2xl border-l border-l-slate-800 p-6 flex flex-col"
               aria-modal="true"
               role="dialog"
             >
-              <div className="flex items-start justify-between">
+              {/* Header (Logo + Close Button) */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Image
                     src="/brand/horizontal-logo.svg"
@@ -103,64 +104,53 @@ export default function Navbar() {
                 </button>
               </div>
 
-              <nav className="mt-8 space-y-6">
-                <Link href="#" className="block text-lg font-semibold">
-                  Home
-                </Link>
-                <Link href="#" className="block text-lg font-semibold">
-                  About
-                </Link>
-                <Link href="#" className="block text-lg font-semibold">
-                  Services
-                </Link>
-                <Link href="#" className="block text-lg font-semibold">
-                  Blog
-                </Link>
-                <Link href="#" className="block text-lg font-semibold">
-                  Contact
-                </Link>
-              </nav>
-
-              <div className="mt-8 border-t border-t-slate-800 pt-6">
-                <p className="text-sm text-slate-400">
-                  Want something beautiful? Here's a quick showcase and a call
-                  to action.
-                </p>
-
-                <div className="mt-4 flex flex-col gap-3">
-                  <div className="rounded-2xl p-4 bg-gradient-to-r from-slate-800/60 via-slate-700/40 to-transparent border border-slate-800">
-                    <h4 className="text-base font-semibold">Featured</h4>
-                    <p className="text-sm text-slate-400 mt-1">
-                      Clean layouts, crisp typography, and subtle motion.
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium hover:scale-[1.01] active:scale-100 transition-transform bg-white text-slate-950"
-                  >
-                    Get Started
-                  </Link>
-
-                  <div className="flex items-center gap-3 pt-2">
-                    <a
-                      href="#"
-                      className="text-sm text-slate-400 hover:text-white"
+              {/* Main Content Wrapper - pushes to bottom */}
+              <div className="flex-1 flex flex-col justify-between mt-8">
+                {/* Navigation Links */}
+                <nav className="space-y-2 text-white">
+                  {[
+                    { name: "Home", href: "#" },
+                    { name: "About", href: "#" },
+                    { name: "Services", href: "#" },
+                    { name: "Blog", href: "#" },
+                    { name: "Contact", href: "#" },
+                  ].map((item, i, arr) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`
+                        block text-lg font-semibold pb-5
+                        ${i !== arr.length - 1 ? "border-b border-slate-800" : ""}
+                        hover:text-slate-300 transition-colors
+                      `}
                     >
-                      @twitter
-                    </a>
-                    <a
-                      href="#"
-                      className="text-sm text-slate-400 hover:text-white"
+                      {item.name}
+                    </Link>
+                  ))}
+                </nav>
+
+                {/* Bottom Section */}
+                <div className="mt-10 border-t border-t-slate-800 pt-6">
+                  <div className="flex flex-col gap-3">
+                    <Link
+                      href="/signup"
+                      className="inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium hover:scale-[1.01] active:scale-100 transition-transform bg-white text-slate-950"
                     >
-                      @dribbble
-                    </a>
+                      Sign in
+                    </Link>
+                    <Link
+                      href="/newsletter"
+                      className="inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium hover:scale-[1.01] active:scale-100 transition-transform bg-red-700 text-white"
+                    >
+                      Newsletter
+                    </Link>
                   </div>
                 </div>
               </div>
 
-              <footer className="absolute bottom-6 left-6 right-6 text-center text-xs text-slate-500">
-                © {new Date().getFullYear()} KindJoe — Crafted with care
+              {/* Footer */}
+              <footer className="text-center text-xs text-slate-500 mt-6">
+                © {new Date().getFullYear()} KindJoe
               </footer>
             </motion.aside>
           </>

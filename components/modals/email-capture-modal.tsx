@@ -20,7 +20,7 @@ import {
 
 type Props = {
   autoOpenDelayMs?: number;
-  storageKey?: string;            // marks dismissed in localStorage
+  storageKey?: string; // marks dismissed in localStorage
   initiallyOpen?: boolean;
   onSubscribe?: (data: {
     email: string;
@@ -125,7 +125,7 @@ export default function NewsletterPopup({
           max-w-none
           w-[95vw] sm:w-[92vw] md:w-[90vw]
           lg:max-w-6xl
-          rounded-3xl bg-white p-8 md:p-12 lg:p-16 shadow-2xl"
+          bg-white p-8 md:p-12 lg:p-16 shadow-2xl"
       >
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-center">
           <div>
@@ -151,7 +151,9 @@ export default function NewsletterPopup({
                   errors.firstName ? "border-red-400" : "border-gray-200"
                 }`}
                 aria-invalid={!!errors.firstName}
-                aria-describedby={errors.firstName ? "err-firstName" : undefined}
+                aria-describedby={
+                  errors.firstName ? "err-firstName" : undefined
+                }
               />
               {errors.firstName && (
                 <p id="err-firstName" className="sr-only">
@@ -182,7 +184,9 @@ export default function NewsletterPopup({
               ref={emailRef}
               type="email"
               value={form.email}
-              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, email: e.target.value }))
+              }
               placeholder="Email address"
               className={`w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 ${
                 errors.email ? "border-red-400" : "border-gray-200"
@@ -212,20 +216,42 @@ export default function NewsletterPopup({
               </p>
             )}
 
-            <Select
-              value={form.category}
-              onValueChange={(v) => setForm((s) => ({ ...s, category: v }))}
-            >
-              <SelectTrigger className="w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 border-gray-200">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="General">General</SelectItem>
-                <SelectItem value="Technology">Technology</SelectItem>
-                <SelectItem value="Business">Business</SelectItem>
-                <SelectItem value="Health">Health</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <select
+                value={form.category}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, category: e.target.value }))
+                }
+                className={`w-full h-14 rounded-lg border px-4 pr-10 text-base text-gray-800
+                  bg-white appearance-none
+                  focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1
+                  ${errors.category ? "border-red-400" : "border-gray-200"}
+                  transition-all duration-200
+                `}
+              >
+                <option value="General">General</option>
+                <option value="Technology">Technology</option>
+                <option value="Business">Business</option>
+                <option value="Health">Health</option>
+              </select>
+
+              {/* Chevron Icon */}
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 9l6 6 6-6"
+                />
+              </svg>
+            </div>
 
             <div className="flex gap-4">
               <Button

@@ -120,7 +120,6 @@ export const articleTags = pgTable(
   })
 );
 
-// RSS FETCH AND AUTOMATIC POST
 
 export const rssSources = pgTable("rss_sources", {
   id: serial("id").primaryKey(),
@@ -132,7 +131,6 @@ export const rssSources = pgTable("rss_sources", {
   lastFetchedAt: timestamp("last_fetched_at", { withTimezone: true }),
 });
 
-// --- RSS items (each entry we see in a feed)
 export const rssItems = pgTable(
   "rss_items",
   {

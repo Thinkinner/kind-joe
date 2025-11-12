@@ -9,7 +9,12 @@ export default function Left_Image({ data }: { data: CardGroup }) {
     <div className="w-full flex flex-col justify-start items-start gap-2.5 p-4 rounded-2xl overflow-hidden">
       <div className="flex justify-between items-start gap-2.5 w-full">
         <div className="flex-1 min-w-0 leading-snug">
-          <a href={main.href} className="text-black text-xl font-bold font-['Poppins'] underline line-clamp-3">
+          <a
+            href={main.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-black text-xl font-bold font-['Poppins'] underline line-clamp-3"
+          >
             {main.title}
           </a>
         </div>
@@ -25,7 +30,13 @@ export default function Left_Image({ data }: { data: CardGroup }) {
       <div className="border-t border-neutral-300 w-full my-2" />
 
       {links.slice(0, 3).map((l, i) => (
-        <a key={i} href={l.href} className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2">
+        <a
+          key={i}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2"
+        >
           {l.title}
         </a>
       ))}

@@ -18,9 +18,12 @@ export default function Main_Image({ data }: { data: CardGroup }) {
             />
           </div>
         </div>
+
         {/* Support either `href` (your mapper) or `link` (raw article) */}
         <a
           href={(main as any).href ?? (main as any).link ?? '#'}
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-full text-red-700 text-2xl font-bold font-['Poppins'] underline leading-snug line-clamp-3"
         >
           {main.title}
@@ -28,15 +31,19 @@ export default function Main_Image({ data }: { data: CardGroup }) {
       </div>
 
       <div className="border-t border-neutral-300 w-full my-2" />
+
       {links.slice(0, 3).map((l, i) => (
         <a
           key={i}
           href={(l as any).href ?? (l as any).link ?? '#'}
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2"
         >
           {l.title}
         </a>
       ))}
+
       <div className="border-t border-neutral-300 w-full mt-2" />
     </div>
   );

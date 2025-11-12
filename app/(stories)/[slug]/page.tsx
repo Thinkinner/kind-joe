@@ -2,9 +2,9 @@ import { db } from "@/db";
 import { articles, users, articleCategories, categories } from "@/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import ArticleContent from "@/components/articles/article-single-page-content";
+import ArticleContent from "@/components/stories/article-single-page-content";
 import type { Metadata } from "next";
-import ShareButtons from "@/components/articles/share-button";
+import ShareButtons from "@/components/stories/share-button";
 
 export const revalidate = 60;
 
@@ -168,15 +168,6 @@ export default async function ArticleBySlug(props: {
               </>
             ) : null}
           </div>
-          <ShareButtons />
-          {a.coverImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={a.coverImageUrl}
-              alt={a.title}
-              className="w-full h-auto rounded-2xl border mt-5"
-            />
-          ) : null}
         </header>
         <hr className="my- h-0.5 border-t-0 bg-neutral-100 dark:bg-white/10" />
         {/* Render JSONB content */}
