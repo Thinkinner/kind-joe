@@ -6,7 +6,7 @@ export default function Main_Image({ data }: { data: CardGroup }) {
 
   return (
     <div className="w-full flex flex-col justify-start items-start gap-4 p-4 rounded-2xl overflow-hidden">
-      <div className="w-full flex flex-col gap-2.5">
+      <div className="w-full flex flex-col gap-2">
         <div className="w-full rounded overflow-hidden">
           {/* Force a decent hero height even on narrow screens */}
           <div className="relative w-full aspect-[3/2] min-h-[300px]">
