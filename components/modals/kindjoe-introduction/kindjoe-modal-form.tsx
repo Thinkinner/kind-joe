@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 type RecapType = "Republican" | "Democratic" | "American Party" | "All" | "";
 
-export default function KindJoeModalForm({ onBack }: { onBack: () => void }) {
+export default function KindJoeModalForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void; }) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
   const [form, setForm] = React.useState({
@@ -64,7 +64,7 @@ export default function KindJoeModalForm({ onBack }: { onBack: () => void }) {
         window.localStorage.setItem("kj_already_subscribed", "1");
       } catch {}
 
-      // ✅ Redirect to thank-you page
+      onSuccess(); // ✅ close & mark in state
       router.push("/thank-you");
     } catch (err) {
       console.error(err);

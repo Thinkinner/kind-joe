@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { X } from "lucide-react";
@@ -82,7 +81,13 @@ export default function KindJoeModal() {
               </div>
 
               {showForm ? (
-                <KindJoeModalForm onBack={() => setShowForm(false)} />
+                <KindJoeModalForm
+                  onBack={() => setShowForm(false)}
+                  onSuccess={() => {
+                    setHasSubscribedFlag(true); // prevent re-open in this session
+                    handleClose(); // actually hide modal
+                  }}
+                />
               ) : (
                 <KindJoeHeroContent
                   onJoinClick={() => setShowForm(true)}
