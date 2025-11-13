@@ -1,44 +1,43 @@
 "use client";
+
 import * as React from "react";
 
+const SUB_KEY = "kj_already_subscribed";
+
 export function useKindJoeModalState() {
-  const [internalOpen, setInternalOpen] = React.useState(false); // start closed
+  const modalRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [open, setOpen] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
   const [hasSubscribedFlag, setHasSubscribedFlag] = React.useState(false);
 
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-
   React.useEffect(() => {
-    try {
-      const v = window.localStorage.getItem("kj_already_subscribed");
-      const alreadySubscribed = v === "1";
-      setHasSubscribedFlag(alreadySubscribed);
-      // Only open modal if not already subscribed
-      setInternalOpen(!alreadySubscribed);
-    } catch {
-      // if localStorage fails, default to showing modal
-      setInternalOpen(true);
-    }
+    if (typeof window === "undefined") return;
+
+    // Check if user has already subscribed / dismissed
+    const already = window.localStorage.getItem(SUB_KEY) === "1";
+    setHasSubscribedFlag(already);
+
+    // If they’re already subscribed, never show the modal
+    if (already) return;
+
+    // Show modal after 15 seconds
+    const timer = window.setTimeout(() => {
+      setOpen(true);
+    }, 15000);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
-  const derivedOpen = internalOpen;
-  const setOpen = setInternalOpen;
+  const handleClose = () => {
+    setOpen(false);
+    setShowForm(false);
+  };
 
-  const handleClose = () => setOpen(false);
-
-  // ESC close + focus trap
-  React.useEffect(() => {
-    if (!derivedOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [derivedOpen]);
+  // Only consider the modal open if:
+  // - the internal `open` flag is true
+  // - AND they haven't marked themselves as subscribed
+  const derivedOpen = open && !hasSubscribedFlag;
 
   return {
     derivedOpen,

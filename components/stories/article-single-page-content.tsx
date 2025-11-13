@@ -40,19 +40,19 @@ function renderTextRun(run: JSONText): React.ReactNode {
     el = <span className="bg-yellow-200">{el}</span>;
   }
 
-  // textStyle (e.g., color) - TipTap TextStyle extension
+  // textStyle (e.g., color)
   const textStyle = getMark(run, "textStyle");
   if (textStyle?.attrs?.color) {
     el = <span style={{ color: textStyle.attrs.color }}>{el}</span>;
   }
 
-  // typography marks (support aliases)
+  // typography marks
   if (hasMark(run, "bold") || hasMark(run, "strong")) el = <strong>{el}</strong>;
   if (hasMark(run, "italic") || hasMark(run, "em")) el = <em>{el}</em>;
   if (hasMark(run, "underline")) el = <u>{el}</u>;
   if (hasMark(run, "strike")) el = <s>{el}</s>;
 
-  // link as MARK (TipTap default)
+  // link mark
   if (hasMark(run, "link")) {
     const href = getMarkAttr(run, "link", "href") ?? "#";
     const target = getMarkAttr(run, "link", "target") ?? "_blank";
@@ -82,7 +82,7 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
       return <br key={i} />;
     }
 
-    // link as NODE (less common, but support it)
+    // link node
     if (node.type === "link") {
       const href = node.attrs?.href ?? "#";
       const target = node.attrs?.target ?? "_blank";
@@ -113,14 +113,22 @@ function Heading({
   const tag = (`h${Math.min(Math.max(level, 1), 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6");
   const base =
     level === 1
-      ? "text-3xl font-bold mt-8 mb-4"
+      ? "text-3xl font-bold mb-6"
       : level === 2
-      ? "text-2xl font-semibold mt-8 mb-3"
+      ? "text-2xl font-semibold mb-5"
       : level === 3
-      ? "text-xl font-semibold mt-6 mb-3"
-      : "text-lg font-semibold mt-5 mb-2";
+      ? "text-xl font-semibold mb-4"
+      : "text-lg font-semibold mb-4";
+
   const alignCls =
-    align === "center" ? "text-center" : align === "right" ? "text-right" : align === "justify" ? "text-justify" : "";
+    align === "center"
+      ? "text-center"
+      : align === "right"
+      ? "text-right"
+      : align === "justify"
+      ? "text-justify"
+      : "";
+
   return React.createElement(tag, { className: `${base} ${alignCls}` }, children);
 }
 
@@ -136,7 +144,7 @@ function renderListItems(children: (JSONNode | JSONText)[]) {
             const ni = inner as JSONNode;
             if (ni.type === "paragraph") {
               return (
-                <p key={j} className="leading-7">
+                <p key={j} className="leading-7 my-0">
                   {renderInline(ni.content)}
                 </p>
               );
@@ -146,7 +154,7 @@ function renderListItems(children: (JSONNode | JSONText)[]) {
         </li>
       );
     }
-    // Fallback if editor gave raw inline content
+    // Fallback
     return (
       <li key={i} className="my-1">
         {renderInline((c as JSONNode).content)}
@@ -159,7 +167,7 @@ function renderListItems(children: (JSONNode | JSONText)[]) {
 
 function renderTable(node: JSONNode, key: React.Key) {
   return (
-    <div key={key} className="my-4 overflow-x-auto">
+    <div key={key} className="overflow-x-auto mb-6">
       <table className="w-full border-collapse">
         <tbody>
           {(node.content ?? []).map((row, i) => {
@@ -171,12 +179,24 @@ function renderTable(node: JSONNode, key: React.Key) {
                   const c = cell as JSONNode;
                   const common = { className: "p-2 align-top border-r last:border-0" };
                   if (c.type === "tableHeader") {
-                    return <th key={j} {...common}>{renderInline(c.content)}</th>;
+                    return (
+                      <th key={j} {...common}>
+                        {renderInline(c.content)}
+                      </th>
+                    );
                   }
                   if (c.type === "tableCell") {
-                    return <td key={j} {...common}>{renderInline(c.content)}</td>;
+                    return (
+                      <td key={j} {...common}>
+                        {renderInline(c.content)}
+                      </td>
+                    );
                   }
-                  return <td key={j} {...common}>{renderInline(c.content)}</td>;
+                  return (
+                    <td key={j} {...common}>
+                      {renderInline(c.content)}
+                    </td>
+                  );
                 })}
               </tr>
             );
@@ -194,9 +214,15 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "paragraph": {
       const align = node.attrs?.textAlign as "left" | "center" | "right" | "justify" | undefined;
       const alignCls =
-        align === "center" ? "text-center" : align === "right" ? "text-right" : align === "justify" ? "text-justify" : "";
+        align === "center"
+          ? "text-center"
+          : align === "right"
+          ? "text-right"
+          : align === "justify"
+          ? "text-justify"
+          : "";
       return (
-        <p key={key} className={`leading-7 my-4 ${alignCls}`}>
+        <p key={key} className={`leading-7 text-lg mb-6 ${alignCls}`}>
           {renderInline(node.content)}
         </p>
       );
@@ -215,11 +241,11 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "blockquote":
     case "quote":
       return (
-        <blockquote key={key} className="border-l-4 pl-4 italic my-4 text-gray-700">
+        <blockquote key={key} className="border-l-4 pl-4 italic text-gray-700 mb-6">
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             return n.type === "paragraph" ? (
-              <p key={i} className="leading-7 my-2">
+              <p key={i} className="leading-7 my-0">
                 {renderInline(n.content)}
               </p>
             ) : (
@@ -233,38 +259,40 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       const { src, alt } = node.attrs ?? {};
       if (!src) return null;
       // eslint-disable-next-line @next/next/no-img-element
-      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl my-4 max-w-full" />;
+      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl max-w-full mb-6" />;
     }
 
-    // Generic list (your schema)
+    // Generic list
     case "list": {
       const ordered = !!node.attrs?.ordered;
       const Tag = ordered ? "ol" : "ul";
       const cls = ordered ? "list-decimal" : "list-disc";
       return (
-        <Tag key={key} className={`my-4 ml-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc`}>
+        <Tag key={key} className={`ml-6 mb-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc`}>
           {renderListItems(node.content ?? [])}
         </Tag>
       );
     }
+
     // TipTap lists
     case "bulletList":
       return (
-        <ul key={key} className="my-4 ml-6 list-disc">
+        <ul key={key} className="ml-6 mb-6 list-disc">
           {renderListItems(node.content ?? [])}
         </ul>
       );
+
     case "orderedList":
       return (
-        <ol key={key} className="my-4 ml-6 list-decimal">
+        <ol key={key} className="ml-6 mb-6 list-decimal">
           {renderListItems(node.content ?? [])}
         </ol>
       );
 
-    // TipTap task list
+    // Task list
     case "taskList": {
       return (
-        <ul key={key} className="my-4 ml-6 space-y-2">
+        <ul key={key} className="ml-6 mb-6 space-y-2">
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             if (n.type !== "taskItem") return null;
@@ -280,12 +308,12 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       );
     }
 
-    // Embeds (youtube/iframe-like)
+    // Embeds
     case "embed": {
       const { src, title } = node.attrs ?? {};
       if (!src) return null;
       return (
-        <div key={key} className="my-4 aspect-video">
+        <div key={key} className="aspect-video mb-6">
           <iframe
             src={src}
             title={title || "embed"}
@@ -306,7 +334,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
         .map((c: any) => (c.type === "text" ? c.text : ""))
         .join("");
       return (
-        <pre key={key} className="my-4 rounded-xl bg-gray-900 text-gray-100 p-4 overflow-x-auto">
+        <pre
+          key={key}
+          className="rounded-xl bg-gray-900 text-gray-100 p-4 overflow-x-auto mb-6"
+        >
           <code>{codeText}</code>
         </pre>
       );
@@ -317,11 +348,15 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       return <Separator key={key} className="my-8" />;
 
     case "doc":
-      return <React.Fragment key={key}>{(node.content ?? []).map((n, i) => renderBlock(n as JSONNode, i))}</React.Fragment>;
+      return (
+        <React.Fragment key={key}>
+          {(node.content ?? []).map((n, i) => renderBlock(n as JSONNode, i))}
+        </React.Fragment>
+      );
 
     default:
       return (
-        <div key={key}>
+        <div key={key} className="mb-6">
           {renderInline(node.content)}
         </div>
       );
@@ -332,5 +367,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
 export default function ArticleContent({ value }: { value: JSONDoc | null | undefined }) {
   if (!value || value.type !== "doc") return null;
-  return <article className="tiptap prose prose-neutral max-w-none">{(value.content ?? []).map((node, i) => renderBlock(node as JSONNode, i))}</article>;
+
+  return (
+    <article className="max-w-none">
+      {(value.content ?? []).map((node, i) => renderBlock(node as JSONNode, i))}
+    </article>
+  );
 }

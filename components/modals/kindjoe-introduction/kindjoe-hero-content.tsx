@@ -53,7 +53,10 @@ export default function KindJoeHeroContent({
       </div>
 
       <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
-        <button className="bg-red-600 font-bold text-white px-8 py-3 rounded-full border-2 border-slate-300 text-slate-900 dark:text-white hover:bg-red-700 dark:hover:bg-red-600 transition cursor-pointer">
+        <button
+          onClick={onJoinClick}
+          className="bg-red-600 font-bold text-white px-8 py-3 rounded-full border-2 border-slate-300 text-slate-900 dark:text-white hover:bg-red-700 dark:hover:bg-red-600 transition cursor-pointer"
+        >
           Join Kind Joe — free
         </button>
 

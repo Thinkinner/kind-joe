@@ -164,3 +164,34 @@
   /* Images */
   img { border-radius: 0.75rem; margin: 1rem 0; }
 }
+
+
+/* === Infinite horizontal ticker for stocks === */
+@keyframes kj-ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-animate {
+  display: inline-flex;
+  width: max-content;
+  animation: kj-ticker 30s linear infinite;
+  will-change: transform;
+}
+
+/* Pause on hover so the user can read */
+.ticker-animate:hover {
+  animation-play-state: paused;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-animate {
+    animation: none;
+    transform: translateX(0);
+  }
+}

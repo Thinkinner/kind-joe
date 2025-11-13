@@ -25,7 +25,9 @@ export default function KindJoeModal() {
     try {
       window.localStorage.setItem("kj_already_subscribed", "1");
     } catch {}
+
     setHasSubscribedFlag(true);
+    handleClose(); // ✅ actually hide the modal now
   };
 
   return (
@@ -37,7 +39,10 @@ export default function KindJoeModal() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={handleClose}
+        />
 
         <motion.div
           key="kj-content"
@@ -68,7 +73,12 @@ export default function KindJoeModal() {
 
             <div className="p-6 sm:p-8 lg:p-10 text-slate-900 dark:text-white">
               <div className="flex justify-center mb-4">
-                <Image src="/brand/square-logo.svg" width={100} height={100} alt="Kind Joe Logo" />
+                <Image
+                  src="/brand/square-logo.svg"
+                  width={100}
+                  height={100}
+                  alt="Kind Joe Logo"
+                />
               </div>
 
               {showForm ? (

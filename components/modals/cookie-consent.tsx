@@ -91,7 +91,7 @@ export default function CookieConsentModal({
       <DialogContent
         aria-describedby="cookie-desc"
         className={cn(
-          "max-w-lg rounded-2xl p-0 overflow-hidden border sm:max-w-xl",
+          "max-w-lg rounded-2xl p-0 overflow-hidden border sm:max-w-xl z-[999999]",
           className
         )}
       >

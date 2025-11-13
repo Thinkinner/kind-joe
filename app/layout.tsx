@@ -8,6 +8,8 @@ import EmailCaptureModal from "@/components/modals/email-capture-modal";
 import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
 import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
+import { Footer } from "@/components/footer";
+import { Toaster } from "sonner";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -36,25 +38,24 @@ export const metadata: Metadata = {
     title: "Kind Joe",
     description:
       "Daily Top Stories and original Articles — thoughtfully curated.",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Kind Joe" }],
+    images: [{ url: "/brand/logo.svg", width: 1200, height: 630, alt: "Kind Joe" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Kind Joe",
     description:
       "Daily Top Stories and original Articles — thoughtfully curated.",
-    images: ["/og.jpg"],
+    images: ["/brand/logo.svg"],
   },
   robots: { index: true, follow: true },
   icons: {
     icon: [
-      { url: "/favicon.ico" },
+      { url: "/fpublic/brand/logo.svgavicon.ico" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
-  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {
@@ -97,6 +98,8 @@ export default async function RootLayout({
       >
         <Navbar />
         <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
+        <Footer />
+        <Toaster position="top-center" richColors closeButton />
         <CookieConsent
           initiallyConsented={consent}
           policyHref="/privacy-policy"

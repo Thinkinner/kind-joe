@@ -1,287 +1,226 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import React, { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 
-type Props = {
-  autoOpenDelayMs?: number;
-  storageKey?: string; // marks dismissed in localStorage
-  initiallyOpen?: boolean;
-  onSubscribe?: (data: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    zip: string;
-    category: string;
-  }) => Promise<void> | void;
+type RecapType = "Republican" | "Democratic" | "American Party" | "All" | "";
+
+type KindJoeModalFormProps = {
+  onBack: () => void;
+  initialEmail?: string;
 };
 
-export default function NewsletterPopup({
-  autoOpenDelayMs = 1500,
-  storageKey = "newsletter_popup_dismissed",
-  initiallyOpen = false,
-  onSubscribe,
-}: Props) {
-  const [open, setOpen] = useState<boolean>(initiallyOpen);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-
+export default function KindJoeModalForm({
+  onBack,
+  initialEmail = "",
+}: KindJoeModalFormProps) {
   const [form, setForm] = useState({
-    email: "",
     firstName: "",
     lastName: "",
+    email: initialEmail,
     zip: "",
-    category: "General",
+    recapType: "" as RecapType,
+    agree: false,
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const emailRef = useRef<HTMLInputElement | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Respect prior dismissal + auto open
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const target = e.target;
 
-    // If previously dismissed, don't auto-open regardless of initiallyOpen
-    const dismissed = window.localStorage.getItem(storageKey) === "1";
-    if (dismissed) return;
-
-    if (initiallyOpen) {
-      setOpen(true);
-      return;
+    if (target instanceof HTMLInputElement) {
+      const { name, type, value, checked } = target;
+      setForm((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
     }
 
-    const t = window.setTimeout(() => setOpen(true), autoOpenDelayMs);
-    return () => window.clearTimeout(t);
-  }, [autoOpenDelayMs, initiallyOpen, storageKey]);
-
-  // Focus email when dialog opens
-  useEffect(() => {
-    if (!open) return;
-    const t = setTimeout(() => emailRef.current?.focus(), 50);
-    return () => clearTimeout(t);
-  }, [open]);
-
-  // Persist dismissal when dialog closes in any way
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!open) {
-      window.localStorage.setItem(storageKey, "1");
+    if (target instanceof HTMLSelectElement) {
+      const { name, value } = target;
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
     }
-  }, [open, storageKey]);
+  };
 
-  function validate() {
-    const e: Record<string, string> = {};
-    if (!form.email) e.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Invalid email";
-    if (!form.firstName) e.firstName = "First name is required";
-    if (!form.lastName) e.lastName = "Last name is required";
-    if (!form.zip) e.zip = "ZIP / Postal code is required";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }
+  const zipPattern = /^[A-Za-z0-9\s-]{3,20}$/;
 
-  async function handleSubmit(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!validate()) return;
+  const canSubmit =
+    form.firstName.trim() &&
+    form.lastName.trim() &&
+    form.email.trim() &&
+    form.recapType &&
+    form.agree &&
+    zipPattern.test(form.zip.trim()) &&
+    !submitting;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+
     try {
-      setSubmitting(true);
-      await (onSubscribe
-        ? onSubscribe(form)
-        : new Promise((r) => setTimeout(r, 900)));
-      setSuccess(true);
-      // Mark as dismissed, then close
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(storageKey, "1");
-      }
-      setTimeout(() => setOpen(false), 900);
+      await fetch("/api/newsletter-subscriber", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      try {
+        window.localStorage.setItem("kj_already_subscribed", "1");
+      } catch {}
+
+      alert("Thank you for joining Kind Joe!");
+
+      setTimeout(() => onBack(), 500);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function closePopup() {
-    setOpen(false); // dismissal handled in useEffect
-  }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent
-        className="
-          max-w-none
-          w-[95vw] sm:w-[92vw] md:w-[90vw]
-          lg:max-w-6xl
-          bg-white p-8 md:p-12 lg:p-16 shadow-2xl"
-      >
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-center">
-          <div>
-            <DialogTitle className="text-4xl font-bold leading-tight">
-              Sign up for our newsletter
-            </DialogTitle>
-            <DialogDescription asChild>
-              <p className="mt-4 text-lg text-gray-700">
-                Share your email and we'll share the latest trusted news.
-              </p>
-            </DialogDescription>
-          </div>
+    <form
+      onSubmit={handleSubmit}
+      className="w-full max-w-md mx-auto rounded-2xl bg-white p-10 shadow-xl"
+    >
+      <div className="grid gap-5">
+        {/* First name */}
+        <input
+          type="text"
+          name="firstName"
+          placeholder="First name"
+          onChange={handleChange}
+          value={form.firstName}
+          required
+          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+        />
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                value={form.firstName}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, firstName: e.target.value }))
-                }
-                placeholder="First name"
-                className={`w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                  errors.firstName ? "border-red-400" : "border-gray-200"
-                }`}
-                aria-invalid={!!errors.firstName}
-                aria-describedby={
-                  errors.firstName ? "err-firstName" : undefined
-                }
-              />
-              {errors.firstName && (
-                <p id="err-firstName" className="sr-only">
-                  {errors.firstName}
-                </p>
-              )}
+        {/* Last name */}
+        <input
+          type="text"
+          name="lastName"
+          placeholder="Last name"
+          onChange={handleChange}
+          value={form.lastName}
+          required
+          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+        />
 
-              <Input
-                value={form.lastName}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, lastName: e.target.value }))
-                }
-                placeholder="Last name"
-                className={`w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                  errors.lastName ? "border-red-400" : "border-gray-200"
-                }`}
-                aria-invalid={!!errors.lastName}
-                aria-describedby={errors.lastName ? "err-lastName" : undefined}
-              />
-              {errors.lastName && (
-                <p id="err-lastName" className="sr-only">
-                  {errors.lastName}
-                </p>
-              )}
-            </div>
+        {/* Email */}
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          onChange={handleChange}
+          value={form.email}
+          required
+          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+        />
 
-            <Input
-              ref={emailRef}
-              type="email"
-              value={form.email}
-              onChange={(e) =>
-                setForm((s) => ({ ...s, email: e.target.value }))
-              }
-              placeholder="Email address"
-              className={`w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                errors.email ? "border-red-400" : "border-gray-200"
-              }`}
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? "err-email" : undefined}
+        {/* ZIP */}
+        <input
+          type="text"
+          name="zip"
+          placeholder="ZIP or postal code"
+          onChange={handleChange}
+          value={form.zip}
+          required
+          inputMode="text"
+          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+        />
+
+        {/* Recap Type */}
+        <div className="relative">
+          <select
+            name="recapType"
+            value={form.recapType}
+            onChange={handleChange}
+            required
+            className="
+              w-full bg-white text-black text-lg
+              border border-gray-300 rounded-xl
+              pl-4 pr-12 py-4
+              transition duration-300 ease
+              focus:outline-none focus:border-black hover:border-black
+              shadow-sm focus:shadow-md
+              appearance-none cursor-pointer
+            "
+          >
+            <option value="" disabled>
+              Choose recap type
+            </option>
+            <option value="Republican">Republican</option>
+            <option value="Democratic">Democratic</option>
+            <option value="American Party">American Party</option>
+            <option value="All">All</option>
+          </select>
+
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className="
+              h-6 w-6
+              absolute top-1/2 right-4
+              -translate-y-1/2
+              text-gray-600
+              pointer-events-none
+            "
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
             />
-            {errors.email && (
-              <p id="err-email" className="sr-only">
-                {errors.email}
-              </p>
-            )}
-
-            <Input
-              value={form.zip}
-              onChange={(e) => setForm((s) => ({ ...s, zip: e.target.value }))}
-              placeholder="ZIP / Postal code"
-              className={`w-full h-14 rounded-lg border px-4 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                errors.zip ? "border-red-400" : "border-gray-200"
-              }`}
-              aria-invalid={!!errors.zip}
-              aria-describedby={errors.zip ? "err-zip" : undefined}
-            />
-            {errors.zip && (
-              <p id="err-zip" className="sr-only">
-                {errors.zip}
-              </p>
-            )}
-
-            <div className="relative">
-              <select
-                value={form.category}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, category: e.target.value }))
-                }
-                className={`w-full h-14 rounded-lg border px-4 pr-10 text-base text-gray-800
-                  bg-white appearance-none
-                  focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1
-                  ${errors.category ? "border-red-400" : "border-gray-200"}
-                  transition-all duration-200
-                `}
-              >
-                <option value="General">General</option>
-                <option value="Technology">Technology</option>
-                <option value="Business">Business</option>
-                <option value="Health">Health</option>
-              </select>
-
-              {/* Chevron Icon */}
-              <svg
-                className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 9l6 6 6-6"
-                />
-              </svg>
-            </div>
-
-            <div className="flex gap-4">
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 rounded-lg bg-sky-600 py-4 text-white text-lg font-semibold disabled:opacity-60"
-              >
-                {submitting ? "Submitting..." : "Subscribe"}
-              </Button>
-
-              <DialogClose asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={closePopup}
-                  className="rounded-lg border py-4 px-6 text-lg"
-                >
-                  Cancel
-                </Button>
-              </DialogClose>
-            </div>
-
-            {success && (
-              <div className="mt-2 text-green-600 text-base">
-                Thanks — check your inbox for a confirmation link!
-              </div>
-            )}
-          </form>
+          </svg>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Checkbox */}
+
+        <label className="flex items-center gap-3 text-sm text-gray-600 cursor-pointer">
+          <Checkbox
+            checked={form.agree}
+            onCheckedChange={(checked) =>
+              setForm((prev) => ({ ...prev, agree: Boolean(checked) }))
+            }
+            required
+          />
+          <span>I agree to receive Kind Joe updates and emails.</span>
+        </label>
+      </div>
+
+      {/* Buttons */}
+      <div className="mt-8 flex flex-col gap-4">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className={`w-full rounded-full px-4 py-3 text-lg font-semibold transition shadow-sm ${
+            canSubmit
+              ? "bg-black text-white hover:bg-gray-800 active:scale-[0.98]"
+              : "cursor-not-allowed bg-red-300 text-white"
+          }`}
+        >
+          {submitting ? "Submitting..." : "Join Now"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-center text-sm font-medium text-gray-500 hover:text-black"
+        >
+          Maybe later
+        </button>
+      </div>
+    </form>
   );
 }

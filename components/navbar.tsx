@@ -28,7 +28,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="p-6 flex items-center justify-between border-b border-b-slate-200 bg-slate-900">
+      <nav className="p-6 flex items-center justify-between bg-slate-900">
         <Link href="/">
           <Image
             src="/brand/horizontal-logo.svg"
@@ -109,18 +109,15 @@ export default function Navbar() {
                 {/* Navigation Links */}
                 <nav className="space-y-2 text-white">
                   {[
-                    { name: "Home", href: "#" },
-                    { name: "About", href: "#" },
-                    { name: "Services", href: "#" },
-                    { name: "Blog", href: "#" },
-                    { name: "Contact", href: "#" },
+                    { name: "Home", href: "/" },
+                    { name: "News", href: "/news" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
                       href={item.href}
                       className={`
                         block text-lg font-semibold pb-5
-                        ${i !== arr.length - 1 ? "border-b border-slate-800" : ""}
+                        ${i !== arr.length - 1 ? "border-b" : ""}
                         hover:text-slate-300 transition-colors
                       `}
                     >
@@ -130,7 +127,7 @@ export default function Navbar() {
                 </nav>
 
                 {/* Bottom Section */}
-                <div className="mt-10 border-t border-t-slate-800 pt-6">
+                {/* <div className="mt-10 border-t border-t-slate-800 pt-6">
                   <div className="flex flex-col gap-3">
                     <Link
                       href="/signup"
@@ -145,7 +142,7 @@ export default function Navbar() {
                       Newsletter
                     </Link>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               {/* Footer */}

@@ -53,7 +53,7 @@ export default function KindJoeModalForm({ onBack }: { onBack: () => void }) {
     setSubmitting(true);
 
     try {
-      await fetch("/api/newslettersubscriber", {
+      await fetch("/api/newsletter-subscriber", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
