@@ -4,13 +4,13 @@ import Script from "next/script";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
-import EmailCaptureModal from "@/components/modals/email-capture-modal";
+import GoogleAnalytics from "@/components/google-analytics";
 import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
 import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
 import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -39,7 +39,9 @@ export const metadata: Metadata = {
     title: "Kind Joe",
     description:
       "Daily Top Stories and original Articles — thoughtfully curated.",
-    images: [{ url: "/brand/logo.svg", width: 1200, height: 630, alt: "Kind Joe" }],
+    images: [
+      { url: "/brand/logo.svg", width: 1200, height: 630, alt: "Kind Joe" },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -97,6 +99,7 @@ export default async function RootLayout({
       <body
         className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
       >
+        <GoogleAnalytics />
         <Navbar />
         <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
         <Footer />
