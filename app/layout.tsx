@@ -10,6 +10,7 @@ import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
 import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -106,6 +107,7 @@ export default async function RootLayout({
           termsHref="/terms-of-service"
           delayMs={10_000} // 10 seconds
         />
+        <Analytics />
         <KindJoeModal />
         <Script
           id="ld-website"
