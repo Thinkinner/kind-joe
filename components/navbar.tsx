@@ -4,10 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
+  const pathname = usePathname();
+
+  const links = [
+    { name: "Home", href: "/" },
+    { name: "News", href: "/news" },
+  ];
 
   useEffect(() => {
     // lock body scroll when sidebar is open
@@ -28,8 +35,9 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="p-6 flex items-center justify-between bg-slate-900">
-        <Link href="/">
+      <nav className="p-6 flex items-center justify-between bg-slate-900 ml">
+        {/* Left: Logo */}
+        <Link href="/" className="mr-auto">
           <Image
             src="/brand/horizontal-logo.svg"
             width={165}
@@ -39,20 +47,40 @@ export default function Navbar() {
           />
         </Link>
 
+        {/* Center: Nav Links */}
+        <div className="hidden md:flex gap-8">
+          {links.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`
+                text-white pb-1 transition 
+                ${
+                  isActive
+                    ? "border-b-4 border-red-600"
+                    : "border-b-2 border-transparent hover:border-slate-400"
+                }
+              `}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Right: Toggle Button */}
         <button
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((s) => !s)}
-          className={`rounded-full p-3 transition cursor-pointer ${
+          className={`rounded-full p-3 transition cursor-pointer ml-auto ${
             open
               ? "bg-black text-white hover:bg-slate-100"
               : "bg-white text-black hover:bg-slate-200"
           }`}
         >
-          {open ? (
-            <X size={24} className="stroke-current" />
-          ) : (
-            <Menu size={24} className="stroke-current" />
-          )}
+          {open ? <X size={24} /> : <Menu size={24} />}
         </button>
       </nav>
 
