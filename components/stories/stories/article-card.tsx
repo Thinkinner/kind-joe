@@ -1,4 +1,3 @@
-// app/components/ArticleCard.tsx
 "use client";
 
 import Link from "next/link";
@@ -11,10 +10,17 @@ type Props = {
 export function ArticleCard({ article }: Props) {
   const dateObj = article.publishedAt ? new Date(article.publishedAt) : null;
 
-  const day = dateObj ? dateObj.getDate() : "";
-  const month = dateObj
-    ? dateObj.toLocaleString("en-US", { month: "short" })
-    : "";
+  // Format using Los Angeles timezone
+  const laFormatter = dateObj
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Los_Angeles",
+        day: "2-digit",
+        month: "short",
+      }).formatToParts(dateObj)
+    : [];
+
+  const day = laFormatter.find(p => p.type === "day")?.value ?? "";
+  const month = laFormatter.find(p => p.type === "month")?.value ?? "";
 
   return (
     <div
@@ -29,15 +35,14 @@ export function ArticleCard({ article }: Props) {
 
       {/* Category + Date */}
       <div className="absolute top-0 right-0 left-0 mx-5 mt-2 flex justify-between items-center">
-
-        {/* CATEGORY (fallback to "Article") */}
-        <span className="text-xs font-medium bg-red-700 text-white px-2 py-2  rounded hover:bg-white hover:text-red-600 transition ease-in-out duration-500">
+        {/* CATEGORY */}
+        <span className="text-xs font-medium bg-red-700 text-white px-2 py-2 rounded hover:bg-white hover:text-red-600 transition duration-500">
           {article.category}
         </span>
 
-        {/* DATE */}
+        {/* DATE (LA Time) */}
         {dateObj && (
-          <div className="text-white flex flex-col justify-start text-right">
+          <div className="text-white flex flex-col text-right">
             <span className="text-3xl leading-none font-semibold text-shadow-lg">{day}</span>
             <span className="-mt-2 text-shadow-lg">{month}</span>
           </div>
