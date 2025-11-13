@@ -8,7 +8,7 @@ export default function ThankYouPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => router.push("/blogs"), 3000);
+    const timer = setTimeout(() => router.push("/news"), 3000);
     return () => clearTimeout(timer);
   }, [router]);
 
