@@ -143,6 +143,7 @@ export default function Navbar() {
                     <Link
                       key={item.name}
                       href={item.href}
+                      onClick={() => setOpen(false)} // 👈 close sidebar on tap/click
                       className={`
                         block text-lg font-semibold pb-5
                         ${i !== arr.length - 1 ? "border-b" : ""}
@@ -153,24 +154,6 @@ export default function Navbar() {
                     </Link>
                   ))}
                 </nav>
-
-                {/* Bottom Section */}
-                {/* <div className="mt-10 border-t border-t-slate-800 pt-6">
-                  <div className="flex flex-col gap-3">
-                    <Link
-                      href="/signup"
-                      className="inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium hover:scale-[1.01] active:scale-100 transition-transform bg-white text-slate-950"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/newsletter"
-                      className="inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium hover:scale-[1.01] active:scale-100 transition-transform bg-red-700 text-white"
-                    >
-                      Newsletter
-                    </Link>
-                  </div>
-                </div> */}
               </div>
 
               {/* Footer */}
