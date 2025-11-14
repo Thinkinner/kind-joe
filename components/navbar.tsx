@@ -13,7 +13,7 @@ export default function Navbar() {
 
   const links = [
     { name: "Home", href: "/" },
-    { name: "News", href: "/news" },
+    { name: "KJ Featured Articles", href: "/news" },
   ];
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export default function Navbar() {
                 <nav className="space-y-2 text-white">
                   {[
                     { name: "Home", href: "/" },
-                    { name: "News", href: "/news" },
+                    { name: "KJ Featured Articles", href: "/news" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
