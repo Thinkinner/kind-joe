@@ -131,7 +131,7 @@ export function FeaturedStoriesCarouselHero() {
       {/* MAIN CONTENT */}
       <div className="relative z-10 flex flex-col gap-6">
         <h2 className="text-white text-3xl md:text-5xl font-bold font-[Poppins]">
-          Today’s Kind Joe Featured Stories
+          Today's Stories
         </h2>
 
         {/* Optional: tiny loading hint */}
