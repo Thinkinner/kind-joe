@@ -53,7 +53,7 @@ export default function KindJoeHeroContent({
       </div>
 
       {features.map((f, i) => (
-        <div className="mx-auto mb-3 flex items-center justify-center gap-2 ">
+        <div className="lg:hidden mx-auto mb-3 flex items-center justify-center gap-2 ">
           <Check className="h-6 w-6 text-green-500" />
           <p className="text-sm font-medium">{f.text}</p>
         </div>
