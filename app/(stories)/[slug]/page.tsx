@@ -170,10 +170,9 @@ export default async function ArticleBySlug(props: {
                 })}
               </>
             )}
-
-            <div className="lg:ml-auto">
+            {/* <div className="lg:ml-auto">
               <ShareButton />
-            </div>
+            </div> */}
           </div>
           {/* Comment out */}
           <div>
