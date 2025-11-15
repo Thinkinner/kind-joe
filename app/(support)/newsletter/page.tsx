@@ -1,7 +1,8 @@
+import { ComingSoon } from "@/components/sections/coming-soon"
 
 const page = () => {
   return (
-    <div>page</div>
+      <ComingSoon />
   )
 }
 
