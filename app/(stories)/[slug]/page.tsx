@@ -159,7 +159,7 @@ export default async function ArticleBySlug(props: {
             <span className="uppercase rounded-sm font-medium tracking-tight">
               |
             </span>
-
+            {/* 
             {date && (
               <>
                 Published{" "}
@@ -169,7 +169,7 @@ export default async function ArticleBySlug(props: {
                   day: "numeric",
                 })}
               </>
-            )}
+            )} */}
             {/* <div className="lg:ml-auto">
               <ShareButton />
             </div> */}
