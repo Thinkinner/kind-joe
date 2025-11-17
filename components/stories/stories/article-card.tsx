@@ -41,12 +41,12 @@ export function ArticleCard({ article }: Props) {
         </span>
 
         {/* DATE (LA Time) */}
-        {dateObj && (
+        {/* {dateObj && (
           <div className="text-white flex flex-col text-right">
             <span className="text-3xl leading-none font-semibold text-shadow-lg">{day}</span>
             <span className="-mt-2 text-shadow-lg">{month}</span>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Title */}
