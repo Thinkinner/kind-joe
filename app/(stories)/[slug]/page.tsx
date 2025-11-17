@@ -155,10 +155,6 @@ export default async function ArticleBySlug(props: {
                 {c.name}
               </span>
             ))}
-
-            <span className="uppercase rounded-sm font-medium tracking-tight">
-              |
-            </span>
             {/* 
             {date && (
               <>
@@ -173,9 +169,7 @@ export default async function ArticleBySlug(props: {
             {/* <div className="lg:ml-auto">
               <ShareButton />
             </div> */}
-          </div>
-          {/* Comment out */}
-          <div>
+         
             {/* <div className="mt-3 flex items-center gap-3 text-sm text-gray-600">
             {a.authorAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
