@@ -19,7 +19,7 @@ export default function Right_Image({ data }: { data: CardGroup }) {
             href={main.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-950 text-xl font-bold font-['Poppins'] underline leading-snug line-clamp-3"
+            className="text-blue-950 text-xl font-bold font-['Poppins'] leading-snug line-clamp-3"
           >
             {main.title}
           </a>
@@ -34,7 +34,7 @@ export default function Right_Image({ data }: { data: CardGroup }) {
           href={l.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2"
+          className="w-full text-black text-base font-regular font-['Poppins'] underline hover:opacity-90 line-clamp-2"
         >
           {l.title}
         </a>

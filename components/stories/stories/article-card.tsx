@@ -19,45 +19,52 @@ export function ArticleCard({ article }: Props) {
       }).formatToParts(dateObj)
     : [];
 
-  const day = laFormatter.find(p => p.type === "day")?.value ?? "";
-  const month = laFormatter.find(p => p.type === "month")?.value ?? "";
+  const day = laFormatter.find((p) => p.type === "day")?.value ?? "";
+  const month = laFormatter.find((p) => p.type === "month")?.value ?? "";
 
   return (
-    <div
-      className="relative w-full flex items-end justify-start text-left bg-cover bg-center rounded-xl overflow-hidden"
-      style={{
-        height: 320,
-        backgroundImage: `url(${article.coverImageUrl ?? "/placeholder.jpg"})`,
-      }}
-    >
-      {/* Dark gradient overlay */}
-      <div className="absolute top-0 mt-20 right-0 bottom-0 left-0 bg-gradient-to-b from-transparent to-gray-900"></div>
+    <Link href={`/${article.slug}`} className="block w-full">
+      <div
+        className="group relative w-full flex items-end justify-start text-left rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-500"
+        style={{ height: 320 }}
+      >
+        {/* 1. BACKGROUND IMAGE LAYER (Separated for Zoom Effect) */}
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-110"
+          style={{
+            backgroundImage: `url(${article.coverImageUrl ?? "/placeholder.jpg"})`,
+          }}
+        />
 
-      {/* Category + Date */}
-      <div className="absolute top-0 right-0 left-0 mx-5 mt-2 flex justify-between items-center">
-        {/* CATEGORY */}
-        <span className="text-xs font-medium bg-red-700 text-white px-2 py-2 rounded hover:bg-white hover:text-red-600 transition duration-500">
-          {article.category}
-        </span>
+        {/* 2. DARK GRADIENT OVERLAY */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent/20 to-gray-900 transition-opacity duration-500 group-hover:opacity-90"></div>
 
-        {/* DATE (LA Time) */}
-        {/* {dateObj && (
-          <div className="text-white flex flex-col text-right">
-            <span className="text-3xl leading-none font-semibold text-shadow-lg">{day}</span>
-            <span className="-mt-2 text-shadow-lg">{month}</span>
+        {/* 3. CONTENT LAYER (Relative to sit on top) */}
+        <div className="relative z-10 w-full h-full flex flex-col justify-between">
+          {/* Top Section: Category + Date */}
+          <div className="mx-5 mt-5 flex justify-between items-center">
+            {/* CATEGORY */}
+            <span className="text-xs font-medium bg-red-700 text-white px-2 py-2 rounded shadow-sm group-hover:bg-white group-hover:text-red-600 transition-colors duration-300">
+              {article.category}
+            </span>
+
+            {/* DATE (LA Time) - Uncomment if needed */}
+            {/* {dateObj && (
+              <div className="text-white flex flex-col text-right drop-shadow-md">
+                <span className="text-3xl leading-none font-semibold">{day}</span>
+                <span className="-mt-1 text-sm font-medium uppercase">{month}</span>
+              </div>
+            )} */}
           </div>
-        )} */}
-      </div>
 
-      {/* Title */}
-      <main className="p-5 z-10">
-        <Link
-          href={`/${article.slug}`}
-          className="text-md tracking-tight font-medium leading-7 text-white hover:underline"
-        >
-          {article.title}
-        </Link>
-      </main>
-    </div>
+          {/* Bottom Section: Title */}
+          <main className="p-5">
+            <h3 className="text-md tracking-tight font-medium leading-7 text-white transition-colors duration-300 group-hover:text-red-50 group-hover:underline decoration-red-500/50 underline-offset-4">
+              {article.title}
+            </h3>
+          </main>
+        </div>
+      </div>
+    </Link>
   );
 }

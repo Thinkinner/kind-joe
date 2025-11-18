@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/carousel";
 import type { ApiStory, StoryCard } from "@/types/article";
 
-
 export function FeaturedStoriesCarouselHero() {
   const [stories, setStories] = useState<StoryCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,8 +119,7 @@ export function FeaturedStoriesCarouselHero() {
       <div
         className="absolute inset-0 bg-cover bg-center opacity-90"
         style={{
-          backgroundImage:
-            "url('/kindjoe-hero.png')",
+          backgroundImage: "url('/kindjoe-hero.png')",
         }}
       />
 
@@ -136,16 +134,14 @@ export function FeaturedStoriesCarouselHero() {
 
         {/* Optional: tiny loading hint */}
         {loading && (
-          <p className="text-sm text-red-100/80">Loading featured stories…</p>
+          <p className="text-sm text-red-100/80 animate-pulse">
+            Loading featured stories…
+          </p>
         )}
 
         {!loading && (
           <>
-            <Carousel
-              className="w-full"
-              setApi={setApi}
-              opts={{ loop: true }}
-            >
+            <Carousel className="w-full" setApi={setApi} opts={{ loop: true }}>
               <CarouselContent className="-ml-2 md:-ml-4">
                 {grouped.map((group, idx) => (
                   <CarouselItem key={idx} className="pl-2 md:pl-4 basis-full">
@@ -162,25 +158,31 @@ export function FeaturedStoriesCarouselHero() {
                         <a
                           key={story.id}
                           href={story.href}
-                          className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group"
+                          // ADDED: transform, hover-lift, shadow
+                          className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 ease-out"
                         >
                           <img
                             src={story.imageSrc}
-                            className="w-full h-full object-cover"
+                            // ADDED: scale animation
+                            className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110"
                             alt={story.title}
                           />
 
                           {/* Card Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl p-4">
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl p-4 transition-colors duration-300 group-hover:bg-black/90">
                             <div className="w-6 h-1 bg-red-600 mb-2" />
 
                             <h3 className="text-white text-sm md:text-base font-bold leading-snug">
                               {story.title}
                             </h3>
 
-                            <p className="text-white text-xs mt-1">
-                              <span className="text-blue-400">
-                                Read Full Story →
+                            <p className="text-white text-xs mt-1 flex items-center gap-1">
+                              <span className="text-blue-400 group-hover:text-blue-300 transition-colors">
+                                Read Full Story
+                              </span>
+                              {/* ADDED: Arrow slide animation */}
+                              <span className="text-blue-400 group-hover:text-blue-300 transition-transform duration-300 group-hover:translate-x-1">
+                                →
                               </span>
                             </p>
                           </div>
@@ -201,7 +203,7 @@ export function FeaturedStoriesCarouselHero() {
                   onClick={() => handleDotClick(idx)}
                   aria-label={`Go to slide ${idx + 1}`}
                   aria-current={idx === current}
-                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                  className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${
                     idx === current
                       ? "w-6 bg-white"
                       : "w-2 bg-white/40 hover:bg-white/70"

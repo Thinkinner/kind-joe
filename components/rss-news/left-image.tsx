@@ -13,7 +13,7 @@ export default function Left_Image({ data }: { data: CardGroup }) {
             href={main.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-black text-xl font-bold font-['Poppins'] underline line-clamp-3"
+            className="text-black text-xl font-bold font-['Poppins']"
           >
             {main.title}
           </a>
@@ -35,7 +35,7 @@ export default function Left_Image({ data }: { data: CardGroup }) {
           href={l.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2"
+          className="w-full text-black text-base font-regular font-['Poppins'] underline hover:opacity-90 line-clamp-2"
         >
           {l.title}
         </a>
