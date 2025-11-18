@@ -60,3 +60,25 @@ export type StoryCard = {
   imageSrc: string;
   href: string;
 };
+
+export interface ArticleCard {
+  id: string;
+  headline: string;
+  date: string;
+  category: string;
+  imageUrl: string;
+  summary?: string;
+}
+
+export interface SocialProfile {
+  id: string;
+  handle: string;
+  platform: string;
+  description: string;
+  avatarUrl: string;
+}
+
+export interface NewsData {
+  mainArticles: Article[];
+  sidebarArticles: Article[];
+}
