@@ -2,12 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { NewsCard } from "@/components/ventura-county/news-card";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
-import { SidebarList } from "@/components/ventura-county/sidebar-list";
 import { ArticleCard } from "@/types/article";
 
 const App: React.FC = () => {
   const [mainArticles, setMainArticles] = useState<ArticleCard[]>([]);
-  const [sidebarArticles, setSidebarArticles] = useState<ArticleCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Shape of the API response row (from /api/kindjoetopstories)
@@ -71,7 +69,6 @@ const App: React.FC = () => {
         const sidebar = allArticles.slice(4);
 
         setMainArticles(main);
-        setSidebarArticles(sidebar);
       } catch (error) {
         console.error("Error fetching Ventura County stories:", error);
       } finally {
@@ -91,7 +88,7 @@ const App: React.FC = () => {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-news-red border-t-transparent rounded-full animate-spin"></div>
           <div className="text-news-blue font-poppins font-medium animate-pulse">
-            Curating your feed with Gemini AI...
+            Loading Ventura County Stories...
           </div>
         </div>
       </div>
