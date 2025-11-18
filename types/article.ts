@@ -68,6 +68,7 @@ export interface ArticleCard {
   category: string;
   imageUrl: string;
   summary?: string;
+  url: string;
 }
 
 export interface SocialProfile {
