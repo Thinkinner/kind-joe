@@ -31,7 +31,7 @@ export function FeaturedStoriesCarouselHero() {
           title: story.title,
           imageSrc:
             story.coverImageUrl ||
-            "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a", // fallback
+            "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a",
           href: `/${story.slug}`,
         }));
 
@@ -58,7 +58,6 @@ export function FeaturedStoriesCarouselHero() {
   useEffect(() => {
     function handleResize() {
       const width = window.innerWidth;
-
       if (width < 640) {
         setChunkSize(1);
       } else if (width < 1024) {
@@ -73,34 +72,25 @@ export function FeaturedStoriesCarouselHero() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Split stories into groups based on chunkSize
   const grouped = chunk(displayed, chunkSize);
-
-  // ---- carousel API + dot indicators ----
   const [api, setApi] = useState<CarouselApi | null>(null);
   const [current, setCurrent] = useState(0);
 
-  // Keep current dot in sync with carousel
   useEffect(() => {
     if (!api) return;
-
     const onSelect = () => setCurrent(api.selectedScrollSnap());
     onSelect();
     api.on("select", onSelect);
-
     return () => {
       api.off("select", onSelect);
     };
   }, [api]);
 
-  // 🎞️ Autoplay: infinite moving cards
   useEffect(() => {
     if (!api) return;
-
     const interval = setInterval(() => {
       api.scrollNext();
     }, 12000);
-
     return () => clearInterval(interval);
   }, [api]);
 
@@ -108,22 +98,32 @@ export function FeaturedStoriesCarouselHero() {
     api?.scrollTo(index);
   };
 
-  // Simple “nothing to show” state
   if (!loading && grouped.length === 0) {
     return null;
   }
 
   return (
     <div className="relative w-full px-6 md:px-10 py-8 overflow-hidden">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-90"
-        style={{
-          backgroundImage: "url('/kindjoe-hero.png')",
-        }}
-      />
+      {/* 
+        🎥 VIDEO BACKGROUND
+      */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+        poster="/kindjoe-hero.png" // Optional: Shows while video loads
+      >
+        <source src="/featuredvideo.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
 
-      {/* Red Overlay */}
+      {/* 
+         Dark Overlay:
+         Increased opacity slightly (bg-black/60) so the cards pop 
+         against the moving video background.
+      */}
       <div className="absolute inset-0 bg-black/40" />
 
       {/* MAIN CONTENT */}
@@ -132,7 +132,6 @@ export function FeaturedStoriesCarouselHero() {
           Today's Stories
         </h2>
 
-        {/* Optional: tiny loading hint */}
         {loading && (
           <p className="text-sm text-red-100/80 animate-pulse">
             Loading featured stories…
@@ -158,29 +157,23 @@ export function FeaturedStoriesCarouselHero() {
                         <a
                           key={story.id}
                           href={story.href}
-                          // ADDED: transform, hover-lift, shadow
                           className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 ease-out"
                         >
                           <img
                             src={story.imageSrc}
-                            // ADDED: scale animation
                             className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110"
                             alt={story.title}
                           />
 
-                          {/* Card Overlay */}
                           <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl p-4 transition-colors duration-300 group-hover:bg-black/90">
                             <div className="w-6 h-1 bg-red-600 mb-2" />
-
                             <h3 className="text-white text-sm md:text-base font-bold leading-snug">
                               {story.title}
                             </h3>
-
                             <p className="text-white text-xs mt-1 flex items-center gap-1">
                               <span className="text-blue-400 group-hover:text-blue-300 transition-colors">
                                 Read Full Story
                               </span>
-                              {/* ADDED: Arrow slide animation */}
                               <span className="text-blue-400 group-hover:text-blue-300 transition-transform duration-300 group-hover:translate-x-1">
                                 →
                               </span>
@@ -194,7 +187,6 @@ export function FeaturedStoriesCarouselHero() {
               </CarouselContent>
             </Carousel>
 
-            {/* Dot indicators – now move with autoplay */}
             <div className="flex justify-center gap-2 mt-2">
               {grouped.map((_, idx) => (
                 <button
