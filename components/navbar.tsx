@@ -140,6 +140,7 @@ export default function Navbar() {
                   {[
                     { name: "Home", href: "/" },
                     { name: "KJ Featured Articles", href: "/news" },
+                    { name: "Ventura County", href: "/ventura-county" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
