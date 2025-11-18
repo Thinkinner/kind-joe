@@ -14,55 +14,47 @@ export function ArticleCard({ article }: Props) {
   const laFormatter = dateObj
     ? new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Los_Angeles",
-        day: "2-digit",
         month: "short",
-      }).formatToParts(dateObj)
-    : [];
-
-  const day = laFormatter.find((p) => p.type === "day")?.value ?? "";
-  const month = laFormatter.find((p) => p.type === "month")?.value ?? "";
+        day: "numeric",
+      }).format(dateObj) // e.g., "Nov 19"
+    : "";
 
   return (
-    <Link href={`/${article.slug}`} className="block w-full">
-      <div
-        className="group relative w-full flex items-end justify-start text-left rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-500"
-        style={{ height: 320 }}
-      >
-        {/* 1. BACKGROUND IMAGE LAYER (Separated for Zoom Effect) */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-110"
-          style={{
-            backgroundImage: `url(${article.coverImageUrl ?? "/placeholder.jpg"})`,
-          }}
-        />
+    <Link href={`/${article.slug}`} className="group block w-full">
+      <div className="flex flex-col gap-3">
+        {/* 1. IMAGE SECTION (16:9 Aspect Ratio) */}
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-100">
+          <img
+            src={article.coverImageUrl ?? "/placeholder.jpg"}
+            alt={article.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+          
+          {/* Optional: A subtle gradient at the bottom of the image helps frame it, 
+              even without text overlay. */}
+          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/10 to-transparent" />
+        </div>
 
-        {/* 2. DARK GRADIENT OVERLAY */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent/20 to-gray-900 transition-opacity duration-500 group-hover:opacity-90"></div>
-
-        {/* 3. CONTENT LAYER (Relative to sit on top) */}
-        <div className="relative z-10 w-full h-full flex flex-col justify-between">
-          {/* Top Section: Category + Date */}
-          <div className="mx-5 mt-5 flex justify-between items-center">
-            {/* CATEGORY */}
-            <span className="text-xs font-medium bg-red-700 text-white px-2 py-2 rounded shadow-sm group-hover:bg-white group-hover:text-red-600 transition-colors duration-300">
+        {/* 2. CONTENT SECTION (Below Image) */}
+        <div className="flex flex-col gap-1.5">
+          {/* Metadata Row: Category + Date */}
+          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+            <span className="text-red-600">
               {article.category}
             </span>
-
-            {/* DATE (LA Time) - Uncomment if needed */}
+            
             {/* {dateObj && (
-              <div className="text-white flex flex-col text-right drop-shadow-md">
-                <span className="text-3xl leading-none font-semibold">{day}</span>
-                <span className="-mt-1 text-sm font-medium uppercase">{month}</span>
-              </div>
+              <span className="text-neutral-400 font-medium normal-case">
+                {laFormatter}
+              </span>
             )} */}
           </div>
 
-          {/* Bottom Section: Title */}
-          <main className="p-5">
-            <h3 className="text-md tracking-tight font-medium leading-7 text-white transition-colors duration-300 group-hover:text-red-50 group-hover:underline decoration-red-500/50 underline-offset-4">
-              {article.title}
-            </h3>
-          </main>
+          {/* Headline */}
+          <h3 className="font-poppins text-lg font-bold leading-snug text-neutral-900 transition-colors line-clamp-3 group-hover:text-blue-900 group-hover:underline decoration-2 underline-offset-2">
+            {article.title}
+          </h3>
         </div>
       </div>
     </Link>

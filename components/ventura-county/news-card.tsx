@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArticleCard } from "@/types/article";
 
 interface NewsCardProps {
@@ -10,31 +11,40 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
   return (
     <Link 
       href={article.url} 
-      className="flex flex-col justify-start items-start gap-4 w-full group"
+      className="group flex w-full flex-col gap-3"
     >
-      <div className="self-stretch aspect-[16/9] relative bg-black rounded-2xl overflow-hidden">
-        <img
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
+      {/* Image Container - Boxier, 16:9 aspect ratio */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border border-neutral-200">
+        <Image
           src={article.imageUrl}
           alt={article.headline}
-          loading="lazy"
+          fill
+          className="object-cover transition-opacity duration-300 group-hover:opacity-90"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-
-        <div className="absolute top-[17px] left-[19px]">
-          <div className="px-4 py-2 bg-news-red rounded-md shadow-lg backdrop-blur-sm bg-opacity-90">
-            <span className="text-white text-sm md:text-lg font-bold font-poppins tracking-wide">
-              {article.category}
-            </span>
-          </div>
-        </div>
+        
+        {/* Optional: 'Video' or 'Image' icon often appears here in Fox cards */}
+        {/* <div className="absolute bottom-2 left-2 bg-black/60 p-1 rounded text-white">
+             <Icon /> 
+           </div> 
+        */}
       </div>
 
-      <div className="self-stretch flex flex-col justify-center items-start gap-3">
-        <h2 className="self-stretch text-black text-xl md:text-2xl lg:text-3xl font-bold font-poppins leading-tight group-hover:text-news-red transition-colors">
+      {/* Content Container */}
+      <div className="flex flex-col gap-1.5 px-1">
+        {/* Category - Red text, uppercase, above headline (Fox Style) */}
+        <div className="flex items-center justify-between">
+            <span className="font-poppins text-xs font-bold uppercase tracking-wider text-red-700">
+              {article.category}
+            </span>
+            {/* Timestamp placeholder if you have it, otherwise remove */}
+            {/* <span className="text-xs text-neutral-400">2h ago</span> */}
+        </div>
+
+        {/* Headline - Bold, dark, turns blue/underlined on hover */}
+        <h2 className="line-clamp-3 font-poppins text-lg font-bold leading-snug text-neutral-900 group-hover:text-blue-900 group-hover:underline md:text-xl">
           {article.headline}
         </h2>
-
-        <div className="self-stretch h-px bg-neutral-200 w-full mt-2"></div>
       </div>
     </Link>
   );

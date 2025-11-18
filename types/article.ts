@@ -62,13 +62,13 @@ export type StoryCard = {
 };
 
 export interface ArticleCard {
-  id: string;
   headline: string;
   date: string;
   category: string;
   imageUrl: string;
   summary?: string;
   url: string;
+  id: string;
 }
 
 export interface SocialProfile {
@@ -82,4 +82,9 @@ export interface SocialProfile {
 export interface NewsData {
   mainArticles: Article[];
   sidebarArticles: Article[];
+}
+
+export interface Author {
+  name: string;
+  avatarUrl: string;
 }
