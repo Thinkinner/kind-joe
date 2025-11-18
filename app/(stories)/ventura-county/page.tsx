@@ -67,7 +67,7 @@ const App: React.FC = () => {
         });
 
         // Decide how to split into main + sidebar
-        const main = allArticles.slice(0, 4);
+        const main = allArticles.slice(0, 10);
         const sidebar = allArticles.slice(4);
 
         setMainArticles(main);
