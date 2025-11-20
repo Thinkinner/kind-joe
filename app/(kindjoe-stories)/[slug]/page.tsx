@@ -124,52 +124,55 @@ export default async function ArticleBySlug(props: {
       : (a.content as any);
 
   return (
-    <main className="mx-auto max-w-5xl lg:p-6">
-      <div className="lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-10">
-        {/* Main article column */}
+    <main className="mx-auto max-w-5xl px-4 lg:px-6 py-8">
+      <div className="lg:grid lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)] lg:gap-10">
         <article className="lg:border-r lg:border-neutral-200 lg:pr-8">
-          <header>
-            <div className="hidden lg:flex items-start gap-4 mb-6">
-              <div className="w-3 bg-red-600 self-stretch"></div>
-
-              <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
+          <header className="lg:flex lg:items-start lg:gap-4 mb-6">
+            <div className="hidden lg:block w-1.5 bg-red-600 rounded-full self-stretch" />
+            <div className="flex-1">
+              <h1 className="mt-4 lg:mt-0 text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
                 {a.title}
               </h1>
-            </div>
 
-            <img
-              src={a.coverImageUrl ?? ""}
-              alt={a.coverImageUrl ?? ""}
-              className="w-full lg:rounded-lg"
-            />
-            <div className="lg:hidden flex items-start gap-4 mt-6 px-4">
-              <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
-                {a.title}
-              </h1>
-            </div>
-            {/* Mobile */}
-            <div className="flex items-center gap-2 lg:gap-2 flex-wrap mt-5 px-4">
-              {cats.map((c) => (
-                <span
-                  key={c.slug}
-                  className="uppercase rounded-sm font-medium tracking-tight"
-                >
-                  {c.name}
-                </span>
-              ))}
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                <div className="flex flex-wrap gap-2">
+                  {cats.map((c) => (
+                    <span
+                      key={c.slug}
+                      className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 font-semibold uppercase tracking-wide"
+                    >
+                      {c.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </header>
 
-          <hr className="my-10 h-0.5 border-t-0 bg-neutral-200 dark:bg-white/10 " />
-          <div className="px-4">
+          <div className="overflow-hidden rounded-lg bg-neutral-100">
+            <img
+              src={a.coverImageUrl ?? "/placeholder.jpg"}
+              alt={a.title ?? "Article cover image"}
+              className="w-full h-full object-cover aspect-[16/9]"
+              loading="lazy"
+            />
+          </div>
+
+          <hr className="my-10 h-0.5 border-t-0 bg-neutral-200 dark:bg-white/10" />
+
+          <div className="prose prose-neutral max-w-none">
             <ArticleContent value={content} />
           </div>
         </article>
 
-        {/* Sidebar column */}
-        <div className="mt-10 lg:mt-0 lg:pl-2">
-          <RelatedArticles slug={slug} />
-        </div>
+        <aside className="mt-10 lg:mt-0 lg:pl-4">
+          <div className="border border-neutral-200 rounded-lg p-4 lg:p-5 bg-neutral-50">
+            <h2 className="text-sm font-semibold tracking-tight mb-3 uppercase text-neutral-600">
+              Related Articles
+            </h2>
+            <RelatedArticles slug={slug} />
+          </div>
+        </aside>
       </div>
     </main>
   );

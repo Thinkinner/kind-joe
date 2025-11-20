@@ -113,7 +113,7 @@ export default function RelatedArticles({
 }
 
 function RelatedArticleCard({ article }: { article: RelatedArticle }) {
-  const href = `/stories/${article.slug}`; // adjust if your route is different
+  const href = `/${article.slug}`; // adjust if your route is different
 
   const date =
     article.publishedAt ??
