@@ -4,7 +4,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import type { Metadata } from "next";
-import ShareButton from "@/components/rss-news/share-button";
+import RelatedArticles from "@/components/stories/stories/related-articles";
 
 export const revalidate = 60;
 
@@ -124,75 +124,53 @@ export default async function ArticleBySlug(props: {
       : (a.content as any);
 
   return (
-    <main className="mx-auto max-w-4xl lg:p-6">
-      <article>
-        <header>
-          <div className="hidden lg:flex items-start gap-4 mb-6">
-            <div className="w-3 bg-red-600 self-stretch"></div>
+    <main className="mx-auto max-w-5xl lg:p-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-10">
+        {/* Main article column */}
+        <article className="lg:border-r lg:border-neutral-200 lg:pr-8">
+          <header>
+            <div className="hidden lg:flex items-start gap-4 mb-6">
+              <div className="w-3 bg-red-600 self-stretch"></div>
 
-            <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
-              {a.title}
-            </h1>
-          </div>
+              <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
+                {a.title}
+              </h1>
+            </div>
 
-          <img
-            src={a.coverImageUrl ?? ""}
-            alt={a.coverImageUrl ?? ""}
-            className="w-full lg:rounded-lg"
-          />
-          <div className="lg:hidden flex items-start gap-4 mt-6 px-4">
-            <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
-              {a.title}
-            </h1>
+            <img
+              src={a.coverImageUrl ?? ""}
+              alt={a.coverImageUrl ?? ""}
+              className="w-full lg:rounded-lg"
+            />
+            <div className="lg:hidden flex items-start gap-4 mt-6 px-4">
+              <h1 className="text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
+                {a.title}
+              </h1>
+            </div>
+            {/* Mobile */}
+            <div className="flex items-center gap-2 lg:gap-2 flex-wrap mt-5 px-4">
+              {cats.map((c) => (
+                <span
+                  key={c.slug}
+                  className="uppercase rounded-sm font-medium tracking-tight"
+                >
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          </header>
+
+          <hr className="my-10 h-0.5 border-t-0 bg-neutral-200 dark:bg-white/10 " />
+          <div className="px-4">
+            <ArticleContent value={content} />
           </div>
-          {/* Mobile */}
-          <div className="flex items-center gap-2 lg:gap-2 flex-wrap mt-5 px-4">
-            {cats.map((c) => (
-              <span
-                key={c.slug}
-                className="uppercase rounded-sm font-medium tracking-tight"
-              >
-                {c.name}
-              </span>
-            ))}
-            {/* 
-            {date && (
-              <>
-                Published{" "}
-                {new Date(String(date)).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </>
-            )} */}
-            {/* <div className="lg:ml-auto">
-              <ShareButton />
-            </div> */}
-         
-            {/* <div className="mt-3 flex items-center gap-3 text-sm text-gray-600">
-            {a.authorAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={a.authorAvatar}
-                alt={a.authorName ?? "author"}
-                className="w-8 h-8 rounded-full border"
-              />
-            ) : null}
-            <div>{a.authorName}</div>
-            {cats.length ? (
-              <>
-                <span>•</span>
-              </>
-            ) : null}
-          </div> */}
-          </div>
-        </header>
-        <hr className="my-10 h-0.5 border-t-0 bg-neutral-200 dark:bg-white/10 " />
-        <div className="px-4">
-          <ArticleContent value={content} />
+        </article>
+
+        {/* Sidebar column */}
+        <div className="mt-10 lg:mt-0 lg:pl-2">
+          <RelatedArticles slug={slug} />
         </div>
-      </article>
+      </div>
     </main>
   );
 }

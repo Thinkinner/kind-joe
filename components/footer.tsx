@@ -72,11 +72,11 @@ export function Footer() {
                     Home
                   </a>
                 </li>
-                <li>
+                {/* <li>
                   <a className="hover:text-red-600 transition" href="/blogs">
                     Blog
                   </a>
-                </li>
+                </li> */}
                 <li>
                   <a
                     className="hover:text-red-600 transition"

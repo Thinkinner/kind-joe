@@ -15,6 +15,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "KJ Featured Articles", href: "/news" },
     { name: "Ventura County", href: "/ventura-county" },
+    { name: "Newsletters", href: "/newsletter" },
   ];
 
   useEffect(() => {
@@ -141,6 +142,7 @@ export default function Navbar() {
                     { name: "Home", href: "/" },
                     { name: "KJ Featured Articles", href: "/news" },
                     { name: "Ventura County", href: "/ventura-county" },
+                    { name: "Newsletters", href: "/newsletter" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
