@@ -3,8 +3,9 @@ import { articles, users, articleCategories, categories } from "@/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
-import type { Metadata } from "next";
 import RelatedArticles from "@/components/stories/stories/related-articles";
+import type { Metadata } from "next";
+import { formatToLA } from "@/lib/format-date";
 
 export const revalidate = 60;
 
@@ -175,12 +176,11 @@ export default async function ArticleBySlug(props: {
                 </div>
               )}
 
-              {/* --- NEW: PUBLISHER & LOGO SECTION --- */}
+              {/* --- PUBLISHER & LOGO SECTION (WITH DYNAMIC DATE) --- */}
               <div className="mt-6 mb-6 flex items-center justify-between border-y border-neutral-100 py-4">
                 <div className="flex items-center gap-3">
                   {/* Logo Container */}
                   <div className="relative h-12 w-12 flex-shrink-0">
-                    {/* Replace src with your actual logo path */}
                     <img
                       src="https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/691cf02c6a5d3b0cfda50cf9.png"
                       alt="The Kind Joe Logo"
@@ -202,17 +202,15 @@ export default async function ArticleBySlug(props: {
                     <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                       <span>Official Publisher</span>
                       <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
-                      {/* <span>{a.publishedAt ?? "Nov 21, 2025"}</span> */}
+
+                      {/* DYNAMIC DATE LOGIC */}
+                      <time className="text-neutral-700 font-semibold">
+                        {formatToLA(a.publishedAt ?? a.publishAt ?? a.createdAt)}
+                      </time>
+
                     </div>
                   </div>
                 </div>
-
-                {/* Optional Follow Button */}
-                {/* <div className="hidden sm:block">
-                  <button className="rounded-full bg-neutral-900 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-neutral-700 hover:shadow-md">
-                    Follow
-                  </button>
-                </div> */}
               </div>
               {/* ----------------------------------- */}
 

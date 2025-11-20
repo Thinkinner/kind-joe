@@ -201,7 +201,14 @@ export default async function ArticleBySlug(props: {
                     <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                       <span>Local Guide</span>
                       <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
-                      {/* <span>{a.publishedAt ?? "Nov 21, 2025"}</span> */}
+
+                      {/* DYNAMIC DATE LOGIC */}
+                      <time className="text-neutral-700 font-semibold">
+                        {a.publishedAt
+                          ? new Date(a.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                        }
+                      </time>
                     </div>
                   </div>
                 </div>
@@ -223,7 +230,7 @@ export default async function ArticleBySlug(props: {
 
                 {/* Instagram (Primary for Ventura) */}
                 <a
-                  href={`https://www.kindjoe.com/ventura-county`}
+                  href={`https://www.instagram.com/joeknowsventura/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#cb2027] hover:text-white transition-all"
@@ -239,16 +246,6 @@ export default async function ArticleBySlug(props: {
                   className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#1877F2] hover:text-white transition-all"
                 >
                   <FaFacebook className="h-3.5 w-3.5" />
-                </a> */}
-
-                {/* Tiktok */}
-                {/* <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-black hover:text-white transition-all"
-                >
-                  <FaTiktok className="h-3.5 w-3.5" />
                 </a> */}
               </div>
             </header>
@@ -302,9 +299,8 @@ export default async function ArticleBySlug(props: {
             </section>
 
             {/* Ad banner / promo */}
-{/* Ad banner / promo */}
             <section className="px-4 lg:px-0">
-              <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 to-orange-300 shadow-xl shadow-red-500/20">
+              <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 to-orange-300 shadow-xl shadow-orange-500/20">
                 <div className="relative p-8 text-white">
                   {/* Background circles */}
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
@@ -323,7 +319,7 @@ export default async function ArticleBySlug(props: {
                       Don't Miss <br />the Action
                     </h3>
 
-                    <p className="mt-3 text-sm font-medium text-red-50">
+                    <p className="mt-3 text-sm font-medium text-orange-50">
                       Exclusive new stories are streaming now on our channel.
                     </p>
 
@@ -331,7 +327,7 @@ export default async function ArticleBySlug(props: {
                       href="https://www.instagram.com/joeknowsventura/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-blue-600 shadow-md transition hover:bg-neutral-100"
+                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-orange-600 shadow-md transition hover:bg-neutral-100"
                     >
                       <span>Watch Now</span>
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
