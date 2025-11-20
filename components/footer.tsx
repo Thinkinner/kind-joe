@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
-import KindJoeModalForm from "@/components/modals/email-capture-modal"; // path as you had it
+import KindJoeModalForm from "@/components/modals/kindjoe-capture-modal"; // path as you had it
 
 export function Footer() {
   const year = new Date().getFullYear();

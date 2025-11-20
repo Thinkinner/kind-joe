@@ -4,6 +4,10 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import RelatedArticles from "@/components/stories/stories/related-articles";
+import { Metadata } from "next";
+import ShareButtons from "@/components/stories/share-buttons";
+import { formatToLA } from "@/lib/format-date";
+import GetEmail from "@/components/stories/kindjoe-get-email";
 
 export const revalidate = 60;
 function publishedWhere(slug: string, now = new Date()) {
@@ -137,14 +141,6 @@ export default async function ArticleBySlug(props: {
                       {cats[0].name}
                     </span>
                   )}
-
-                  <span className="h-3 w-px bg-neutral-300" />
-
-                  <span>Home</span>
-                  <span className="text-neutral-300">/</span>
-
-                  {/* DYNAMIC CATEGORY */}
-                  <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
                 </div>
 
                 {/* Right: author / date / comments */}
@@ -215,63 +211,6 @@ export default async function ArticleBySlug(props: {
               {/* ----------------------------------- */}
 
               <ShareButtons />
-              {/* Social bar */}
-              <div className="mt-4 flex items-center gap-3">
-                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  Share
-                </span>
-
-                {/* Tiktok */}
-                <a
-                  href={`https://www.tiktok.com/@thekind.joe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
-                >
-                  <FaTiktok className="h-4 w-4" />
-                </a>
-
-                {/* Twitter/X */}
-                <a
-                  href={`https://x.com/TheKindJoe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
-                >
-                  <FaXTwitter className="h-4 w-4" />
-                </a>
-
-                {/* Instagram */}
-                <a
-                  href={`https://www.instagram.com/thekindjoe/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
-                >
-                  <FaInstagram className="h-4 w-4" />
-                </a>
-
-                {/* Youtube */}
-                <a
-                  href={`https://www.youtube.com/@thekindjoe-w4d`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
-                >
-                  <FaYoutube className="h-4 w-4" />
-                </a>
-
-                
-                {/* Facebook */}
-                <a
-                  href={`https://www.facebook.com/thekindjoe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
-                >
-                  <FaFacebook className="h-4 w-4" />
-                </a>
-              </div>
             </header>
 
             {/* Hero image */}
@@ -297,27 +236,7 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8">
             {/* Newsletter box */}
-            <section className="px-4 py-5">
-              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
-                Get Newsletter
-              </h2>
-              <p className="mt-2 text-xs text-neutral-600">
-                Sign up to receive the latest news, articles and updates.
-              </p>
-              <form className="mt-3 space-y-2">
-                <input
-                  type="email"
-                  placeholder="Email Address"
-                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  className="w-full rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </section>
+           <GetEmail />
 
             {/* Ad banner / promo */}
             <section className="px-4 lg:px-0">

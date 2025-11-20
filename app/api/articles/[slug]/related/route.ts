@@ -13,7 +13,7 @@ import {
 import { articles, articleTags, tags } from "@/db/schema";
 
 // 👇 Make sure this matches the actual slug in your DB
-const EXCLUDED_TAG_SLUGS = ["kindjoetopstories"];
+const EXCLUDED_TAG_SLUGS = ["kindjoetopstories" ,"ventura-county"];
 
 // Reuse the same published filter as your main article route
 function publishedWhere(now = new Date()) {

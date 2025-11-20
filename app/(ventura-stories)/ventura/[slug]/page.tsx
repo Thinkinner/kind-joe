@@ -5,17 +5,8 @@ import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import RelatedArticles from "@/components/stories/stories/related-articles";
 import type { Metadata } from "next";
-
-import {
-  FaFacebookF,
-  FaXTwitter,
-  FaPinterestP,
-  FaLinkedinIn,
-  FaTiktok,
-  FaInstagram,
-  FaYoutube,
-  FaFacebook,
-} from "react-icons/fa6";
+import { formatToLA } from "@/lib/format-date";
+import VenturaGetEmail from "@/components/stories/ventura-get-email";
 
 export const revalidate = 60;
 
@@ -149,10 +140,6 @@ export default async function ArticleBySlug(props: {
                     {cats[0].name}
                   </span>
                 )}
-                <span className="h-3 w-px bg-neutral-300" />
-                <span>Home</span>
-                <span className="text-neutral-300">/</span>
-                <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
               </div>
 
               {/* Title */}
@@ -181,14 +168,22 @@ export default async function ArticleBySlug(props: {
                   <div className="relative h-12 w-12 flex-shrink-0">
                     {/* Generated a 'JV' logo for Ventura or place your specific logo URL here */}
                     <img
-                      src="https://ui-avatars.com/api/?name=Joe+Knows+Ventura&background=ea580c&color=fff&size=128"
+                      src="https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/691ccd8896e2873808164bed.png"
                       alt="Joe Knows Ventura"
-                      className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
+                      className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm border"
                     />
                     {/* Verified Badge Icon */}
                     <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -199,15 +194,13 @@ export default async function ArticleBySlug(props: {
                       Joe Knows Ventura
                     </span>
                     <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
-                      <span>Local Guide</span>
+                      <span>Official Publisher</span>
                       <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
 
-                      {/* DYNAMIC DATE LOGIC */}
                       <time className="text-neutral-700 font-semibold">
-                        {a.publishedAt
-                          ? new Date(a.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                          : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                        }
+                        {formatToLA(
+                          a.publishedAt ?? a.publishAt ?? a.createdAt
+                        )}
                       </time>
                     </div>
                   </div>
@@ -223,31 +216,6 @@ export default async function ArticleBySlug(props: {
               {/* ----------------------------------- */}
 
               {/* Social bar */}
-              <div className="flex items-center gap-2">
-                <span className="mr-2 text-xs font-bold uppercase tracking-wide text-neutral-400">
-                  Share Article
-                </span>
-
-                {/* Instagram (Primary for Ventura) */}
-                <a
-                  href={`https://www.instagram.com/joeknowsventura/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#cb2027] hover:text-white transition-all"
-                >
-                  <FaInstagram className="h-3.5 w-3.5" />
-                </a>
-
-                {/* Facebook */}
-                {/* <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#1877F2] hover:text-white transition-all"
-                >
-                  <FaFacebook className="h-3.5 w-3.5" />
-                </a> */}
-              </div>
             </header>
 
             {/* Hero image */}
@@ -276,27 +244,7 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8">
             {/* Newsletter box */}
-            <section className="mx-4 lg:mx-0 rounded-2xl bg-neutral-50 border border-neutral-100 p-6 text-center">
-              <h2 className="text-sm font-extrabold tracking-tight uppercase text-neutral-900">
-                Ventura Updates
-              </h2>
-              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
-                Get the latest local news and hidden gems delivered to you.
-              </p>
-              <form className="mt-4 space-y-2">
-                <input
-                  type="email"
-                  placeholder="Your Email Address"
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                />
-                <button
-                  type="submit"
-                  className="w-full rounded-lg bg-orange-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-orange-700"
-                >
-                  Subscribe Free
-                </button>
-              </form>
-            </section>
+            <VenturaGetEmail />
 
             {/* Ad banner / promo */}
             <section className="px-4 lg:px-0">
@@ -316,7 +264,8 @@ export default async function ArticleBySlug(props: {
                     </div>
 
                     <h3 className="text-2xl font-black leading-tight">
-                      Don't Miss <br />the Action
+                      Don't Miss <br />
+                      the Action
                     </h3>
 
                     <p className="mt-3 text-sm font-medium text-orange-50">
@@ -330,7 +279,17 @@ export default async function ArticleBySlug(props: {
                       className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-orange-600 shadow-md transition hover:bg-neutral-100"
                     >
                       <span>Watch Now</span>
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                     </a>
                   </div>
                 </div>

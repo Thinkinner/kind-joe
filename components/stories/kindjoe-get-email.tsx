@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import KindJoeModalForm from "@/components/modals/email-capture-modal"; // path as you had it
+import KindJoeModalForm from "@/components/modals/kindjoe-capture-modal"; // path as you had it
 
 const getEmail = () => {
   const [email, setEmail] = useState("");
