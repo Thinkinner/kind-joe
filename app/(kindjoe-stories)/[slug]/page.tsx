@@ -12,7 +12,11 @@ import {
   FaFacebookF,
   FaXTwitter,
   FaPinterestP,
-  FaLinkedinIn
+  FaLinkedinIn,
+  FaTiktok,
+  FaInstagram,
+  FaYoutube,
+  FaFacebook,
 } from "react-icons/fa6";
 
 
@@ -192,19 +196,19 @@ export default async function ArticleBySlug(props: {
                   Share
                 </span>
 
-                {/* Facebook */}
+                {/* Tiktok */}
                 <a
-                  href={`#`}
+                  href={`https://www.tiktok.com/@thekind.joe`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
                 >
-                  <FaFacebookF className="h-4 w-4" />
+                  <FaTiktok className="h-4 w-4" />
                 </a>
 
                 {/* Twitter/X */}
                 <a
-                  href={`#`}
+                  href={`https://x.com/TheKindJoe`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
@@ -212,24 +216,35 @@ export default async function ArticleBySlug(props: {
                   <FaXTwitter className="h-4 w-4" />
                 </a>
 
-                {/* Pinterest */}
+                {/* Instagram */}
                 <a
-                  href={`#`}
+                  href={`https://www.instagram.com/thekindjoe/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
                 >
-                  <FaPinterestP className="h-4 w-4" />
+                  <FaInstagram className="h-4 w-4" />
                 </a>
 
-                {/* LinkedIn */}
+                {/* Youtube */}
                 <a
-                  href={`#`}
+                  href={`https://www.youtube.com/@thekindjoe-w4d`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
                 >
-                  <FaLinkedinIn className="h-4 w-4" />
+                  <FaYoutube className="h-4 w-4" />
+                </a>
+
+                
+                {/* Facebook */}
+                <a
+                  href={`https://www.facebook.com/thekindjoe`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
+                >
+                  <FaFacebook className="h-4 w-4" />
                 </a>
               </div>
             </header>
