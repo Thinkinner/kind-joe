@@ -142,115 +142,120 @@ export default async function ArticleBySlug(props: {
           <article className="lg:pb-8">
             {/* Top meta bar */}
             <header className="px-4 lg:px-6 pt-4 pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
-                {/* Left: section / breadcrumbs */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {cats.length > 0 && (
-                    <span className="bg-orange-600 text-white px-2 py-0.5 font-semibold">
-                      {cats[0].name}
-                    </span>
-                  )}
-
-                  <span className="h-3 w-px bg-neutral-300" />
-
-                  <span>Home</span>
-                  <span className="text-neutral-300">/</span>
-
-                  {/* Dynamic category */}
-                  <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
-                </div>
-
-                {/* Right: meta (you can plug author/date/etc here if you want) */}
-                {/* 
-            <div className="flex flex-wrap items-center gap-3">
-              {a.authorName && <span>By {a.authorName}</span>}
-              <span className="h-3 w-px bg-neutral-300" />
-              {a.publishedAt && <span>{a.publishedAt}</span>}
-            </div>
-            */}
+              {/* Breadcrumbs */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-500">
+                {cats.length > 0 && (
+                  <span className="bg-orange-600 text-white px-2 py-0.5 font-semibold rounded-sm">
+                    {cats[0].name}
+                  </span>
+                )}
+                <span className="h-3 w-px bg-neutral-300" />
+                <span>Home</span>
+                <span className="text-neutral-300">/</span>
+                <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
               </div>
 
               {/* Title */}
-              <h1 className="mt-3 text-2xl lg:text-[32px] font-bold leading-tight tracking-tight text-neutral-900">
+              <h1 className="mt-4 text-2xl lg:text-[36px] font-extrabold leading-tight tracking-tight text-neutral-900">
                 {a.title}
               </h1>
 
-              {/* Optional tags row under title (extra categories) */}
+              {/* Tags */}
               {cats.length > 1 && (
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {cats.slice(1).map((c) => (
                     <span
                       key={c.slug}
-                      className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600"
+                      className="inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-neutral-600 hover:bg-neutral-200 transition"
                     >
-                      {c.name}
+                      #{c.name}
                     </span>
                   ))}
                 </div>
               )}
 
+              {/* --- NEW: PUBLISHER & LOGO SECTION (Ventura Edition) --- */}
+              <div className="mt-6 mb-6 flex items-center justify-between border-y border-neutral-100 py-4">
+                <div className="flex items-center gap-3">
+                  {/* Logo Container */}
+                  <div className="relative h-12 w-12 flex-shrink-0">
+                    {/* Generated a 'JV' logo for Ventura or place your specific logo URL here */}
+                    <img
+                      src="https://ui-avatars.com/api/?name=Joe+Knows+Ventura&background=ea580c&color=fff&size=128"
+                      alt="Joe Knows Ventura"
+                      className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
+                    />
+                    {/* Verified Badge Icon */}
+                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Publisher Text Info */}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-neutral-900 leading-none">
+                      Joe Knows Ventura
+                    </span>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
+                      <span>Local Guide</span>
+                      <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
+                      {/* <span>{a.publishedAt ?? "Nov 21, 2025"}</span> */}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Optional Follow Button */}
+                {/* <div className="hidden sm:block">
+                  <button className="rounded-full bg-neutral-900 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-neutral-700 hover:shadow-md">
+                    Follow
+                  </button>
+                </div> */}
+              </div>
+              {/* ----------------------------------- */}
+
               {/* Social bar */}
-              <div className="mt-4 flex items-center gap-3">
-                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  Share
+              <div className="flex items-center gap-2">
+                <span className="mr-2 text-xs font-bold uppercase tracking-wide text-neutral-400">
+                  Share Article
                 </span>
 
-                {/* Tiktok */}
-                {/* <a
-                  href={`https://www.tiktok.com/@thekind.joe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
-                >
-                  <FaTiktok className="h-4 w-4" />
-                </a> */}
-
-                {/* Twitter/X */}
-                {/* <a
-                  href={`https://x.com/TheKindJoe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
-                >
-                  <FaXTwitter className="h-4 w-4" />
-                </a> */}
-
-                {/* Instagram */}
+                {/* Instagram (Primary for Ventura) */}
                 <a
-                  href={`https://www.instagram.com/thekindjoe/`}
+                  href={`https://www.instagram.com/joeknowsventura/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
+                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#cb2027] hover:text-white transition-all"
                 >
-                  <FaInstagram className="h-4 w-4" />
+                  <FaInstagram className="h-3.5 w-3.5" />
                 </a>
-
-                {/* Youtube */}
-                {/* <a
-                  href={`https://www.youtube.com/@thekindjoe-w4d`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
-                >
-                  <FaYoutube className="h-4 w-4" />
-                </a> */}
-
 
                 {/* Facebook */}
                 {/* <a
-                  href={`https://www.facebook.com/thekindjoe`}
+                  href="#"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
+                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#1877F2] hover:text-white transition-all"
                 >
-                  <FaFacebook className="h-4 w-4" />
+                  <FaFacebook className="h-3.5 w-3.5" />
+                </a> */}
+
+                {/* Tiktok */}
+                {/* <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-black hover:text-white transition-all"
+                >
+                  <FaTiktok className="h-3.5 w-3.5" />
                 </a> */}
               </div>
             </header>
 
             {/* Hero image */}
             <div className="mt-4 lg:mt-6 px-4 lg:px-6">
-              <div className="overflow-hidden rounded-sm">
+              <div className="overflow-hidden rounded-xl shadow-sm">
                 <img
                   src={a.coverImageUrl ?? "/placeholder.jpg"}
                   alt={a.title ?? "Article cover image"}
@@ -258,55 +263,86 @@ export default async function ArticleBySlug(props: {
                   loading="lazy"
                 />
               </div>
+              <div className="mt-2 text-right text-[10px] text-neutral-400 uppercase tracking-wider">
+                Image source: Joe Knows Ventura
+              </div>
             </div>
 
             {/* Article body */}
-            <div className="mt-6 px-4 lg:px-6">
-              <div className="prose prose-neutral max-w-none">
+            <div className="mt-8 px-4 lg:px-6">
+              <div className="prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-orange-600">
                 <ArticleContent value={content} />
               </div>
             </div>
           </article>
 
           {/* SIDEBAR */}
-          <aside className="mt-8 lg:mt-0 space-y-6">
+          <aside className="mt-8 lg:mt-0 space-y-8">
             {/* Newsletter box */}
-            <section className="px-4 py-5">
-              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
-                Get Newsletter
+            <section className="mx-4 lg:mx-0 rounded-2xl bg-neutral-50 border border-neutral-100 p-6 text-center">
+              <h2 className="text-sm font-extrabold tracking-tight uppercase text-neutral-900">
+                Ventura Updates
               </h2>
-              <p className="mt-2 text-xs text-neutral-600">
-                Sign up to receive the latest news, articles and updates from Ventura.
+              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
+                Get the latest local news and hidden gems delivered to you.
               </p>
-              <form className="mt-3 space-y-2">
+              <form className="mt-4 space-y-2">
                 <input
                   type="email"
-                  placeholder="Email Address"
-                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Your Email Address"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
                 />
                 <button
                   type="submit"
-                  className="w-full rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700"
+                  className="w-full rounded-lg bg-orange-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-orange-700"
                 >
-                  Subscribe
+                  Subscribe Free
                 </button>
               </form>
             </section>
 
             {/* Ad banner / promo */}
-            <section className="px-4 py-5">
-              <div className="h-24 w-full border border-dashed border-neutral-300 flex items-center justify-center text-xs text-neutral-500">
-                Ad Space / Promo Banner
+            <section className="px-4 py-8">
+              <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-r from-red-500 via-red-600 to-orange-500 shadow-lg shadow-red-500/30">
+                <div className="flex flex-col md:flex-row">
+
+                  {/* Left: Text Area */}
+                  <div className="flex flex-1 flex-col justify-center p-8 md:p-12 text-white">
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md text-white border border-white/20 w-fit">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                      New Episodes
+                    </div>
+
+                    <h3 className="text-2xl font-black tracking-tight sm:text-3xl">
+                      Don't Miss the Action
+                    </h3>
+                    <p className="mt-4 text-red-100 font-medium">
+                      We've dropped exclusive new stories on the channel. <br />
+                      Experience the full series today.
+                    </p>
+
+                    <a
+                      href="https://www.instagram.com/joeknowsventura/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-8 inline-flex w-fit items-center rounded-full bg-white px-6 py-3 text-sm font-bold text-red-600 shadow-lg transition hover:scale-105 hover:bg-neutral-50"
+                    >
+                      Go to Channel
+                    </a>
+                  </div>
+                </div>
               </div>
             </section>
 
             {/* Related / You Might Also Like */}
-            <section className="px-4 py-5">
-              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
-                You might also like
-              </h2>
-              <div className="mt-3 space-y-3">
-                {/* Reuse your existing related component */}
+            <section className="px-4 lg:px-0">
+              <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">
+                Recommended
+              </h3>
+              <div className="space-y-4">
                 <RelatedArticles slug={slug} />
               </div>
             </section>
