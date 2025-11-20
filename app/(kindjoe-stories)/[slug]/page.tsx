@@ -11,6 +11,7 @@ import GetEmail from "@/components/stories/get-email";
 export const revalidate = 60;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import {
   FaFacebookF,
   FaXTwitter,
@@ -23,6 +24,8 @@ import {
 } from "react-icons/fa6";
 
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 function publishedWhere(slug: string, now = new Date()) {
@@ -181,6 +184,7 @@ export default async function ArticleBySlug(props: {
               <ShareButtons />
               {/* Social bar */}
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
               <div className="mt-4 flex items-center gap-3">
                 <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   Share
@@ -237,6 +241,8 @@ export default async function ArticleBySlug(props: {
                   <FaFacebook className="h-4 w-4" />
                 </a>
               </div>
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
             </header>
