@@ -1,7 +1,7 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import GoogleAnalytics from "@/components/google-analytics";
@@ -12,10 +12,10 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-poppins",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   icons: {
     icon: [
-      { url: "/fpublic/brand/logo.svgavicon.ico" },
-      { url: "/icon.svg", sizes: "192x192", type: "image/png" },
-      { url: "/icon.svg", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico" },
+      { url: "/icon.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
@@ -71,7 +71,6 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// 👇 make this async
 export default async function RootLayout({
   children,
 }: {
@@ -89,15 +88,13 @@ export default async function RootLayout({
     },
   };
 
-  // COOKIES CONSENT
-  // 👇 await the cookies() promise
   const cookieStore = await cookies();
   const consent = cookieStore.get("cookie_consent")?.value === "accepted";
 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body
-        className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
+        className={`${inter.variable} antialiased h-full bg-white text-slate-900`}
       >
         <GoogleAnalytics />
         <Navbar />
@@ -108,7 +105,7 @@ export default async function RootLayout({
           initiallyConsented={consent}
           policyHref="/privacy-policy"
           termsHref="/terms-of-service"
-          delayMs={10_000} // 10 seconds
+          delayMs={10_000}
         />
         <Analytics />
         <KindJoeModal />

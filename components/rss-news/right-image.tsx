@@ -19,7 +19,11 @@ export default function Right_Image({ data }: { data: CardGroup }) {
             href={main.href}
             target="_blank"
             rel="noopener noreferrer"
+<<<<<<< Updated upstream
             className="text-blue-950 text-xl font-bold font-['Poppins'] underline leading-snug line-clamp-3"
+=======
+            className="text-blue-950 text-xl font-bold leading-snug line-clamp-3 transition-colors duration-300 group-hover:text-blue-700"
+>>>>>>> Stashed changes
           >
             {main.title}
           </a>
@@ -34,7 +38,11 @@ export default function Right_Image({ data }: { data: CardGroup }) {
           href={l.href}
           target="_blank"
           rel="noopener noreferrer"
+<<<<<<< Updated upstream
           className="w-full text-black text-base font-bold font-['Poppins'] underline hover:opacity-90 line-clamp-2"
+=======
+           className="w-full text-black text-base font-medium underline decoration-transparent hover:decoration-current transition-all duration-200 hover:text-blue-600 hover:translate-x-1 line-clamp-2"
+>>>>>>> Stashed changes
         >
           {l.title}
         </a>

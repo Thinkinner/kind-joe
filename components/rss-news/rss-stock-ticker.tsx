@@ -30,7 +30,7 @@ export function RssStocksTicker({ stocks }: { stocks: StockItem[] }) {
             key={`${s.label}-${index}`}
             className="flex items-center gap-2 shrink-0 mr-6"
           >
-            <div className="text-black text-sm md:text-base font-bold font-[Poppins]">
+            <div className="text-black text-sm md:text-base font-bold ">
               {s.label}
             </div>
 
@@ -39,7 +39,7 @@ export function RssStocksTicker({ stocks }: { stocks: StockItem[] }) {
             <div
               className={`${pctColor(
                 s.changePct
-              )} text-sm md:text-base font-normal font-[Poppins]`}
+              )} text-sm md:text-base font-normal `}
             >
               {s.changePct > 0 ? "+" : ""}
               {s.changePct.toFixed(2)}%

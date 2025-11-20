@@ -51,6 +51,7 @@ export default async function NewsPage() {
 
   return (
     <div>
+<<<<<<< Updated upstream
       <FeaturedStoriesCarouselHero />
       <div className="flex flex-col gap-3 px-5 py-5">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -59,6 +60,19 @@ export default async function NewsPage() {
           </div>
           <div className="text-blue-700 text-xs md:text-base font-bold font-[Poppins]">
             AS OF TODAY
+=======
+      <KindJoeModal />
+      <div>
+        <FeaturedStoriesCarouselHero />
+        <div className="flex flex-col gap-3 px-5 py-5">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <div className="text-black text-xl md:text-3xl font-bold ">
+              Live Stocks Chart
+            </div>
+            <div className="text-blue-700 text-xs md:text-base font-bold ">
+              AS OF TODAY
+            </div>
+>>>>>>> Stashed changes
           </div>
         </div>
         <RssStocksTicker stocks={stocks} />
@@ -85,6 +99,11 @@ export default async function NewsPage() {
           {groupedRest[7] && <Right_Image data={groupedRest[7]} />}
         </div>
       </div>
+<<<<<<< Updated upstream
+=======
+      <hr />
+      <br />
+>>>>>>> Stashed changes
     </div>
   );
 }
