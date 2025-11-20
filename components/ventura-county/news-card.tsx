@@ -9,42 +9,38 @@ interface NewsCardProps {
 
 export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
   return (
-    <Link 
-      href={article.url} 
-      className="group flex w-full flex-col gap-3"
+    <Link
+      href={article.url}
+      className="group block w-full rounded-md overflow-hidden transition-shadow duration-300"
     >
-      {/* Image Container - Boxier, 16:9 aspect ratio */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border border-neutral-200">
+      {/* IMAGE (EDGE TO EDGE, SCALE ON HOVER, GRADIENT OVERLAY) */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
         <Image
           src={article.imageUrl}
           alt={article.headline}
           fill
-          className="object-cover transition-opacity duration-300 group-hover:opacity-90"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        
-        {/* Optional: 'Video' or 'Image' icon often appears here in Fox cards */}
-        {/* <div className="absolute bottom-2 left-2 bg-black/60 p-1 rounded text-white">
-             <Icon /> 
-           </div> 
-        */}
+
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/20 to-transparent" />
       </div>
 
-      {/* Content Container */}
-      <div className="flex flex-col gap-1.5 px-1">
-        {/* Category - Red text, uppercase, above headline (Fox Style) */}
-        <div className="flex items-center justify-between">
-            <span className="font-poppins text-xs font-bold uppercase tracking-wider text-red-700">
-              {article.category}
-            </span>
-            {/* Timestamp placeholder if you have it, otherwise remove */}
-            {/* <span className="text-xs text-neutral-400">2h ago</span> */}
+      {/* CONTENT (CLEANER SPACING, MATCHING STYLE) */}
+      <div className="pt-3 pb-4 flex flex-col gap-2 px-1">
+
+        {/* CATEGORY TAG (RED STYLE LIKE EXAMPLE) */}
+        <div className="flex items-center justify-between text-xs font-semibold tracking-wide uppercase">
+          <span className="bg-orange-600 text-white px-2 py-0.5 font-semibold">
+            {article.category}
+          </span>
         </div>
 
-        {/* Headline - Bold, dark, turns blue/underlined on hover */}
-        <h2 className="line-clamp-3 font-poppins text-lg font-bold leading-snug text-neutral-900 group-hover:text-blue-900 group-hover:underline md:text-xl">
+        {/* HEADLINE (HOVER UNDERLINE + BLUE, CLEANER) */}
+        <h2 className="font-poppins text-lg font-bold leading-snug text-neutral-900 line-clamp-3 transition-colors group-hover:text-blue-900 group-hover:underline underline-offset-2 pt-1 pb-1 md:text-xl">
           {article.headline}
         </h2>
+
       </div>
     </Link>
   );

@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import { useState, FormEvent } from "react";
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
-import KindJoeModalForm from "@/components/modals/email-capture-modal";
+import KindJoeModalForm from "@/components/modals/email-capture-modal"; // path as you had it
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -22,15 +22,15 @@ export function Footer() {
     e.preventDefault();
     if (!email.trim()) return;
 
-    setOpen(true);
+    setOpen(true); // show our custom modal
   };
 
   return (
     <footer className="bg-[#0d0d0d] text-gray-300 border-t border-gray-800">
-      {/* Changed: Removed mx-auto, max-w-7xl, and px-6 to make it full width edge-to-edge */}
-      <div className="w-full p-8"> 
+      {/* Full-width container with px-5 py-5 */}
+      <div className="w-full px-5 py-5">
         <div className="lg:flex lg:items-start lg:gap-12">
-          <div className="mt-10 grid grid-cols-2 gap-12 lg:mt-0 lg:grid-cols-5 w-full">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 w-full">
             {/* Newsletter copy */}
             <div className="col-span-2">
               <h2 className="text-2xl font-bold text-white">
@@ -71,11 +71,6 @@ export function Footer() {
                 <li>
                   <a className="hover:text-red-600 transition" href="/">
                     Home
-                  </a>
-                </li>
-                <li>
-                  <a className="hover:text-red-600 transition" href="/blogs">
-                    Blog
                   </a>
                 </li>
                 <li>
@@ -152,7 +147,7 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-10 border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between w-full">
+        <div className="mt-10 border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between">
           <p className="text-xs text-gray-500">
             © {year}. Kind Joe. All rights reserved.
           </p>
@@ -178,7 +173,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* 🔻 Custom Modal Overlay */}
+      {/* 🔻 Custom Modal Overlay using KindJoeModalForm */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-4">
           <div className="w-full max-w-2xl">

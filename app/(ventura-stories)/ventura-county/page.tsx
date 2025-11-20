@@ -95,18 +95,21 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
       <main className="p-4 md:p-6 lg:p-8">
-        {" "}
-        {/* Added max-w to keep 3 cols from stretching too wide */}
+        {/* <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
+            Live Stocks Chart
+          </div>
+          <div className="text-blue-700 text-xs md:text-base font-bold font-[Poppins]">
+            AS OF TODAY
+          </div>
+        </div>
+        <RssStocksTicker stocks={stocks} /> */}
+        <hr />
+        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mt-6 mb-6 " >Latest Ventura Articles</h1>
         <div className="flex flex-col lg:flex-row justify-start items-start gap-8">
           {/* Main Articles Section */}
-          {/* Widened the container slightly (xl:w-[75%]) to give 3 columns breathing room */}
           <div className="flex-1 w-full lg:w-[65%] xl:w-[75%] flex flex-col gap-8">
-            {/* 
-               GRID CHANGES:
-               - md:grid-cols-2 (Tablets)
-               - xl:grid-cols-3 (Desktops - 3 Columns) 
-            */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
               {mainArticles.map((article) => (
                 <NewsCard key={article.id} article={article} />
               ))}
@@ -114,17 +117,10 @@ const App: React.FC = () => {
           </div>
 
           {/* Sidebar Section */}
-          {/* Shrinks slightly on XL screens to accommodate the 3rd column in main */}
-          <div className="w-full lg:w-[35%] xl:w-[25%] lg:max-w-[420px] flex flex-col gap-8 sticky top-24">
-            <SocialWidget />
-
-            {/* Example Sidebar List - Uncomment to use */}
-            {/* <div className="bg-white p-4 rounded-md border border-neutral-200 shadow-sm">
-              <div className="mb-4 pb-2 border-b border-neutral-200">
-                <h3 className="text-lg font-bold font-poppins text-black">Trending Now</h3>
-              </div>
-               <SidebarList articles={[]} /> 
-            </div> */}
+          <div className="w-full lg:w-[35%] xl:w-[25%] lg:max-w-[420px] self-start">
+            <div className="flex flex-col gap-8 lg:sticky lg:top-24">
+              <SocialWidget />
+            </div>
           </div>
         </div>
       </main>
