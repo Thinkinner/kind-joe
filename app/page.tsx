@@ -51,7 +51,7 @@ export default async function NewsPage() {
   const stocks = await getStocksFromFinnhub();
 
   return (
-    <>
+    <div>
       <KindJoeModal />
       <div>
         <FeaturedStoriesCarouselHero />
@@ -92,6 +92,6 @@ export default async function NewsPage() {
       </div>
       <hr />
       <br />
-    </>
+    </div>
   );
 }

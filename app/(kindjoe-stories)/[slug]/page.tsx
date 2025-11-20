@@ -4,23 +4,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import RelatedArticles from "@/components/stories/stories/related-articles";
-import type { Metadata } from "next";
-import { formatToLA } from "@/lib/format-date";
 
 export const revalidate = 60;
-
-import {
-  FaFacebookF,
-  FaXTwitter,
-  FaPinterestP,
-  FaLinkedinIn,
-  FaTiktok,
-  FaInstagram,
-  FaYoutube,
-  FaFacebook,
-} from "react-icons/fa6";
-
-
 function publishedWhere(slug: string, now = new Date()) {
   return and(
     eq(articles.slug, slug),
@@ -144,17 +129,32 @@ export default async function ArticleBySlug(props: {
           <article className="lg:pb-8">
             {/* Top meta bar */}
             <header className="px-4 lg:px-6 pt-4 pb-3">
-              {/* Breadcrumbs */}
-              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-500">
-                {cats.length > 0 && (
-                  <span className="bg-red-600 text-white px-2 py-0.5 font-semibold rounded-sm">
-                    {cats[0].name}
-                  </span>
-                )}
-                <span className="h-3 w-px bg-neutral-300" />
-                <span>Home</span>
-                <span className="text-neutral-300">/</span>
-                <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
+                {/* Left: section / breadcrumbs */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {cats.length > 0 && (
+                    <span className=" bg-red-600 text-white px-2 py-0.5 font-semibold">
+                      {cats[0].name}
+                    </span>
+                  )}
+
+                  <span className="h-3 w-px bg-neutral-300" />
+
+                  <span>Home</span>
+                  <span className="text-neutral-300">/</span>
+
+                  {/* DYNAMIC CATEGORY */}
+                  <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
+                </div>
+
+                {/* Right: author / date / comments */}
+                {/* <div className="flex flex-wrap items-center gap-3">
+                  <span>By {a.author ?? "Author"}</span>
+                  <span className="h-3 w-px bg-neutral-300" />
+                  <span>{a.publishedAt ?? "30 September 2014"}</span>
+                  <span className="h-3 w-px bg-neutral-300" />
+                  <span>{a.commentCount ?? 0} Comments</span>
+                </div> */}
               </div>
 
               {/* Title */}
@@ -214,10 +214,11 @@ export default async function ArticleBySlug(props: {
               </div>
               {/* ----------------------------------- */}
 
+              <ShareButtons />
               {/* Social bar */}
-              <div className="flex items-center gap-2">
-                <span className="mr-2 text-xs font-bold uppercase tracking-wide text-neutral-400">
-                  Share Article
+              <div className="mt-4 flex items-center gap-3">
+                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Share
                 </span>
 
                 {/* Tiktok */}
@@ -225,9 +226,9 @@ export default async function ArticleBySlug(props: {
                   href={`https://www.tiktok.com/@thekind.joe`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-black hover:text-white transition-all"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
                 >
-                  <FaTiktok className="h-3.5 w-3.5" />
+                  <FaTiktok className="h-4 w-4" />
                 </a>
 
                 {/* Twitter/X */}
@@ -235,9 +236,9 @@ export default async function ArticleBySlug(props: {
                   href={`https://x.com/TheKindJoe`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-black hover:text-white transition-all"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
                 >
-                  <FaXTwitter className="h-3.5 w-3.5" />
+                  <FaXTwitter className="h-4 w-4" />
                 </a>
 
                 {/* Instagram */}
@@ -245,9 +246,9 @@ export default async function ArticleBySlug(props: {
                   href={`https://www.instagram.com/thekindjoe/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#cb2027] hover:text-white transition-all"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
                 >
-                  <FaInstagram className="h-3.5 w-3.5" />
+                  <FaInstagram className="h-4 w-4" />
                 </a>
 
                 {/* Youtube */}
@@ -255,19 +256,20 @@ export default async function ArticleBySlug(props: {
                   href={`https://www.youtube.com/@thekindjoe-w4d`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#FF0000] hover:text-white transition-all"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
                 >
-                  <FaYoutube className="h-3.5 w-3.5" />
+                  <FaYoutube className="h-4 w-4" />
                 </a>
 
+                
                 {/* Facebook */}
                 <a
                   href={`https://www.facebook.com/thekindjoe`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#1877F2] hover:text-white transition-all"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
                 >
-                  <FaFacebook className="h-3.5 w-3.5" />
+                  <FaFacebook className="h-4 w-4" />
                 </a>
               </div>
             </header>
@@ -295,24 +297,24 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8">
             {/* Newsletter box */}
-            <section className="mx-4 lg:mx-0 rounded-2xl bg-neutral-50 border border-neutral-100 p-6 text-center">
-              <h2 className="text-sm font-extrabold tracking-tight uppercase text-neutral-900">
-                Join the Community
+            <section className="px-4 py-5">
+              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
+                Get Newsletter
               </h2>
-              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
-                Get the latest stories delivered straight to your inbox.
+              <p className="mt-2 text-xs text-neutral-600">
+                Sign up to receive the latest news, articles and updates.
               </p>
-              <form className="mt-4 space-y-2">
+              <form className="mt-3 space-y-2">
                 <input
                   type="email"
-                  placeholder="Your Email Address"
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                  placeholder="Email Address"
+                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-red-700"
+                  className="w-full rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700"
                 >
-                  Subscribe Free
+                  Subscribe
                 </button>
               </form>
             </section>

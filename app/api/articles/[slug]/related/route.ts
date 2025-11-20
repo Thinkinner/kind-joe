@@ -10,7 +10,10 @@ import {
   sql,
   desc,
 } from "drizzle-orm";
-import { articles, articleTags } from "@/db/schema";
+import { articles, articleTags, tags } from "@/db/schema";
+
+// 👇 Make sure this matches the actual slug in your DB
+const EXCLUDED_TAG_SLUGS = ["kindjoetopstories"];
 
 // Reuse the same published filter as your main article route
 function publishedWhere(now = new Date()) {
@@ -27,6 +30,15 @@ function publishedWhere(now = new Date()) {
       AND ${articles.publishAt} <= ${now.toISOString()}
     )`
   );
+}
+
+async function getExcludedTagIds() {
+  const rows = await db
+    .select({ id: tags.id })
+    .from(tags)
+    .where(inArray(tags.slug, EXCLUDED_TAG_SLUGS));
+
+  return rows.map((r) => r.id);
 }
 
 export async function GET(
@@ -53,7 +65,10 @@ export async function GET(
       );
     }
 
-    // 2) Get tag IDs for this article
+    // 2) Get IDs of the excluded tags (e.g. kindjoetopstories)
+    const excludedTagIds = await getExcludedTagIds();
+
+    // 3) Get *all* tag IDs for this article
     const articleTagRows = await db
       .select({
         tagId: articleTags.tagId,
@@ -61,14 +76,30 @@ export async function GET(
       .from(articleTags)
       .where(eq(articleTags.articleId, article.id));
 
-    if (articleTagRows.length === 0) {
-      // No tags = no tag-based related articles
+    // Remove excluded tags from the "matching" tags
+    const tagIds = articleTagRows
+      .map((t) => t.tagId)
+      .filter((id) => !excludedTagIds.includes(id));
+
+    // If after excluding those tags nothing is left, we don't show related
+    if (tagIds.length === 0) {
       return NextResponse.json({ items: [] });
     }
 
-    const tagIds = articleTagRows.map((t) => t.tagId);
+    // 4) Find IDs of articles that have any of the excluded tags
+    let excludedArticleIds = new Set<string>();
+    if (excludedTagIds.length > 0) {
+      const excludedArticleRows = await db
+        .select({ articleId: articleTags.articleId })
+        .from(articleTags)
+        .where(inArray(articleTags.tagId, excludedTagIds));
 
-    // 3) Find other published articles that share any of those tags
+      excludedArticleIds = new Set(
+        excludedArticleRows.map((row) => row.articleId)
+      );
+    }
+
+    // 5) Find other published articles that share ANY of the non-excluded tags
     const relatedRaw = await db
       .select({
         id: articles.id,
@@ -90,24 +121,27 @@ export async function GET(
         )
       )
       .orderBy(
-        // most recently published first
         desc(articles.publishedAt),
         desc(articles.publishAt)
       )
-      .limit(20); // pull a decent pool, we'll dedupe in JS
+      .limit(20);
 
-    // 4) Deduplicate by article ID (in case an article shares multiple tags)
+    // 6) Deduplicate by article ID AND skip articles with excluded tags
     const seen = new Set<string>();
     const related: typeof relatedRaw = [];
 
     for (const row of relatedRaw) {
+      // 👇 skip any article that has `kindjoetopstories` (or other excluded tags)
+      if (excludedArticleIds.has(row.id)) {
+        continue;
+      }
+
       if (!seen.has(row.id)) {
         seen.add(row.id);
         related.push(row);
       }
     }
 
-    // Optionally limit what you send to the client (e.g. top 6)
     return NextResponse.json({
       items: related.slice(0, 6),
     });
