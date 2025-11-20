@@ -113,17 +113,13 @@ export function FeaturedStoriesCarouselHero() {
         loop
         muted
         playsInline
-        poster="/kindjoe-hero.png" // Optional: Shows while video loads
+        poster="/kindjoe-hero.png"
       >
         <source src="/featuredvideo.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
 
-      {/* 
-         Dark Overlay:
-         Increased opacity slightly (bg-black/60) so the cards pop 
-         against the moving video background.
-      */}
+      {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/40" />
 
       {/* MAIN CONTENT */}
@@ -144,8 +140,12 @@ export function FeaturedStoriesCarouselHero() {
               <CarouselContent className="-ml-2 md:-ml-4">
                 {grouped.map((group, idx) => (
                   <CarouselItem key={idx} className="pl-2 md:pl-4 basis-full">
+                    {/* 
+                      ADDED: group/list 
+                      This allows the children to detect when the PARENT grid is hovered 
+                    */}
                     <div
-                      className={`grid gap-4 ${
+                      className={`grid gap-4 group/list ${
                         chunkSize === 1
                           ? "grid-cols-1"
                           : chunkSize === 2
@@ -157,7 +157,18 @@ export function FeaturedStoriesCarouselHero() {
                         <a
                           key={story.id}
                           href={story.href}
-                          className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 ease-out"
+                          // ADDED:
+                          // 1. group-hover/list:blur-[2px] -> When mouse enters grid, blur this card
+                          // 2. group-hover/list:brightness-75 -> Darken it slightly
+                          // 3. hover:!blur-none -> BUT if I am the specific card hovered, remove blur
+                          // 4. hover:!brightness-100 -> And remove darkness
+                          className="
+                            relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group shadow-lg 
+                            hover:shadow-2xl hover:-translate-y-1 hover:z-10
+                            transition-all duration-500 ease-out
+                            group-hover/list:blur-[3px] group-hover/list:brightness-75
+                            hover:!blur-none hover:!brightness-100
+                          "
                         >
                           <img
                             src={story.imageSrc}
