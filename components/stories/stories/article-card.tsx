@@ -23,10 +23,10 @@ export function ArticleCard({ article }: Props) {
   return (
     <Link
       href={`/${article.slug}`}
-      className="group block w-full rounded-md overflow-hidden bg-white border border-neutral-200 hover:shadow-lg transition-shadow duration-300"
+      className="group block w-full rounded-md overflow-hidden transition-shadow duration-300"
     >
       {/* IMAGE (EDGE TO EDGE) */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
         <img
           src={article.coverImageUrl ?? "/placeholder.jpg"}
           alt={article.title}
@@ -38,17 +38,17 @@ export function ArticleCard({ article }: Props) {
       </div>
 
       {/* CONTENT (SPACING FIXED) */}
-      <div className="px-3 pt-3 pb-4 flex flex-col gap-2">
+      <div className="pt-3 pb-4 flex flex-col gap-2">
 
         {/* Metadata */}
         <div className="flex items-center justify-between text-xs font-semibold tracking-wide uppercase">
-          <span className="text-red-600">{article.category}</span>
+          <span className="bg-red-600 text-white px-2 py-0.5 font-semibold">{article.category}</span>
 
-          {laFormatter && (
+          {/* {laFormatter && (
             <span className="text-neutral-500 font-medium normal-case">
               {laFormatter}
             </span>
-          )}
+          )} */}
         </div>
 
         {/* Headline with cleaner padding */}
@@ -57,9 +57,9 @@ export function ArticleCard({ article }: Props) {
         </h3>
 
         {/* Publisher line */}
-        <p className="text-[11px] text-neutral-500 font-medium tracking-wider uppercase">
+        {/* <p className="text-[11px] text-neutral-500 font-medium tracking-wider uppercase">
           Published by <span className="text-neutral-800">Kindjoe Staff</span>
-        </p>
+        </p> */}
       </div>
     </Link>
   );

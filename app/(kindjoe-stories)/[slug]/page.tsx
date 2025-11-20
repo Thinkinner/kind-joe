@@ -143,7 +143,7 @@ export default async function ArticleBySlug(props: {
                 {/* Left: section / breadcrumbs */}
                 <div className="flex flex-wrap items-center gap-2">
                   {cats.length > 0 && (
-                    <span className="bg-blue-600 text-white px-2 py-0.5 font-semibold">
+                    <span className=" bg-red-600 text-white px-2 py-0.5 font-semibold">
                       {cats[0].name}
                     </span>
                   )}

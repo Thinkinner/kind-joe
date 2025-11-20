@@ -24,7 +24,7 @@ export default function HomePage() {
         <RssStocksTicker stocks={stocks} />
         <hr />
         {/* Title above both columns */}
-        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mt-6 mb-6 " >Latest Articles</h1>
+        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mt-6 mb-6 " >Latest Kindjoe Articles</h1>
 
         {/* Flex Row Wrapper */}
         <div className="flex flex-col lg:flex-row gap-8 ">

@@ -95,10 +95,21 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
       <main className="p-4 md:p-6 lg:p-8">
+        {/* <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
+            Live Stocks Chart
+          </div>
+          <div className="text-blue-700 text-xs md:text-base font-bold font-[Poppins]">
+            AS OF TODAY
+          </div>
+        </div>
+        <RssStocksTicker stocks={stocks} /> */}
+        <hr />
+        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mt-6 mb-6 " >Latest Ventura Articles</h1>
         <div className="flex flex-col lg:flex-row justify-start items-start gap-8">
           {/* Main Articles Section */}
           <div className="flex-1 w-full lg:w-[65%] xl:w-[75%] flex flex-col gap-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
               {mainArticles.map((article) => (
                 <NewsCard key={article.id} article={article} />
               ))}
