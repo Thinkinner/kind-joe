@@ -8,6 +8,14 @@ import RelatedArticles from "@/components/stories/stories/related-articles";
 
 export const revalidate = 60;
 
+import {
+  FaFacebookF,
+  FaXTwitter,
+  FaPinterestP,
+  FaLinkedinIn
+} from "react-icons/fa6";
+
+
 function publishedWhere(slug: string, now = new Date()) {
   return and(
     eq(articles.slug, slug),
@@ -124,13 +132,13 @@ export default async function ArticleBySlug(props: {
       : (a.content as any);
 
   return (
-    <main className="bg-neutral-100 py-8">
+    <main className="py-8">
       <div className="mx-auto max-w-6xl px-4 lg:px-0">
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
           {/* MAIN ARTICLE */}
-          <article className="bg-white border border-neutral-200 shadow-sm lg:pb-8">
+          <article className="lg:pb-8">
             {/* Top meta bar */}
-            <header className="border-b border-neutral-200 px-4 lg:px-6 pt-4 pb-3">
+            <header className="px-4 lg:px-6 pt-4 pb-3">
               <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
                 {/* Left: section / breadcrumbs */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -179,20 +187,50 @@ export default async function ArticleBySlug(props: {
               )}
 
               {/* Social bar */}
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-                <span className="mr-2 text-neutral-500">Share</span>
-                <button className="px-3 py-1 bg-[#3b5998] text-white">
-                  Facebook
-                </button>
-                <button className="px-3 py-1 bg-[#00aced] text-white">
-                  Twitter
-                </button>
-                <button className="px-3 py-1 bg-[#cb2027] text-white">
-                  Pinterest
-                </button>
-                <button className="px-3 py-1 bg-[#0077b5] text-white">
-                  LinkedIn
-                </button>
+              <div className="mt-4 flex items-center gap-3">
+                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Share
+                </span>
+
+                {/* Facebook */}
+                <a
+                  href={`#`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
+                >
+                  <FaFacebookF className="h-4 w-4" />
+                </a>
+
+                {/* Twitter/X */}
+                <a
+                  href={`#`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
+                >
+                  <FaXTwitter className="h-4 w-4" />
+                </a>
+
+                {/* Pinterest */}
+                <a
+                  href={`#`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
+                >
+                  <FaPinterestP className="h-4 w-4" />
+                </a>
+
+                {/* LinkedIn */}
+                <a
+                  href={`#`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
+                >
+                  <FaLinkedinIn className="h-4 w-4" />
+                </a>
               </div>
             </header>
 
@@ -219,7 +257,7 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-6">
             {/* Newsletter box */}
-            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+            <section className="px-4 py-5">
               <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
                 Get Newsletter
               </h2>
@@ -242,14 +280,14 @@ export default async function ArticleBySlug(props: {
             </section>
 
             {/* Ad banner / promo */}
-            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+            <section className="px-4 py-5">
               <div className="h-24 w-full border border-dashed border-neutral-300 flex items-center justify-center text-xs text-neutral-500">
                 Ad Space / Promo Banner
               </div>
             </section>
 
             {/* Related / You Might Also Like */}
-            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+            <section className="px-4 py-5">
               <div className="mt-3 space-y-3">
                 {/* Reuse your existing component, it will render list items */}
                 <RelatedArticles slug={slug} />
