@@ -124,55 +124,139 @@ export default async function ArticleBySlug(props: {
       : (a.content as any);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 lg:px-6 py-8">
-      <div className="lg:grid lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)] lg:gap-10">
-        <article className="lg:border-r lg:border-neutral-200 lg:pr-8">
-          <header className="lg:flex lg:items-start lg:gap-4 mb-6">
-            <div className="hidden lg:block w-1.5 bg-red-600 rounded-full self-stretch" />
-            <div className="flex-1">
-              <h1 className="mt-4 lg:mt-0 text-2xl lg:text-4xl font-bold leading-tight tracking-tight">
+    <main className="bg-neutral-100 py-8">
+      <div className="mx-auto max-w-6xl px-4 lg:px-0">
+        <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
+          {/* MAIN ARTICLE */}
+          <article className="bg-white border border-neutral-200 shadow-sm lg:pb-8">
+            {/* Top meta bar */}
+            <header className="border-b border-neutral-200 px-4 lg:px-6 pt-4 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
+                {/* Left: section / breadcrumbs */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {cats.length > 0 && (
+                    <span className="bg-blue-600 text-white px-2 py-0.5 font-semibold">
+                      {cats[0].name}
+                    </span>
+                  )}
+
+                  <span className="h-3 w-px bg-neutral-300" />
+
+                  <span>Home</span>
+                  <span className="text-neutral-300">/</span>
+
+                  {/* DYNAMIC CATEGORY */}
+                  <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
+                </div>
+
+                {/* Right: author / date / comments */}
+                {/* <div className="flex flex-wrap items-center gap-3">
+                  <span>By {a.author ?? "Author"}</span>
+                  <span className="h-3 w-px bg-neutral-300" />
+                  <span>{a.publishedAt ?? "30 September 2014"}</span>
+                  <span className="h-3 w-px bg-neutral-300" />
+                  <span>{a.commentCount ?? 0} Comments</span>
+                </div> */}
+              </div>
+
+              {/* Title */}
+              <h1 className="mt-3 text-2xl lg:text-[32px] font-bold leading-tight tracking-tight text-neutral-900">
                 {a.title}
               </h1>
 
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                <div className="flex flex-wrap gap-2">
-                  {cats.map((c) => (
+              {/* Optional tags row under title */}
+              {cats.length > 1 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {cats.slice(1).map((c) => (
                     <span
                       key={c.slug}
-                      className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 font-semibold uppercase tracking-wide"
+                      className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600"
                     >
                       {c.name}
                     </span>
                   ))}
                 </div>
+              )}
+
+              {/* Social bar */}
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+                <span className="mr-2 text-neutral-500">Share</span>
+                <button className="px-3 py-1 bg-[#3b5998] text-white">
+                  Facebook
+                </button>
+                <button className="px-3 py-1 bg-[#00aced] text-white">
+                  Twitter
+                </button>
+                <button className="px-3 py-1 bg-[#cb2027] text-white">
+                  Pinterest
+                </button>
+                <button className="px-3 py-1 bg-[#0077b5] text-white">
+                  LinkedIn
+                </button>
+              </div>
+            </header>
+
+            {/* Hero image */}
+            <div className="mt-4 lg:mt-6 px-4 lg:px-6">
+              <div className="overflow-hidden rounded-sm">
+                <img
+                  src={a.coverImageUrl ?? "/placeholder.jpg"}
+                  alt={a.title ?? "Article cover image"}
+                  className="w-full h-full object-cover aspect-[16/9]"
+                  loading="lazy"
+                />
               </div>
             </div>
-          </header>
 
-          <div className="overflow-hidden rounded-lg bg-neutral-100">
-            <img
-              src={a.coverImageUrl ?? "/placeholder.jpg"}
-              alt={a.title ?? "Article cover image"}
-              className="w-full h-full object-cover aspect-[16/9]"
-              loading="lazy"
-            />
-          </div>
+            {/* Article body */}
+            <div className="mt-6 px-4 lg:px-6">
+              <div className="prose prose-neutral max-w-none">
+                <ArticleContent value={content} />
+              </div>
+            </div>
+          </article>
 
-          <hr className="my-10 h-0.5 border-t-0 bg-neutral-200 dark:bg-white/10" />
+          {/* SIDEBAR */}
+          <aside className="mt-8 lg:mt-0 space-y-6">
+            {/* Newsletter box */}
+            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
+                Get Newsletter
+              </h2>
+              <p className="mt-2 text-xs text-neutral-600">
+                Sign up to receive the latest news, articles and updates.
+              </p>
+              <form className="mt-3 space-y-2">
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  className="w-full rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700"
+                >
+                  Subscribe
+                </button>
+              </form>
+            </section>
 
-          <div className="prose prose-neutral max-w-none">
-            <ArticleContent value={content} />
-          </div>
-        </article>
+            {/* Ad banner / promo */}
+            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+              <div className="h-24 w-full border border-dashed border-neutral-300 flex items-center justify-center text-xs text-neutral-500">
+                Ad Space / Promo Banner
+              </div>
+            </section>
 
-        <aside className="mt-10 lg:mt-0 lg:pl-4">
-          <div className="border border-neutral-200 rounded-lg p-4 lg:p-5 bg-neutral-50">
-            <h2 className="text-sm font-semibold tracking-tight mb-3 uppercase text-neutral-600">
-              Related Articles
-            </h2>
-            <RelatedArticles slug={slug} />
-          </div>
-        </aside>
+            {/* Related / You Might Also Like */}
+            <section className="bg-white border border-neutral-200 shadow-sm px-4 py-5">
+              <div className="mt-3 space-y-3">
+                {/* Reuse your existing component, it will render list items */}
+                <RelatedArticles slug={slug} />
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </main>
   );
