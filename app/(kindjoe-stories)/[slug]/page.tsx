@@ -5,9 +5,12 @@ import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import type { Metadata } from "next";
 import RelatedArticles from "@/components/stories/stories/related-articles";
+import ShareButtons from "@/components/stories/share-buttons";
+import GetEmail from "@/components/stories/get-email";
 
 export const revalidate = 60;
 
+<<<<<<< Updated upstream
 import {
   FaFacebookF,
   FaXTwitter,
@@ -20,6 +23,8 @@ import {
 } from "react-icons/fa6";
 
 
+=======
+>>>>>>> Stashed changes
 function publishedWhere(slug: string, now = new Date()) {
   return and(
     eq(articles.slug, slug),
@@ -151,24 +156,7 @@ export default async function ArticleBySlug(props: {
                       {cats[0].name}
                     </span>
                   )}
-
-                  <span className="h-3 w-px bg-neutral-300" />
-
-                  <span>Home</span>
-                  <span className="text-neutral-300">/</span>
-
-                  {/* DYNAMIC CATEGORY */}
-                  <span>{cats.length > 0 ? cats[0].name : "Category"}</span>
                 </div>
-
-                {/* Right: author / date / comments */}
-                {/* <div className="flex flex-wrap items-center gap-3">
-                  <span>By {a.author ?? "Author"}</span>
-                  <span className="h-3 w-px bg-neutral-300" />
-                  <span>{a.publishedAt ?? "30 September 2014"}</span>
-                  <span className="h-3 w-px bg-neutral-300" />
-                  <span>{a.commentCount ?? 0} Comments</span>
-                </div> */}
               </div>
 
               {/* Title */}
@@ -190,7 +178,9 @@ export default async function ArticleBySlug(props: {
                 </div>
               )}
 
+              <ShareButtons />
               {/* Social bar */}
+<<<<<<< Updated upstream
               <div className="mt-4 flex items-center gap-3">
                 <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   Share
@@ -247,6 +237,8 @@ export default async function ArticleBySlug(props: {
                   <FaFacebook className="h-4 w-4" />
                 </a>
               </div>
+=======
+>>>>>>> Stashed changes
             </header>
 
             {/* Hero image */}
@@ -272,27 +264,7 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-6">
             {/* Newsletter box */}
-            <section className="px-4 py-5">
-              <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
-                Get Newsletter
-              </h2>
-              <p className="mt-2 text-xs text-neutral-600">
-                Sign up to receive the latest news, articles and updates.
-              </p>
-              <form className="mt-3 space-y-2">
-                <input
-                  type="email"
-                  placeholder="Email Address"
-                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  className="w-full rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-blue-700"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </section>
+            <GetEmail />
 
             {/* Ad banner / promo */}
             <section className="px-4 py-5">

@@ -100,7 +100,7 @@ export default function KindJoeModalForm({
           onChange={handleChange}
           value={form.firstName}
           required
-          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+          className="w-full rounded-sm border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
         />
 
         {/* Last name */}
@@ -111,7 +111,7 @@ export default function KindJoeModalForm({
           onChange={handleChange}
           value={form.lastName}
           required
-          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+          className="w-full rounded-sm border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
         />
 
         {/* Email */}
@@ -122,7 +122,7 @@ export default function KindJoeModalForm({
           onChange={handleChange}
           value={form.email}
           required
-          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+          className="w-full rounded-sm border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
         />
 
         {/* ZIP */}
@@ -134,7 +134,7 @@ export default function KindJoeModalForm({
           value={form.zip}
           required
           inputMode="text"
-          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
+          className="w-full rounded-sm border border-gray-300 bg-white px-4 py-3 text-lg text-black shadow-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/20"
         />
 
         {/* Recap Type */}
@@ -146,7 +146,7 @@ export default function KindJoeModalForm({
             required
             className="
               w-full bg-white text-black text-lg
-              border border-gray-300 rounded-xl
+              border border-gray-300 rounded-sm
               pl-4 pr-12 py-4
               transition duration-300 ease
               focus:outline-none focus:border-black hover:border-black
@@ -216,7 +216,7 @@ export default function KindJoeModalForm({
         <button
           type="button"
           onClick={onBack}
-          className="text-center text-sm font-medium text-gray-500 hover:text-black"
+          className="text-center text-sm font-medium text-gray-500 hover:text-black cursor-pointer"
         >
           Maybe later
         </button>
