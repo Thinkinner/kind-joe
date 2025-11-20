@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import RelatedArticles from "@/components/stories/stories/related-articles";
 
 type Mark = { type: string; attrs?: any };
 type JSONText = { type: "text"; text: string; marks?: Mark[] };
@@ -32,7 +33,11 @@ function renderTextRun(run: JSONText): React.ReactNode {
 
   // inline code first
   if (hasMark(run, "code")) {
-    el = <code className="px-1 py-0.5 rounded bg-gray-100 text-[0.9em]">{el}</code>;
+    el = (
+      <code className="px-1 py-0.5 rounded bg-gray-100 text-[0.9em]">
+        {el}
+      </code>
+    );
   }
 
   // highlight
@@ -58,7 +63,12 @@ function renderTextRun(run: JSONText): React.ReactNode {
     const target = getMarkAttr(run, "link", "target") ?? "_blank";
     const rel = getMarkAttr(run, "link", "rel") ?? "noopener noreferrer";
     el = (
-      <Link href={href} target={target} rel={rel} className="underline underline-offset-4 decoration-slate-400">
+      <Link
+        href={href}
+        target={target}
+        rel={rel}
+        className="underline underline-offset-4 decoration-slate-400"
+      >
         {el}
       </Link>
     );
@@ -131,23 +141,29 @@ function Heading({
   align?: "left" | "center" | "right" | "justify";
   children: React.ReactNode;
 }) {
-  const tag = (`h${Math.min(Math.max(level, 1), 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6");
+  const tag = (`h${Math.min(Math.max(level, 1), 6)}` as
+    | "h1"
+    | "h2"
+    | "h3"
+    | "h4"
+    | "h5"
+    | "h6");
   const base =
     level === 1
       ? "text-3xl font-semibold tracking-tight"
       : level === 2
-      ? "text-2xl font-semibold tracking-tight"
-      : level === 3
-      ? "text-xl font-semibold tracking-tight"
-      : "text-lg font-semibold";
+        ? "text-2xl font-semibold tracking-tight"
+        : level === 3
+          ? "text-xl font-semibold tracking-tight"
+          : "text-lg font-semibold";
   const alignCls =
     align === "center"
       ? "text-center"
       : align === "right"
-      ? "text-right"
-      : align === "justify"
-      ? "text-justify"
-      : "text-left";
+        ? "text-right"
+        : align === "justify"
+          ? "text-justify"
+          : "text-left";
 
   return React.createElement(tag, { className: `${base} ${alignCls}` }, children);
 }
@@ -233,15 +249,20 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
         return <div key={key} className="h-2" />;
       }
 
-      const align = node.attrs?.textAlign as "left" | "center" | "right" | "justify" | undefined;
+      const align = node.attrs?.textAlign as
+        | "left"
+        | "center"
+        | "right"
+        | "justify"
+        | undefined;
       const alignCls =
         align === "center"
           ? "text-center"
           : align === "right"
-          ? "text-right"
-          : align === "justify"
-          ? "text-justify"
-          : "text-left";
+            ? "text-right"
+            : align === "justify"
+              ? "text-justify"
+              : "text-left";
 
       return (
         <p key={key} className={`leading-relaxed ${alignCls}`}>
@@ -252,7 +273,12 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
     case "heading": {
       const level = node.attrs?.level ?? 2;
-      const align = node.attrs?.textAlign as "left" | "center" | "right" | "justify" | undefined;
+      const align = node.attrs?.textAlign as
+        | "left"
+        | "center"
+        | "right"
+        | "justify"
+        | undefined;
       return (
         <Heading key={key} level={level} align={align}>
           {renderInline(node.content)}
@@ -263,7 +289,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "blockquote":
     case "quote":
       return (
-        <blockquote key={key} className="border-l-4 pl-4 italic text-slate-700">
+        <blockquote
+          key={key}
+          className="border-l-4 pl-4 italic text-slate-700"
+        >
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             return n.type === "paragraph" ? (
@@ -281,7 +310,14 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       const { src, alt } = node.attrs ?? {};
       if (!src) return null;
       // eslint-disable-next-line @next/next/no-img-element
-      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl my-4 max-w-full" />;
+      return (
+        <img
+          key={key}
+          src={src}
+          alt={alt ?? ""}
+          className="rounded-xl my-4 max-w-full"
+        />
+      );
     }
 
     // Generic list (your schema)
@@ -290,7 +326,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       const Tag = ordered ? "ol" : "ul";
       const cls = ordered ? "list-decimal" : "list-disc";
       return (
-        <Tag key={key} className={`ml-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc space-y-1`}>
+        <Tag
+          key={key}
+          className={`ml-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc space-y-1`}
+        >
           {renderListItems(node.content ?? [])}
         </Tag>
       );
@@ -383,9 +422,9 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   }
 }
 
-/* ------------------------- Exported component ------------------------- */
+/* ------------------------- Inner article body component ------------------------- */
 
-export default function ArticleContent({ value }: { value: JSONDoc | null | undefined }) {
+function ArticleBody({ value }: { value: JSONDoc | null | undefined }) {
   if (!value || value.type !== "doc") return null;
 
   return (
@@ -405,5 +444,45 @@ export default function ArticleContent({ value }: { value: JSONDoc | null | unde
     >
       {(value.content ?? []).map((node, i) => renderBlock(node as JSONNode, i))}
     </article>
+  );
+}
+
+/* ------------------------- Exported page content with related articles ------------------------- */
+
+type ArticleSinglePageContentProps = {
+  value: JSONDoc | null | undefined;
+  slug: string;
+  showRelated?: boolean;
+  relatedTitle?: string;
+  className?: string;
+};
+
+export default function ArticleSinglePageContent({
+  value,
+  slug,
+  showRelated = true,
+  relatedTitle = "Related Articles",
+  className,
+}: ArticleSinglePageContentProps) {
+  return (
+    <div
+      className={`grid gap-10 ${className ?? ""}`}
+    >
+      {/* Main article body */}
+      <div>
+        <ArticleBody value={value} />
+      </div>
+
+      {/* Related articles sidebar */}
+      {showRelated && (
+        <div className="lg:sticky lg:top-24 h-fit">
+          <RelatedArticles
+            slug={slug}
+            title={relatedTitle}
+            className="space-y-4"
+          />
+        </div>
+      )}
+    </div>
   );
 }
