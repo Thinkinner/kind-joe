@@ -9,25 +9,6 @@ import ShareButtons from "@/components/stories/share-buttons";
 import GetEmail from "@/components/stories/get-email";
 
 export const revalidate = 60;
-
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-import {
-  FaFacebookF,
-  FaXTwitter,
-  FaPinterestP,
-  FaLinkedinIn,
-  FaTiktok,
-  FaInstagram,
-  FaYoutube,
-  FaFacebook,
-} from "react-icons/fa6";
-
-
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 function publishedWhere(slug: string, now = new Date()) {
   return and(
     eq(articles.slug, slug),
@@ -183,68 +164,6 @@ export default async function ArticleBySlug(props: {
 
               <ShareButtons />
               {/* Social bar */}
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-              <div className="mt-4 flex items-center gap-3">
-                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  Share
-                </span>
-
-                {/* Tiktok */}
-                <a
-                  href={`https://www.tiktok.com/@thekind.joe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
-                >
-                  <FaTiktok className="h-4 w-4" />
-                </a>
-
-                {/* Twitter/X */}
-                <a
-                  href={`https://x.com/TheKindJoe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
-                >
-                  <FaXTwitter className="h-4 w-4" />
-                </a>
-
-                {/* Instagram */}
-                <a
-                  href={`https://www.instagram.com/thekindjoe/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#cb2027] text-white hover:opacity-90 transition"
-                >
-                  <FaInstagram className="h-4 w-4" />
-                </a>
-
-                {/* Youtube */}
-                <a
-                  href={`https://www.youtube.com/@thekindjoe-w4d`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
-                >
-                  <FaYoutube className="h-4 w-4" />
-                </a>
-
-                
-                {/* Facebook */}
-                <a
-                  href={`https://www.facebook.com/thekindjoe`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
-                >
-                  <FaFacebook className="h-4 w-4" />
-                </a>
-              </div>
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             </header>
 
             {/* Hero image */}
