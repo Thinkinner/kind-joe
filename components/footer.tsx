@@ -27,9 +27,10 @@ export function Footer() {
 
   return (
     <footer className="bg-[#0d0d0d] text-gray-300 border-t border-gray-800">
-      <div className="mx-auto max-w-7xl px-6 py-16">
+      {/* Full-width container with px-5 py-5 */}
+      <div className="w-full px-5 py-5">
         <div className="lg:flex lg:items-start lg:gap-12">
-          <div className="mt-10 grid grid-cols-2 gap-12 lg:mt-0 lg:grid-cols-5">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 w-full">
             {/* Newsletter copy */}
             <div className="col-span-2">
               <h2 className="text-2xl font-bold text-white">
@@ -72,11 +73,6 @@ export function Footer() {
                     Home
                   </a>
                 </li>
-                {/* <li>
-                  <a className="hover:text-red-600 transition" href="/blogs">
-                    Blog
-                  </a>
-                </li> */}
                 <li>
                   <a
                     className="hover:text-red-600 transition"

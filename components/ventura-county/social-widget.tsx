@@ -104,7 +104,7 @@ export const SocialWidget: React.FC = () => {
                 />
                 {/* Small platform badge (optional / generic) */}
                 <span className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-neutral-900 text-[9px] text-white px-1.5 py-0.5">
-                  {item.platform ?? "Social"}
+                  Social
                 </span>
               </div>
 

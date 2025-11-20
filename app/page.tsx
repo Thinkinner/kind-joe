@@ -38,14 +38,14 @@ export default async function NewsPage() {
   // Prepare a hero group mapped to the CardGroup shape your components expect
   const heroGroup = hero
     ? {
-        main: {
-          title: hero.modifiedTitle || hero.title,
-          href: hero.link || "#",
-          imageUrl: hero.imageUrl || null,
-          sourceName: hero.source.name || "Unknown",
-        },
-        links: groupedRest[0]?.links ?? [],
-      }
+      main: {
+        title: hero.modifiedTitle || hero.title,
+        href: hero.link || "#",
+        imageUrl: hero.imageUrl || null,
+        sourceName: hero.source.name || "Unknown",
+      },
+      links: groupedRest[0]?.links ?? [],
+    }
     : undefined;
 
   const stocks = await getStocksFromFinnhub();
@@ -66,6 +66,7 @@ export default async function NewsPage() {
           </div>
           <RssStocksTicker stocks={stocks} />
         </div>
+        <hr />
         <div className="flex flex-col gap-8 flex-grow md:grid md:grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr] md:gap-x-0 md:gap-y-0 w-full">
           {/* Left column */}
           <div className="order-2 md:order-1 flex flex-col gap-6 items-stretch md:border-r md:border-neutral-300 md:pr-6">
@@ -89,6 +90,8 @@ export default async function NewsPage() {
           </div>
         </div>
       </div>
+      <hr />
+      <br />
     </>
   );
 }
