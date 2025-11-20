@@ -5,7 +5,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import GoogleAnalytics from "@/components/google-analytics";
-import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
+
 import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
 import { Footer } from "@/components/footer";
@@ -111,7 +111,6 @@ export default async function RootLayout({
           delayMs={10_000} // 10 seconds
         />
         <Analytics />
-        <KindJoeModal />
         <Script
           id="ld-website"
           type="application/ld+json"

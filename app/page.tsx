@@ -8,6 +8,7 @@ import {
   pickHeroAndGroups,
 } from "@/lib/rss-news/news";
 import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stories-carousel";
+import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
 import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
 import { getStocksFromFinnhub } from "@/lib/stocks";
 
@@ -52,6 +53,7 @@ export default async function NewsPage() {
   return (
     <div>
       <FeaturedStoriesCarouselHero />
+      <KindJoeModal />
       <div className="flex flex-col gap-3 px-5 py-5">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <div className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
