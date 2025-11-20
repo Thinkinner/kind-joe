@@ -223,7 +223,7 @@ export default async function ArticleBySlug(props: {
 
                 {/* Instagram (Primary for Ventura) */}
                 <a
-                  href={`https://www.instagram.com/joeknowsventura/`}
+                  href={`https://www.kindjoe.com/ventura-county`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:bg-[#cb2027] hover:text-white transition-all"
@@ -302,12 +302,15 @@ export default async function ArticleBySlug(props: {
             </section>
 
             {/* Ad banner / promo */}
-            <section className="px-4 py-8">
-              <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-r from-red-500 via-red-600 to-orange-500 shadow-lg shadow-red-500/30">
-                <div className="flex flex-col md:flex-row">
+{/* Ad banner / promo */}
+            <section className="px-4 lg:px-0">
+              <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 to-orange-300 shadow-xl shadow-red-500/20">
+                <div className="relative p-8 text-white">
+                  {/* Background circles */}
+                  <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
+                  <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
 
-                  {/* Left: Text Area */}
-                  <div className="flex flex-1 flex-col justify-center p-8 md:p-12 text-white">
+                  <div className="">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md text-white border border-white/20 w-fit">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -316,21 +319,22 @@ export default async function ArticleBySlug(props: {
                       New Episodes
                     </div>
 
-                    <h3 className="text-2xl font-black tracking-tight sm:text-3xl">
-                      Don't Miss the Action
+                    <h3 className="text-2xl font-black leading-tight">
+                      Don't Miss <br />the Action
                     </h3>
-                    <p className="mt-4 text-red-100 font-medium">
-                      We've dropped exclusive new stories on the channel. <br />
-                      Experience the full series today.
+
+                    <p className="mt-3 text-sm font-medium text-red-50">
+                      Exclusive new stories are streaming now on our channel.
                     </p>
 
                     <a
                       href="https://www.instagram.com/joeknowsventura/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-8 inline-flex w-fit items-center rounded-full bg-white px-6 py-3 text-sm font-bold text-red-600 shadow-lg transition hover:scale-105 hover:bg-neutral-50"
+                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-blue-600 shadow-md transition hover:bg-neutral-100"
                     >
-                      Go to Channel
+                      <span>Watch Now</span>
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                     </a>
                   </div>
                 </div>
