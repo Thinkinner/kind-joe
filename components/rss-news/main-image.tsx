@@ -11,13 +11,21 @@ export default function Main_Image({ data }: { data: CardGroup }) {
         <div className="w-full rounded overflow-hidden">
           {/* Force a decent hero height even on narrow screens */}
           <div className="relative w-full aspect-[3/2] min-h-[300px]">
-            <SafeImage
-              src={main.imageUrl || null}
-              alt={main.title}
-              // Using scale-105 for the hero image so the movement isn't too overwhelming on large screens
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-              alwaysProxy
-            />
+            {/* Wrap the image with an <a> tag */}
+            <a
+              href={(main as any).href ?? (main as any).link ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 w-full h-full" // Make the anchor fill the image container
+            >
+              <SafeImage
+                src={main.imageUrl || null}
+                alt={main.title}
+                // Using scale-105 for the hero image so the movement isn't too overwhelming on large screens
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                alwaysProxy
+              />
+            </a>
           </div>
         </div>
 

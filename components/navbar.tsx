@@ -16,6 +16,9 @@ export default function Navbar() {
     { name: "KJ Featured Articles", href: "/news" },
     { name: "Ventura County", href: "/ventura-county" },
     { name: "Newsletters", href: "/newsletter" },
+    { name: "About Us", href: "/about" },
+    { name: "Contact", href: "/contact" },
+    { name: "Editorial Policy", href: "/editorial-policy" },
   ];
 
   useEffect(() => {
@@ -59,11 +62,10 @@ export default function Navbar() {
                 href={link.href}
                 className={`
                 text-white pb-1 transition 
-                ${
-                  isActive
+                ${isActive
                     ? "border-b-4 border-red-600"
                     : "border-b-2 border-transparent hover:border-slate-400"
-                }
+                  }
               `}
               >
                 {link.name}
@@ -76,11 +78,10 @@ export default function Navbar() {
         <button
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((s) => !s)}
-          className={`rounded-full p-3 transition cursor-pointer ml-auto ${
-            open
-              ? "bg-black text-white hover:bg-slate-100"
-              : "bg-white text-black hover:bg-slate-200"
-          }`}
+          className={`rounded-full p-3 transition cursor-pointer ml-auto ${open
+            ? "bg-black text-white hover:bg-slate-100"
+            : "bg-white text-black hover:bg-slate-200"
+            }`}
         >
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -143,6 +144,9 @@ export default function Navbar() {
                     { name: "KJ Featured Articles", href: "/news" },
                     { name: "Ventura County", href: "/ventura-county" },
                     { name: "Newsletters", href: "/newsletter" },
+                    { name: "About Us", href: "/about" },
+                    { name: "Contact Us", href: "/contact" },
+                    { name: "Editorial Policy", href: "/editorial-policy" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
