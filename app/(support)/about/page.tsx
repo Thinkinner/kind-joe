@@ -36,7 +36,7 @@ const About: React.FC = () => {
               stories that uplift, inform, and connect us all.
             </p>
           </div>
-          <div className="relative lg:h-[500px] w-full rounded-3xl overflow-hidden shadow-2xl shadow-indigo-100">
+          <div className="relative lg:h-[500px] w-full rounded-3xl overflow-hidden shadow-lg">
             <img
               src="https://picsum.photos/800/800"
               alt="Team working together"
