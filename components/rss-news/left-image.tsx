@@ -7,16 +7,16 @@ export default function Left_Image({ data }: { data: CardGroup }) {
 
   return (
     <div className="group w-full flex flex-col justify-start items-start gap-2.5 p-4 rounded-2xl overflow-hidden border border-transparent hover:border-neutral-200 transition-all duration-300 hover:shadow-lg hover:bg-neutral-50/50">
-      <div className="flex justify-between items-start gap-2.5 w-full">
+      <a
+        href={main.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex justify-between items-start gap-2.5 w-full"
+      >
         <div className="flex-1 min-w-0 leading-snug">
-          <a
-            href={main.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-black text-xl font-bold font-['Poppins'] transition-colors duration-300 group-hover:text-blue-700"
-          >
+          <div className="text-black text-xl font-bold font-['Poppins'] transition-colors duration-300 group-hover:text-blue-700">
             {main.title}
-          </a>
+          </div>
         </div>
 
         {/* Image Wrapper for Zoom Effect */}
@@ -28,7 +28,7 @@ export default function Left_Image({ data }: { data: CardGroup }) {
             alwaysProxy
           />
         </div>
-      </div>
+      </a>
 
       <div className="border-t border-neutral-300 w-full my-2" />
 
