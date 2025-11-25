@@ -38,7 +38,7 @@ const About: React.FC = () => {
           </div>
           <div className="relative lg:h-[500px] w-full rounded-3xl overflow-hidden shadow-lg">
             <img
-              src="https://picsum.photos/800/800"
+              src="https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/6925d3c476cd827b3cc3620a.png"
               alt="Team working together"
               className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
             />
