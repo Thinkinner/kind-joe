@@ -10,11 +10,11 @@ const EditorialPolicy: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center space-x-2 text-indigo-400 mb-4 font-semibold uppercase tracking-wider text-sm">
             <ShieldCheck size={20} />
-            <span>Transparency & Trust</span>
+            <span>Editorial Policy</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Editorial Policy</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">KIND JOE EDITORIAL POLICY</h1>
           <p className="text-lg text-slate-300 max-w-2xl">
-            Our commitment to accuracy, integrity, and our readers. Last updated: November 2025.
+            Our commitment to factual, transparent, and ethical content. Last updated: November 2025.
           </p>
         </div>
       </div>
@@ -22,95 +22,117 @@ const EditorialPolicy: React.FC = () => {
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid lg:grid-cols-12 gap-12">
           
-          {/* Sidebar Navigation (Sticky on desktop) */}
+          {/* Sidebar Navigation */}
           <aside className="lg:col-span-3 hidden lg:block">
             <div className="sticky top-32 space-y-2">
               <p className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Contents</p>
-              <a href="#mission" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm py-1">Mission & Values</a>
-              <a href="#fact-checking" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm py-1">Fact-Checking</a>
-              <a href="#corrections" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm py-1">Corrections Policy</a>
-              <a href="#independence" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm py-1">Editorial Independence</a>
-              <a href="#diversity" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm py-1">Diversity & Inclusion</a>
+              <a href="#accuracy" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Accuracy & Verification</a>
+              <a href="#transparency" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Transparency & Attribution</a>
+              <a href="#corrections" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Corrections</a>
+              <a href="#independence" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Editorial Independence</a>
+              <a href="#ethics" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Ethical & Responsible Content</a>
+              <a href="#privacy" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Privacy & Safety</a>
+              <a href="#oversight" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Human Oversight</a>
+              <a href="#contact" className="block text-slate-600 hover:text-indigo-600 text-sm py-1">Contact</a>
             </div>
           </aside>
 
           {/* Main Content */}
           <article className="lg:col-span-8 lg:col-start-5 prose prose-slate prose-lg max-w-none">
             
-            <section id="mission" className="mb-16">
+            {/* Accuracy & Verification */}
+            <section id="accuracy" className="mb-16">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                   <Scale size={24} />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 m-0">Our Mission & Values</h2>
+                <h2 className="text-2xl font-bold text-slate-900 m-0">Accuracy & Verification</h2>
               </div>
-              <p className="text-slate-600 leading-relaxed">
-                At KindJoe, we are dedicated to providing content that informs, inspires, and fosters a sense of community. We believe that media has the power to shape perspectives, and we take that responsibility seriously. Our editorial process is guided by three core principles: <strong>Accuracy, Empathy, and Transparency</strong>.
-              </p>
-              <p className="text-slate-600 leading-relaxed mt-4">
-                We strive to tell stories that matter, highlighting human experiences and providing practical advice that improves our readers' lives. We avoid sensationalism and clickbait, preferring to build trust through consistent quality.
+              <p className="text-slate-600">
+                Kind Joe is committed to factual, reliable reporting. All news and viral content is reviewed by our editorial team, verified through credible sources, and updated as new information becomes available.
               </p>
             </section>
 
             <div className="w-full h-px bg-slate-200 my-12"></div>
 
-            <section id="fact-checking" className="mb-16">
-               <div className="flex items-center space-x-3 mb-6">
+            {/* Transparency & Attribution */}
+            <section id="transparency" className="mb-16">
+              <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                   <FileText size={24} />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 m-0">Fact-Checking Standards</h2>
+                <h2 className="text-2xl font-bold text-slate-900 m-0">Transparency & Attribution</h2>
               </div>
-              <p className="text-slate-600 leading-relaxed">
-                Accuracy is the cornerstone of our reputation. Every article published on KindJoe undergoes a rigorous review process.
+              <p className="text-slate-600">
+                We clearly cite our sources, credit creators, and disclose when viral content cannot be independently verified. We aim to provide context, not confusion.
               </p>
-              <ul className="list-disc pl-6 space-y-3 mt-6 text-slate-600">
-                <li><strong>Verification:</strong> Writers are required to verify all facts, quotes, and statistics with primary sources whenever possible.</li>
-                <li><strong>Sources:</strong> We prioritize credible, authoritative sources such as academic journals, government reports, and expert interviews. We link to these sources to allow readers to verify information for themselves.</li>
-                <li><strong>Review:</strong> An editor reviews all content before publication. For sensitive or complex topics, we may consult subject matter experts.</li>
-              </ul>
             </section>
 
             <div className="w-full h-px bg-slate-200 my-12"></div>
 
+            {/* Corrections */}
             <section id="corrections" className="mb-16">
-               <div className="flex items-center space-x-3 mb-6">
+              <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                   <AlertCircle size={24} />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 m-0">Corrections Policy</h2>
+                <h2 className="text-2xl font-bold text-slate-900 m-0">Corrections</h2>
               </div>
-              <p className="text-slate-600 leading-relaxed">
-                Despite our best efforts, errors may occasionally occur. When they do, we are committed to correcting them promptly and transparently.
-              </p>
-              <div className="bg-slate-50 border-l-4 border-indigo-500 p-6 my-6 rounded-r-lg">
-                <p className="text-slate-700 italic m-0">
-                  "If you spot an error in one of our articles, please contact us at <a href="mailto:corrections@kindjoe.com" className="text-indigo-600 underline decoration-indigo-300 underline-offset-2">corrections@kindjoe.com</a>. We will investigate and update the article if necessary."
-                </p>
-              </div>
-              <p className="text-slate-600 leading-relaxed">
-                When a significant error is corrected, we will add a note at the bottom of the article detailing the change and the date it was made. Minor typos that do not affect the meaning of the content may be corrected without a note.
+              <p className="text-slate-600">
+                If we publish incorrect information, we remove content or correct it promptly and note significant updates clearly. Readers may report errors through our contact email.
               </p>
             </section>
 
             <div className="w-full h-px bg-slate-200 my-12"></div>
 
+            {/* Editorial Independence */}
             <section id="independence" className="mb-16">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Editorial Independence</h2>
-              <p className="text-slate-600 leading-relaxed">
-                Our editorial content is independent of advertising and sponsorship. Advertisers do not influence our coverage, and we do not allow them to review articles before publication.
-              </p>
-              <p className="text-slate-600 leading-relaxed mt-4">
-                <strong>Affiliate Disclosure:</strong> KindJoe may participate in affiliate marketing programs, which means we may get paid commissions on editorially chosen products purchased through our links to retailer sites. However, every product we feature is selected independently by our editorial team based on its merit.
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Editorial Independence</h2>
+              <p className="text-slate-600">
+                Our coverage is free from outside influence. Advertisers, partners, and sponsors do not dictate our news decisions or editorial judgment.
               </p>
             </section>
-             
-             <div className="w-full h-px bg-slate-200 my-12"></div>
 
-             <section id="diversity" className="mb-16">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Diversity & Inclusion</h2>
-              <p className="text-slate-600 leading-relaxed">
-                We believe that diverse voices make our storytelling stronger. We are committed to featuring a wide range of perspectives in our content and maintaining a diverse team of contributors. We actively seek to amplify voices that have been historically marginalized in media.
+            <div className="w-full h-px bg-slate-200 my-12"></div>
+
+            {/* Ethical & Responsible Content */}
+            <section id="ethics" className="mb-16">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Ethical & Responsible Content</h2>
+              <p className="text-slate-600">
+                We avoid misleading, harmful, or manipulative material. Viral videos and user-generated content are reviewed carefully, used responsibly, and handled with respect for privacy and creator rights.
+              </p>
+            </section>
+
+            <div className="w-full h-px bg-slate-200 my-12"></div>
+
+            {/* Privacy & Safety */}
+            <section id="privacy" className="mb-16">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Privacy & Safety</h2>
+              <p className="text-slate-600">
+                We do not reveal personal information without consent unless it is essential for legitimate public-interest reporting.
+              </p>
+            </section>
+
+            <div className="w-full h-px bg-slate-200 my-12"></div>
+
+            {/* Human Oversight */}
+            <section id="oversight" className="mb-16">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Human Oversight</h2>
+              <p className="text-slate-600">
+                While we may use digital or AI tools to support workflows, all editorial decisions, reviews, and fact-checking are performed by human editors.
+              </p>
+            </section>
+
+            <div className="w-full h-px bg-slate-200 my-12"></div>
+
+            {/* Contact */}
+            <section id="contact" className="mb-16">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Contact</h2>
+              <p className="text-slate-600">
+                For questions, corrections, or concerns, please reach us at{" "}
+                <a href="mailto:hi@kindjoe.com" className="text-indigo-600 underline underline-offset-2">
+                  hi@kindjoe.com
+                </a>.
               </p>
             </section>
 

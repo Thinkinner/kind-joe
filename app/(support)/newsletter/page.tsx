@@ -22,7 +22,7 @@ const NEWSLETTERS: Newsletter[] = [
       'Curated positive news, heartwarming stories, and the best of humanity delivered straight to your inbox.',
     frequency: 'Daily',
     imageUrl:
-      'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=1200&q=80',
+      'https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/69274cc45f7cbcff2fc7cfdb.png',
     topic: 'kindjoe',
   },
   {
@@ -32,7 +32,7 @@ const NEWSLETTERS: Newsletter[] = [
       'Stay informed with local updates, events, and community highlights from across Ventura County.',
     frequency: 'Daily',
     imageUrl:
-      'https://images.unsplash.com/photo-1508830524289-0adcbe822b40?auto=format&fit=crop&w=1200&q=80',
+      'https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/69274d386203af50dd38f88d.png',
     topic: 'ventura',
   },
 ];
