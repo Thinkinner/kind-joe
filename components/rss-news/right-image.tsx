@@ -24,7 +24,7 @@ export default function Right_Image({ data }: { data: CardGroup }) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="text-blue-950 text-xl font-bold font-['Poppins'] leading-snug line-clamp-3 transition-colors duration-300 group-hover:text-blue-700">
+          <div className="text-blue-950 text-xl font-bold font-['Poppins'] leading-snug transition-colors duration-300 group-hover:text-blue-700">
             {main.title}
           </div>
         </div>
