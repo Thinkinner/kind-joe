@@ -16,9 +16,9 @@ export default function Navbar() {
     { name: "KJ Featured Articles", href: "/news" },
     { name: "Ventura County", href: "/ventura-county" },
     { name: "Newsletters", href: "/newsletter" },
-    { name: "About Us", href: "/about" },
-    { name: "Contact", href: "/contact" },
-    { name: "Editorial Policy", href: "/editorial-policy" },
+    // { name: "About Us", href: "/about" },
+    // { name: "Contact", href: "/contact" },
+    // { name: "Editorial Policy", href: "/editorial-policy" },
   ];
 
   useEffect(() => {
@@ -144,9 +144,9 @@ export default function Navbar() {
                     { name: "KJ Featured Articles", href: "/news" },
                     { name: "Ventura County", href: "/ventura-county" },
                     { name: "Newsletters", href: "/newsletter" },
-                    { name: "About Us", href: "/about" },
-                    { name: "Contact Us", href: "/contact" },
-                    { name: "Editorial Policy", href: "/editorial-policy" },
+                    // { name: "About Us", href: "/about" },
+                    // { name: "Contact Us", href: "/contact" },
+                    // { name: "Editorial Policy", href: "/editorial-policy" },
                   ].map((item, i, arr) => (
                     <Link
                       key={item.name}
