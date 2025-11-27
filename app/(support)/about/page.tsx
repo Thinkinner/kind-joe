@@ -31,9 +31,7 @@ const About: React.FC = () => {
               </span>
             </h1>
             <p className="text-lg text-indigo-100 mb-8 leading-relaxed max-w-lg"> {/* Changed text-slate-600 to text-indigo-100 */}
-              KindJoe started with a simple idea: the internet needs more empathy.
-              We are a collective of writers, thinkers, and creators dedicated to sharing
-              stories that uplift, inform, and connect us all.
+              Kind Joe is a global digital news outlet delivering the latest breaking stories, trending topics, and must-see viral videos from around the world. Our mission is to provide fast, engaging, and reliable coverage that keeps readers informed about the moments shaping online culture and international news.
             </p>
           </div>
           <div className="relative lg:h-[500px] w-full rounded-3xl overflow-hidden shadow-lg">
@@ -47,26 +45,31 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* Rest of your page content */}
-      {/* Stats/Values Section */}
-      <section className="py-20 bg-slate-50 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+      {/* About Us Extended / Mission Section */}
+      <section className="py-20 bg-white px-6">
+        <div className="max-w-7xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-slate-900 mb-6">Our Mission & Values</h2>
+          <p className="text-lg text-slate-700 mb-12 max-w-3xl mx-auto">
+            Based in the vibrant city of Los Angeles, California, Kind Joe was founded in 2025 by a passionate team of 20 developers and editors. Our collective mission is to foster a more empathetic internet by providing transparent, fact-based journalism that informs, inspires, and connects our diverse readership. We believe in the power of stories to uplift and unite.
+          </p>
+
+          {/* Stats/Values Section - moved here for better context */}
+          <div className="grid md:grid-cols-3 gap-8 text-center mt-12">
+            <div className="bg-slate-50 p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Heart size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Compassion</h3>
               <p className="text-slate-600">Every story we tell is rooted in empathy and understanding for the human experience.</p>
             </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-slate-50 p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Coffee size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Community</h3>
               <p className="text-slate-600">We are building a safe space where diverse voices are heard, respected, and celebrated.</p>
             </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-slate-50 p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Star size={24} />
               </div>
@@ -76,6 +79,7 @@ const About: React.FC = () => {
           </div>
         </div>
       </section>
+
 
       {/* Team Section */}
       <section className="py-24 px-6 max-w-7xl mx-auto">
