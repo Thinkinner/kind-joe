@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Users, Heart, Coffee, Star, Mail, MapPin, Phone, Send, Search } from 'lucide-react';
 
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
@@ -16,11 +17,12 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "KJ Featured Articles", href: "/news" },
     { name: "Ventura County", href: "/ventura-county" },
-    { name: "Newsletters", href: "/newsletter" },
+    // { name: "Newsletters", href: "/newsletter" }, // Keep commented out if not used in desktop nav links
     // { name: "About Us", href: "/about" },
     // { name: "Contact", href: "/contact" },
     // { name: "Editorial Policy", href: "/editorial-policy" },
   ];
+
 
   useEffect(() => {
     // lock body scroll when sidebar is open
@@ -44,9 +46,15 @@ export default function Navbar() {
       <nav className="bg-slate-950 p-4 shadow-lg">
         {/* Top Bar - Hidden on smaller screens */}
         <div className="hidden md:flex justify-end items-center text-xs text-gray-400 mb-2 border-b border-slate-800 pb-2">
-          <span className="mr-4 hover:text-red-600 transition-colors duration-200">
+          {/* <span className="mr-4 hover:text-red-600 transition-colors duration-200">
             +1(888)-555-5555
-          </span>
+          </span> */}
+          <Link
+            href="/advertise"
+            className="mr-4 hover:text-red-600 transition-colors duration-200"
+          >
+            Advertise
+          </Link>
           <Link
             href="/contact"
             className="mr-4 hover:text-red-600 transition-colors duration-200"
@@ -65,7 +73,7 @@ export default function Navbar() {
       >
         Sign In
       </Link> */}
-          <select
+          {/* <select
             className="bg-slate-900 text-gray-400 border border-slate-700 rounded px-2 py-1 mr-4 focus:outline-none focus:ring-1 focus:ring-red-600"
           >
             <option>English</option>
@@ -73,7 +81,7 @@ export default function Navbar() {
           </select>
           <button aria-label="Search" className="hover:text-red-600">
             <Search size={18} />
-          </button>
+          </button> */}
         </div>
 
         {/* Main Navbar */}
@@ -110,8 +118,11 @@ export default function Navbar() {
 
           {/* Right: Subscribe Button & Mobile Toggle */}
           <div className="flex items-center gap-4">
-            <button className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors duration-200">
-              Subscribe
+            <button
+              className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors duration-200"
+              onClick={() => (window.location.href = "/newsletter")}
+            >
+              Newsletters
             </button>
 
             <button
@@ -172,9 +183,9 @@ export default function Navbar() {
 
               {/* Top Bar Links (for mobile sidebar) */}
               <div className="flex flex-col gap-4 text-sm text-gray-400 mb-8 border-b border-slate-800 pb-6">
-                <span className="hover:text-red-600 transition-colors duration-200">
+                {/* <span className="hover:text-red-600 transition-colors duration-200">
                   +1(888)-555-5555
-                </span>
+                </span> */}
                 <Link
                   href="/contact"
                   onClick={() => setOpen(false)}
@@ -214,8 +225,7 @@ export default function Navbar() {
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Newsletters", href: "/newsletter" },
-                  // Add other links here if needed for mobile
+                  // { name: "Newsletters", href: "/newsletter" }, // Add other links here if needed for mobile
                 ].map((item) => (
                   <Link
                     key={item.name}
@@ -233,8 +243,14 @@ export default function Navbar() {
               </nav>
 
               {/* Subscribe Button (for mobile sidebar) */}
-              <button className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md mt-8 transition-colors duration-200">
-                Subscribe
+              <button
+                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md mt-8 transition-colors duration-200"
+                onClick={() => {
+                  window.location.href = "/newsletter";
+                  setOpen(false); // Close sidebar after clicking
+                }}
+              >
+                Newsletter
               </button>
 
               {/* Footer */}

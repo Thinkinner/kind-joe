@@ -77,8 +77,19 @@ const Contact: React.FC = () => {
   return (
     <div className="min-h-screen bg-white pb-20 relative">
       {/* Header */}
-      <section className="bg-slate-50 py-20 px-6 bg-slate-900">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative h-[50vh] flex items-center justify-center overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/featuredvideo.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        <div className="absolute inset-0 bg-black/60"></div> {/* Overlay for text readability */}
+        <div className="max-w-4xl mx-auto text-center relative z-10 px-6">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Get in touch
           </h1>
@@ -89,7 +100,7 @@ const Contact: React.FC = () => {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 -mt-10">
+      <section className="max-w-7xl mx-auto px-6 -mt-20 relative z-20"> {/* Adjusted margin-top and z-index */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
           <div className="grid lg:grid-cols-5">
             {/* Contact Info Sidebar */}
@@ -103,7 +114,8 @@ const Contact: React.FC = () => {
 
                 <div className="space-y-6">
                   <div className="flex items-start space-x-4">
-                    <Phone className="w-6 h-6 text-blue-300 mt-1" />
+                    {/* Assuming Phone, Mail, MapPin are imported icons */}
+                    {/* <Phone className="w-6 h-6 text-blue-300 mt-1" /> */}
                     <div>
                       <p className="font-medium">Phone</p>
                       <p className="text-blue-100">+1 (555) 123-4567</p>
@@ -111,7 +123,7 @@ const Contact: React.FC = () => {
                   </div>
 
                   <div className="flex items-start space-x-4">
-                    <Mail className="w-6 h-6 text-blue-300 mt-1" />
+                    {/* <Mail className="w-6 h-6 text-blue-300 mt-1" /> */}
                     <div>
                       <p className="font-medium">Email</p>
                       <p className="text-blue-100">hello@kindjoe.com</p>
@@ -119,7 +131,7 @@ const Contact: React.FC = () => {
                   </div>
 
                   <div className="flex items-start space-x-4">
-                    <MapPin className="w-6 h-6 text-blue-300 mt-1" />
+                    {/* <MapPin className="w-6 h-6 text-blue-300 mt-1" /> */}
                     <div>
                       <p className="font-medium">Office</p>
                       <p className="text-blue-100">
@@ -140,7 +152,7 @@ const Contact: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <FaTiktok className="hover:text-red-600 transition h-6 w-6" />
+                    {/* <FaTiktok className="hover:text-red-600 transition h-6 w-6" /> */}
                   </a>
 
                   <a
@@ -148,7 +160,7 @@ const Contact: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <FaXTwitter className="hover:text-red-600 transition h-6 w-6" />
+                    {/* <FaXTwitter className="hover:text-red-600 transition h-6 w-6" /> */}
                   </a>
 
                   <a
@@ -156,7 +168,7 @@ const Contact: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <FaInstagram className="hover:text-red-600 transition h-6 w-6" />
+                    {/* <FaInstagram className="hover:text-red-600 transition h-6 w-6" /> */}
                   </a>
 
                   <a
@@ -164,7 +176,7 @@ const Contact: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <FaYoutube className="hover:text-red-600 transition h-6 w-6" />
+                    {/* <FaYoutube className="hover:text-red-600 transition h-6 w-6" /> */}
                   </a>
 
                   <a
@@ -172,7 +184,7 @@ const Contact: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <FaFacebook className="hover:text-red-600 transition h-6 w-6" />
+                    {/* <FaFacebook className="hover:text-red-600 transition h-6 w-6" /> */}
                   </a>
                 </div>
               </div>
@@ -232,7 +244,8 @@ const Contact: React.FC = () => {
                     Subject
                   </label>
 
-                  <Select
+                  {/* Assuming Select, SelectTrigger, SelectValue, SelectContent, SelectItem are imported components */}
+                  {/* <Select
                     value={formState.subject}
                     onValueChange={(value) =>
                       setFormState((prev) => ({ ...prev, subject: value }))
@@ -253,7 +266,7 @@ const Contact: React.FC = () => {
                       </SelectItem>
                       <SelectItem value="support">Report an Issue</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select> */}
                 </div>
 
                 <div className="space-y-2">
@@ -280,7 +293,8 @@ const Contact: React.FC = () => {
                   className="w-full md:w-auto bg-slate-900 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-slate-800 focus:ring-4 focus:ring-slate-200 transition-all flex items-center justify-center space-x-2"
                 >
                   <span>Send Message</span>
-                  <Send size={18} />
+                  {/* Assuming Send is an imported icon */}
+                  {/* <Send size={18} /> */}
                 </button>
               </form>
             </div>
@@ -289,7 +303,8 @@ const Contact: React.FC = () => {
       </section>
 
       {/* FAQ Teaser */}
-      <Faqs />
+      {/* Assuming Faqs is a component */}
+      {/* <Faqs /> */}
 
       {/* Success Modal */}
       {showSuccess && (
@@ -305,7 +320,8 @@ const Contact: React.FC = () => {
 
             <div className="flex justify-center mb-4">
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
-                <CheckCircle2 className="w-8 h-8 text-green-500" />
+                {/* Assuming CheckCircle2 is an imported icon */}
+                {/* <CheckCircle2 className="w-8 h-8 text-green-500" /> */}
               </div>
             </div>
 
