@@ -100,18 +100,18 @@ export default async function RootLayout({
           strategy="afterInteractive"
         />
 
-        {/* Subscribe with Google initialization */}
+        {/* Subscribe with Google initialization (updated) */}
         <Script id="swg-init" strategy="afterInteractive">
           {`
-            (self.SWG_BASIC = self.SWG_BASIC || []).push(basicSubscriptions => {
-              basicSubscriptions.init({
-                type: "NewsArticle",
-                isPartOfType: ["Product"],
-                isPartOfProductId: "CAow7Z_eCw:openaccess",
-                clientOptions: { theme: "light", lang: "en" },
-              });
-            });
-          `}
+      (self.SWG_BASIC = self.SWG_BASIC || []).push(basicSubscriptions => {
+        basicSubscriptions.init({
+          type: "NewsArticle",
+          isPartOfType: ["Product"],
+          isPartOfProductId: "CAowpp_eCw:openaccess",
+          clientOptions: { theme: "light", lang: "en" },
+        });
+      });
+    `}
         </Script>
       </head>
 
