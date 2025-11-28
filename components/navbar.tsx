@@ -225,7 +225,7 @@ export default function Navbar() {
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  // { name: "Newsletters", href: "/newsletter" }, // Add other links here if needed for mobile
+                  { name: "Newsletters", href: "/newsletter" }, // Add other links here if needed for mobile
                 ].map((item) => (
                   <Link
                     key={item.name}
