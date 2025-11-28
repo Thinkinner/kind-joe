@@ -71,7 +71,6 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// 👇 make this async
 export default async function RootLayout({
   children,
 }: {
@@ -89,13 +88,33 @@ export default async function RootLayout({
     },
   };
 
-  // COOKIES CONSENT
-  // 👇 await the cookies() promise
   const cookieStore = await cookies();
   const consent = cookieStore.get("cookie_consent")?.value === "accepted";
 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        {/* Subscribe with Google core script */}
+        <Script
+          src="https://news.google.com/swg/js/v1/swg-basic.js"
+          strategy="afterInteractive"
+        />
+
+        {/* Subscribe with Google initialization */}
+        <Script id="swg-init" strategy="afterInteractive">
+          {`
+            (self.SWG_BASIC = self.SWG_BASIC || []).push(basicSubscriptions => {
+              basicSubscriptions.init({
+                type: "NewsArticle",
+                isPartOfType: ["Product"],
+                isPartOfProductId: "CAow7Z_eCw:openaccess",
+                clientOptions: { theme: "light", lang: "en" },
+              });
+            });
+          `}
+        </Script>
+      </head>
+
       <body
         className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
       >
@@ -108,7 +127,7 @@ export default async function RootLayout({
           initiallyConsented={consent}
           policyHref="/privacy-policy"
           termsHref="/terms-of-service"
-          delayMs={10_000} // 10 seconds
+          delayMs={10_000}
         />
         <Analytics />
         <Script
