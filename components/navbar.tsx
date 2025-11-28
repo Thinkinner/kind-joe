@@ -207,7 +207,7 @@ export default function Navbar() {
             >
               Sign In
             </Link> */}
-                <select
+                {/* <select
                   className="bg-slate-900 text-gray-400 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-600"
                 >
                   <option>English</option>
@@ -215,7 +215,7 @@ export default function Navbar() {
                 </select>
                 <button aria-label="Search" className="flex items-center gap-2 hover:text-red-600">
                   <Search size={18} /> Search
-                </button>
+                </button> */}
               </div>
 
 
