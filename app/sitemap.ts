@@ -43,11 +43,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     // maybe other static pages:
     {
-      url: `${baseUrl}/stories`,
+      url: `${baseUrl}/`,
       lastModified: now,
     },
     ...rows.map((a) => ({
-      url: `${baseUrl}/stories/${a.slug}`,
+      url: `${baseUrl}/${a.slug}`,
       lastModified:
         a.updatedAt ?? a.publishedAt ?? a.createdAt ?? now,
     })),
