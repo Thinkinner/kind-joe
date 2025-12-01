@@ -23,7 +23,7 @@ function publishedWhereForSitemap(now = new Date()) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://thekindjoe.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kindjoe.com";
   const now = new Date();
 
   const rows = await db
