@@ -1,6 +1,13 @@
 import { db } from "@/db";
 import { articles, users, articleCategories, categories } from "@/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  isNotNull,
+  lte,
+  or,
+} from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import RelatedArticles from "@/components/stories/stories/related-articles";
@@ -10,24 +17,26 @@ import { formatToLA } from "@/lib/format-date";
 import GetEmail from "@/components/stories/kindjoe-get-email";
 
 export const revalidate = 60;
+
 function publishedWhere(slug: string, now = new Date()) {
   return and(
     eq(articles.slug, slug),
     eq(articles.isDraft, false),
     isNull(articles.deletedAt),
-    sql<boolean>`
-      (
-        ${articles.publishedAt} IS NOT NULL
-        AND ${articles.publishedAt} <= ${now}
+    or(
+      and(
+        isNotNull(articles.publishedAt),
+        lte(articles.publishedAt, now)
+      ),
+      and(
+        isNull(articles.publishedAt),
+        isNotNull(articles.publishAt),
+        lte(articles.publishAt, now)
       )
-      OR (
-        ${articles.publishedAt} IS NULL
-        AND ${articles.publishAt} IS NOT NULL
-        AND ${articles.publishAt} <= ${now}
-      )
-    `
+    )
   );
 }
+
 
 // ✅ Use the article's seo JSON object if present
 export async function generateMetadata(props: {
