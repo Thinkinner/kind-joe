@@ -136,7 +136,7 @@ export default async function ArticleBySlug(props: {
 
   return (
     <main className="py-8">
-      <div className="mx-auto max-w-6xl px-4 lg:px-0">
+      <div className="mx-auto max-w-6xl lg:px-4 lg:px-0">
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
           {/* MAIN ARTICLE */}
           <article className="lg:pb-8">
