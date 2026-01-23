@@ -15,8 +15,16 @@ import { Metadata } from "next";
 import ShareButtons from "@/components/stories/share-buttons";
 import { formatToLA } from "@/lib/format-date";
 import GetEmail from "@/components/stories/kindjoe-get-email";
+import { DM_Sans } from "next/font/google"; 
 
 export const revalidate = 60;
+
+const googleSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["500", "700"], // Loading Medium (500) and Bold (700)
+  variable: "--font-google-sans",
+  display: "swap",
+});
 
 function publishedWhere(slug: string, now = new Date()) {
   return and(
@@ -236,7 +244,11 @@ export default async function ArticleBySlug(props: {
 
             {/* Article body */}
             <div className="mt-8 px-4 lg:px-6">
-              <div className="prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
+               <div className={`
+                tiptap ${googleSans.variable}
+                prose prose-lg prose-neutral max-w-none 
+                prose-headings:font-bold prose-a:text-red-600
+              `}>
                 <ArticleContent value={content} />
               </div>
             </div>

@@ -121,21 +121,53 @@
   }
 }
 
-
 .tiptap {
   /* Paragraph spacing */
-  p { margin: 0.75rem 0; }
+  p { 
+    /* margin-5 equivalent (1.25rem = 20px) */
+    margin-top: 1.25rem; 
+    margin-bottom: 1.25rem; 
+    
+    /* Font settings */
+    font-family: var(--font-google-sans), sans-serif;
+    font-weight: 500; /* 500 is Medium. Change to 600 for Semibold */
+    color: var(--foreground); /* Ensures readable contrast */
+  }
 
   /* Headings spacing */
-  h1,h2,h3,h4,h5,h6 { scroll-margin-top: 6rem; }
-  h1 { margin: 2rem 0 1rem; }
-  h2 { margin: 1.75rem 0 0.875rem; }
-  h3 { margin: 1.25rem 0 0.75rem; }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    scroll-margin-top: 6rem;
+  }
+  h1 {
+    margin: 2rem 0 1rem;
+  }
+  h2 {
+    margin: 1.75rem 0 0.875rem;
+  }
+  h3 {
+    margin: 1.25rem 0 0.75rem;
+  }
 
   /* Lists */
-  ul, ol { padding-left: 1.5rem; margin: 1rem 0; }
-  li > p { margin: 0.25rem 0; }
-  ul ul, ol ol, ul ol, ol ul { margin: 0.5rem 0; }
+  ul,
+  ol {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+  }
+  li > p {
+    margin: 0.25rem 0;
+  }
+  ul ul,
+  ol ol,
+  ul ol,
+  ol ul {
+    margin: 0.5rem 0;
+  }
 
   /* Blockquote */
   blockquote {
@@ -162,9 +194,11 @@
   }
 
   /* Images */
-  img { border-radius: 0.75rem; margin: 1rem 0; }
+  img {
+    border-radius: 0.75rem;
+    margin: 1rem 0;
+  }
 }
-
 
 /* === Infinite horizontal ticker for stocks === */
 @keyframes kj-ticker {
