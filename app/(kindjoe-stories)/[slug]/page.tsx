@@ -303,9 +303,7 @@ export default async function ArticleBySlug(props: {
               <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">
                 Recommended
               </h3>
-              <div className="space-y-4">
-                <RelatedArticles slug={slug} />
-              </div>
+          
             </section>
           </aside>
         </div>
