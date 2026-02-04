@@ -4,16 +4,17 @@ import type { StockItem } from "@/types/rss";
 
 // The symbols your UI expects
 const SYMBOLS: { label: string; symbol: string }[] = [
-  { label: "GOLD", symbol: "GLD" },      // GLD ETF instead of XAUUSD (simpler + supported)
+  { label: "BITCOIN", symbol: "BINANCE:BTCUSDT" }, // Add this line
+  { label: "GOLD", symbol: "GLD" },
   { label: "NASDAQ", symbol: "QQQ" },
   { label: "APPLE", symbol: "AAPL" },
   { label: "NVIDIA", symbol: "NVDA" },
   { label: "META", symbol: "META" },
   { label: "TESLA", symbol: "TSLA" },
   { label: "GOOGLE", symbol: "GOOGL" },
-  { label: "YOUTUBE", symbol: "GOOGL" }, // Same data, different label
+  { label: "YOUTUBE", symbol: "GOOGL" },
   { label: "MICROSOFT", symbol: "MSFT" },
-];
+]
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 

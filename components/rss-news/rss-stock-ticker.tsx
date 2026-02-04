@@ -1,5 +1,4 @@
 // components/rss/RssStocksTicker.tsx
-import React from "react";
 import type { StockItem } from "@/types/rss";
 
 function pctColor(n: number) {
