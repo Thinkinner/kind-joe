@@ -5,8 +5,17 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { Users, Heart, Coffee, Star, Mail, MapPin, Phone, Send, Search } from 'lucide-react';
-
+import {
+  Users,
+  Heart,
+  Coffee,
+  Star,
+  Mail,
+  MapPin,
+  Phone,
+  Send,
+  Search,
+} from "lucide-react";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -22,7 +31,6 @@ export default function Navbar() {
     // { name: "Contact", href: "/contact" },
     // { name: "Editorial Policy", href: "/editorial-policy" },
   ];
-
 
   useEffect(() => {
     // lock body scroll when sidebar is open
@@ -43,95 +51,80 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-slate-950 p-4 shadow-lg">
-        {/* Top Bar - Hidden on smaller screens */}
-        <div className="hidden md:flex justify-end items-center text-xs text-gray-400 mb-2 border-b border-slate-800 pb-2">
-          {/* <span className="mr-4 hover:text-red-600 transition-colors duration-200">
-            +1(888)-555-5555
-          </span> */}
-          <Link
-            href="/advertise"
-            className="mr-4 hover:text-red-600 transition-colors duration-200"
+      <nav className="bg-slate-950 shadow-lg">
+        {/* NEW: Promotional Top Bar with a solid Gold hex code */}
+        <div
+          style={{ backgroundColor: "#B3873F" }} // Standard Gold Hex Code
+          className="py-2 px-4"
+        >
+          <a
+            href="https://joeknowsventura.com/api/track?ref=kindjoe_website&dest=gold"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 group no-underline"
           >
-            Advertise
-          </Link>
-          <Link
-            href="/contact"
-            className="mr-4 hover:text-red-600 transition-colors duration-200"
-          >
-            Contact Us
-          </Link>
-          <Link
-            href="/about"
-            className="mr-4 hover:text-red-600 transition-colors duration-200"
-          >
-            About Us
-          </Link>
-          {/* <Link
-        href="/sign-in"
-        className="mr-4 hover:text-red-600 transition-colors duration-200"
-      >
-        Sign In
-      </Link> */}
-          {/* <select
-            className="bg-slate-900 text-gray-400 border border-slate-700 rounded px-2 py-1 mr-4 focus:outline-none focus:ring-1 focus:ring-red-600"
-          >
-            <option>English</option>
-            <option>Spanish</option>
-          </select>
-          <button aria-label="Search" className="hover:text-red-600">
-            <Search size={18} />
-          </button> */}
+            <span className="text-black font-bold uppercase tracking-tighter text-sm md:text-base">
+              Joe Knows Metals
+            </span>
+            <span className="hidden md:block text-black/30">|</span>
+            <span className="text-black font-semibold text-xs md:text-sm text-center group-hover:underline">
+              A collaboration with Battalion Metals. Secure your wealth with
+              physical gold.
+              <strong className="ml-1 uppercase">Learn More →</strong>
+            </span>
+          </a>
         </div>
 
-        {/* Main Navbar */}
-        <div className="flex items-center justify-between">
-          {/* Left: Logo */}
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/brand/horizontal-logo.svg"
-              width={120} // Default smaller width for mobile
-              height={28}
-              alt="KindJoe Horizontal Logo"
-              className="cursor-pointer md:w-[165px] md:h-[38px]" // Scales up for md and larger
-            />
-          </Link>
+        <div className="p-4">
+          {/* Main Navbar */}
+          <div className="flex items-center justify-between">
+            {/* Left: Logo */}
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/brand/horizontal-logo.svg"
+                width={120}
+                height={28}
+                alt="KindJoe Horizontal Logo"
+                className="cursor-pointer md:w-[165px] md:h-[38px]"
+              />
+            </Link>
 
-          {/* Center: Nav Links (Desktop) */}
-          <div className="hidden lg:flex gap-8">
-            {links.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`
-              text-white pb-1 transition-colors duration-200
-              ${isActive ? "text-red-600" : "hover:text-red-600"}
-            `}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
-          </div>
+            {/* Center: Nav Links (Desktop) */}
+            <div className="hidden lg:flex gap-8">
+              {links.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`
+                text-white pb-1 font-medium transition-colors duration-200
+                ${isActive ? "text-red-600" : "hover:text-red-600"}
+              `}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
+            </div>
 
-          {/* Right: Subscribe Button & Mobile Toggle */}
-          <div className="flex items-center gap-4">
-            <button
-              className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors duration-200"
-              onClick={() => (window.location.href = "/newsletter")}
-            >
-              Newsletters
-            </button>
+            {/* Right: Subscribe Button & Mobile Toggle */}
+            <div className="flex items-center gap-4">
+              <button
+                className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors duration-200"
+                onClick={() => (window.location.href = "/newsletter")}
+              >
+                Newsletters
+              </button>
 
-            <button
-              aria-label={open ? "Close menu" : "Open menu"}
-              onClick={() => setOpen((s) => !s)}
-              className="text-white hover:text-red-600 transition-colors duration-200 lg:hidden"
-            >
-              {open ? <X size={24} /> : <Menu size={24} />}
-            </button>
+              <button
+                aria-label={open ? "Close menu" : "Open menu"}
+                onClick={() => setOpen((s) => !s)}
+                className="text-white hover:text-red-600 transition-colors duration-200 lg:hidden"
+              >
+                {open ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -217,7 +210,6 @@ export default function Navbar() {
                   <Search size={18} /> Search
                 </button> */}
               </div>
-
 
               {/* Navigation Links */}
               <nav className="flex-1 space-y-4 text-white">
