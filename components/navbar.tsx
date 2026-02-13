@@ -53,7 +53,7 @@ export default function Navbar() {
     <>
       <nav className="bg-slate-950 shadow-lg">
         {/* NEW: Promotional Top Bar with a solid Gold hex code */}
-        <div
+        {/* <div
           style={{ backgroundColor: "#B3873F" }} // Standard Gold Hex Code
           className="py-2 px-4"
         >
@@ -73,7 +73,7 @@ export default function Navbar() {
               <strong className="ml-1 uppercase">Learn More →</strong>
             </span>
           </a>
-        </div>
+        </div> */}
 
         <div className="p-4">
           {/* Main Navbar */}
