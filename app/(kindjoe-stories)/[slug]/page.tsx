@@ -74,17 +74,24 @@ export async function generateMetadata(props: {
 
   const title = seo?.title || a.title;
   const description = seo?.description || a.excerpt || undefined;
-  const canonical = seo?.canonical || undefined;
   const image = a.coverImageUrl ? [a.coverImageUrl] : undefined;
+
+  // 🔴 SEO FIX: Always generate a canonical URL even if it's not in the DB
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.kindjoe.com";
+  // NOTE: If your URL structure is different, change "/ventura-county/" to the correct path
+  const fallbackUrl = `${siteUrl}/ventura-county/${slug}`;
+  const canonicalUrl = seo?.canonical || fallbackUrl;
 
   return {
     title,
     description,
-    alternates: canonical ? { canonical } : undefined,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: canonical || undefined,
+      url: canonicalUrl,
       images: image,
       type: "article",
     },

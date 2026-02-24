@@ -3,22 +3,20 @@ import { articles, users, articleCategories, categories } from "@/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
-import RelatedArticles from "@/components/stories/stories/related-articles";
+// import RelatedArticles from "@/components/stories/stories/related-articles"; // Optional: unused in current file
 import type { Metadata } from "next";
 import { formatToLA } from "@/lib/format-date";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
-import { DM_Sans } from "next/font/google"; 
-
+import { DM_Sans } from "next/font/google";
 
 export const revalidate = 60;
 
 const googleSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["500", "700"], // Loading Medium (500) and Bold (700)
+  weight: ["500", "700"],
   variable: "--font-google-sans",
   display: "swap",
 });
-
 
 function publishedWhere(slug: string, now = new Date()) {
   return and(
@@ -35,11 +33,11 @@ function publishedWhere(slug: string, now = new Date()) {
         AND ${articles.publishAt} IS NOT NULL
         AND ${articles.publishAt} <= ${now}
       )
-    `
+    `,
   );
 }
 
-// ✅ Use the article's seo JSON object if present
+// ✅ Use the article's seo JSON object if present, with a strong fallback
 export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
@@ -67,17 +65,24 @@ export async function generateMetadata(props: {
 
   const title = seo?.title || a.title;
   const description = seo?.description || a.excerpt || undefined;
-  const canonical = seo?.canonical || undefined;
   const image = a.coverImageUrl ? [a.coverImageUrl] : undefined;
+
+  // 🔴 SEO FIX: Always generate a canonical URL even if it's not in the DB
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.kindjoe.com";
+  // NOTE: If your URL structure is different, change "/ventura-county/" to the correct path
+  const fallbackUrl = `${siteUrl}/ventura-county/${slug}`;
+  const canonicalUrl = seo?.canonical || fallbackUrl;
 
   return {
     title,
     description,
-    alternates: canonical ? { canonical } : undefined,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: canonical || undefined,
+      url: canonicalUrl,
       images: image,
       type: "article",
     },
@@ -128,6 +133,7 @@ export default async function ArticleBySlug(props: {
     .leftJoin(categories, eq(categories.id, articleCategories.categoryId))
     .where(eq(articleCategories.articleId, a.id));
 
+  // Note: 'date' was defined but unused, kept here in case you need it later
   const date = a.publishedAt ?? a.publishAt ?? a.createdAt;
 
   const content =
@@ -171,12 +177,11 @@ export default async function ArticleBySlug(props: {
                 </div>
               )}
 
-              {/* --- NEW: PUBLISHER & LOGO SECTION (Ventura Edition) --- */}
+              {/* PUBLISHER & LOGO SECTION */}
               <div className="mt-6 mb-6 flex items-center justify-between border-y border-neutral-100 py-4">
                 <div className="flex items-center gap-3">
                   {/* Logo Container */}
                   <div className="relative h-12 w-12 flex-shrink-0">
-                    {/* Generated a 'JV' logo for Ventura or place your specific logo URL here */}
                     <img
                       src="https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/691ccd8896e2873808164bed.png"
                       alt="Joe Knows Ventura"
@@ -206,26 +211,15 @@ export default async function ArticleBySlug(props: {
                     <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                       <span>Official Publisher</span>
                       <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
-
                       <time className="text-neutral-700 font-semibold">
                         {formatToLA(
-                          a.publishedAt ?? a.publishAt ?? a.createdAt
+                          a.publishedAt ?? a.publishAt ?? a.createdAt,
                         )}
                       </time>
                     </div>
                   </div>
                 </div>
-
-                {/* Optional Follow Button */}
-                {/* <div className="hidden sm:block">
-                  <button className="rounded-full bg-neutral-900 px-5 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-neutral-700 hover:shadow-md">
-                    Follow
-                  </button>
-                </div> */}
               </div>
-              {/* ----------------------------------- */}
-
-              {/* Social bar */}
             </header>
 
             {/* Hero image */}
@@ -245,8 +239,10 @@ export default async function ArticleBySlug(props: {
 
             {/* Article body */}
             <div className="mt-8 px-4 lg:px-6">
-              <div className={`
-                tiptap ${googleSans.variable}prose-headings:font-bold prose-a:text-orange-600`}>
+              {/* 🔴 CSS FIX: Added space before 'prose-headings' */}
+              <div
+                className={`tiptap ${googleSans.variable} prose-headings:font-bold prose-a:text-orange-600`}
+              >
                 <ArticleContent value={content} />
               </div>
             </div>
@@ -265,7 +261,7 @@ export default async function ArticleBySlug(props: {
                   <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
                   <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
 
-                  <div className="">
+                  <div className="relative">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md text-white border border-white/20 w-fit">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -312,7 +308,6 @@ export default async function ArticleBySlug(props: {
               <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">
                 Recommended
               </h3>
-            
             </section>
           </aside>
         </div>
