@@ -1,13 +1,6 @@
 import { db } from "@/db";
 import { articles, users, articleCategories, categories } from "@/db/schema";
-import {
-  and,
-  eq,
-  isNull,
-  isNotNull,
-  lte,
-  or,
-} from "drizzle-orm";
+import { and, eq, isNull, isNotNull, lte, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import RelatedArticles from "@/components/stories/stories/related-articles";
@@ -15,7 +8,8 @@ import { Metadata } from "next";
 import ShareButtons from "@/components/stories/share-buttons";
 import { formatToLA } from "@/lib/format-date";
 import GetEmail from "@/components/stories/kindjoe-get-email";
-import { DM_Sans } from "next/font/google"; 
+import ArticleTracker from "@/components/article-tracker";
+import { DM_Sans } from "next/font/google";
 
 export const revalidate = 60;
 
@@ -32,19 +26,15 @@ function publishedWhere(slug: string, now = new Date()) {
     eq(articles.isDraft, false),
     isNull(articles.deletedAt),
     or(
-      and(
-        isNotNull(articles.publishedAt),
-        lte(articles.publishedAt, now)
-      ),
+      and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
       and(
         isNull(articles.publishedAt),
         isNotNull(articles.publishAt),
-        lte(articles.publishAt, now)
-      )
-    )
+        lte(articles.publishAt, now),
+      ),
+    ),
   );
 }
-
 
 // ✅ Use the article's seo JSON object if present
 export async function generateMetadata(props: {
@@ -151,6 +141,7 @@ export default async function ArticleBySlug(props: {
 
   return (
     <main className="py-8">
+      <ArticleTracker articleId={a.id} />
       <div className="mx-auto max-w-6xl lg:px-4 lg:px-0">
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
           {/* MAIN ARTICLE */}
@@ -208,8 +199,16 @@ export default async function ArticleBySlug(props: {
                     />
                     {/* Verified Badge Icon */}
                     <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -225,9 +224,10 @@ export default async function ArticleBySlug(props: {
 
                       {/* DYNAMIC DATE LOGIC */}
                       <time className="text-neutral-700 font-semibold">
-                        {formatToLA(a.publishedAt ?? a.publishAt ?? a.createdAt)}
+                        {formatToLA(
+                          a.publishedAt ?? a.publishAt ?? a.createdAt,
+                        )}
                       </time>
-
                     </div>
                   </div>
                 </div>
@@ -251,11 +251,13 @@ export default async function ArticleBySlug(props: {
 
             {/* Article body */}
             <div className="mt-8 px-4 lg:px-6">
-               <div className={`
+              <div
+                className={`
                 tiptap ${googleSans.variable}
                 prose prose-lg prose-neutral max-w-none 
                 prose-headings:font-bold prose-a:text-red-600
-              `}>
+              `}
+              >
                 <ArticleContent value={content} />
               </div>
             </div>
@@ -264,7 +266,7 @@ export default async function ArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8">
             {/* Newsletter box */}
-           <GetEmail />
+            <GetEmail />
 
             {/* Ad banner / promo */}
             <section className="px-4 lg:px-0">
@@ -284,7 +286,8 @@ export default async function ArticleBySlug(props: {
                     </div>
 
                     <h3 className="text-2xl font-black leading-tight">
-                      Don't Miss <br />the Action
+                      Don't Miss <br />
+                      the Action
                     </h3>
 
                     <p className="mt-3 text-sm font-medium text-red-50">
@@ -298,7 +301,17 @@ export default async function ArticleBySlug(props: {
                       className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-blue-600 shadow-md transition hover:bg-neutral-100"
                     >
                       <span>Watch Now</span>
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                     </a>
                   </div>
                 </div>
@@ -310,7 +323,6 @@ export default async function ArticleBySlug(props: {
               <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">
                 Recommended
               </h3>
-          
             </section>
           </aside>
         </div>

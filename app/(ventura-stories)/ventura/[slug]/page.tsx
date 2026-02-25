@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import ArticleContent from "@/components/stories/article-single-page-content";
 // import RelatedArticles from "@/components/stories/stories/related-articles"; // Optional: unused in current file
 import type { Metadata } from "next";
+import ArticleTracker from "@/components/article-tracker";
 import { formatToLA } from "@/lib/format-date";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import { DM_Sans } from "next/font/google";
@@ -143,6 +144,7 @@ export default async function ArticleBySlug(props: {
 
   return (
     <main className="py-8">
+       <ArticleTracker articleId={a.id} />
       <div className="mx-auto max-w-6xl px-4 lg:px-0">
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
           {/* MAIN ARTICLE */}
