@@ -3,12 +3,10 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar";
 import GoogleAnalytics from "@/components/google-analytics";
 
 import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
-import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -119,9 +117,7 @@ export default async function RootLayout({
         className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
       >
         <GoogleAnalytics />
-        <Navbar />
         <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
-        <Footer />
         <Toaster position="top-center" richColors closeButton />
         <CookieConsent
           initiallyConsented={consent}
