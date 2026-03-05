@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 async function getPosts() {
-  const managerUrl = process.env.NEXT_PUBLIC_ADMIN_API_URL;
+  const managerUrl = process.env.NEXT_PUBLIC_ADMIN_API;
   
   // We fetch from the Manager's API
-  const res = await fetch(`${managerUrl}/api/posts`, { 
+  const res = await fetch(`${managerUrl}posts`, { 
     // This tells Next.js to cache the data until we manually revalidate it
     next: { tags: ['posts-grid'] } 
   });
