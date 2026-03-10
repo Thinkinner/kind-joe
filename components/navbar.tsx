@@ -2,23 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search } from "lucide-react"; // Imported Search here
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import {
-  Users,
-  Heart,
-  Coffee,
-  Star,
-  Mail,
-  MapPin,
-  Phone,
-  Send,
-  Search,
-} from "lucide-react";
+import SearchModal from "@/components/modals/search-modal"; // Import the modal we created
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false); // NEW: Search state
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
   const pathname = usePathname();
 
@@ -26,57 +17,29 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "KJ Featured Articles", href: "/news" },
     { name: "Ventura County", href: "/ventura-county" },
-    // { name: "Newsletters", href: "/newsletter" }, // Keep commented out if not used in desktop nav links
-    // { name: "About Us", href: "/about" },
-    // { name: "Contact", href: "/contact" },
-    // { name: "Editorial Policy", href: "/editorial-policy" },
   ];
 
+  // Global keyboard listener for Cmd+K
   useEffect(() => {
-    // lock body scroll when sidebar is open
-    document.body.style.overflow = open ? "hidden" : "auto";
-    if (open && firstFocusableRef.current) firstFocusableRef.current.focus();
-    return () => {
-      document.body.style.overflow = "auto";
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
     };
-  }, [open]);
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    // lock body scroll when sidebar OR search is open
+    document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
+  }, [open, searchOpen]);
 
   return (
     <>
-      <nav className="bg-slate-950 shadow-lg">
-        {/* NEW: Promotional Top Bar with a solid Gold hex code */}
-        {/* <div
-          style={{ backgroundColor: "#B3873F" }} // Standard Gold Hex Code
-          className="py-2 px-4"
-        >
-          <a
-            href="https://joeknowsventura.com/api/track?ref=kindjoe_website&dest=gold"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3 group no-underline"
-          >
-            <span className="text-black font-bold uppercase tracking-tighter text-sm md:text-base">
-              Joe Knows Metals
-            </span>
-            <span className="hidden md:block text-black/30">|</span>
-            <span className="text-black font-semibold text-xs md:text-sm text-center group-hover:underline">
-              A collaboration with Battalion Metals. Secure your wealth with
-              physical gold.
-              <strong className="ml-1 uppercase">Learn More →</strong>
-            </span>
-          </a>
-        </div> */}
-
+      <nav className="bg-slate-950 shadow-lg sticky top-0 z-[60]">
         <div className="p-4">
-          {/* Main Navbar */}
           <div className="flex items-center justify-between">
             {/* Left: Logo */}
             <Link href="/" className="flex items-center">
@@ -108,13 +71,34 @@ export default function Navbar() {
               })}
             </div>
 
-            {/* Right: Subscribe Button & Mobile Toggle */}
+            {/* Right: Search, Subscribe & Mobile Toggle */}
             <div className="flex items-center gap-4">
+              {/* Desktop Search Icon */}
               <button
-                className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors duration-200"
+                onClick={() => setSearchOpen(true)}
+                className="hidden lg:flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-slate-900 px-3 py-2 rounded-md border border-slate-800"
+              >
+                <Search size={18} />
+                <span className="text-xs font-medium">Search</span>
+                <kbd className="text-[10px] opacity-50 bg-slate-800 px-1 rounded border border-slate-700">
+                  ⌘K
+                </kbd>
+              </button>
+
+              <button
+                className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 px-6 rounded-md transition-colors duration-200"
                 onClick={() => (window.location.href = "/newsletter")}
               >
                 Newsletters
+              </button>
+
+              {/* Mobile Search Icon */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="lg:hidden text-white p-2 hover:text-red-600 transition-colors"
+                aria-label="Search"
+              >
+                <Search size={22} />
               </button>
 
               <button
@@ -129,22 +113,22 @@ export default function Navbar() {
         </div>
       </nav>
 
+      {/* The Actual Search Modal */}
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
       {/* Sidebar + backdrop for mobile */}
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
               className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
               onClick={() => setOpen(false)}
             />
 
-            {/* Sidebar */}
             <motion.aside
               key="sidebar"
               initial={{ x: "100%" }}
@@ -152,103 +136,62 @@ export default function Navbar() {
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-slate-950 shadow-2xl p-6 flex flex-col lg:hidden"
-              aria-modal="true"
-              role="dialog"
             >
-              {/* Header (Logo + Close Button) */}
               <div className="flex items-center justify-between mb-8">
                 <Image
                   src="/brand/horizontal-logo.svg"
                   width={140}
                   height={32}
                   alt="KindJoe"
-                  className="select-none"
                 />
                 <button
-                  ref={firstFocusableRef}
                   onClick={() => setOpen(false)}
-                  aria-label="Close sidebar"
-                  className="p-2 text-white hover:text-red-600 transition-colors duration-200"
+                  className="p-2 text-white hover:text-red-600 transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              {/* Top Bar Links (for mobile sidebar) */}
-              <div className="flex flex-col gap-4 text-sm text-gray-400 mb-8 border-b border-slate-800 pb-6">
-                {/* <span className="hover:text-red-600 transition-colors duration-200">
-                  +1(888)-555-5555
-                </span> */}
-                <Link
-                  href="/contact"
-                  onClick={() => setOpen(false)}
-                  className="hover:text-red-600 transition-colors duration-200"
-                >
-                  Contact Us
-                </Link>
-                <Link
-                  href="/about"
-                  onClick={() => setOpen(false)}
-                  className="mr-4 hover:text-red-600 transition-colors duration-200"
-                >
-                  About Us
-                </Link>
-                {/* <Link
-              href="/sign-in"
-              onClick={() => setOpen(false)}
-              className="hover:text-red-600 transition-colors duration-200"
-            >
-              Sign In
-            </Link> */}
-                {/* <select
-                  className="bg-slate-900 text-gray-400 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-600"
-                >
-                  <option>English</option>
-                  <option>Spanish</option>
-                </select>
-                <button aria-label="Search" className="flex items-center gap-2 hover:text-red-600">
-                  <Search size={18} /> Search
-                </button> */}
-              </div>
+              {/* Search inside Sidebar (Mobile) */}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setSearchOpen(true);
+                }}
+                className="flex items-center gap-3 w-full bg-slate-900 text-slate-400 p-3 rounded-lg border border-slate-800 mb-6"
+              >
+                <Search size={20} />
+                <span>Search Articles...</span>
+              </button>
 
-              {/* Navigation Links */}
               <nav className="flex-1 space-y-4 text-white">
+                {/* ... existing links ... */}
                 {[
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Newsletters", href: "/newsletter" }, // Add other links here if needed for mobile
+                  { name: "Newsletters", href: "/newsletter" },
                 ].map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className={`
-                block text-lg font-semibold py-2 border-b border-slate-800
-                hover:text-red-600 transition-colors duration-200
-                ${pathname === item.href ? "text-red-600" : ""}
-              `}
+                    className={`block text-lg font-semibold py-2 border-b border-slate-800 hover:text-red-600 transition-colors ${pathname === item.href ? "text-red-600" : ""}`}
                   >
                     {item.name}
                   </Link>
                 ))}
               </nav>
 
-              {/* Subscribe Button (for mobile sidebar) */}
               <button
-                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md mt-8 transition-colors duration-200"
+                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md mt-8"
                 onClick={() => {
                   window.location.href = "/newsletter";
-                  setOpen(false); // Close sidebar after clicking
+                  setOpen(false);
                 }}
               >
                 Newsletter
               </button>
-
-              {/* Footer */}
-              <footer className="text-center text-xs text-slate-500 mt-6">
-                © {new Date().getFullYear()} KindJoe
-              </footer>
             </motion.aside>
           </>
         )}

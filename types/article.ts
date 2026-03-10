@@ -13,6 +13,7 @@ export type Article = {
 
 
 export type ArticleSummary = {
+  tags: any;
   category: string;
   id: string;
   slug: string;

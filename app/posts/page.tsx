@@ -22,14 +22,14 @@ export default async function LikeShop() {
   const allPosts = await getPosts();
 
   return (
-    <main className="max-w-4xl mx-auto p-4">
+    <main className="max-w-4xl mx-auto">
       <header className="py-10 text-center border-b mb-10">
         <h1 className="font-serif text-4xl italic font-bold tracking-tight">
           THE KIND JOE
         </h1>
       </header>
 
-      <div className="grid grid-cols-3 gap-1 md:gap-4">
+      <div className="grid grid-cols-2">
         {allPosts.map((post: any) => {
           // THE 4:5 THING: This AI-crops the image to 4:5 automatically
           const optimizedImage = post.imageUrl.replace(

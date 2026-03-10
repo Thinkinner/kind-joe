@@ -1,131 +1,133 @@
+// app/ventura-county/page.tsx
 "use client";
-import React, { useEffect, useState } from "react";
-import { NewsCard } from "@/components/ventura-county/news-card"; // Assuming this is your updated card
+
+import React, { useEffect, useState, useTransition } from "react";
+import { VenturaArticleCard } from "@/components/cards/ventura-article-card";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
-import { ArticleCard } from "@/types/article";
+import { getVenturaArticlesAction } from "@/lib/actions/articles";
+import { ArticleSummary } from "@/types/article";
+import { Loader2, ChevronDown } from "lucide-react";
 
-const App: React.FC = () => {
-  const [mainArticles, setMainArticles] = useState<ArticleCard[]>([]);
-  const [loading, setLoading] = useState(true);
+const BATCH_SIZE = 9;
 
-  // Shape of the API response row
-  type TopStoryRow = {
-    id: string;
-    slug: string;
-    title: string;
-    excerpt: string | null;
-    coverImageUrl: string | null;
-    publishedAt: string | null;
-    publishAt: string | null;
-    createdAt: string;
-    readingMinutes: number | null;
-    authorName: string | null;
-    authorAvatarUrl: string | null;
-    category: string;
-  };
+export default function VenturaCountyPage() {
+  const [articles, setArticles] = useState<ArticleSummary[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [isPending, startTransition] = useTransition();
+  const [hasMore, setHasMore] = useState(true);
 
-  // ------------------------
-  // 👉 Fetch Ventura County Articles From API
-  // ------------------------
+  // Initial Load
   useEffect(() => {
-    const fetchVenturaStories = async () => {
-      try {
-        const res = await fetch("/api/articles/ventura-county", {
-          method: "GET",
-          // If you want ISR / caching behavior, you can tweak this:
-          // next: { revalidate: 60 },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to fetch Ventura County stories");
-          setLoading(false);
-          return;
-        }
-
-        const data: TopStoryRow[] = await res.json();
-
-        // Map API rows → ArticleCard[]
-        const allArticles: ArticleCard[] = data.map((row) => {
-          // choose a date: publishedAt > publishAt > createdAt
-          const date = row.publishedAt ?? row.publishAt ?? row.createdAt;
-
-          return {
-            id: row.id,
-            headline: row.title,
-            date,
-            category: row.category,
-            imageUrl: row.coverImageUrl ?? "/ventura-placeholder.jpg",
-            summary: row.excerpt ?? "",
-            // adjust this URL to match your article route (e.g. /articles/[slug] or /stories/[slug])
-            url: `/ventura/${row.slug}`,
-          };
-        });
-
-        // Decide how to split into main + sidebar
-        const main = allArticles.slice(0, 10);
-        const sidebar = allArticles.slice(4);
-
-        setMainArticles(main);
-      } catch (error) {
-        console.error("Error fetching Ventura County stories:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVenturaStories();
+    async function init() {
+      const data = await getVenturaArticlesAction(BATCH_SIZE, 0);
+      setArticles(data);
+      if (data.length < BATCH_SIZE) setHasMore(false);
+      setLoadingInitial(false);
+    }
+    init();
   }, []);
 
-  // ------------------------
-  // Loading Screen
-  // ------------------------
-  if (loading) {
+  // Load More Logic
+  const handleLoadMore = () => {
+    startTransition(async () => {
+      const newData = await getVenturaArticlesAction(
+        BATCH_SIZE,
+        articles.length,
+      );
+      if (newData.length < BATCH_SIZE) setHasMore(false);
+      setArticles((prev) => [...prev, ...newData]);
+    });
+  };
+
+  if (loadingInitial) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-news-red border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-news-blue font-poppins font-medium animate-pulse">
-            Loading Ventura County Stories...
-          </div>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-orange-600 mb-4" size={40} />
+        <p className="text-orange-900 font-bold tracking-tight animate-pulse uppercase text-xs">
+          Loading Ventura County News...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
-      <main className="p-4 md:p-6 lg:p-8">
-        {/* <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <div className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
-            Live Stocks Chart
+    <div className="min-h-screen bg-gray-50/50">
+      <main className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 border-b border-orange-100 pb-6 gap-4">
+          <div>
+            <h1 className="text-3xl md:text-5xl font-black text-neutral-900 font-[Poppins] tracking-tight">
+              Ventura <span className="text-orange-600">County</span>
+            </h1>
+            <p className="text-neutral-500 font-medium mt-2">
+              Local news, events, and featured stories.
+            </p>
           </div>
-          <div className="text-blue-700 text-xs md:text-base font-bold font-[Poppins]">
-            AS OF TODAY
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-600"></span>
+            </span>
+            Live Updates
           </div>
         </div>
-        <RssStocksTicker stocks={stocks} /> */}
-        <hr />
-        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mt-6 mb-6 " >Latest Ventura Articles</h1>
-        <div className="flex flex-col lg:flex-row justify-start items-start gap-8">
-          {/* Main Articles Section */}
-          <div className="flex-1 w-full lg:w-[65%] xl:w-[75%] flex flex-col gap-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
-              {mainArticles.map((article) => (
-                <NewsCard key={article.id} article={article} />
+
+        {/* Main Content Layout */}
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          {/* Left: Article Feed */}
+          <div className="flex-1 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10">
+              {articles.map((article) => (
+                <VenturaArticleCard key={article.id} article={article} />
               ))}
             </div>
+
+            {/* Smart Pagination Button */}
+            {hasMore && (
+              <div className="mt-16 flex justify-center">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isPending}
+                  className="flex items-center gap-3 px-10 py-4 bg-white border-2 border-orange-600 text-orange-600 font-black uppercase tracking-widest text-xs rounded-full hover:bg-orange-600 hover:text-white transition-all shadow-lg shadow-orange-200 disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <ChevronDown size={18} />
+                  )}
+                  {isPending ? "Fetching..." : "Load More Stories"}
+                </button>
+              </div>
+            )}
+
+            {!hasMore && (
+              <div className="mt-16 text-center">
+                <p className="text-neutral-400 text-sm font-medium italic">
+                  You're all caught up with Ventura County.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Sidebar Section */}
-          <div className="w-full lg:w-[35%] xl:w-[25%] lg:max-w-[420px] self-start">
-            <div className="flex flex-col gap-8 lg:sticky lg:top-24">
+          {/* Right: Sticky Sidebar */}
+          <aside className="w-full lg:w-[350px] xl:w-[400px] shrink-0 lg:sticky lg:top-24 self-start">
+            <div className="flex flex-col gap-8">
               <SocialWidget />
+
+              {/* Optional: Add a Ventura specific promo here */}
+              <div className="bg-slate-950 p-6 rounded-2xl text-white">
+                <h4 className="font-bold text-lg mb-2">Advertise with Us</h4>
+                <p className="text-sm text-slate-400 mb-4">
+                  Reach thousands of locals in Ventura County every day.
+                </p>
+                <button className="w-full py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-xs font-bold transition-colors">
+                  Get in Touch
+                </button>
+              </div>
             </div>
-          </div>
+          </aside>
         </div>
       </main>
     </div>
   );
-};
-
-export default App;
+}
