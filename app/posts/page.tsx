@@ -29,7 +29,7 @@ export default async function LikeShop() {
         </h1>
       </header>
 
-      <div className="grid grid-cols-2">
+      <div className="grid grid-cols-3">
         {allPosts.map((post: any) => {
           // THE 4:5 THING: This AI-crops the image to 4:5 automatically
           const optimizedImage = post.imageUrl.replace(
