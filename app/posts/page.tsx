@@ -24,9 +24,16 @@ export default async function LikeShop() {
   return (
     <main className="max-w-4xl mx-auto">
       <header className="py-10 text-center border-b mb-10">
-        <h1 className="font-serif text-4xl italic font-bold tracking-tight">
-          THE KIND JOE
-        </h1>
+        <div className="flex items-center gap-2 justify-center">
+          <Image
+            src="/brand/kindjoe-profile.jpg"
+            width={40}
+            height={40}
+            alt="thekindjoe profile"
+            className="rounded-full"
+          />
+          <span>thekindjoe</span>
+        </div>
       </header>
 
       <div className="grid grid-cols-3">
