@@ -13,8 +13,9 @@ export function VenturaArticleCard({ article }: { article: any }) {
     >
       {/* IMAGE */}
       {/* 
-          aspect-[3/4] on mobile (33% width)
-          md:aspect-[16/9] on desktop (100% width)
+          - aspect-[3/4] (Portrait) on mobile
+          - md:aspect-[16/9] (Landscape) on desktop
+          - w-1/3 on mobile to keep it horizontal
       */}
       <div className="relative aspect-[4/3] w-1/3 md:aspect-[16/9] md:w-full flex-shrink-0 overflow-hidden rounded-md">
         <img

@@ -1,4 +1,3 @@
-// components/stories/stories/article-card.tsx
 "use client";
 
 import Link from "next/link";
@@ -19,12 +18,12 @@ export function ArticleCard({ article }: { article: any }) {
       href={path}
       className="group flex flex-row items-start gap-4 w-full rounded-md md:flex-col md:gap-0"
     >
-      {/* IMAGE CONTAINER */}
       {/* 
-          aspect-[3/4] on mobile
-          md:aspect-[16/9] on desktop 
+          IMAGE CONTAINER 
+          - Mobile: aspect-[3/4] (Portrait) and fixed width (w-1/3 or w-[120px])
+          - Desktop: aspect-[16/9] (Landscape) and full width
       */}
-      <div className="relative aspect-[4:3] w-1/3 md:aspect-[16/9] md:w-full flex-shrink-0 overflow-hidden rounded-md">
+      <div className="relative aspect-[4/3] w-1/3 min-w-[100px] md:aspect-[16/9] md:w-full flex-shrink-0 overflow-hidden rounded-md">
         <img
           src={article.coverImageUrl ?? "/placeholder.jpg"}
           alt={article.title}
@@ -47,6 +46,8 @@ export function ArticleCard({ article }: { article: any }) {
         >
           {article.title}
         </h3>
+
+        {/* Optional: Add excerpt or date if desired for the horizontal mobile layout */}
       </div>
     </Link>
   );
