@@ -39,13 +39,6 @@ export function RecommendedCard({ article }: { article: ArticleSummary }) {
         >
           {article.title}
         </h4>
-
-        <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-medium">
-          <span>{article.authorName}</span>
-          {article.readingMinutes && (
-            <span>• {article.readingMinutes} min</span>
-          )}
-        </div>
       </div>
     </Link>
   );
