@@ -86,7 +86,7 @@ export default async function ArticleBySlug(props: {
   // 3. Parallel fetch remaining data if we are staying on this page
   const [cats, recommended] = await Promise.all([
     getArticleCategories(a.id),
-    getRecommendedArticles(a.id, a.category, 5), 
+    getRecommendedArticles(a.id, a.category, 5),
   ]);
 
   const content =
@@ -118,13 +118,11 @@ export default async function ArticleBySlug(props: {
                 <div className="flex items-center gap-3">
                   <div className="relative h-12 w-12 flex-shrink-0">
                     <img
-                      src={
-                        authorAvatar ||
-                        "https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/691cf02c6a5d3b0cfda50cf9.png"
-                      }
-                      alt={authorName || "Publisher"}
+                      src="/brand/kindjoe-profile.jpg"
+                      alt="KindJoe"
                       className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
                     />
+                    {/* Verification Badge */}
                     <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
                       <svg
                         viewBox="0 0 20 20"
@@ -141,8 +139,9 @@ export default async function ArticleBySlug(props: {
                   </div>
 
                   <div className="flex flex-col">
+                    {/* Hardcoded Name */}
                     <span className="text-sm font-bold text-neutral-900 leading-none">
-                      {authorName || "The Kind Joe Staff"}
+                      KindJoe
                     </span>
                     <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                       <span>Official Publisher</span>
