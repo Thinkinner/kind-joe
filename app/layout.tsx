@@ -119,12 +119,7 @@ export default async function RootLayout({
         <GoogleAnalytics />
         <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
         <Toaster position="top-center" richColors closeButton />
-        <CookieConsent
-          initiallyConsented={consent}
-          policyHref="/privacy-policy"
-          termsHref="/terms-of-service"
-          delayMs={10_000}
-        />
+      <CookieConsent />
         <Analytics />
         <Script
           id="ld-website"

@@ -56,7 +56,6 @@ export default async function NewsPage() {
     <>
       <Navbar />
       <div>
-        <KindJoeModal />
         <div>
           <FeaturedStoriesCarouselHero />
           <div className="flex flex-col gap-3 px-5 py-5">

@@ -10,7 +10,6 @@ export default function DashboardLayout({
   return (
     <>
       <Navbar />
-      <KindJoeModal />
       <main>{children}</main>
       <Footer />
     </>

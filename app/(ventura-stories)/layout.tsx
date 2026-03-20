@@ -10,7 +10,6 @@ export default function DashboardLayout({
   return (
     <>
       <Navbar />
-      <Ventura_Email_Capture_Modal />
       <main>{children}</main>
       <Footer />
     </>
