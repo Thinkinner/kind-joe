@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Minus, Plus } from "lucide-react";
+import Image from "next/image";
 
 interface TopBarProps {
   tension: number;
@@ -44,10 +45,13 @@ export default function TopBar({
       <div className="flex items-center gap-2 md:gap-6">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <span className="text-xl">💙❤️</span>
-          <span className="hidden sm:inline font-mono font-bold text-white tracking-wider">
-            THE KIND JOE
-          </span>
+          <Image
+            src="/brand/horizontal-logo.svg"
+            width={120}
+            height={28}
+            alt="KindJoe Horizontal Logo"
+            className="cursor-pointer md:w-[165px] md:h-[38px]"
+          />
         </div>
 
         <div className="hidden sm:block h-6 w-px bg-gray-800" />

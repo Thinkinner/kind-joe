@@ -190,11 +190,6 @@ export default function GlobeComponent({
         </div>
       )}
 
-      {/* Watermark */}
-      <div className="absolute bottom-4 right-4 text-[#00BFFF]/30 font-mono text-xs pointer-events-none select-none flex items-center gap-1">
-        <span>💙❤️</span>
-        <span>KIND JOE TERMINAL</span>
-      </div>
     </div>
   );
 }

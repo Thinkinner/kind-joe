@@ -22,19 +22,34 @@ const TWITTER_HANDLES = [
   "unusual_whales",
   "disclosetv",
 ];
+
+// Removed the broken jpost.com feed
 const FEEDS = [
   "https://feeds.bbci.co.uk/news/world/rss.xml",
   "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
   "https://www.aljazeera.com/xml/rss/all.xml",
+  "https://www.theguardian.com/world/rss",
+  "https://rss.dw.com/rdf/rss-en-all",
+  "https://www.france24.com/en/rss",
   "https://search.cnbc.com/rs/search/all/view.rss?partnerId=445",
+  "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+  "https://www.ft.com/?format=rss",
   "https://finance.yahoo.com/news/rssindex",
+  "https://www.investing.com/rss/news.rss",
   "https://kyivindependent.com/feed/",
-  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
+  "https://nypost.com/feed/",
+  "https://nypost.com/us-news/feed/",
+  "https://nypost.com/world-news/feed/",
 ];
 
 export async function syncRealTimeNews() {
   const now = new Date();
-  const ONE_HOUR_AGO = now.getTime() - 60 * 60 * 1000;
+
+  // CHANGED: Only accept news from the last 5 minutes (5 * 60 * 1000 milliseconds)
+  const FIVE_MINUTES_AGO = now.getTime() - 5 * 60 * 1000;
+
+  let aiCallsMade = 0;
+  const MAX_AI_CALLS = 2;
 
   try {
     const allProcessed = [];
@@ -42,10 +57,13 @@ export async function syncRealTimeNews() {
     const rapidApiHost = process.env.RAPIDAPI_HOST;
 
     // --- PART 1: X (TWITTER) SCAN ---
+    console.log("🐦 X: Scanning high-frequency handles...");
     for (const handle of TWITTER_HANDLES) {
+      if (aiCallsMade >= MAX_AI_CALLS) break;
+
       try {
         const response = await fetch(
-          `https://${rapidApiHost}/user-tweets?user=${handle}&count=8`,
+          `https://${rapidApiHost}/user-tweets?user=${handle}&count=5`,
           {
             headers: {
               "x-rapidapi-key": rapidApiKey!,
@@ -58,12 +76,18 @@ export async function syncRealTimeNews() {
           data?.result?.timeline?.instructions?.[0]?.entries || [];
 
         for (const entry of entries) {
+          if (aiCallsMade >= MAX_AI_CALLS) break;
+
           const tweet =
             entry?.content?.itemContent?.tweet_results?.result?.legacy;
           if (!tweet?.full_text || tweet.full_text.startsWith("RT @")) continue;
 
+          // 1. STRICT 5-MINUTE FRESHNESS CHECK
           const tweetDate = new Date(tweet.created_at);
-          if (tweetDate.getTime() < ONE_HOUR_AGO) continue;
+          if (tweetDate.getTime() < FIVE_MINUTES_AGO) {
+            // It is older than 5 minutes. Skip it.
+            continue;
+          }
 
           const id = `x-${entry.entryId}`;
           const existing = await db
@@ -72,11 +96,13 @@ export async function syncRealTimeNews() {
             .where(eq(signals.id, id));
           if (existing.length > 0) continue;
 
+          console.log(`🤖 AI Processing Tweet: ${handle}`);
+          aiCallsMade++;
+
           const aiData = await analyzeSignalWithAI(tweet.full_text, "");
           if (!aiData) continue;
 
-          // FUTURE-PROOF: If tweet claims to be from future, cap at 'now'
-          const finalDate = tweetDate > now ? now : tweetDate;
+          const validatedDate = tweetDate > now ? now : tweetDate;
 
           const newSignal = {
             id,
@@ -90,7 +116,7 @@ export async function syncRealTimeNews() {
             country: aiData.country,
             impactScore: aiData.impactScore,
             tags: aiData.tags,
-            timestamp: finalDate,
+            timestamp: validatedDate,
           };
 
           const inserted = await db
@@ -109,17 +135,30 @@ export async function syncRealTimeNews() {
     }
 
     // --- PART 2: RSS SCAN ---
+    console.log("📰 RSS: Scanning randomized global feeds...");
     const selectedFeeds = [...FEEDS]
       .sort(() => 0.5 - Math.random())
-      .slice(0, 5);
+      .slice(0, 4);
+
     for (const url of selectedFeeds) {
+      if (aiCallsMade >= MAX_AI_CALLS) break;
+
       try {
         const feed = await parser.parseURL(`${url}?t=${Date.now()}`);
+
         for (const item of feed.items.slice(0, 3)) {
+          if (aiCallsMade >= MAX_AI_CALLS) break;
+
           const id = item.guid || item.link!;
           const pubDate = item.pubDate ? new Date(item.pubDate) : now;
 
-          if (pubDate.getTime() < ONE_HOUR_AGO) continue;
+          // 1. STRICT 5-MINUTE FRESHNESS CHECK
+          if (pubDate.getTime() < FIVE_MINUTES_AGO) {
+            console.log(
+              `⏩ Skipping old news (>5m): ${item.title?.slice(0, 30)}...`,
+            );
+            continue;
+          }
 
           const existing = await db
             .select()
@@ -127,14 +166,16 @@ export async function syncRealTimeNews() {
             .where(eq(signals.id, id));
           if (existing.length > 0) continue;
 
+          console.log(`🤖 AI Processing RSS: ${item.title?.slice(0, 30)}...`);
+          aiCallsMade++;
+
           const aiData = await analyzeSignalWithAI(
             item.title || "",
             item.contentSnippet || "",
           );
           if (!aiData) continue;
 
-          // FUTURE-PROOF: If RSS claims to be from future, cap at 'now'
-          const finalDate = pubDate > now ? now : pubDate;
+          const validatedDate = pubDate > now ? now : pubDate;
 
           const newSignal = {
             id,
@@ -148,7 +189,7 @@ export async function syncRealTimeNews() {
             country: aiData.country,
             impactScore: aiData.impactScore,
             tags: aiData.tags,
-            timestamp: finalDate,
+            timestamp: validatedDate,
           };
 
           const inserted = await db
@@ -165,6 +206,7 @@ export async function syncRealTimeNews() {
         console.error(`RSS Error:`, err);
       }
     }
+
     return allProcessed;
   } catch (error) {
     return [];
@@ -172,33 +214,13 @@ export async function syncRealTimeNews() {
 }
 
 export async function getSignalsFromDB() {
-  try {
-    // 1. Calculate a safe "Yesterday" date
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // 2. Perform the query
-    const results = await db
-      .select()
-      .from(signals)
-      .where(gt(signals.timestamp, twentyFourHoursAgo))
-      .orderBy(desc(signals.timestamp))
-      .limit(50);
-
-    return results;
-  } catch (error) {
-    console.error(
-      "⚠️ Database Query Failed. Falling back to simple fetch.",
-      error,
-    );
-
-    // FALLBACK: If the 'where' filter is causing the timeout, just get the last 20
-    return await db
-      .select()
-      .from(signals)
-      .orderBy(desc(signals.timestamp))
-      .limit(20);
-  }
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return await db
+    .select()
+    .from(signals)
+    .where(gt(signals.timestamp, yesterday))
+    .orderBy(desc(signals.timestamp))
+    .limit(50);
 }
 
 async function broadcastSignal(signal: any) {

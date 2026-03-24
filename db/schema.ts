@@ -59,7 +59,7 @@ export const articles = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }), // actual publish time
     publishAt: timestamp("publish_at", { withTimezone: true }), // scheduled publish time
     publishedBy: varchar("published_by", { length: 128 }).references(
-      () => users.id
+      () => users.id,
     ), // optional
     deletedAt: timestamp("deleted_at", { withTimezone: true }), // soft delete
 
@@ -75,7 +75,7 @@ export const articles = pgTable(
     publishedIdx: index("articles_published_idx").on(t.publishedAt),
     // 🧠 new combined index for dashboard/public lists
     listIdx: index("articles_list_idx").on(t.isDraft, t.publishedAt),
-  })
+  }),
 );
 
 export const categories = pgTable("categories", {
@@ -103,7 +103,7 @@ export const articleCategories = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.articleId, t.categoryId] }),
-  })
+  }),
 );
 
 export const articleTags = pgTable(
@@ -118,9 +118,8 @@ export const articleTags = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.articleId, t.tagId] }),
-  })
+  }),
 );
-
 
 export const rssSources = pgTable("rss_sources", {
   id: serial("id").primaryKey(),
@@ -153,9 +152,9 @@ export const rssItems = pgTable(
     uniquePerSource: uniqueIndex("rss_item_guid_or_link").on(
       t.sourceId,
       t.guid,
-      t.link
+      t.link,
     ),
-  })
+  }),
 );
 
 // --- Optional: AI job log
@@ -184,7 +183,7 @@ export const newsRssSource = pgTable(
   (t) => ({
     // unique index name scoped to this table name to avoid collisions
     urlUnique: uniqueIndex("news_rss_sources_url_unique").on(t.url),
-  })
+  }),
 );
 
 // Articles
@@ -216,22 +215,23 @@ export const newsRssArticles = pgTable(
     // OR if the same link can appear in multiple sources, comment the above
     // and use a composite unique per source:
     // perSourceLinkUnique: uniqueIndex("news_rss_articles_source_link_unique").on(t.sourceId, t.link),
-  })
+  }),
 );
 
-
-
-export const signals = pgTable('signals', {
-  id: text('id').primaryKey(),
-  headline: text('headline').notNull(),
-  summary: text('summary'),
-  source: text('source').notNull(), // 'X', 'Telegram', etc.
-  category: text('category').notNull(),
-  lat: doublePrecision('lat').notNull(),
-  lng: doublePrecision('lng').notNull(),
-  city: text('city'),
-  country: text('country'),
-  impactScore: integer('impact_score').default(0),
-  timestamp: timestamp('timestamp').defaultNow(),
-  tags: jsonb('tags').$type<string[]>().default([]),
+export const signals = pgTable("signals", {
+  id: text("id").primaryKey(),
+  headline: text("headline").notNull(),
+  summary: text("summary"),
+  source: text("source").notNull(), // 'X', 'Telegram', etc.
+  category: text("category").notNull(),
+  lat: doublePrecision("lat").notNull(),
+  lng: doublePrecision("lng").notNull(),
+  city: text("city"),
+  country: text("country"),
+  impactScore: integer("impact_score").default(0),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  timestamp: timestamp("timestamp", {
+    withTimezone: true,
+    mode: "date",
+  }).defaultNow(),
 });

@@ -5,17 +5,17 @@ import { Signal } from "@/lib/aggregator/types";
 
 /**
  * 1. GET HISTORY (Fast)
- * Loads existing data from Drizzle instantly.
+ * Just reads the last 50 signals already in Drizzle.
  */
 export async function getHistory(): Promise<Signal[]> {
   const rawData = await getSignalsFromDB();
-  const now = Date.now();
+  const now = Date.now(); // Server's current UTC time in milliseconds
 
   return rawData.map((s) => {
-    // Determine the safe timestamp (cannot be in the future)
+    // 1. Convert DB Date object to Unix Number
     let timeValue = s.timestamp ? s.timestamp.getTime() : now;
 
-    // Safety check: if DB time is in future relative to server, cap it.
+    // 2. FUTURE-PROOF: If the database time is somehow ahead of the server, cap it at 'now'
     if (timeValue > now) {
       timeValue = now;
     }
@@ -31,7 +31,7 @@ export async function getHistory(): Promise<Signal[]> {
       city: s.city ?? "Unknown",
       country: s.country ?? "Unknown",
       impactScore: s.impactScore ?? 0,
-      timestamp: timeValue,
+      timestamp: timeValue, // Sending purely universal number to frontend
       tags: (s.tags as string[]) ?? [],
     };
   });
@@ -39,7 +39,7 @@ export async function getHistory(): Promise<Signal[]> {
 
 /**
  * 2. RUN SYNC (Slow)
- * Background process to fetch new X and RSS data.
+ * Triggers the background process.
  */
 export async function triggerSync() {
   try {
