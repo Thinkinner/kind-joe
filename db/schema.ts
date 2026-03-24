@@ -12,6 +12,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 export const blockType = pgEnum("block_type", [
@@ -217,3 +218,20 @@ export const newsRssArticles = pgTable(
     // perSourceLinkUnique: uniqueIndex("news_rss_articles_source_link_unique").on(t.sourceId, t.link),
   })
 );
+
+
+
+export const signals = pgTable('signals', {
+  id: text('id').primaryKey(),
+  headline: text('headline').notNull(),
+  summary: text('summary'),
+  source: text('source').notNull(), // 'X', 'Telegram', etc.
+  category: text('category').notNull(),
+  lat: doublePrecision('lat').notNull(),
+  lng: doublePrecision('lng').notNull(),
+  city: text('city'),
+  country: text('country'),
+  impactScore: integer('impact_score').default(0),
+  timestamp: timestamp('timestamp').defaultNow(),
+  tags: jsonb('tags').$type<string[]>().default([]),
+});
