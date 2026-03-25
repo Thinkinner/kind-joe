@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/kindjoe-signals/feed";
@@ -178,14 +178,24 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const filteredSignals = signals.filter((s) => {
-    const categoryMatch =
-      selectedCategory === "All" || s.category === selectedCategory;
-    const countryMatch =
-      selectedCountry === "All" || s.country === selectedCountry;
-    const tagMatch = selectedTag === "All" || s.tags.includes(selectedTag);
-    return categoryMatch && countryMatch && tagMatch;
-  });
+  const filteredSignals = useMemo(() => {
+    return signals.filter((s) => {
+      // 1. Remove any strict "5-minute" hide logic here.
+      // We want the aggregator to handle freshness, but the UI to show the history.
+
+      const categoryMatch =
+        selectedCategory === "All" || s.category === selectedCategory;
+      const countryMatch =
+        selectedCountry === "All" || s.country === selectedCountry;
+
+      // Tag filter
+      const tagMatch =
+        selectedTag === "All" ||
+        (s.tags && s.tags.includes(selectedTag.toLowerCase()));
+
+      return categoryMatch && countryMatch && tagMatch;
+    });
+  }, [signals, selectedCategory, selectedCountry, selectedTag]);
 
   const handleSignalClick = useCallback((signal: Signal) => {
     setSelectedSignal(signal);
