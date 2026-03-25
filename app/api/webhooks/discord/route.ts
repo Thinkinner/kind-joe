@@ -13,38 +13,59 @@ const pusher = new Pusher({
 });
 
 export async function POST(req: Request) {
+  console.log("-----------------------------------------");
+  console.log("📡 [DISCORD WEBHOOK] Request Received");
+
   try {
-    // 1. Security Check: Ensure the request has your secret password
+    // 1. Check Authorization Header
     const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${process.env.DISCORD_WEBHOOK_SECRET}`) {
+    const expectedSecret = process.env.DISCORD_WEBHOOK_SECRET;
+
+    console.log(`🔑 Auth Check: Received [${authHeader?.slice(0, 15)}...]`);
+
+    if (authHeader !== `Bearer ${expectedSecret}`) {
+      console.error(
+        "❌ [DISCORD WEBHOOK] Blocked: Unauthorized Secret Mismatch.",
+      );
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = await req.json();
+    console.log("📦 Raw Payload:", JSON.stringify(payload).slice(0, 200));
 
-    // Discord bots usually put the tweet text in 'content' or inside an 'embed'
+    // 2. Extract Text (Handle both raw content and Bot Embeds)
     let text = payload.content || "";
+
+    // If the Discord Bot uses embeds (common for Tweet-forwarders)
     if (payload.embeds && payload.embeds.length > 0) {
-      text += " " + (payload.embeds[0].description || "");
+      const embedText =
+        payload.embeds[0].description || payload.embeds[0].title || "";
+      text = `${text} ${embedText}`.trim();
     }
 
-    if (!text || text.length < 10) {
-      return NextResponse.json({ status: "Ignored (Too short)" });
+    if (!text || text.length < 5) {
+      console.log("⚠️ [DISCORD WEBHOOK] Ignored: Text is empty or too short.");
+      return NextResponse.json({ status: "Ignored" });
     }
 
-    console.log(`📱 INSTANT DISCORD/X INTEL: ${text.slice(0, 50)}...`);
+    console.log(`📱 Processing Intel: "${text.slice(0, 50)}..."`);
 
-    // 2. Process with Gemini AI
+    // 3. AI Analysis
+    console.log("🧠 Sending to Gemini AI...");
     const aiData = await analyzeSignalWithAI(text, "Source: X via Discord");
-    if (!aiData) return NextResponse.json({ status: "AI rejected" });
 
-    // 3. Format the Signal
+    if (!aiData) {
+      console.error("❌ [DISCORD WEBHOOK] Gemini failed to return data.");
+      return NextResponse.json({ status: "AI rejected" });
+    }
+
+    // 4. Format Signal
     const now = new Date();
     const newSignal = {
-      id: `discord-${Date.now()}`, // Generate a unique ID
+      id: `discord-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       headline: aiData.intelHeadline,
       summary: aiData.intelSummary,
-      source: "X" as const, // We label it X so the UI shows the Twitter Bird icon!
+      source: "X" as const, // Force X icon for Discord-forwarded tweets
       category: aiData.category,
       lat: aiData.lat,
       lng: aiData.lng,
@@ -55,24 +76,26 @@ export async function POST(req: Request) {
       timestamp: now,
     };
 
-    // 4. Save to DB
+    // 5. Save and Broadcast
     const inserted = await db
       .insert(signals)
       .values(newSignal)
       .onConflictDoNothing()
       .returning();
 
-    // 5. Broadcast INSTANTLY to Globe
     if (inserted.length > 0) {
+      console.log("✅ [DISCORD WEBHOOK] Signal Saved. Broadcasting...");
       await pusher.trigger("aether-live", "new-signal", {
         ...newSignal,
         timestamp: newSignal.timestamp.getTime(),
       });
+      return NextResponse.json({ status: "Success", signalId: newSignal.id });
     }
 
-    return NextResponse.json({ status: "Success" });
+    console.log("⏩ Duplicate detected, skipping.");
+    return NextResponse.json({ status: "Duplicate" });
   } catch (error) {
-    console.error("Discord Webhook Error:", error);
+    console.error("❌ [DISCORD WEBHOOK] Fatal Error:", error);
     return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }

@@ -3,7 +3,6 @@ import { signals } from "@/db/schema";
 import { analyzeSignalWithAI } from "./ai";
 import { desc, eq, gt } from "drizzle-orm";
 import Parser from "rss-parser";
-import { fetchOfficialXTweets } from "./twitter"; // Import the new service
 import Pusher from "pusher";
 
 const pusher = new Pusher({
@@ -16,15 +15,7 @@ const pusher = new Pusher({
 
 const parser = new Parser();
 
-const TWITTER_HANDLES = [
-  "MarioNawfal",
-  "spectatorindex",
-  "BNONews",
-  "unusual_whales",
-  "disclosetv",
-];
-
-// Removed the broken jpost.com feed
+// --- GLOBAL RSS SOURCES ---
 const FEEDS = [
   "https://feeds.bbci.co.uk/news/world/rss.xml",
   "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
@@ -41,105 +32,31 @@ const FEEDS = [
   "https://nypost.com/feed/",
   "https://nypost.com/us-news/feed/",
   "https://nypost.com/world-news/feed/",
+  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
 ];
 
+/**
+ * SYNC REAL TIME NEWS
+ * Now handles RSS feeds only.
+ * X (Twitter) and Telegram are now handled instantly via Webhooks.
+ */
 export async function syncRealTimeNews() {
   const now = new Date();
 
-  // CHANGED: Only accept news from the last 5 minutes (5 * 60 * 1000 milliseconds)
-  const FIVE_MINUTES_AGO = now.getTime() - 5 * 60 * 1000;
+  // Only accept news from the last 10 minutes to keep it ultra-fresh
+  const FRESHNESS_LIMIT = now.getTime() - 10 * 60 * 1000;
 
   let aiCallsMade = 0;
-  const MAX_AI_CALLS = 2;
+  const MAX_AI_CALLS = 2; // Limit per run to prevent Vercel timeouts
 
   try {
     const allProcessed = [];
-    const rapidApiKey = process.env.RAPIDAPI_KEY;
-    const rapidApiHost = process.env.RAPIDAPI_HOST;
 
-    // --- PART 1: X (TWITTER) SCAN ---
-    console.log("🐦 X: Scanning high-frequency handles...");
-    for (const handle of TWITTER_HANDLES) {
-      if (aiCallsMade >= MAX_AI_CALLS) break;
-
-      try {
-        const response = await fetch(
-          `https://${rapidApiHost}/user-tweets?user=${handle}&count=5`,
-          {
-            headers: {
-              "x-rapidapi-key": rapidApiKey!,
-              "x-rapidapi-host": rapidApiHost!,
-            },
-          },
-        );
-        const data = await response.json();
-        const entries =
-          data?.result?.timeline?.instructions?.[0]?.entries || [];
-
-        for (const entry of entries) {
-          if (aiCallsMade >= MAX_AI_CALLS) break;
-
-          const tweet =
-            entry?.content?.itemContent?.tweet_results?.result?.legacy;
-          if (!tweet?.full_text || tweet.full_text.startsWith("RT @")) continue;
-
-          // 1. STRICT 5-MINUTE FRESHNESS CHECK
-          const tweetDate = new Date(tweet.created_at);
-          if (tweetDate.getTime() < FIVE_MINUTES_AGO) {
-            // It is older than 5 minutes. Skip it.
-            continue;
-          }
-
-          const id = `x-${entry.entryId}`;
-          const existing = await db
-            .select()
-            .from(signals)
-            .where(eq(signals.id, id));
-          if (existing.length > 0) continue;
-
-          console.log(`🤖 AI Processing Tweet: ${handle}`);
-          aiCallsMade++;
-
-          const aiData = await analyzeSignalWithAI(tweet.full_text, "");
-          if (!aiData) continue;
-
-          const validatedDate = tweetDate > now ? now : tweetDate;
-
-          const newSignal = {
-            id,
-            headline: aiData.intelHeadline,
-            summary: aiData.intelSummary,
-            source: "X" as const,
-            category: aiData.category,
-            lat: aiData.lat,
-            lng: aiData.lng,
-            city: aiData.city,
-            country: aiData.country,
-            impactScore: aiData.impactScore,
-            tags: aiData.tags,
-            timestamp: validatedDate,
-          };
-
-          const inserted = await db
-            .insert(signals)
-            .values(newSignal)
-            .onConflictDoNothing()
-            .returning();
-          if (inserted.length > 0) {
-            await broadcastSignal(newSignal);
-            allProcessed.push(newSignal);
-          }
-        }
-      } catch (e) {
-        console.error(`X error:`, e);
-      }
-    }
-
-    // --- PART 2: RSS SCAN ---
     console.log("📰 RSS: Scanning randomized global feeds...");
+    // Shuffle and pick 5 feeds to scan per run
     const selectedFeeds = [...FEEDS]
       .sort(() => 0.5 - Math.random())
-      .slice(0, 4);
+      .slice(0, 5);
 
     for (const url of selectedFeeds) {
       if (aiCallsMade >= MAX_AI_CALLS) break;
@@ -153,14 +70,10 @@ export async function syncRealTimeNews() {
           const id = item.guid || item.link!;
           const pubDate = item.pubDate ? new Date(item.pubDate) : now;
 
-          // 1. STRICT 5-MINUTE FRESHNESS CHECK
-          if (pubDate.getTime() < FIVE_MINUTES_AGO) {
-            console.log(
-              `⏩ Skipping old news (>5m): ${item.title?.slice(0, 30)}...`,
-            );
-            continue;
-          }
+          // 1. Freshness Check (10 mins)
+          if (pubDate.getTime() < FRESHNESS_LIMIT) continue;
 
+          // 2. Duplicate Check
           const existing = await db
             .select()
             .from(signals)
@@ -170,12 +83,14 @@ export async function syncRealTimeNews() {
           console.log(`🤖 AI Processing RSS: ${item.title?.slice(0, 30)}...`);
           aiCallsMade++;
 
+          // 3. AI Enrichment
           const aiData = await analyzeSignalWithAI(
             item.title || "",
             item.contentSnippet || "",
           );
           if (!aiData) continue;
 
+          // 4. Future-proofing timestamp
           const validatedDate = pubDate > now ? now : pubDate;
 
           const newSignal = {
@@ -204,38 +119,53 @@ export async function syncRealTimeNews() {
           }
         }
       } catch (err) {
-        console.error(`RSS Error:`, err);
+        console.error(`RSS Error for ${url}:`, err);
       }
     }
 
     return allProcessed;
   } catch (error) {
+    console.error("Global Sync Error:", error);
     return [];
   }
 }
 
+/**
+ * DB FETCH
+ * Used to load the history on page refresh (Last 12 hours)
+ */
 export async function getSignalsFromDB() {
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
   return await db
     .select()
     .from(signals)
-    .where(gt(signals.timestamp, yesterday))
+    .where(gt(signals.timestamp, twelveHoursAgo))
     .orderBy(desc(signals.timestamp))
     .limit(50);
 }
 
+/**
+ * BROADCAST HELPER
+ */
 async function broadcastSignal(signal: any) {
+  // Update Globe & Feed via Pusher Channels
   await pusher.trigger("aether-live", "new-signal", {
     ...signal,
     timestamp: signal.timestamp.getTime(),
   });
+
+  // Trigger OS Notification via Pusher Beams
   await sendBeamsNotification(signal.headline, signal.city);
 }
 
+/**
+ * PUSHER BEAMS (Push Notifications)
+ */
 async function sendBeamsNotification(headline: string, city: string) {
   const instanceId = process.env.PUSHER_BEAMS_INSTANCE_ID;
   const secretKey = process.env.PUSHER_BEAMS_SECRET_KEY;
   if (!instanceId || !secretKey) return;
+
   try {
     await fetch(
       `https://${instanceId}.pushnotifications.pusher.com/publish_api/v1/instances/${instanceId}/publishes`,
@@ -258,7 +188,7 @@ async function sendBeamsNotification(headline: string, city: string) {
         }),
       },
     );
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error("Beams notification error:", err);
   }
 }
