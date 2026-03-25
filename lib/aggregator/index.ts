@@ -51,13 +51,13 @@ export async function syncRealTimeNews() {
  * 2. GET SIGNALS FROM DB (The missing export!)
  */
 export async function getSignalsFromDB() {
-  // Only history from the last 24 hours
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Relax the window to 12 hours so the map has data on reload
+  const TWELVE_HOURS_AGO = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
   return await db
     .select()
     .from(signals)
-    .where(gt(signals.timestamp, yesterday))
+    .where(gt(signals.timestamp, TWELVE_HOURS_AGO))
     .orderBy(desc(signals.timestamp))
     .limit(50);
 }
