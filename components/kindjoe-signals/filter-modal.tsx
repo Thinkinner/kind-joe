@@ -1,32 +1,35 @@
 "use client";
 
-import { Category } from "@/lib/aggregator/types";
-import { CATEGORIES, COUNTRIES, POPULAR_TAGS } from "@/lib/aggregator/mock-data";
+import { useMemo, useEffect, useState } from "react";
+import { Category, Signal } from "@/lib/aggregator/types";
 import {
   X,
   Globe,
-  AlertTriangle,
   TrendingUp,
   Cpu,
   Flame,
-  Users,
   MapPin,
   Hash,
+  Target,
+  Zap,
+  BarChart3,
+  Search,
+  Terminal,
 } from "lucide-react";
-import { useEffect } from "react";
 
 const CATEGORY_ICONS: Record<Category, any> = {
   Geopolitics: Globe,
   "Conflicts & Wars": Flame,
   "Economy & Markets": TrendingUp,
   "Tech & Science": Cpu,
-  "Disasters & Emergencies": AlertTriangle,
-  "Viral / Social": Users,
+  "Disasters & Emergencies": Zap,
+  "Viral / Social": Target,
 };
 
 interface FilterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  signals: Signal[];
   selectedCategory: Category | "All";
   setSelectedCategory: (cat: Category | "All") => void;
   selectedCountry: string | "All";
@@ -38,6 +41,7 @@ interface FilterModalProps {
 export default function FilterModal({
   isOpen,
   onClose,
+  signals = [],
   selectedCategory,
   setSelectedCategory,
   selectedCountry,
@@ -45,7 +49,44 @@ export default function FilterModal({
   selectedTag,
   setSelectedTag,
 }: FilterModalProps) {
-  // Close on escape key
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // --- 📊 DYNAMIC TREND & SEARCH ANALYSIS ---
+  const trends = useMemo(() => {
+    const stats = {
+      categories: {} as Record<string, number>,
+      countries: {} as Record<string, number>,
+      tags: {} as Record<string, number>,
+    };
+
+    if (!signals || !Array.isArray(signals)) return null;
+
+    signals.forEach((s) => {
+      if (!s) return;
+      stats.categories[s.category] = (stats.categories[s.category] || 0) + 1;
+      stats.countries[s.country] = (stats.countries[s.country] || 0) + 1;
+      s.tags.forEach((tag) => {
+        stats.tags[tag] = (stats.tags[tag] || 0) + 1;
+      });
+    });
+
+    const query = searchQuery.toLowerCase();
+
+    return {
+      activeCategories: Object.keys(CATEGORY_ICONS).filter((c) =>
+        c.toLowerCase().includes(query),
+      ),
+      activeCountries: Object.entries(stats.countries)
+        .filter(([name]) => name.toLowerCase().includes(query))
+        .sort((a, b) => b[1] - a[1]),
+      trendingTags: Object.entries(stats.tags)
+        .filter(([name]) => name.toLowerCase().includes(query))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 30),
+      counts: stats,
+    };
+  }, [signals, searchQuery]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -57,191 +98,213 @@ export default function FilterModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#0A0A0F] border border-gray-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-black/50">
-          <h2 className="font-mono font-bold text-white tracking-wider flex items-center gap-2">
-            <Globe size={16} className="text-[#00BFFF]" />
-            FILTERS
-          </h2>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#050508]/95 backdrop-blur-xl">
+      <div className="bg-[#0A0A0F] border border-white/10 rounded-sm w-full max-w-5xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col max-h-[90vh]">
+        {/* HUD Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-[#00BFFF]/10 border border-[#00BFFF]/30 rounded-sm">
+              <BarChart3 size={18} className="text-[#00BFFF]" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono text-[#00BFFF] tracking-[0.3em] font-bold uppercase">
+                Dynamic Filter Engine
+              </span>
+              <h2 className="text-sm font-mono text-white font-bold tracking-tight">
+                INTEL_QUERY.v2
+              </h2>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1"
+            className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-500 hover:text-white"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 flex flex-col md:flex-row gap-8">
-          {/* Categories */}
-          <div className="flex-1">
-            <h3 className="text-xs font-mono text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Globe size={14} />
-              Categories
-            </h3>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setSelectedCategory("All")}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-200 font-mono text-sm text-left ${
-                  selectedCategory === "All"
-                    ? "bg-[#00BFFF]/10 text-[#00BFFF] border border-[#00BFFF]/30 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                    : "text-gray-400 hover:bg-gray-800/50 hover:text-white border border-transparent"
-                }`}
-              >
-                <Globe
-                  size={16}
-                  className={
-                    selectedCategory === "All"
-                      ? "text-[#00BFFF]"
-                      : "text-gray-500"
-                  }
+        {/* 🔍 TACTICAL SEARCH BAR */}
+        <div className="px-8 py-4 bg-white/[0.03] border-b border-white/5 flex items-center gap-4 group">
+          <Terminal
+            size={16}
+            className="text-[#00BFFF] opacity-50 group-focus-within:opacity-100 transition-opacity"
+          />
+          <input
+            autoFocus
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="EXECUTE_FILTER_QUERY (COUNTRY, TAG, OR SECTOR)..."
+            className="bg-transparent border-none outline-none text-white font-mono text-xs w-full tracking-[0.2em] placeholder:text-gray-700"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-gray-600 hover:text-white font-mono text-[10px] uppercase"
+            >
+              [Clear]
+            </button>
+          )}
+        </div>
+
+        {/* HUD Body */}
+        <div className="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-12">
+          {/* Column 1: Sectors */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                Sectors
+              </span>
+              <span className="text-[9px] font-mono text-[#00BFFF]/50">
+                Match: {trends?.activeCategories.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {!searchQuery && (
+                <FilterButton
+                  label="ALL_SIGNALS"
+                  isSelected={selectedCategory === "All"}
+                  onClick={() => setSelectedCategory("All")}
+                  icon={Globe}
                 />
-                <span>All Signals</span>
-              </button>
-
-              <div className="h-px bg-gray-800 my-1" />
-
-              {CATEGORIES.map((cat) => {
-                const Icon = CATEGORY_ICONS[cat];
-                const isSelected = selectedCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-200 font-mono text-sm text-left ${
-                      isSelected
-                        ? "bg-[#00BFFF]/10 text-[#00BFFF] border border-[#00BFFF]/30 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                        : "text-gray-400 hover:bg-gray-800/50 hover:text-white border border-transparent"
-                    }`}
-                  >
-                    <Icon
-                      size={16}
-                      className={
-                        isSelected ? "text-[#00BFFF]" : "text-gray-500"
-                      }
-                    />
-                    <span>{cat}</span>
-                  </button>
-                );
-              })}
+              )}
+              {trends?.activeCategories.map((cat) => (
+                <FilterButton
+                  key={cat}
+                  label={cat.toUpperCase()}
+                  count={trends.counts.categories[cat]}
+                  isSelected={selectedCategory === cat}
+                  onClick={() => setSelectedCategory(cat as any)}
+                  icon={CATEGORY_ICONS[cat as Category]}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Countries */}
-          <div className="flex-1">
-            <h3 className="text-xs font-mono text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <MapPin size={14} />
-              Countries
-            </h3>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setSelectedCountry("All")}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-200 font-mono text-sm text-left ${
-                  selectedCountry === "All"
-                    ? "bg-[#00BFFF]/10 text-[#00BFFF] border border-[#00BFFF]/30 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                    : "text-gray-400 hover:bg-gray-800/50 hover:text-white border border-transparent"
-                }`}
-              >
-                <Globe
-                  size={16}
-                  className={
-                    selectedCountry === "All"
-                      ? "text-[#00BFFF]"
-                      : "text-gray-500"
-                  }
+          {/* Column 2: Regions */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                Regions
+              </span>
+              <span className="text-[9px] font-mono text-[#00BFFF]/50">
+                Match: {trends?.activeCountries.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5 h-[400px] overflow-y-auto custom-scrollbar pr-2">
+              {!searchQuery && (
+                <FilterButton
+                  label="GLOBAL_OVERRIDE"
+                  isSelected={selectedCountry === "All"}
+                  onClick={() => setSelectedCountry("All")}
+                  icon={Globe}
                 />
-                <span>Global (All)</span>
-              </button>
-
-              <div className="h-px bg-gray-800 my-1" />
-
-              <div className="grid grid-cols-2 gap-2">
-                {COUNTRIES.map((country) => {
-                  const isSelected = selectedCountry === country;
-                  return (
-                    <button
-                      key={country}
-                      onClick={() => setSelectedCountry(country)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200 font-mono text-xs text-left ${
-                        isSelected
-                          ? "bg-[#00BFFF]/10 text-[#00BFFF] border border-[#00BFFF]/30 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                          : "text-gray-400 hover:bg-gray-800/50 hover:text-white border border-transparent"
-                      }`}
-                    >
-                      <MapPin
-                        size={12}
-                        className={
-                          isSelected ? "text-[#00BFFF]" : "text-gray-500"
-                        }
-                      />
-                      <span className="truncate">{country}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              )}
+              {trends?.activeCountries.map(([country, count]) => (
+                <FilterButton
+                  key={country}
+                  label={country.toUpperCase()}
+                  count={count}
+                  isSelected={selectedCountry === country}
+                  onClick={() => setSelectedCountry(country)}
+                  icon={MapPin}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Tags */}
-          <div className="flex-1">
-            <h3 className="text-xs font-mono text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Hash size={14} />
-              Trending Tags
-            </h3>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setSelectedTag("All")}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-200 font-mono text-sm text-left ${
-                  selectedTag === "All"
-                    ? "bg-[#00BFFF]/10 text-[#00BFFF] border border-[#00BFFF]/30 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                    : "text-gray-400 hover:bg-gray-800/50 hover:text-white border border-transparent"
-                }`}
-              >
-                <Hash
-                  size={16}
-                  className={
-                    selectedTag === "All" ? "text-[#00BFFF]" : "text-gray-500"
-                  }
-                />
-                <span>All Tags</span>
-              </button>
-
-              <div className="h-px bg-gray-800 my-1" />
-
-              <div className="flex flex-wrap gap-2">
-                {POPULAR_TAGS.map((tag) => {
-                  const isSelected = selectedTag === tag;
-                  return (
-                    <button
-                      key={tag}
-                      onClick={() => setSelectedTag(tag)}
-                      className={`px-3 py-1.5 rounded-full transition-all duration-200 font-mono text-xs border ${
-                        isSelected
-                          ? "bg-[#00BFFF]/10 text-[#00BFFF] border-[#00BFFF]/30 shadow-[0_0_10px_rgba(0,191,255,0.1)]"
-                          : "bg-gray-800/50 text-gray-400 border-transparent hover:text-white hover:bg-gray-700/50"
-                      }`}
-                    >
-                      #{tag}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Column 3: Pattern Match */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                Patterns
+              </span>
+              <span className="text-[9px] font-mono text-[#00BFFF]/50">
+                Match: {trends?.trendingTags.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {!searchQuery && (
+                <button
+                  onClick={() => setSelectedTag("All")}
+                  className={`px-3 py-2 font-mono text-[10px] border transition-all ${
+                    selectedTag === "All"
+                      ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/10"
+                      : "border-white/5 text-gray-500 hover:border-white/20"
+                  }`}
+                >
+                  * ALL_TAGS
+                </button>
+              )}
+              {trends?.trendingTags.map(([tag, count]) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`flex items-center gap-2 px-3 py-2 font-mono text-[10px] border transition-all ${
+                    selectedTag === tag
+                      ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/15 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
+                      : "border-white/5 bg-white/[0.02] text-gray-400 hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  <span className="opacity-40">#</span>
+                  <span>{tag.toUpperCase()}</span>
+                  <span className="text-[8px] bg-white/5 px-1 rounded text-gray-600 font-bold">
+                    {count}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-800 bg-black/50 flex justify-end">
+        {/* HUD Footer */}
+        <div className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
+          <div className="text-[9px] font-mono text-gray-600 uppercase flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <div className="w-1 h-1 bg-[#00BFFF] rounded-full animate-ping" />{" "}
+              REAL_TIME_SYNC
+            </span>
+            <span className="opacity-40">|</span>
+            <span>
+              RESULTS_FILTERED: {trends?.activeCountries.length || 0} REGIONS
+            </span>
+          </div>
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-[#00BFFF] hover:bg-[#00BFFF]/80 text-black font-mono font-bold text-sm rounded transition-colors"
+            className="px-10 py-2.5 bg-[#00BFFF] hover:bg-[#00BFFF]/80 text-black font-mono font-bold text-[11px] tracking-widest uppercase transition-all shadow-[0_0_30px_rgba(0,191,255,0.2)] active:scale-95"
           >
-            Apply Filters
+            Engage Parameters
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function FilterButton({ label, count, isSelected, onClick, icon: Icon }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-between px-3 py-3 font-mono text-[11px] transition-all border ${
+        isSelected
+          ? "bg-[#00BFFF]/10 border-[#00BFFF]/50 text-[#00BFFF] shadow-[inset_0_0_15px_rgba(0,191,255,0.05)]"
+          : "border-transparent text-gray-400 hover:bg-white/5"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Icon
+          size={14}
+          className={isSelected ? "text-[#00BFFF]" : "text-gray-600"}
+        />
+        <span className="tracking-tight">{label}</span>
+      </div>
+      {count !== undefined && (
+        <span
+          className={`text-[9px] font-bold ${isSelected ? "text-[#00BFFF]" : "text-gray-700"}`}
+        >
+          [{count}]
+        </span>
+      )}
+    </button>
   );
 }

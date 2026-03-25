@@ -47,24 +47,24 @@ export default function Home() {
   >("dark");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  useEffect(() => {
-    // Only run this on the client
-    const initBeams = async () => {
-      try {
-        const beamsClient = new PusherPushNotifications.Client({
-          instanceId: "a0d2edd7-8930-4c20-954a-852022ee0754", // Your ID
-        });
+  // useEffect(() => {
+  //   // Only run this on the client
+  //   const initBeams = async () => {
+  //     try {
+  //       const beamsClient = new PusherPushNotifications.Client({
+  //         instanceId: "a0d2edd7-8930-4c20-954a-852022ee0754", // Your ID
+  //       });
 
-        await beamsClient.start();
-        await beamsClient.addDeviceInterest("hello");
-        console.log("Successfully registered and subscribed to Beams!");
-      } catch (error) {
-        console.error("Beams auth error:", error);
-      }
-    };
+  //       await beamsClient.start();
+  //       await beamsClient.addDeviceInterest("hello");
+  //       console.log("Successfully registered and subscribed to Beams!");
+  //     } catch (error) {
+  //       console.error("Beams auth error:", error);
+  //     }
+  //   };
 
-    initBeams();
-  }, []);
+  //   initBeams();
+  // }, []);
 
   // Keep ref updated for intervals
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function Home() {
         // PHASE 1: Load History from DB (Instant)
         console.log("📜 Loading history...");
         const history = await getHistory();
-        setSignals(history); // Globe lights up immediately!
+        setSignals(history);
 
         // PHASE 2: Start Background Sync (Quietly)
         console.log("🔄 Searching for new intel in background...");
@@ -90,26 +90,34 @@ export default function Home() {
 
     initApp();
 
-    // 3. PUSHER LISTENER (Real-time updates)
+    // 3. PUSHER LISTENER
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    if (pusherKey) {
-      const pusher = new Pusher(pusherKey, {
-        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
-      });
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (pusherKey && pusherCluster) {
+      const pusher = new Pusher(pusherKey, { cluster: pusherCluster });
       const channel = pusher.subscribe("aether-live");
 
       channel.bind("new-signal", (newSignal: Signal) => {
         setSignals((prev) => {
-          // 1. Prevent Duplicates
-          if (prev.find((s) => s.id === newSignal.id)) return prev;
+          if (prev.some((s) => s.id === newSignal.id)) return prev;
 
-          // 2. Add new signal and ENFORCE SORTING (Newest at Index 0)
           const updated = [newSignal, ...prev].sort((a, b) => {
-            // Numerical comparison: Largest timestamp (Newest) comes first
+            const now = Date.now();
+            const window = 5 * 60 * 1000; // 5 Minutes
+
+            const isANew = now - a.timestamp <= window;
+            const isBNew = now - b.timestamp <= window;
+
+            // Rule 1: If A is brand new and B is not, A stays on top
+            if (isANew && !isBNew) return -1;
+            if (!isANew && isBNew) return 1;
+
+            // Rule 2: If both are new OR both are old, sort strictly by timestamp (newest first)
             return b.timestamp - a.timestamp;
           });
 
-          return updated.slice(0, 50); // Keep only the latest 50
+          return updated.slice(0, 50);
         });
       });
 
@@ -220,6 +228,7 @@ export default function Home() {
           isOpen={isFilterModalOpen}
           onClose={() => setIsFilterModalOpen(false)}
           selectedCategory={selectedCategory}
+          signals={filteredSignals} // Pass the data here!
           setSelectedCategory={setSelectedCategory}
           selectedCountry={selectedCountry}
           setSelectedCountry={setSelectedCountry}

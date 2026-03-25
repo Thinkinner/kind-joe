@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Globe from "react-globe.gl";
 import { Signal } from "@/lib/aggregator/types";
-import { X } from "lucide-react";
+import {
+  X,
+  Target,
+  MapPin,
+  Activity,
+  Hash,
+  ShieldAlert,
+  Zap,
+} from "lucide-react";
 
 interface GlobeComponentProps {
   signals: Signal[];
@@ -12,22 +20,38 @@ interface GlobeComponentProps {
   globeStyle: "realistic" | "dark" | "wireframe";
 }
 
-const SOURCE_COLORS = {
-  X: "#00BFFF",
-  Telegram: "#8A2BE2",
-  Discord: "#FF69B4",
-  RSS: "#FFA500",
+// Impact color logic
+const getImpactColor = (score: number, opacity: number = 1) => {
+  if (score >= 85) return `rgba(239, 68, 68, ${opacity})`; // Red (Critical)
+  if (score >= 60) return `rgba(245, 158, 11, ${opacity})`; // Orange (High)
+  if (score >= 30) return `rgba(0, 191, 255, ${opacity})`; // Cyan (Moderate)
+  return `rgba(16, 185, 129, ${opacity})`; // Green (Nominal)
+};
+
+const COUNTRY_NAME_MAP: Record<string, string> = {
+  USA: "United States of America",
+  UK: "United Kingdom",
+  UAE: "United Arab Emirates",
+  Russia: "Russian Federation",
 };
 
 export default function GlobeComponent({
   signals,
   selectedSignal,
   onSignalClick,
-  globeStyle,
 }: GlobeComponentProps) {
   const globeRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [geoData, setGeoData] = useState({ features: [] });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch(
+      "https://raw.githubusercontent.com/vasturiano/react-globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson",
+    )
+      .then((res) => res.json())
+      .then(setGeoData);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -38,158 +62,249 @@ export default function GlobeComponent({
         });
       }
     };
-
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // 🏷️ Labels for all points
+  const labelsData = useMemo(() => {
+    return signals.map((s) => ({
+      ...s,
+      labelName: s.city.toUpperCase(),
+    }));
+  }, [signals]);
+
+  // 🔭 Zoom to Local or Global scale based on news type
   useEffect(() => {
     if (selectedSignal && globeRef.current) {
+      // If impact is low, it's likely local news, so we zoom in closer (altitude 0.8)
+      const zoomAltitude = selectedSignal.impactScore < 40 ? 0.8 : 1.6;
       globeRef.current.pointOfView(
-        { lat: selectedSignal.lat, lng: selectedSignal.lng, altitude: 1.5 },
+        {
+          lat: selectedSignal.lat,
+          lng: selectedSignal.lng,
+          altitude: zoomAltitude,
+        },
         1000,
       );
     }
   }, [selectedSignal]);
 
-  const getGlobeImageUrl = () => {
-    switch (globeStyle) {
-      case "realistic":
-        return "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
-      case "dark":
-        return "//unpkg.com/three-globe/example/img/earth-dark.jpg";
-      case "wireframe":
-        return "//unpkg.com/three-globe/example/img/earth-topology.png";
-      default:
-        return "//unpkg.com/three-globe/example/img/earth-dark.jpg";
-    }
-  };
+  const activeColor = selectedSignal
+    ? getImpactColor(selectedSignal.impactScore)
+    : "#00BFFF";
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
+    <div
+      ref={containerRef}
+      className="w-full h-full relative bg-[#050508] overflow-hidden font-mono"
+    >
+      {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
+      {selectedSignal && (
+        <div className="absolute top-20 right-8 z-30 flex flex-col items-end pointer-events-none animate-pulse">
+          <span className="text-[9px] text-gray-500 tracking-[0.3em]">
+            GPS_LOCK_CONFIRMED
+          </span>
+          <span
+            className="text-xs text-white font-bold tracking-widest"
+            style={{ color: activeColor }}
+          >
+            {selectedSignal.lat.toFixed(4)}°N / {selectedSignal.lng.toFixed(4)}
+            °W
+          </span>
+        </div>
+      )}
+
       <Globe
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl={getGlobeImageUrl()}
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+        backgroundColor="rgba(0,0,0,0)"
+        showAtmosphere={true}
+        atmosphereColor={activeColor}
+        atmosphereAltitude={0.2}
+        // --- 🗺️ AREA MARKING (COUNTRY) ---
+        polygonsData={geoData.features}
+        polygonCapColor={(d: any) => {
+          const name = d.properties.NAME;
+          const target = selectedSignal?.country;
+          const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
+          return name === mappedName
+            ? getImpactColor(selectedSignal!.impactScore, 0.15)
+            : "rgba(0,0,0,0)";
+        }}
+        polygonSideColor={() => "rgba(0, 0, 0, 0)"}
+        polygonStrokeColor={(d: any) => {
+          const name = d.properties.NAME;
+          const target = selectedSignal?.country;
+          const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
+          return name === mappedName
+            ? getImpactColor(selectedSignal!.impactScore, 0.6)
+            : "rgba(255, 255, 255, 0.02)";
+        }}
+        // --- 🎯 HYPER-LOCAL MARKING (SECTOR HIGHLIGHT) ---
+        ringsData={selectedSignal ? [selectedSignal] : []}
+        ringLat="lat"
+        ringLng="lng"
+        ringColor={(d: any) => getImpactColor(d.impactScore)}
+        ringMaxRadius={(d: any) => (d.impactScore < 40 ? 3 : 12)} // Smaller ring for local news
+        ringPropagationSpeed={2.5}
+        ringRepeatPeriod={800}
+        // --- 📍 SIGNAL POINTS ---
         pointsData={signals}
         pointLat="lat"
         pointLng="lng"
-        pointColor={(d: any) =>
-          SOURCE_COLORS[d.source as keyof typeof SOURCE_COLORS] || "#ffffff"
+        pointColor={(d: any) => getImpactColor(d.impactScore)}
+        pointAltitude={0.01}
+        pointRadius={(d: any) => (d.id === selectedSignal?.id ? 1.5 : 0.7)}
+        // --- 🏷️ LABELS ---
+        labelsData={labelsData}
+        labelLat="lat"
+        labelLng="lng"
+        labelText="labelName"
+        labelSize={(d: any) => (d.id === selectedSignal?.id ? 1.2 : 0.4)}
+        labelColor={(d: any) =>
+          d.id === selectedSignal?.id
+            ? getImpactColor(d.impactScore)
+            : "rgba(255,255,255,0.4)"
         }
-        pointAltitude={(d: any) => d.impactScore / 200}
-        pointRadius={(d: any) => d.impactScore / 50}
-        pointsMerge={false}
-        pointResolution={32}
-        onPointClick={(point: any) => onSignalClick(point)}
-        pointLabel={(d: any) => `
-          <div class="bg-black/80 text-white p-2 rounded border border-gray-700 text-xs font-mono">
-            <div class="font-bold mb-1" style="color: ${SOURCE_COLORS[d.source as keyof typeof SOURCE_COLORS]}">${d.source}</div>
-            <div class="mb-1">${d.headline}</div>
-            <div class="text-gray-400">${d.city}, ${d.country}</div>
-          </div>
-        `}
-        ringsData={signals.slice(0, 5).filter((s) => s.impactScore > 60)}
-        ringColor={(d: any) => (d.impactScore > 80 ? "#FF4500" : "#FFA500")}
-        ringMaxRadius={(d: any) => d.impactScore / 8}
-        ringPropagationSpeed={2}
-        ringRepeatPeriod={800}
-        htmlElementsData={signals.slice(0, 3).filter((s) => s.impactScore > 50)}
-        htmlElement={(d: any) => {
-          const el = document.createElement("div");
-          el.innerHTML = `
-            <div class="flex flex-col items-center pointer-events-none transform -translate-y-1/2">
-              <div class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded backdrop-blur-md border ${
-                d.impactScore > 80
-                  ? "bg-red-500/20 text-red-400 border-red-500/50"
-                  : "bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
-              } animate-pulse">
-                TENSION: ${d.impactScore}
-              </div>
-              <div class="w-px h-6 ${
-                d.impactScore > 80
-                  ? "bg-gradient-to-b from-red-500 to-transparent"
-                  : "bg-gradient-to-b from-yellow-500 to-transparent"
-              }"></div>
-            </div>
-          `;
-          return el;
-        }}
-        atmosphereColor="#00BFFF"
-        atmosphereAltitude={0.15}
+        onLabelClick={(label: any) => onSignalClick(label)}
       />
 
-      {/* Selected Signal Panel */}
+      {/* 📂 TACTICAL DOSSIER (SIDEBAR) */}
       {selectedSignal && (
-        <div className="absolute top-4 left-4 w-[calc(100%-2rem)] md:w-80 bg-black/80 backdrop-blur-md border border-[#00BFFF]/50 rounded-lg p-4 shadow-[0_0_20px_rgba(0,191,255,0.15)] z-10">
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="w-2 h-2 rounded-full animate-pulse"
+        <div className="absolute top-6 left-6 bottom-6 w-[85vw] md:w-96 bg-[#0A0A0F]/85 backdrop-blur-3xl border border-white/10 z-20 flex flex-col shadow-[20px_0_60px_rgba(0,0,0,0.9)] animate-in slide-in-from-left duration-500">
+          <div
+            className="h-[2px] w-full shadow-lg"
+            style={{
+              backgroundColor: activeColor,
+              boxShadow: `0 0 20px ${activeColor}`,
+            }}
+          />
+
+          <div className="p-7 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-start mb-8">
+              <div className="space-y-1.5">
+                <div
+                  className="flex items-center gap-2"
+                  style={{ color: activeColor }}
+                >
+                  <Target size={16} className="animate-pulse" />
+                  <span className="text-[11px] font-black tracking-[0.25em] uppercase">
+                    {selectedSignal.impactScore < 40
+                      ? "Local Asset Identified"
+                      : "Strategic Signal Locked"}
+                  </span>
+                </div>
+                <div className="text-[9px] text-gray-500 tracking-widest uppercase">
+                  ID: {selectedSignal.id.slice(0, 12)}
+                </div>
+              </div>
+              <button
+                onClick={() => onSignalClick(null as any)}
+                className="p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <h2
+              className="text-xl font-bold text-white mb-6 leading-[1.2] tracking-tight border-l-2 pl-4 italic"
+              style={{ borderLeftColor: activeColor }}
+            >
+              {selectedSignal.headline}
+            </h2>
+
+            <div className="flex flex-wrap gap-2.5 mb-8">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5">
+                <MapPin size={12} className="text-[#00BFFF]" />
+                <span className="text-[10px] text-[#00BFFF] font-black uppercase">
+                  {selectedSignal.city} // {selectedSignal.country}
+                </span>
+              </div>
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-sm border"
                 style={{
-                  backgroundColor:
-                    SOURCE_COLORS[
-                      selectedSignal.source as keyof typeof SOURCE_COLORS
-                    ],
-                }}
-              />
-              <span
-                className="text-xs font-mono font-bold"
-                style={{
-                  color:
-                    SOURCE_COLORS[
-                      selectedSignal.source as keyof typeof SOURCE_COLORS
-                    ],
+                  backgroundColor: getImpactColor(
+                    selectedSignal.impactScore,
+                    0.1,
+                  ),
+                  borderColor: getImpactColor(selectedSignal.impactScore, 0.3),
                 }}
               >
-                {selectedSignal.source}
-              </span>
+                <Activity size={12} style={{ color: activeColor }} />
+                <span
+                  className="text-[10px] uppercase font-black"
+                  style={{ color: activeColor }}
+                >
+                  IMPACT: {selectedSignal.impactScore}
+                </span>
+              </div>
             </div>
-            <button
-              onClick={() => onSignalClick(null as any)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={16} />
-            </button>
+
+            <div className="space-y-4 mb-10">
+              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
+                Situational Summary
+              </div>
+              <p className="text-[13px] text-gray-300 leading-relaxed font-medium">
+                {selectedSignal.summary}
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-10">
+              <div className="text-[10px] text-gray-600 uppercase font-bold tracking-widest flex items-center gap-2">
+                <Hash size={12} /> Pattern Match
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(selectedSignal.tags || []).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[9px] font-black px-2.5 py-1 bg-white/5 border border-white/10 text-gray-400 hover:text-white uppercase"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 📍 LOCAL SPECIFICS */}
+            <div className="grid grid-cols-2 gap-6 border-t border-white/10 pt-8">
+              <div className="space-y-1.5">
+                <div className="text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                  Operational Scale
+                </div>
+                <div className="text-[11px] text-white font-black uppercase">
+                  {selectedSignal.impactScore < 40
+                    ? "Tactical_Local"
+                    : selectedSignal.impactScore < 75
+                      ? "National_Strategic"
+                      : "Global_Surveillance"}
+                </div>
+              </div>
+              <div className="space-y-1.5 text-right">
+                <div className="text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                  Sector
+                </div>
+                <div className="text-[11px] font-black uppercase text-white">
+                  {selectedSignal.category}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <h3 className="text-sm font-bold text-white mb-2 leading-tight">
-            {selectedSignal.headline}
-          </h3>
-
-          <p className="text-xs text-gray-300 mb-4 leading-relaxed">
-            {selectedSignal.summary}
-          </p>
-
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-            <div className="bg-gray-900/50 p-2 rounded border border-gray-800">
-              <div className="text-gray-500 uppercase mb-1">Location</div>
-              <div className="text-gray-300">
-                {selectedSignal.city}, {selectedSignal.country}
-              </div>
-            </div>
-            <div className="bg-gray-900/50 p-2 rounded border border-gray-800">
-              <div className="text-gray-500 uppercase mb-1">Impact Score</div>
+          <div className="p-5 border-t border-white/5 bg-white/5 flex justify-between items-center text-[9px] text-gray-600 tracking-[0.3em] uppercase">
+            <div className="flex items-center gap-2">
               <div
-                className={`font-bold ${
-                  selectedSignal.impactScore > 80
-                    ? "text-[#FF4500]"
-                    : selectedSignal.impactScore > 50
-                      ? "text-yellow-500"
-                      : "text-green-500"
-                }`}
-              >
-                {selectedSignal.impactScore} / 100
-              </div>
+                className="w-1.5 h-1.5 rounded-full animate-ping"
+                style={{ backgroundColor: activeColor }}
+              />
+              <span>Live_Stream_Active</span>
             </div>
+            <span>KindJoe.SYS</span>
           </div>
         </div>
       )}
-
     </div>
   );
 }

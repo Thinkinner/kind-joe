@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Settings, Filter } from "lucide-react";
+import { Search, Settings, Cpu, Globe, Terminal } from "lucide-react";
 
 interface BottomBarProps {
   globeStyle: "realistic" | "dark" | "wireframe";
@@ -12,54 +12,92 @@ export default function BottomBar({
   setGlobeStyle,
 }: BottomBarProps) {
   return (
-    <div className="h-12 bg-[#0A0A0F] border-t border-gray-800 flex items-center justify-between px-4 md:px-6 shrink-0 z-10">
-      <div className="flex items-center gap-2 md:gap-4">
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono text-gray-500">
-          <Filter size={14} />
-          <button className="hover:text-white transition-colors">All</button>
-          <span className="text-gray-800">|</span>
-          <button className="hover:text-white transition-colors">
-            Last 5 min
+    <div className="h-10 bg-[#050508] border-t border-white/10 flex items-center justify-between px-4 md:px-6 shrink-0 z-30 font-mono">
+      {/* Left Section: System Inputs */}
+      <div className="flex items-center gap-4">
+        {/* Quick Filter Telemetry */}
+        <div className="hidden md:flex items-center gap-3 text-[9px] tracking-widest text-gray-600 uppercase">
+          <span className="text-[#00BFFF]/60">FILTER_SET:</span>
+          <button className="hover:text-[#00BFFF] transition-colors text-gray-400">
+            RAW_FEED
           </button>
-          <span className="text-gray-800">|</span>
-          <button className="hover:text-white transition-colors">
-            Last hour
+          <span className="opacity-20">/</span>
+          <button className="hover:text-[#00BFFF] transition-colors">
+            T-5M
+          </button>
+          <span className="opacity-20">/</span>
+          <button className="hover:text-[#00BFFF] transition-colors">
+            T-1H
           </button>
         </div>
 
-        <div className="hidden md:block h-4 w-px bg-gray-800 mx-2" />
+        <div className="hidden md:block h-3 w-px bg-white/10 mx-2" />
 
-        <div className="relative group">
-          <Search
-            size={14}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#00BFFF] transition-colors"
-          />
+        {/* Search Input (Tactical Style) */}
+        <div className="relative flex items-center group">
+          <span className="text-[10px] text-[#00BFFF] mr-2 opacity-50 font-bold">
+            {">"}
+          </span>
           <input
             type="text"
-            placeholder="Search..."
-            className="bg-black/50 border border-gray-800 rounded px-8 py-1 text-xs font-mono text-white focus:outline-none focus:border-[#00BFFF]/50 focus:ring-1 focus:ring-[#00BFFF]/50 transition-all w-32 md:w-64"
+            placeholder="SEARCH_QUERY..."
+            className="bg-transparent border-none p-0 text-[10px] text-white focus:outline-none placeholder:text-gray-700 w-32 md:w-64 tracking-widest uppercase"
           />
+          {/* Animated cursor effect */}
+          <div className="w-1.5 h-3 bg-[#00BFFF]/40 animate-pulse ml-1" />
         </div>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6">
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <Settings size={14} className="text-gray-500" />
+      {/* Center Section: Animated Telemetry (Desktop Only) */}
+      <div className="hidden xl:flex items-center gap-4 text-[9px] text-gray-600 tracking-[0.3em] uppercase">
+        <span className="flex items-center gap-1.5">
+          <Cpu size={10} className="text-[#00BFFF]/40" />
+          NEURAL_LINK_STABLE
+        </span>
+        <span className="w-1 h-1 rounded-full bg-white/10" />
+        <span className="flex items-center gap-1.5">
+          <Terminal size={10} className="text-[#00BFFF]/40" />
+          ENCRYPTED_STREAM
+        </span>
+      </div>
+
+      {/* Right Section: Settings & Branding */}
+      <div className="flex items-center gap-6">
+        {/* Map Layer Selector */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-gray-600">
+            <Globe size={10} />
+            <span className="text-[9px] tracking-widest uppercase">Layer:</span>
+          </div>
           <select
             value={globeStyle}
             onChange={(e) => setGlobeStyle(e.target.value as any)}
-            className="bg-transparent text-gray-400 hover:text-white focus:outline-none cursor-pointer w-24 md:w-auto"
+            className="bg-transparent text-[10px] text-gray-400 hover:text-white focus:outline-none cursor-pointer uppercase tracking-tighter"
           >
-            <option value="dark">Dark Globe</option>
-            <option value="realistic">Realistic</option>
-            <option value="wireframe">Wireframe</option>
+            <option value="dark" className="bg-[#0A0A0F]">
+              Vector_Dark
+            </option>
+            <option value="realistic" className="bg-[#0A0A0F]">
+              Satellite_Live
+            </option>
+            <option value="wireframe" className="bg-[#0A0A0F]">
+              Topo_Grid
+            </option>
           </select>
         </div>
 
-        <div className="hidden lg:flex text-[10px] font-mono text-gray-500 tracking-widest uppercase items-center gap-2">
-          <span>Powered by The Kind Joe</span>
-          <span className="text-[#00BFFF]">💙❤️</span>
-          <span>Bringing both sides together</span>
+        <div className="hidden sm:block h-3 w-px bg-white/10" />
+
+        {/* Brand Footer */}
+        <div className="hidden lg:flex text-[9px] text-gray-500 tracking-[0.2em] uppercase items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            CORE_DEV: <span className="text-gray-300 font-bold">KIND_JOE</span>
+          </span>
+          <div className="flex gap-0.5">
+            <div className="w-1.5 h-1.5 bg-[#00BFFF]/60 rounded-sm" />
+            <div className="w-1.5 h-1.5 bg-red-500/60 rounded-sm" />
+          </div>
+          <span className="opacity-40 italic">UNIFYING_DISCOURSE.SYS</span>
         </div>
       </div>
     </div>
