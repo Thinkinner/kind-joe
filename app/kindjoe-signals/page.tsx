@@ -9,7 +9,6 @@ import FilterModal from "@/components/kindjoe-signals/filter-modal";
 import { Signal, Category } from "@/lib/aggregator/types";
 import Pusher from "pusher-js";
 import { getHistory, triggerSync } from "@/lib/actions/news-signal";
-import * as PusherPushNotifications from "@pusher/push-notifications-web";
 
 // Dynamically import GlobeComponent to avoid SSR issues with react-globe.gl
 const GlobeComponent = dynamic(
@@ -75,58 +74,69 @@ export default function Home() {
   useEffect(() => {
     const initApp = async () => {
       try {
-        // PHASE 1: Load History from DB (Instant)
-        console.log("📜 Loading history...");
         const history = await getHistory();
         setSignals(history);
-
-        // PHASE 2: Start Background Sync (Quietly)
-        console.log("🔄 Searching for new intel in background...");
         await triggerSync();
       } catch (err) {
-        console.error("❌ App Init Error:", err);
+        console.error("Init Error:", err);
       }
     };
-
     initApp();
 
-    // 3. PUSHER LISTENER
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-    if (pusherKey && pusherCluster) {
-      const pusher = new Pusher(pusherKey, { cluster: pusherCluster });
-      const channel = pusher.subscribe("aether-live");
-
-      channel.bind("new-signal", (newSignal: Signal) => {
-        setSignals((prev) => {
-          if (prev.some((s) => s.id === newSignal.id)) return prev;
-
-          const updated = [newSignal, ...prev].sort((a, b) => {
-            const now = Date.now();
-            const window = 5 * 60 * 1000; // 5 Minutes
-
-            const isANew = now - a.timestamp <= window;
-            const isBNew = now - b.timestamp <= window;
-
-            // Rule 1: If A is brand new and B is not, A stays on top
-            if (isANew && !isBNew) return -1;
-            if (!isANew && isBNew) return 1;
-
-            // Rule 2: If both are new OR both are old, sort strictly by timestamp (newest first)
-            return b.timestamp - a.timestamp;
-          });
-
-          return updated.slice(0, 50);
-        });
-      });
-
-      return () => {
-        pusher.unsubscribe("aether-live");
-        pusher.disconnect();
-      };
+    if (!pusherKey || !cluster) {
+      console.error(
+        "❌ PUSHER KEYS MISSING. Did you redeploy after adding Env Vars?",
+      );
+      return;
     }
-  }, []);
+
+    const pusher = new Pusher(pusherKey, {
+      cluster,
+      forceTLS: true,
+    });
+
+    // --- DEBUG LOGS FOR CONNECTION ---
+    pusher.connection.bind("state_change", (states: any) => {
+      console.log(`🔌 Pusher Connection State: ${states.current}`);
+    });
+
+    const channel = pusher.subscribe("aether-live");
+
+    console.log("📡 Pusher: Subscribed to 'aether-live'");
+
+    channel.bind("new-signal", (newSignal: Signal) => {
+      console.log("🔥 NEW SIGNAL DETECTED:", newSignal.headline);
+
+      setSignals((prev) => {
+        // 🛡️ DEDUPLICATION
+        const idExists = prev.some((s) => s.id === newSignal.id);
+        const headlineExists = prev.some(
+          (s) =>
+            s.headline === newSignal.headline &&
+            Math.abs(s.timestamp - newSignal.timestamp) < 5 * 60 * 1000,
+        );
+
+        if (idExists || headlineExists) {
+          console.log("⏩ Skipping duplicate live signal");
+          return prev;
+        }
+
+        const updated = [newSignal, ...prev].sort(
+          (a, b) => b.timestamp - a.timestamp,
+        );
+        return updated.slice(0, 50);
+      });
+    });
+
+    return () => {
+      console.log("🔌 Pusher: Cleaning up connection");
+      pusher.unsubscribe("aether-live");
+      pusher.disconnect();
+    };
+  }, []); // Keeps strictly to mount-only
 
   // Tension decay based on signal density
   useEffect(() => {
