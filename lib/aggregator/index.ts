@@ -3,6 +3,7 @@ import { signals } from "@/db/schema";
 import { analyzeSignalWithAI } from "./ai";
 import { desc, eq, gt } from "drizzle-orm";
 import Parser from "rss-parser";
+import { fetchOfficialXTweets } from "./twitter"; // Import the new service
 import Pusher from "pusher";
 
 const pusher = new Pusher({

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Signal } from "@/lib/aggregator/types";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
-import { Twitter, MessageSquare, Hash, Filter } from "lucide-react";
+import { Twitter, MessageSquare, Hash, Filter, Rss } from "lucide-react";
 
 interface FeedProps {
   signals: Signal[];
@@ -24,7 +24,7 @@ const SOURCE_ICONS = {
   X: Twitter,
   Telegram: MessageSquare,
   Discord: Hash,
-  // RSS: Rss, // Commented out
+  RSS: Rss, // Commented out
 };
 
 export default function Feed({
@@ -96,7 +96,6 @@ export default function Feed({
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    {/* Hide the source text and icon completely if it is RSS */}
                     {signal.source !== "RSS" && (
                       <>
                         {Icon && <Icon size={14} className={colorClass} />}
