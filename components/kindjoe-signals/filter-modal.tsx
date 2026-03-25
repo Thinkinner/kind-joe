@@ -13,7 +13,6 @@ import {
   Target,
   Zap,
   BarChart3,
-  Search,
   Terminal,
 } from "lucide-react";
 
@@ -61,24 +60,28 @@ export default function FilterModal({
 
     if (!signals || !Array.isArray(signals)) return null;
 
+    // 1. Calculate global counts from all signals
     signals.forEach((s) => {
       if (!s) return;
       stats.categories[s.category] = (stats.categories[s.category] || 0) + 1;
       stats.countries[s.country] = (stats.countries[s.country] || 0) + 1;
-      s.tags.forEach((tag) => {
-        stats.tags[tag] = (stats.tags[tag] || 0) + 1;
-      });
+      if (s.tags) {
+        s.tags.forEach((tag) => {
+          stats.tags[tag] = (stats.tags[tag] || 0) + 1;
+        });
+      }
     });
 
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
 
+    // 2. Filter based on Search Query
     return {
       activeCategories: Object.keys(CATEGORY_ICONS).filter((c) =>
         c.toLowerCase().includes(query),
       ),
       activeCountries: Object.entries(stats.countries)
         .filter(([name]) => name.toLowerCase().includes(query))
-        .sort((a, b) => b[1] - a[1]),
+        .sort((a, b) => b[1] - a[1]), // Sort by volume (Most news first)
       trendingTags: Object.entries(stats.tags)
         .filter(([name]) => name.toLowerCase().includes(query))
         .sort((a, b) => b[1] - a[1])
@@ -86,6 +89,11 @@ export default function FilterModal({
       counts: stats,
     };
   }, [signals, searchQuery]);
+
+  // Handle Search Input focus
+  const inputRef = (node: HTMLInputElement) => {
+    if (node) node.focus();
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,7 +108,7 @@ export default function FilterModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#050508]/95 backdrop-blur-xl">
       <div className="bg-[#0A0A0F] border border-white/10 rounded-sm w-full max-w-5xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col max-h-[90vh]">
-        {/* HUD Header */}
+        {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-4">
             <div className="p-2 bg-[#00BFFF]/10 border border-[#00BFFF]/30 rounded-sm">
@@ -110,14 +118,14 @@ export default function FilterModal({
               <span className="text-[10px] font-mono text-[#00BFFF] tracking-[0.3em] font-bold uppercase">
                 Dynamic Filter Engine
               </span>
-              <h2 className="text-sm font-mono text-white font-bold tracking-tight">
-                INTEL_QUERY.v2
+              <h2 className="text-sm font-mono text-white font-bold tracking-tight uppercase">
+                Intel_Search_Terminal
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-500 hover:text-white"
+            className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-500 hover:text-white border border-white/5"
           >
             <X size={20} />
           </button>
@@ -127,22 +135,22 @@ export default function FilterModal({
         <div className="px-8 py-4 bg-white/[0.03] border-b border-white/5 flex items-center gap-4 group">
           <Terminal
             size={16}
-            className="text-[#00BFFF] opacity-50 group-focus-within:opacity-100 transition-opacity"
+            className="text-[#00BFFF] opacity-50 group-focus-within:opacity-100"
           />
           <input
-            autoFocus
+            ref={inputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="EXECUTE_FILTER_QUERY (COUNTRY, TAG, OR SECTOR)..."
-            className="bg-transparent border-none outline-none text-white font-mono text-xs w-full tracking-[0.2em] placeholder:text-gray-700"
+            placeholder="EXECUTE_INTEL_QUERY (COUNTRY, TAG, OR SECTOR)..."
+            className="bg-transparent border-none outline-none text-white font-mono text-xs w-full tracking-[0.2em] placeholder:text-gray-700 uppercase"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="text-gray-600 hover:text-white font-mono text-[10px] uppercase"
+              className="text-[10px] font-mono text-gray-500 hover:text-white transition-colors border border-white/10 px-2 py-1 rounded"
             >
-              [Clear]
+              [CLEAR_QUERY]
             </button>
           )}
         </div>
@@ -156,13 +164,14 @@ export default function FilterModal({
                 Sectors
               </span>
               <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Match: {trends?.activeCategories.length}
+                Count: {trends?.activeCategories.length}
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
               {!searchQuery && (
                 <FilterButton
                   label="ALL_SIGNALS"
+                  count={signals.length}
                   isSelected={selectedCategory === "All"}
                   onClick={() => setSelectedCategory("All")}
                   icon={Globe}
@@ -174,21 +183,24 @@ export default function FilterModal({
                   label={cat.toUpperCase()}
                   count={trends.counts.categories[cat]}
                   isSelected={selectedCategory === cat}
-                  onClick={() => setSelectedCategory(cat as any)}
+                  onClick={() => {
+                    setSelectedCategory(cat as any);
+                    onClose();
+                  }}
                   icon={CATEGORY_ICONS[cat as Category]}
                 />
               ))}
             </div>
           </div>
 
-          {/* Column 2: Regions */}
+          {/* Column 2: Regions (Sorted by volume) */}
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                Regions
+                Active Regions
               </span>
               <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Match: {trends?.activeCountries.length}
+                Latest Activity
               </span>
             </div>
             <div className="flex flex-col gap-1.5 h-[400px] overflow-y-auto custom-scrollbar pr-2">
@@ -206,40 +218,49 @@ export default function FilterModal({
                   label={country.toUpperCase()}
                   count={count}
                   isSelected={selectedCountry === country}
-                  onClick={() => setSelectedCountry(country)}
+                  onClick={() => {
+                    setSelectedCountry(country);
+                    onClose();
+                  }}
                   icon={MapPin}
                 />
               ))}
             </div>
           </div>
 
-          {/* Column 3: Pattern Match */}
+          {/* Column 3: Pattern Match (Trending Tags) */}
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                Patterns
+                Intel Patterns
               </span>
               <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Match: {trends?.trendingTags.length}
+                Trending
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 content-start">
               {!searchQuery && (
                 <button
-                  onClick={() => setSelectedTag("All")}
+                  onClick={() => {
+                    setSelectedTag("All");
+                    onClose();
+                  }}
                   className={`px-3 py-2 font-mono text-[10px] border transition-all ${
                     selectedTag === "All"
                       ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/10"
                       : "border-white/5 text-gray-500 hover:border-white/20"
                   }`}
                 >
-                  * ALL_TAGS
+                  * ALL_PATTERNS
                 </button>
               )}
               {trends?.trendingTags.map(([tag, count]) => (
                 <button
                   key={tag}
-                  onClick={() => setSelectedTag(tag)}
+                  onClick={() => {
+                    setSelectedTag(tag);
+                    onClose();
+                  }}
                   className={`flex items-center gap-2 px-3 py-2 font-mono text-[10px] border transition-all ${
                     selectedTag === tag
                       ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/15 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
@@ -248,7 +269,7 @@ export default function FilterModal({
                 >
                   <span className="opacity-40">#</span>
                   <span>{tag.toUpperCase()}</span>
-                  <span className="text-[8px] bg-white/5 px-1 rounded text-gray-600 font-bold">
+                  <span className="text-[8px] bg-[#00BFFF]/10 px-1 rounded text-[#00BFFF] font-bold">
                     {count}
                   </span>
                 </button>
@@ -257,17 +278,15 @@ export default function FilterModal({
           </div>
         </div>
 
-        {/* HUD Footer */}
+        {/* Footer */}
         <div className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
-          <div className="text-[9px] font-mono text-gray-600 uppercase flex items-center gap-4">
+          <div className="text-[9px] font-mono text-gray-600 uppercase flex items-center gap-4 tracking-widest">
             <span className="flex items-center gap-1.5">
               <div className="w-1 h-1 bg-[#00BFFF] rounded-full animate-ping" />{" "}
-              REAL_TIME_SYNC
+              FEED_SYNC_OK
             </span>
-            <span className="opacity-40">|</span>
-            <span>
-              RESULTS_FILTERED: {trends?.activeCountries.length || 0} REGIONS
-            </span>
+            <span className="opacity-20">|</span>
+            <span>DATA_OBJECTS_TOTAL: {signals.length}</span>
           </div>
           <button
             onClick={onClose}
@@ -296,7 +315,7 @@ function FilterButton({ label, count, isSelected, onClick, icon: Icon }: any) {
           size={14}
           className={isSelected ? "text-[#00BFFF]" : "text-gray-600"}
         />
-        <span className="tracking-tight">{label}</span>
+        <span className="tracking-tighter">{label}</span>
       </div>
       {count !== undefined && (
         <span

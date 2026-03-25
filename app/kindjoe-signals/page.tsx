@@ -248,7 +248,7 @@ export default function Home() {
           isOpen={isFilterModalOpen}
           onClose={() => setIsFilterModalOpen(false)}
           selectedCategory={selectedCategory}
-          signals={filteredSignals} // Pass the data here!
+          signals={signals} // 🚨 CHANGE THIS from filteredSignals to signals
           setSelectedCategory={setSelectedCategory}
           selectedCountry={selectedCountry}
           setSelectedCountry={setSelectedCountry}
