@@ -50,29 +50,59 @@ export default function TopBar() {
         {/* Center: LIVE audience — red theme */}
         <div className="flex min-w-0 flex-1 justify-center">
           <div
-            className="inline-flex max-w-full items-center gap-2.5 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/25 px-3 py-1.5 pl-3 pr-4 shadow-[0_0_24px_rgba(220,38,38,0.15)] sm:gap-3 sm:px-5 sm:py-2"
+            className={cn(
+              "inline-flex max-w-full items-center gap-2.5 rounded-full border px-3 py-1.5 pl-3 pr-4 sm:gap-3 sm:px-5 sm:py-2",
+              isLight
+                ? "border-red-200/90 bg-gradient-to-b from-red-50 to-red-100/90 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_4px_14px_rgba(220,38,38,0.12)]"
+                : "border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/25 shadow-[0_0_24px_rgba(220,38,38,0.15)]",
+            )}
             title="Estimated live viewers"
           >
             <span className="relative flex h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/50" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] sm:h-3 sm:w-3" />
+              <span
+                className={cn(
+                  "absolute inline-flex h-full w-full animate-ping rounded-full",
+                  isLight ? "bg-red-600/35" : "bg-red-500/50",
+                )}
+              />
+              <span
+                className={cn(
+                  "relative inline-flex h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3",
+                  isLight
+                    ? "bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.45)]"
+                    : "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]",
+                )}
+              />
             </span>
-            <span className="shrink-0 text-[10px] font-black tracking-[0.28em] text-red-500 sm:text-[11px]">
+            <span
+              className={cn(
+                "shrink-0 text-[10px] font-black tracking-[0.28em] sm:text-[11px]",
+                isLight ? "text-red-700" : "text-red-500",
+              )}
+            >
               LIVE
             </span>
             <Eye
-              className="hidden h-[18px] w-[18px] shrink-0 text-red-400 sm:block sm:h-5 sm:w-5"
+              className={cn(
+                "hidden h-[18px] w-[18px] shrink-0 sm:block sm:h-5 sm:w-5",
+                isLight ? "text-red-600" : "text-red-400",
+              )}
               aria-hidden
             />
             <span
               className={cn(
                 "truncate font-mono text-base font-bold tabular-nums sm:text-lg md:text-xl",
-                isLight ? "text-slate-900" : "text-white",
+                isLight ? "text-red-950" : "text-white",
               )}
             >
               {formatSignalsViewerCount(liveViewers)}
             </span>
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-red-200/90 sm:text-xs">
+            <span
+              className={cn(
+                "shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-xs",
+                isLight ? "text-red-800/85" : "text-red-200/90",
+              )}
+            >
               watching
             </span>
           </div>
