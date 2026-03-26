@@ -479,7 +479,6 @@ export default function Home() {
                 sidebarAccessUnlocked={sidebarFeedUnlocked}
                 accessCheckPending={!signalsAccessChecked}
                 onOpenUnlockModal={() => setLeadModalOpen(true)}
-                mapSignalCount={filteredSignals.length}
               />
             </div>
           </motion.div>
@@ -497,7 +496,6 @@ export default function Home() {
             sidebarAccessUnlocked={sidebarFeedUnlocked}
             accessCheckPending={!signalsAccessChecked}
             onOpenUnlockModal={() => setLeadModalOpen(true)}
-            mapSignalCount={filteredSignals.length}
           />
         )}
       </div>

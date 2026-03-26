@@ -11,7 +11,6 @@ import {
   Activity,
   Clock,
   Lock,
-  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
@@ -29,8 +28,6 @@ interface FeedProps {
   /** True while cookie check runs (avoid CTA flash for returning users). */
   accessCheckPending?: boolean;
   onOpenUnlockModal?: () => void;
-  /** Matches what the globe is showing (usually filtered count). */
-  mapSignalCount?: number;
 }
 
 export default function Feed({
@@ -43,7 +40,6 @@ export default function Feed({
   sidebarAccessUnlocked = true,
   accessCheckPending = false,
   onOpenUnlockModal,
-  mapSignalCount = 0,
 }: FeedProps) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -225,33 +221,12 @@ export default function Feed({
                 </div>
                 <p
                   className={cn(
-                    "text-[11px] font-semibold",
+                    "max-w-[220px] text-[11px] font-semibold leading-snug",
                     isLight ? "text-slate-900" : "text-white",
                   )}
                 >
-                  Live map is on — unlock the feed
+                  Enter your info to access KindJoe signals.
                 </p>
-                <p
-                  className={cn(
-                    "mt-2 text-[10px] leading-relaxed",
-                    isLight ? "text-slate-700" : "text-gray-500",
-                  )}
-                >
-                  Watch breaking signals on the globe in real time. Add your
-                  email once to read full headlines and summaries in this panel.
-                </p>
-                <div
-                  className={cn(
-                    "mt-3 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest",
-                    isLight ? "text-sky-800" : "text-[#00BFFF]/80",
-                  )}
-                >
-                  <Radio className="h-3 w-3" aria-hidden />
-                  <span>
-                    {mapSignalCount}{" "}
-                    {mapSignalCount === 1 ? "signal" : "signals"} on map
-                  </span>
-                </div>
                 {onOpenUnlockModal ? (
                   <button
                     type="button"
