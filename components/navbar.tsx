@@ -23,7 +23,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "Featured", href: "/news", title: "KJ Featured Articles" },
     { name: "Ventura County", href: "/ventura-county" },
-    { name: "Signals", href: "/kindjoe-signals" },
+    // { name: "Signals", href: "/kindjoe-signals" },
   ] as const;
 
   useEffect(() => {
