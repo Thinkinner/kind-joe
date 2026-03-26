@@ -147,10 +147,19 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  /** One label per country (no city/region); placed at the strongest signal in that country. */
   const labelsData = useMemo(() => {
-    return signals.map((s) => ({
+    const byCountry = new Map<string, Signal>();
+    for (const s of signals) {
+      const key = s.country?.trim() || "Unknown";
+      const prev = byCountry.get(key);
+      if (!prev || s.impactScore > prev.impactScore) {
+        byCountry.set(key, s);
+      }
+    }
+    return Array.from(byCountry.values()).map((s) => ({
       ...s,
-      labelName: `${s.city.toUpperCase()}\n${s.country.toUpperCase()}\n${macroRegionForCountry(s.country).toUpperCase()}`,
+      labelName: (s.country?.trim() || "Unknown").toUpperCase(),
     }));
   }, [signals]);
 
@@ -171,7 +180,20 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     : "rgba(40, 10, 12, 0.35)";
   const defaultCap = isLight ? "rgba(226, 232, 240, 0.75)" : "rgba(6, 6, 10, 0.88)";
   const defaultStroke = isLight ? "rgba(100, 116, 139, 0.4)" : "rgba(90, 90, 102, 0.35)";
-  const idleLabelColor = isLight ? "rgba(51, 65, 85, 0.55)" : "rgba(220, 220, 228, 0.55)";
+  /** Dark UI: faint light glyphs. Light UI: match globe texture (dark earth → bright text; bright maps → dark text). */
+  const idleLabelColor = useMemo(() => {
+    if (!isLight) return "rgba(220, 220, 228, 0.55)";
+    if (globeStyle === "dark") {
+      return "rgba(255, 255, 255, 0.94)";
+    }
+    return "rgba(15, 23, 42, 0.96)";
+  }, [isLight, globeStyle]);
+
+  const idleLabelSize = useMemo(() => {
+    if (!isLight) return 0.35;
+    if (globeStyle === "dark") return 0.44;
+    return 0.52;
+  }, [isLight, globeStyle]);
 
   // 🔭 Zoom to Local or Global scale based on news type
   useEffect(() => {
@@ -198,7 +220,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
       ref={containerRef}
       className={cn(
         "relative h-full w-full overflow-hidden font-mono",
-        isLight ? "bg-slate-200" : "bg-[#020203]",
+        isLight ? "bg-slate-100" : "bg-[#020203]",
       )}
     >
       {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
@@ -207,7 +229,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           <span
             className={cn(
               "text-[8px] tracking-[0.3em] md:text-[9px]",
-              isLight ? "text-slate-500" : "text-gray-500",
+              isLight ? "text-slate-700" : "text-gray-500",
             )}
           >
             GPS_LOCK_CONFIRMED
@@ -221,7 +243,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           <span
             className={cn(
               "mt-1 max-w-[14rem] text-right text-[9px] leading-snug",
-              isLight ? "text-slate-600" : "text-gray-500",
+              isLight ? "text-slate-800" : "text-gray-500",
             )}
           >
             {selectedSignal.city} · {selectedSignal.country} ·{" "}
@@ -282,13 +304,15 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         labelLng="lng"
         labelText="labelName"
         labelAltitude={0.02}
-        labelSize={(d: any) => (d.id === selectedSignal?.id ? 0.95 : 0.35)}
+        labelSize={(d: any) =>
+          d.id === selectedSignal?.id ? 0.95 : idleLabelSize
+        }
         labelColor={(d: any) =>
           d.id === selectedSignal?.id
             ? getImpactColor(d.impactScore)
             : idleLabelColor
         }
-        labelDotRadius={0.35}
+        labelDotRadius={isLight ? 0.42 : 0.35}
         onLabelClick={(label: any) => onSignalClick(label)}
       />
 

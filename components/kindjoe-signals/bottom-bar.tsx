@@ -36,7 +36,7 @@ export default function BottomBar({
       className={cn(
         "fixed bottom-0 left-0 right-0 z-[60] border-t pb-[env(safe-area-inset-bottom,0px)] font-mono backdrop-blur-md",
         isLight
-          ? "border-red-200/80 bg-white/95 shadow-[0_-8px_32px_rgba(15,23,42,0.08)]"
+          ? "border-slate-200 bg-white shadow-[0_-4px_24px_rgba(15,23,42,0.08)]"
           : "border-red-950/35 bg-[#050508]/95 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
       )}
       role="toolbar"
@@ -45,7 +45,7 @@ export default function BottomBar({
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent",
-          isLight ? "via-red-500/20" : "via-red-600/30",
+          isLight ? "via-slate-200" : "via-red-600/30",
         )}
       />
 
@@ -54,16 +54,27 @@ export default function BottomBar({
           <button
             type="button"
             onClick={onOpenFilters}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded border border-red-500/25 bg-red-950/20 px-2.5 text-[9px] font-bold uppercase tracking-widest text-red-300/90 transition-colors hover:border-red-500/45 hover:bg-red-950/35 md:px-3"
+            className={cn(
+              "flex h-9 shrink-0 items-center gap-1.5 rounded border px-2.5 text-[9px] font-bold uppercase tracking-widest transition-colors md:px-3",
+              isLight
+                ? "border-red-200 bg-red-50 text-red-900 hover:border-red-300 hover:bg-red-100"
+                : "border-red-500/25 bg-red-950/20 text-red-300/90 hover:border-red-500/45 hover:bg-red-950/35",
+            )}
           >
-            <Filter className="h-3.5 w-3.5 text-red-400" aria-hidden />
+            <Filter
+              className={cn(
+                "h-3.5 w-3.5",
+                isLight ? "text-red-700" : "text-red-400",
+              )}
+              aria-hidden
+            />
             <span className="hidden sm:inline">Filters</span>
           </button>
 
           <div
             className={cn(
               "hidden h-4 w-px shrink-0 md:block",
-              isLight ? "bg-slate-200" : "bg-white/10",
+              isLight ? "bg-slate-300" : "bg-white/10",
             )}
           />
 
@@ -71,15 +82,23 @@ export default function BottomBar({
             className={cn(
               "relative hidden min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md border px-2.5 py-1.5 md:flex md:max-w-md md:border-transparent md:bg-transparent md:px-0 md:py-0",
               isLight
-                ? "border-slate-200/80 bg-slate-100/80"
+                ? "border-slate-300 bg-white"
                 : "border-white/5 bg-white/[0.02]",
             )}
           >
             <Search
-              className="h-4 w-4 shrink-0 text-red-500/50"
+              className={cn(
+                "h-4 w-4 shrink-0",
+                isLight ? "text-slate-400" : "text-red-500/50",
+              )}
               aria-hidden
             />
-            <span className="hidden text-[10px] font-bold text-red-500/40 md:inline">
+            <span
+              className={cn(
+                "hidden text-[10px] font-bold md:inline",
+                isLight ? "text-slate-400" : "text-red-500/40",
+              )}
+            >
               {">"}
             </span>
             <input
@@ -93,7 +112,7 @@ export default function BottomBar({
               className={cn(
                 "min-h-9 min-w-0 flex-1 bg-transparent py-1 text-[12px] focus:outline-none md:min-h-0 md:text-[11px] md:uppercase md:tracking-wider",
                 isLight
-                  ? "text-slate-900 placeholder:text-slate-400"
+                  ? "text-slate-950 placeholder:text-slate-500"
                   : "text-white placeholder:text-gray-600",
               )}
             />
@@ -102,10 +121,10 @@ export default function BottomBar({
                 type="button"
                 onClick={() => onSearchChange("")}
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded",
                   isLight
-                    ? "hover:bg-slate-200 hover:text-slate-900"
-                    : "hover:bg-white/10 hover:text-white",
+                    ? "text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                    : "text-gray-500 hover:bg-white/10 hover:text-white",
                 )}
                 aria-label="Clear search"
               >
@@ -119,7 +138,7 @@ export default function BottomBar({
           <div
             className={cn(
               "hidden text-[9px] uppercase tracking-widest md:flex md:flex-row md:items-center md:gap-2",
-              isLight ? "text-slate-500" : "text-gray-500",
+              isLight ? "text-slate-600" : "text-gray-500",
             )}
           >
             <span className={isLight ? "text-red-600/90" : "text-red-400/80"}>
@@ -128,11 +147,11 @@ export default function BottomBar({
             <span
               className={cn(
                 "tabular-nums",
-                isLight ? "text-slate-700" : "text-gray-300",
+                isLight ? "text-slate-900" : "text-gray-300",
               )}
             >
               {filteredCount}
-              <span className={isLight ? "text-slate-400" : "text-gray-600"}>
+              <span className={isLight ? "text-slate-500" : "text-gray-600"}>
                 {" "}
                 /{" "}
               </span>
@@ -143,7 +162,7 @@ export default function BottomBar({
           <div
             className={cn(
               "hidden h-4 w-px shrink-0 md:block",
-              isLight ? "bg-slate-200" : "bg-white/10",
+              isLight ? "bg-slate-300" : "bg-white/10",
             )}
           />
 
@@ -151,7 +170,7 @@ export default function BottomBar({
             <Globe
               className={cn(
                 "h-4 w-4 shrink-0",
-                isLight ? "text-slate-500" : "text-gray-500",
+                isLight ? "text-slate-600" : "text-gray-500",
               )}
               aria-hidden
             />
@@ -167,25 +186,25 @@ export default function BottomBar({
               className={cn(
                 "max-w-[7.5rem] cursor-pointer bg-transparent text-[10px] uppercase tracking-tight focus:outline-none md:max-w-none",
                 isLight
-                  ? "text-slate-600 hover:text-slate-900"
+                  ? "font-semibold text-slate-900 hover:text-slate-950"
                   : "text-gray-400 hover:text-white",
               )}
             >
               <option
                 value="dark"
-                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+                className={isLight ? "bg-white text-slate-900" : "bg-[#0A0A0F]"}
               >
                 Vector dark
               </option>
               <option
                 value="realistic"
-                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+                className={isLight ? "bg-white text-slate-900" : "bg-[#0A0A0F]"}
               >
                 Satellite
               </option>
               <option
                 value="wireframe"
-                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+                className={isLight ? "bg-white text-slate-900" : "bg-[#0A0A0F]"}
               >
                 Topo grid
               </option>

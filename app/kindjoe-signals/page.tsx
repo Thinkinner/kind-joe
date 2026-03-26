@@ -77,7 +77,7 @@ function GlobeLoadingFallback() {
     <div
       className={cn(
         "flex h-full w-full items-center justify-center",
-        isLight ? "bg-slate-200" : "bg-[#0A0A0F]",
+        isLight ? "bg-slate-100" : "bg-[#0A0A0F]",
       )}
     >
       <div className="flex flex-col items-center gap-4">
@@ -375,7 +375,7 @@ export default function Home() {
       className={cn(
         "flex h-screen w-screen flex-col overflow-hidden font-sans",
         isLight
-          ? "bg-slate-100 text-slate-900 selection:bg-[#00BFFF]/25"
+          ? "bg-slate-50 text-slate-950 antialiased selection:bg-[#00BFFF]/30"
           : "bg-[#0A0A0F] text-white selection:bg-[#00BFFF]/30",
       )}
     >
@@ -385,7 +385,7 @@ export default function Home() {
         <main
           className={cn(
             "relative h-full w-full shrink-0 md:h-auto md:flex-1",
-            isLight ? "bg-slate-200/90" : "bg-[#050508]",
+            isLight ? "bg-slate-100" : "bg-[#050508]",
           )}
         >
           {/* Background grid effect */}
@@ -438,27 +438,27 @@ export default function Home() {
             className={cn(
               "fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] flex-col border-t [transform:translateZ(0)]",
               isLight
-                ? "border-slate-200 bg-slate-50 shadow-[0_-12px_40px_rgba(15,23,42,0.1)]"
+                ? "border-slate-300 bg-white shadow-[0_-8px_32px_rgba(15,23,42,0.12)]"
                 : "border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]",
             )}
           >
             <div
               className={cn(
                 "flex min-h-[52px] shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-2 py-3 active:cursor-grabbing",
-                isLight ? "bg-slate-50" : "bg-[#0A0A0F]",
+                isLight ? "bg-white" : "bg-[#0A0A0F]",
               )}
               onPointerDown={(e) => sheetDragControls.start(e)}
             >
               <div
                 className={cn(
                   "h-1.5 w-12 rounded-full",
-                  isLight ? "bg-slate-300" : "bg-white/20",
+                  isLight ? "bg-slate-400/70" : "bg-white/20",
                 )}
               />
               <div
                 className={cn(
                   "pointer-events-none text-[8px] font-bold uppercase tracking-[0.2em]",
-                  isLight ? "text-slate-500" : "text-gray-600",
+                  isLight ? "text-slate-700" : "text-gray-600",
                 )}
               >
                 Drag Intel Dossier

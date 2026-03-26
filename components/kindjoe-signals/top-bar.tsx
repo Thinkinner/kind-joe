@@ -20,7 +20,7 @@ export default function TopBar() {
       className={cn(
         "relative z-30 flex h-14 shrink-0 items-center border-b px-3 sm:px-5 md:px-8",
         isLight
-          ? "border-red-200/80 bg-white/90 backdrop-blur-sm"
+          ? "border-slate-200 bg-white shadow-sm"
           : "border-red-950/40 bg-[#050508]",
       )}
     >
@@ -118,7 +118,7 @@ export default function TopBar() {
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
               isLight
-                ? "border-slate-200 bg-slate-100 text-amber-600 hover:bg-slate-200"
+                ? "border-slate-300 bg-white text-amber-600 shadow-sm hover:bg-slate-50"
                 : "border-white/10 bg-white/5 text-amber-200/90 hover:bg-white/10",
             )}
           >

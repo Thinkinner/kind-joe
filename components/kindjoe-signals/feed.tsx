@@ -85,7 +85,7 @@ export default function Feed({
       className={cn(
         "z-10 flex w-full shrink-0 flex-col overflow-hidden border-t font-mono md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
         isLight
-          ? "border-slate-200 bg-slate-50"
+          ? "border-slate-300 bg-white"
           : "border-white/10 bg-[#0A0A0F]",
       )}
     >
@@ -93,14 +93,14 @@ export default function Feed({
         className={cn(
           "sticky top-0 z-20 flex items-center justify-between border-b p-4 backdrop-blur-md",
           isLight
-            ? "border-slate-200 bg-white/70"
+            ? "border-slate-200 bg-slate-50"
             : "border-white/10 bg-black/50",
         )}
       >
         <h2
           className={cn(
             "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]",
-            isLight ? "text-slate-500" : "text-gray-500",
+            isLight ? "text-slate-800" : "text-gray-500",
           )}
         >
           <Activity size={12} className="text-[#00BFFF]" />
@@ -112,7 +112,7 @@ export default function Feed({
           className={cn(
             "flex items-center gap-1.5 rounded border px-2 py-1 text-[9px] uppercase tracking-widest transition-colors",
             isLight
-              ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+              ? "border-slate-300 bg-white text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50"
               : "border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
           )}
         >
@@ -128,7 +128,12 @@ export default function Feed({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             onClick={() => onSignalClick(spotlightSignal)}
-            className="bg-red-500/10 border-b border-red-500/40 p-4 cursor-pointer group hover:bg-red-500/20 transition-all relative overflow-hidden"
+            className={cn(
+              "group relative cursor-pointer overflow-hidden border-b p-4 transition-all",
+              isLight
+                ? "border-red-200 bg-red-50 hover:bg-red-100/90"
+                : "border-red-500/40 bg-red-500/10 hover:bg-red-500/20",
+            )}
           >
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 animate-pulse" />
 
@@ -137,7 +142,12 @@ export default function Feed({
               <span className="text-[9px] font-black text-red-500 tracking-[0.2em] uppercase">
                 Priority Asset
               </span>
-              <div className="ml-auto flex items-center gap-1 text-[8px] text-red-500/60 font-bold">
+              <div
+                className={cn(
+                  "ml-auto flex items-center gap-1 text-[8px] font-bold",
+                  isLight ? "text-red-800/80" : "text-red-500/60",
+                )}
+              >
                 <Clock size={10} />
                 LIVE_WINDOW
               </div>
@@ -152,11 +162,21 @@ export default function Feed({
               {spotlightSignal.headline}
             </h3>
 
-            <p className="text-[10px] text-red-200/80 leading-relaxed mb-3 line-clamp-3">
+            <p
+              className={cn(
+                "mb-3 line-clamp-3 text-[10px] leading-relaxed",
+                isLight ? "text-red-950/85" : "text-red-200/80",
+              )}
+            >
               {spotlightSignal.summary}
             </p>
 
-            <div className="flex justify-between items-center text-[9px] text-red-400/70 font-bold uppercase tracking-widest">
+            <div
+              className={cn(
+                "flex items-center justify-between text-[9px] font-bold uppercase tracking-widest",
+                isLight ? "text-red-900/90" : "text-red-400/70",
+              )}
+            >
               <span>Sector: {spotlightSignal.category}</span>
               <span className="flex gap-1">
                 <span className="animate-ping text-red-500">●</span> HOT
@@ -175,7 +195,14 @@ export default function Feed({
         )}
       >
         {showUnlockPanel ? (
-          <div className="flex min-h-[180px] flex-col items-center justify-center rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5 p-5 text-center md:min-h-[240px]">
+          <div
+            className={cn(
+              "flex min-h-[180px] flex-col items-center justify-center rounded-md border p-5 text-center md:min-h-[240px]",
+              isLight
+                ? "border-sky-300 bg-sky-50/80"
+                : "rounded-sm border-[#00BFFF]/20 bg-[#00BFFF]/5",
+            )}
+          >
             {accessCheckPending ? (
               <>
                 <div className="relative mb-4 flex h-7 w-7">
@@ -185,7 +212,7 @@ export default function Feed({
                 <p
                   className={cn(
                     "text-[11px] font-medium",
-                    isLight ? "text-slate-600" : "text-gray-300",
+                    isLight ? "text-slate-800" : "text-gray-300",
                   )}
                 >
                   Checking access…
@@ -207,13 +234,18 @@ export default function Feed({
                 <p
                   className={cn(
                     "mt-2 text-[10px] leading-relaxed",
-                    isLight ? "text-slate-600" : "text-gray-500",
+                    isLight ? "text-slate-700" : "text-gray-500",
                   )}
                 >
                   Watch breaking signals on the globe in real time. Add your
                   email once to read full headlines and summaries in this panel.
                 </p>
-                <div className="mt-3 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-[#00BFFF]/80">
+                <div
+                  className={cn(
+                    "mt-3 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest",
+                    isLight ? "text-sky-800" : "text-[#00BFFF]/80",
+                  )}
+                >
                   <Radio className="h-3 w-3" aria-hidden />
                   <span>
                     {mapSignalCount}{" "}
@@ -286,10 +318,10 @@ export default function Feed({
                       isSelected
                         ? "border-[#00BFFF] shadow-[0_0_15px_rgba(0,191,255,0.1)]"
                         : isLight
-                          ? "border-slate-200 bg-white hover:border-slate-300"
+                          ? "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white"
                           : "border-white/5 bg-white/[0.01] hover:border-white/15",
                       isSelected &&
-                        (isLight ? "bg-sky-50" : "bg-gray-900"),
+                        (isLight ? "border-sky-500 bg-sky-50" : "bg-gray-900"),
                     )}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -299,7 +331,7 @@ export default function Feed({
                           timeDiff < 120000
                             ? "text-[#00BFFF]"
                             : isLight
-                              ? "text-slate-500"
+                              ? "text-slate-700"
                               : "text-gray-600",
                         )}
                       >
@@ -319,7 +351,7 @@ export default function Feed({
                       className={cn(
                         "mb-2 text-[12px] font-bold uppercase leading-snug tracking-tight transition-colors",
                         isLight
-                          ? "text-slate-800 group-hover:text-slate-950"
+                          ? "text-slate-950 group-hover:text-slate-950"
                           : "text-gray-200 group-hover:text-white",
                       )}
                     >
@@ -329,7 +361,7 @@ export default function Feed({
                     <p
                       className={cn(
                         "mb-3 line-clamp-2 text-[10px] font-medium leading-relaxed",
-                        isLight ? "text-slate-600" : "text-gray-500",
+                        isLight ? "text-slate-700" : "text-gray-500",
                       )}
                     >
                       {signal.summary}
@@ -338,13 +370,13 @@ export default function Feed({
                     <div
                       className={cn(
                         "flex items-center justify-between border-t pt-3 text-[8px] tracking-widest",
-                        isLight ? "border-slate-200" : "border-white/5",
+                        isLight ? "border-slate-300" : "border-white/5",
                       )}
                     >
                       <span
                         className={cn(
                           "font-black uppercase",
-                          isLight ? "text-slate-600" : "text-gray-600",
+                          isLight ? "text-slate-800" : "text-gray-600",
                         )}
                       >
                         {signal.category}
@@ -368,7 +400,7 @@ export default function Feed({
                         <span
                           className={cn(
                             "font-bold",
-                            isLight ? "text-slate-500" : "text-gray-400",
+                            isLight ? "text-slate-800" : "text-gray-400",
                           )}
                         >
                           {signal.impactScore}
