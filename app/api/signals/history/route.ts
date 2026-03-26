@@ -1,21 +1,30 @@
-'use server';
+"use server";
 
 import { getSignalsFromDB, syncRealTimeNews } from "@/lib/aggregator";
-import { Signal } from "@/lib/aggregator/types";
+import { Signal, type GeographicScope } from "@/lib/aggregator/types";
 
-// 1. FAST: Just get what is already in the database
+function normalizeScope(raw: string | null | undefined): GeographicScope {
+  const v = (raw ?? "global").toLowerCase().trim();
+  if (v === "local" || v === "regional" || v === "national" || v === "global") {
+    return v;
+  }
+  return "global";
+}
+
 export async function getHistory(): Promise<Signal[]> {
   const rawData = await getSignalsFromDB();
   return rawData.map((s) => ({
     id: s.id,
     headline: s.headline,
     summary: s.summary ?? "",
-    source: s.source as any,
-    category: s.category as any,
+    source: s.source as Signal["source"],
+    category: s.category as Signal["category"],
     lat: s.lat,
     lng: s.lng,
     city: s.city ?? "Unknown",
     country: s.country ?? "Unknown",
+    geographicScope: normalizeScope(s.geographicScope),
+    adminArea: s.adminArea?.trim() ?? "",
     impactScore: s.impactScore ?? 0,
     timestamp: s.timestamp ? s.timestamp.getTime() : Date.now(),
     tags: (s.tags as string[]) ?? [],

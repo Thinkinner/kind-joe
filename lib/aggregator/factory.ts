@@ -47,6 +47,8 @@ export async function processIntelRaw(params: {
       lng: aiData.lng,
       city: aiData.city,
       country: aiData.country,
+      geographicScope: aiData.geographicScope,
+      adminArea: aiData.adminArea || null,
       impactScore: aiData.impactScore,
       tags: aiData.tags || [],
       timestamp: timestamp > now ? now : timestamp,

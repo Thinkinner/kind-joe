@@ -19,18 +19,16 @@ export default function Feed({
   selectedSignal,
   onOpenFilters,
 }: FeedProps) {
-  // 1. RE-RENDER TICK (Every 10 seconds for precise 2-minute tracking)
-  const [tick, setTick] = useState(0);
+  // Clock for “live” windows (updated outside render for React purity rules)
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 10000);
+    const timer = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(timer);
   }, []);
 
   // 2. ⚡ 2-MINUTE SPOTLIGHT LOGIC
   const spotlightSignal = useMemo(() => {
     if (signals.length === 0) return null;
-
-    const now = Date.now();
     const TWO_MINUTES = 2 * 60 * 1000; // 120,000ms
 
     // Filter to find only signals that are LESS than 2 minutes old
@@ -47,7 +45,7 @@ export default function Feed({
     return highestImpactHotSignal.impactScore >= 60
       ? highestImpactHotSignal
       : null;
-  }, [signals, tick]);
+  }, [signals, now]);
 
   // 3. 🕒 CHRONOLOGICAL MAIN FEED LOGIC
   const mainFeedSignals = useMemo(() => {
@@ -104,6 +102,10 @@ export default function Feed({
               {spotlightSignal.headline}
             </h3>
 
+            <p className="text-[10px] text-red-200/80 leading-relaxed mb-3 line-clamp-3">
+              {spotlightSignal.summary}
+            </p>
+
             <div className="flex justify-between items-center text-[9px] text-red-400/70 font-bold uppercase tracking-widest">
               <span>Sector: {spotlightSignal.city}</span>
               <span className="flex gap-1">
@@ -119,7 +121,6 @@ export default function Feed({
         <AnimatePresence initial={false}>
           {mainFeedSignals.map((signal) => {
             const isSelected = selectedSignal?.id === signal.id;
-            const now = Date.now();
             const timeDiff = now - signal.timestamp;
 
             // Format time

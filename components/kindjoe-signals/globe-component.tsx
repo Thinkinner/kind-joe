@@ -3,20 +3,63 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import Globe from "react-globe.gl";
 import { Signal } from "@/lib/aggregator/types";
+import { X, Target, MapPin, Activity, Hash } from "lucide-react";
 import {
-  X,
-  Target,
-  MapPin,
-  Activity,
-  Hash,
-  ShieldAlert,
-  Zap,
-} from "lucide-react";
+  formatLatLng,
+  macroRegionForCountry,
+} from "@/lib/signals/macro-region";
+
+const DARK_GLOBE_TEXTURE =
+  "https://unpkg.com/three-globe@2.32.0/example/img/earth-dark.jpg";
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function signalPointTooltip(d: Signal) {
+  const region = macroRegionForCountry(d.country);
+  const coords = formatLatLng(d.lat, d.lng);
+  return `<div style="font-family:ui-monospace,monospace;font-size:11px;max-width:260px;background:rgba(3,3,6,0.95);padding:10px 12px;border:1px solid rgba(220,38,38,0.45);border-radius:6px;color:#e5e5e5;line-height:1.45;box-shadow:0 8px 32px rgba(0,0,0,0.65)">
+    <div style="color:#f87171;font-weight:800;font-size:10px;letter-spacing:0.12em;margin-bottom:6px">SIGNAL</div>
+    <div style="font-weight:700;color:#fff;margin-bottom:8px;font-size:12px">${escapeHtml(d.headline.slice(0, 140))}${d.headline.length > 140 ? "…" : ""}</div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;display:grid;gap:4px;font-size:10px">
+      <div><span style="color:#9ca3af">City / locality</span> · <span style="color:#f3f4f6">${escapeHtml(d.city)}</span></div>
+      <div><span style="color:#9ca3af">Country</span> · <span style="color:#f3f4f6">${escapeHtml(d.country)}</span></div>
+      <div><span style="color:#9ca3af">Region</span> · <span style="color:#f3f4f6">${escapeHtml(region)}</span></div>
+      <div><span style="color:#9ca3af">Sector</span> · <span style="color:#f3f4f6">${escapeHtml(d.category)}</span></div>
+      <div><span style="color:#9ca3af">Coordinates</span> · <span style="color:#fca5a5">${escapeHtml(coords)}</span></div>
+      <div><span style="color:#9ca3af">Impact</span> · <span style="color:#f3f4f6">${d.impactScore}</span></div>
+    </div>
+  </div>`;
+}
+
+function countryPolygonTooltip(feature: {
+  properties?: Record<string, unknown>;
+}) {
+  const p = feature.properties ?? {};
+  const name = String(p.NAME ?? p.ADMIN ?? "Area");
+  const continent = String(p.CONTINENT ?? "—");
+  const iso = String(p.ISO_A2 ?? p.ADM0_A3 ?? "—");
+  const pop = p.POP_EST != null ? Number(p.POP_EST).toLocaleString() : null;
+  return `<div style="font-family:ui-monospace,monospace;font-size:11px;min-width:200px;max-width:280px;background:rgba(3,3,6,0.95);padding:10px 12px;border:1px solid rgba(120,120,130,0.5);border-radius:6px;color:#e5e5e5;line-height:1.5">
+    <div style="color:#94a3b8;font-size:9px;letter-spacing:0.15em;margin-bottom:6px">TERRITORY</div>
+    <div style="font-weight:800;color:#fff;margin-bottom:8px;font-size:13px">${escapeHtml(name)}</div>
+    <div style="display:grid;gap:4px;font-size:10px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px">
+      <div><span style="color:#9ca3af">Continent</span> · <span style="color:#e5e7eb">${escapeHtml(continent)}</span></div>
+      <div><span style="color:#9ca3af">ISO</span> · <span style="color:#e5e7eb">${escapeHtml(iso)}</span></div>
+      ${pop ? `<div><span style="color:#9ca3af">Population (est.)</span> · <span style="color:#e5e7eb">${pop}</span></div>` : ""}
+    </div>
+  </div>`;
+}
 
 interface GlobeComponentProps {
   signals: Signal[];
   selectedSignal: Signal | null;
-  onSignalClick: (signal: Signal) => void;
+  onSignalClick: (signal: Signal | null) => void;
   globeStyle: "realistic" | "dark" | "wireframe";
 }
 
@@ -35,11 +78,8 @@ const COUNTRY_NAME_MAP: Record<string, string> = {
   Russia: "Russian Federation",
 };
 
-export default function GlobeComponent({
-  signals,
-  selectedSignal,
-  onSignalClick,
-}: GlobeComponentProps) {
+export default function GlobeComponent(props: GlobeComponentProps) {
+  const { signals, selectedSignal, onSignalClick } = props;
   const globeRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [geoData, setGeoData] = useState({ features: [] });
@@ -67,11 +107,10 @@ export default function GlobeComponent({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 🏷️ Labels for all points
   const labelsData = useMemo(() => {
     return signals.map((s) => ({
       ...s,
-      labelName: s.city.toUpperCase(),
+      labelName: `${s.city.toUpperCase()}\n${s.country.toUpperCase()}\n${macroRegionForCountry(s.country).toUpperCase()}`,
     }));
   }, [signals]);
 
@@ -98,7 +137,7 @@ export default function GlobeComponent({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative bg-[#050508] overflow-hidden font-mono"
+      className="relative h-full w-full overflow-hidden bg-[#020203] font-mono"
     >
       {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
       {selectedSignal && (
@@ -107,11 +146,14 @@ export default function GlobeComponent({
             GPS_LOCK_CONFIRMED
           </span>
           <span
-            className="text-[10px] md:text-xs text-white font-bold tracking-widest"
+            className="text-[10px] md:text-xs font-bold tracking-widest text-white"
             style={{ color: activeColor }}
           >
-            {selectedSignal.lat.toFixed(4)}°N / {selectedSignal.lng.toFixed(4)}
-            °W
+            {formatLatLng(selectedSignal.lat, selectedSignal.lng)}
+          </span>
+          <span className="mt-1 max-w-[14rem] text-right text-[9px] leading-snug text-gray-500">
+            {selectedSignal.city} · {selectedSignal.country} ·{" "}
+            {macroRegionForCountry(selectedSignal.country)}
           </span>
         </div>
       )}
@@ -120,29 +162,33 @@ export default function GlobeComponent({
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        backgroundColor="rgba(0,0,0,0)"
+        globeImageUrl={DARK_GLOBE_TEXTURE}
+        backgroundColor="rgba(2,2,3,0.96)"
+        showGraticules={true}
         showAtmosphere={true}
-        atmosphereColor={activeColor}
-        atmosphereAltitude={0.2}
-        // --- 🗺️ AREA MARKING (COUNTRY) ---
+        atmosphereColor="rgba(40, 10, 12, 0.35)"
+        atmosphereAltitude={0.12}
         polygonsData={geoData.features}
         polygonCapColor={(d: any) => {
           const name = d.properties.NAME;
           const target = selectedSignal?.country;
           const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
-          return name === mappedName
-            ? getImpactColor(selectedSignal!.impactScore, 0.15)
-            : "rgba(0,0,0,0)";
+          if (selectedSignal && name === mappedName) {
+            return getImpactColor(selectedSignal.impactScore, 0.22);
+          }
+          return "rgba(6, 6, 10, 0.88)";
         }}
         polygonSideColor={() => "rgba(0, 0, 0, 0)"}
         polygonStrokeColor={(d: any) => {
           const name = d.properties.NAME;
           const target = selectedSignal?.country;
           const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
-          return name === mappedName
-            ? getImpactColor(selectedSignal!.impactScore, 0.6)
-            : "rgba(255, 255, 255, 0.02)";
+          if (selectedSignal && name === mappedName) {
+            return getImpactColor(selectedSignal.impactScore, 0.55);
+          }
+          return "rgba(90, 90, 102, 0.35)";
         }}
+        polygonLabel={(d: any) => countryPolygonTooltip(d)}
         // --- 🎯 HYPER-LOCAL MARKING (SECTOR HIGHLIGHT) ---
         ringsData={selectedSignal ? [selectedSignal] : []}
         ringLat="lat"
@@ -158,17 +204,19 @@ export default function GlobeComponent({
         pointColor={(d: any) => getImpactColor(d.impactScore)}
         pointAltitude={0.01}
         pointRadius={(d: any) => (d.id === selectedSignal?.id ? 1.5 : 0.7)}
-        // --- 🏷️ LABELS ---
+        pointLabel={(d: any) => signalPointTooltip(d as Signal)}
         labelsData={labelsData}
         labelLat="lat"
         labelLng="lng"
         labelText="labelName"
-        labelSize={(d: any) => (d.id === selectedSignal?.id ? 1.2 : 0.4)}
+        labelAltitude={0.02}
+        labelSize={(d: any) => (d.id === selectedSignal?.id ? 0.95 : 0.35)}
         labelColor={(d: any) =>
           d.id === selectedSignal?.id
             ? getImpactColor(d.impactScore)
-            : "rgba(255,255,255,0.4)"
+            : "rgba(220, 220, 228, 0.55)"
         }
+        labelDotRadius={0.35}
         onLabelClick={(label: any) => onSignalClick(label)}
       />
 
@@ -187,7 +235,8 @@ export default function GlobeComponent({
               </span>
             </div>
             <button
-              onClick={() => onSignalClick(null as any)}
+              type="button"
+              onClick={() => onSignalClick(null)}
               className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
             >
               <X size={24} />
@@ -221,7 +270,8 @@ export default function GlobeComponent({
                 </div>
               </div>
               <button
-                onClick={() => onSignalClick(null as any)}
+                type="button"
+                onClick={() => onSignalClick(null)}
                 className="hidden md:block p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-white"
               >
                 <X size={20} />
@@ -239,7 +289,7 @@ export default function GlobeComponent({
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5">
                 <MapPin className="w-3 h-3 md:w-3 md:h-3 text-[#00BFFF]" />
                 <span className="text-[10px] md:text-[10px] text-[#00BFFF] font-black uppercase">
-                  {selectedSignal.city} // {selectedSignal.country}
+                  {selectedSignal.city} · {selectedSignal.country}
                 </span>
               </div>
               <div
@@ -262,13 +312,47 @@ export default function GlobeComponent({
               </div>
             </div>
 
-            <div className="space-y-4 md:space-y-4 mb-10 md:mb-10">
+            <div className="space-y-4 md:space-y-4 mb-8 md:mb-8">
               <div className="flex items-center gap-2 text-[10px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
                 Situational Summary
               </div>
               <p className="text-[13px] md:text-[13px] text-gray-300 leading-relaxed font-medium">
                 {selectedSignal.summary}
               </p>
+
+              {/* Read full article — disabled for now.
+                  To restore: import useSignalArticlePublish + Newspaper, Loader2; call
+                  const { status, error, cachedSlug, publishOrOpen } = useSignalArticlePublish(selectedSignal);
+              <button
+                type="button"
+                onClick={() => void publishOrOpen()}
+                disabled={status === "loading"}
+                className="flex w-full items-center justify-center gap-2 rounded-sm border px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: `${activeColor}55`,
+                  backgroundColor: `${activeColor}18`,
+                  color: activeColor,
+                }}
+              >
+                {status === "loading" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    Building article…
+                  </>
+                ) : (
+                  <>
+                    <Newspaper className="h-4 w-4 shrink-0" />
+                    {cachedSlug ? "Open full article" : "Read full article"}
+                  </>
+                )}
+              </button>
+
+              {status === "error" && error && (
+                <p className="text-[11px] text-red-400/90 leading-snug">
+                  {error}
+                </p>
+              )}
+              */}
             </div>
 
             <div className="space-y-4 md:space-y-4 mb-10 md:mb-10">

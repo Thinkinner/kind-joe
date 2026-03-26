@@ -1,7 +1,15 @@
 "use server";
 
 import { getSignalsFromDB, syncRealTimeNews } from "@/lib/aggregator";
-import { Signal } from "@/lib/aggregator/types";
+import { Signal, type GeographicScope } from "@/lib/aggregator/types";
+
+function normalizeScope(raw: string | null | undefined): GeographicScope {
+  const v = (raw ?? "global").toLowerCase().trim();
+  if (v === "local" || v === "regional" || v === "national" || v === "global") {
+    return v;
+  }
+  return "global";
+}
 
 /**
  * 1. GET HISTORY (Fast)
@@ -30,6 +38,8 @@ export async function getHistory(): Promise<Signal[]> {
       lng: s.lng,
       city: s.city ?? "Unknown",
       country: s.country ?? "Unknown",
+      geographicScope: normalizeScope(s.geographicScope),
+      adminArea: s.adminArea?.trim() ?? "",
       impactScore: s.impactScore ?? 0,
       timestamp: timeValue, // Sending purely universal number to frontend
       tags: (s.tags as string[]) ?? [],

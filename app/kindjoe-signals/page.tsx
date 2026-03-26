@@ -6,7 +6,28 @@ import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/kindjoe-signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
 import FilterModal from "@/components/kindjoe-signals/filter-modal";
-import { Signal, Category } from "@/lib/aggregator/types";
+import {
+  Signal,
+  Category,
+  type GeographicScope,
+} from "@/lib/aggregator/types";
+
+function normalizePusherSignal(raw: Signal): Signal {
+  const g = raw.geographicScope;
+  const scope: GeographicScope =
+    g === "local" || g === "regional" || g === "national" || g === "global"
+      ? g
+      : "global";
+  return {
+    ...raw,
+    geographicScope: scope,
+    adminArea: raw.adminArea ?? "",
+    summary: raw.summary ?? "",
+    city: raw.city ?? "Unknown",
+    country: raw.country ?? "Unknown",
+    tags: raw.tags ?? [],
+  };
+}
 import Pusher from "pusher-js";
 import { getHistory, triggerSync } from "@/lib/actions/news-signal";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -42,11 +63,11 @@ export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState<string | "All">("All");
   const [selectedTag, setSelectedTag] = useState<string | "All">("All");
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
-  const [tension, setTension] = useState(20);
   const [globeStyle, setGlobeStyle] = useState<
     "realistic" | "dark" | "wireframe"
   >("dark");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // useEffect(() => {
   //   // Only run this on the client
@@ -109,7 +130,8 @@ export default function Home() {
 
     console.log("📡 Pusher: Subscribed to 'aether-live'");
 
-    channel.bind("new-signal", (newSignal: Signal) => {
+    channel.bind("new-signal", (incoming: Signal) => {
+      const newSignal = normalizePusherSignal(incoming);
       console.log("🔥 NEW SIGNAL DETECTED:", newSignal.headline);
 
       setSignals((prev) => {
@@ -140,35 +162,6 @@ export default function Home() {
     };
   }, []); // Keeps strictly to mount-only
 
-  // Tension decay based on signal density
-  useEffect(() => {
-    const decayInterval = setInterval(() => {
-      const now = Date.now();
-      // Count high impact signals in the last 15 seconds
-      const recentHighImpactSignals = signalsRef.current.filter(
-        (s) => s.impactScore > 50 && now - s.timestamp < 15000,
-      );
-      const density = recentHighImpactSignals.length;
-
-      setTension((prev) => {
-        if (prev <= 0) return 0;
-
-        // Base decay rate per second
-        let decayRate = 1.0;
-
-        // Adjust decay rate based on density (more signals = slower decay)
-        if (density >= 3) decayRate = 0.1;
-        else if (density === 2) decayRate = 0.3;
-        else if (density === 1) decayRate = 0.6;
-        else decayRate = 1.5; // No recent high impact signals, fast decay
-
-        return Math.max(0, prev - decayRate);
-      });
-    }, 1000);
-
-    return () => clearInterval(decayInterval);
-  }, []);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -191,25 +184,44 @@ export default function Home() {
   }, []);
 
   const filteredSignals = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return signals.filter((s) => {
-      // 1. Remove any strict "5-minute" hide logic here.
-      // We want the aggregator to handle freshness, but the UI to show the history.
-
       const categoryMatch =
         selectedCategory === "All" || s.category === selectedCategory;
       const countryMatch =
         selectedCountry === "All" || s.country === selectedCountry;
 
-      // Tag filter
       const tagMatch =
         selectedTag === "All" ||
         (s.tags && s.tags.includes(selectedTag.toLowerCase()));
 
-      return categoryMatch && countryMatch && tagMatch;
-    });
-  }, [signals, selectedCategory, selectedCountry, selectedTag]);
+      if (!(categoryMatch && countryMatch && tagMatch)) return false;
 
-  const handleSignalClick = useCallback((signal: Signal) => {
+      if (!q) return true;
+
+      const hay = [
+        s.headline,
+        s.summary,
+        s.city,
+        s.country,
+        s.source,
+        s.adminArea ?? "",
+        ...(s.tags ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return hay.includes(q);
+    });
+  }, [
+    signals,
+    selectedCategory,
+    selectedCountry,
+    selectedTag,
+    searchQuery,
+  ]);
+
+  const handleSignalClick = useCallback((signal: Signal | null) => {
     setSelectedSignal(signal);
   }, []);
 
@@ -233,11 +245,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-white overflow-hidden font-sans selection:bg-[#00BFFF]/30">
-      <TopBar
-        tension={tension}
-        setTension={setTension}
-        signalCount={signals.length}
-      />
+      <TopBar />
 
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative">
         <main className="relative bg-[#050508] h-full md:h-auto md:flex-1 w-full shrink-0">
@@ -259,14 +267,14 @@ export default function Home() {
             animate={controls}
             variants={{
               expanded: { y: "0%" },
-              minimized: { y: "calc(100% - 60px)" }
+              minimized: { y: "calc(100% - 60px)" },
             }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.05}
             onDragEnd={onDragEnd}
-            className="fixed inset-x-0 bottom-0 z-50 flex flex-col h-[80vh] bg-[#0A0A0F] border-t border-white/10 touch-pan-y shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+            className="fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] touch-pan-y flex-col border-t border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
           >
             {/* Drag Handle Container (Handles the drag for the whole sheet) */}
             <motion.div 
@@ -298,7 +306,24 @@ export default function Home() {
         )}
       </div>
 
-      <BottomBar globeStyle={globeStyle} setGlobeStyle={setGlobeStyle} />
+      {/* Reserve space for fixed bottom bar + safe area */}
+      <div
+        className="shrink-0"
+        style={{
+          height: "calc(2.75rem + env(safe-area-inset-bottom, 0px))",
+        }}
+        aria-hidden
+      />
+
+      <BottomBar
+        globeStyle={globeStyle}
+        setGlobeStyle={setGlobeStyle}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filteredCount={filteredSignals.length}
+        totalCount={signals.length}
+        onOpenFilters={() => setIsFilterModalOpen(true)}
+      />
 
       {isFilterModalOpen && (
         <FilterModal

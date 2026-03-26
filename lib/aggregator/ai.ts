@@ -28,6 +28,16 @@ const signalSchema: Schema = {
       description:
         "Standardized country name (e.g., 'USA', 'Philippines', 'United Kingdom').",
     },
+    geographicScope: {
+      type: Type.STRING,
+      description:
+        "Exactly one of: local, regional, national, global. local = city/neighborhood/incident site; regional = state/province/metro area; national = country-wide policy or event; global = multi-country or worldwide.",
+    },
+    adminArea: {
+      type: Type.STRING,
+      description:
+        "Sub-national jurisdiction for local/regional stories: state/province, county, metro (e.g. 'Ventura County, California', 'Texas', 'Île-de-France'). Empty string if national or global.",
+    },
     lat: { type: Type.NUMBER },
     lng: { type: Type.NUMBER },
     impactScore: {
@@ -47,6 +57,8 @@ const signalSchema: Schema = {
     "category",
     "city",
     "country",
+    "geographicScope",
+    "adminArea",
     "lat",
     "lng",
     "impactScore",
@@ -81,15 +93,16 @@ export const analyzeSignalWithAI = async (
        - Present facts without choosing "sides."
        - Use "Reported," "Observed," "Confirmed," or "Alleged" instead of judgmental verbs.
 
-    2. MULTI-SCALAR GEOGRAPHY:
-       - SCALE DETECTION: Determine if the news is GLOBAL, NATIONAL, or LOCAL.
-       - IF LOCAL (e.g., Simi Valley, Ventura County, specific city districts):
-         - Identify the specific City/County for the 'city' field.
-         - Pinpoint exact Lat/Lng for that specific location.
-       - IF MACRO (e.g., a National policy or International treaty):
-         - Set 'city' to the Capital or 'Multiple'.
-         - Set 'country' to the primary nation.
-       - IF UNCERTAIN: Use Google Search to find the exact location of landmarks or events mentioned.
+    2. MULTI-SCALAR GEOGRAPHY (REQUIRED FIELDS geographicScope + adminArea):
+       - geographicScope MUST be exactly: local | regional | national | global
+         • local: single city, town, neighborhood, or specific venue (crime scene, plant, base).
+         • regional: state/province, multi-county metro, or sub-national corridor.
+         • national: policy, election, or story covering an entire country without a tighter place.
+         • global: treaties, wars spanning states, markets, climate — cross-border or planet-scale.
+       - adminArea: ALWAYS set for local and regional (state/county/metro name). Use "" (empty) for national/global unless a clear sub-national lens exists.
+       - city: Most specific place name readers would use; use 'Multiple' or capital if only national/global.
+       - Pinpoint Lat/Lng for the primary location; use country centroid only if truly national with no city.
+       - IF UNCERTAIN: Use Google Search for landmarks, jurisdictions, and metro names.
 
     3. SPECIALIZED MONITORING: [ICE / BORDER / DOMESTIC]
        - You are highly attuned to US Border activity, ICE operations, and immigration developments.
@@ -132,6 +145,16 @@ export const analyzeSignalWithAI = async (
       if (result.impactScore < 8 && result.category === "Viral / Social") {
         result.category = "Ignore";
       }
+
+      const allowedScopes = ["local", "regional", "national", "global"] as const;
+      let gs = String(result.geographicScope ?? "global")
+        .toLowerCase()
+        .trim();
+      if (!allowedScopes.includes(gs as (typeof allowedScopes)[number])) {
+        gs = "global";
+      }
+      result.geographicScope = gs;
+      result.adminArea = String(result.adminArea ?? "").trim();
 
       return result;
     } catch (e) {

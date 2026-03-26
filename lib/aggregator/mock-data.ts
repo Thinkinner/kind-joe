@@ -1,4 +1,4 @@
-import { Signal, Source, Category } from './types';
+import { Signal, Source, Category, type GeographicScope } from './types';
 
 const SOURCES: Source[] = ['X', 'Telegram', 'Discord', 'RSS'];
 export const CATEGORIES: Category[] = [
@@ -66,6 +66,22 @@ export function generateSignal(): Signal {
   const shuffledTags = [...POPULAR_TAGS].sort(() => 0.5 - Math.random());
   const tags = shuffledTags.slice(0, numTags);
 
+  const scopes: GeographicScope[] = [
+    "local",
+    "regional",
+    "national",
+    "global",
+  ];
+  const geographicScope = scopes[Math.floor(Math.random() * scopes.length)];
+  const adminArea =
+    geographicScope === "local"
+      ? `${loc.city} metro`
+      : geographicScope === "regional"
+        ? loc.country === "USA"
+          ? "Multi-state corridor"
+          : `${loc.country} — regional`
+        : "";
+
   return {
     id: Math.random().toString(36).substring(2, 9),
     headline: `${headline} in ${loc.city}`,
@@ -76,6 +92,8 @@ export function generateSignal(): Signal {
     lng,
     city: loc.city,
     country: loc.country,
+    geographicScope,
+    adminArea,
     impactScore: Math.floor(Math.random() * 100) + 1,
     timestamp: Date.now(),
     tags,

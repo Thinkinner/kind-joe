@@ -228,6 +228,10 @@ export const signals = pgTable("signals", {
   lng: doublePrecision("lng").notNull(),
   city: text("city"),
   country: text("country"),
+  /** local | regional | national | global */
+  geographicScope: text("geographic_scope").notNull().default("global"),
+  /** State / province / county / metro for local & regional stories */
+  adminArea: text("admin_area"),
   impactScore: integer("impact_score").default(0),
   tags: jsonb("tags").$type<string[]>().default([]),
   timestamp: timestamp("timestamp", {
