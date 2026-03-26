@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import dynamic from "next/dynamic";
 import Pusher from "pusher-js";
-import { motion, useAnimation, useDragControls } from "framer-motion";
 import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/kindjoe-signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
@@ -24,6 +29,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
+import { MobileIntelSheet } from "@/components/kindjoe-signals/mobile-intel-sheet";
 
 const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
 const CATEGORY_SET = new Set<Category>([
@@ -337,33 +343,6 @@ export default function Home() {
   }, []);
 
   const isMobile = useIsMobile();
-  const controls = useAnimation();
-  const sheetDragControls = useDragControls();
-
-  const onSheetDragEnd = useCallback(
-    (
-      _event: MouseEvent | TouchEvent | PointerEvent,
-      info: {
-        offset: { y: number };
-        velocity: { y: number };
-        point: { y: number };
-      },
-    ) => {
-      const shouldExpand = info.offset.y < -100 || info.velocity.y < -500;
-      const shouldMinimize = info.offset.y > 100 || info.velocity.y > 500;
-
-      if (shouldExpand) {
-        void controls.start("expanded");
-      } else if (shouldMinimize) {
-        void controls.start("minimized");
-      } else {
-        void controls.start(
-          info.point.y < window.innerHeight / 2 ? "expanded" : "minimized",
-        );
-      }
-    },
-    [controls],
-  );
 
   const sidebarFeedUnlocked = signalsAccessChecked && hasSignalsAccess;
 
@@ -414,74 +393,22 @@ export default function Home() {
         </main>
 
         {isMobile ? (
-          <motion.div
-            initial="minimized"
-            animate={controls}
-            variants={{
-              expanded: { y: "0%" },
-              minimized: { y: "calc(100% - 60px)" },
-            }}
-            transition={{
-              type: "tween",
-              duration: 0.22,
-              ease: [0.25, 0.1, 0.25, 1],
-            }}
-            drag="y"
-            dragControls={sheetDragControls}
-            dragListener={false}
-            dragMomentum={false}
-            dragElastic={0.08}
-            dragTransition={{ bounceStiffness: 400, bounceDamping: 35 }}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={onSheetDragEnd}
-            style={{ willChange: "transform" }}
-            className={cn(
-              "fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] flex-col border-t [transform:translateZ(0)]",
-              isLight
-                ? "border-slate-300 bg-white shadow-[0_-8px_32px_rgba(15,23,42,0.12)]"
-                : "border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]",
-            )}
-          >
-            <div
-              className={cn(
-                "flex min-h-[52px] shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-2 py-3 active:cursor-grabbing",
-                isLight ? "bg-white" : "bg-[#0A0A0F]",
-              )}
-              onPointerDown={(e) => sheetDragControls.start(e)}
-            >
-              <div
-                className={cn(
-                  "h-1.5 w-12 rounded-full",
-                  isLight ? "bg-slate-400/70" : "bg-white/20",
-                )}
-              />
-              <div
-                className={cn(
-                  "pointer-events-none text-[8px] font-bold uppercase tracking-[0.2em]",
-                  isLight ? "text-slate-700" : "text-gray-600",
-                )}
-              >
-                Drag Intel Dossier
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-hidden overscroll-y-contain">
-              <Feed
-                signals={filteredSignals}
-                onSignalClick={handleSignalClick}
-                selectedSignal={selectedSignal}
-                onOpenFilters={() => {
-                  setFilterModalInitialTab("topic");
-                  setIsFilterModalOpen(true);
-                }}
-                totalUnfilteredCount={signals.length}
-                onClearFilters={presetAll}
-                sidebarAccessUnlocked={sidebarFeedUnlocked}
-                accessCheckPending={!signalsAccessChecked}
-                onOpenUnlockModal={() => setLeadModalOpen(true)}
-              />
-            </div>
-          </motion.div>
+          <MobileIntelSheet isLight={isLight}>
+            <Feed
+              signals={filteredSignals}
+              onSignalClick={handleSignalClick}
+              selectedSignal={selectedSignal}
+              onOpenFilters={() => {
+                setFilterModalInitialTab("topic");
+                setIsFilterModalOpen(true);
+              }}
+              totalUnfilteredCount={signals.length}
+              onClearFilters={presetAll}
+              sidebarAccessUnlocked={sidebarFeedUnlocked}
+              accessCheckPending={!signalsAccessChecked}
+              onOpenUnlockModal={() => setLeadModalOpen(true)}
+            />
+          </MobileIntelSheet>
         ) : (
           <Feed
             signals={filteredSignals}

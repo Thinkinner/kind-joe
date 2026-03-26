@@ -184,7 +184,7 @@ export default function Feed({
 
       <div
         className={cn(
-          "flex-1 space-y-2 overflow-y-auto p-2 scrollbar-thin scrollbar-track-transparent",
+          "flex-1 space-y-2 overflow-y-auto overscroll-y-contain p-2 scrollbar-thin scrollbar-track-transparent",
           isLight
             ? "scrollbar-thumb-slate-300"
             : "scrollbar-thumb-white/10",

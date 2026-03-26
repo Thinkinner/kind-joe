@@ -20,7 +20,7 @@ function DrawerTrigger({
 function DrawerPortal({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
+  return <DrawerPrimitive.Portal {...props} />
 }
 
 function DrawerClose({
@@ -45,14 +45,29 @@ function DrawerOverlay({
   )
 }
 
+type DrawerContentProps = React.ComponentProps<typeof DrawerPrimitive.Content> & {
+  /** When false, skips the dimmed overlay (e.g. map-first layouts). @default true */
+  showOverlay?: boolean
+  /** When false, hides the default grab pill (use DrawerHandle or custom chrome). @default true */
+  showDefaultHandle?: boolean
+  /** Radix portal container; also pass the same element to Drawer Root `container` for correct snap math. */
+  container?: HTMLElement | null
+}
+
 function DrawerContent({
   className,
   children,
+  showOverlay = true,
+  showDefaultHandle = true,
+  container: portalContainer,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+}: DrawerContentProps) {
   return (
-    <DrawerPortal data-slot="drawer-portal">
-      <DrawerOverlay />
+    <DrawerPortal
+      data-slot="drawer-portal"
+      container={portalContainer ?? undefined}
+    >
+      {showOverlay ? <DrawerOverlay /> : null}
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
@@ -65,7 +80,9 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="bg-muted mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        {showDefaultHandle ? (
+          <div className="bg-muted mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        ) : null}
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>
@@ -121,6 +138,8 @@ function DrawerDescription({
   )
 }
 
+const DrawerHandle = DrawerPrimitive.Handle
+
 export {
   Drawer,
   DrawerPortal,
@@ -128,6 +147,7 @@ export {
   DrawerTrigger,
   DrawerClose,
   DrawerContent,
+  DrawerHandle,
   DrawerHeader,
   DrawerFooter,
   DrawerTitle,
