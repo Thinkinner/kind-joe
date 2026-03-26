@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, Eye, ChevronRight } from "lucide-react";
-import {
-  formatSignalsViewerCount,
-  useSignalsLiveViewers,
-} from "@/hooks/use-signals-live-viewers";
+import { Menu, X, Search } from "lucide-react";
+// import { Eye, ChevronRight } from "lucide-react";
+// import {
+//   formatSignalsViewerCount,
+//   useSignalsLiveViewers,
+// } from "@/hooks/use-signals-live-viewers";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
@@ -16,7 +17,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-  const signalsViewers = useSignalsLiveViewers();
+  // const signalsViewers = useSignalsLiveViewers();
 
   const links = [
     { name: "Home", href: "/" },
@@ -40,31 +41,12 @@ export default function Navbar() {
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  const livePillInner = (
-    <>
-      <span className="relative flex h-3 w-3 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/55" />
-        <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.95)]" />
-      </span>
-      <span className="shrink-0 text-[11px] font-black tracking-[0.22em] text-red-500">
-        LIVE
-      </span>
-      <Eye className="h-5 w-5 shrink-0 text-red-400" aria-hidden strokeWidth={2.25} />
-      <span className="min-w-0 truncate font-mono text-xl font-bold tabular-nums text-white xl:text-2xl">
-        {formatSignalsViewerCount(signalsViewers)}
-      </span>
-      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-200/95">
-        watching
-      </span>
-    </>
-  );
-
   return (
     <>
       <header className="sticky top-0 z-[60] border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-600/25 to-transparent" />
 
-        <nav className="relative mx-auto max-w-[1440px] px-3 sm:px-5 lg:px-8">
+        <nav className="relative mx-auto max-w-[1440px] px-3 pb-3 sm:px-5 lg:px-8 lg:pb-0">
           {/* Main bar */}
           <div className="flex h-[3.25rem] items-center justify-between gap-3 sm:h-14 lg:h-[3.75rem]">
             <Link
@@ -105,13 +87,9 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                href="/kindjoe-signals"
-                title="Kind Joe Signals — live feed"
-                className="hidden max-w-[min(100%,20rem)] items-center gap-2.5 rounded-full border border-red-500/45 bg-gradient-to-b from-red-950/55 to-red-950/25 px-4 py-2 shadow-[0_0_28px_rgba(220,38,38,0.18)] transition-all hover:border-red-500/65 hover:shadow-[0_0_36px_rgba(220,38,38,0.28)] lg:inline-flex"
-              >
-                {livePillInner}
-              </Link>
+              {/* LIVE watching pill — disabled for now
+              <Link href="/kindjoe-signals" ...>{livePillInner}</Link>
+              */}
 
               <button
                 type="button"
@@ -134,38 +112,9 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile / tablet: full-width LIVE strip — high visibility, easy tap */}
-          <Link
-            href="/kindjoe-signals"
-            className="mb-3 flex min-h-[3.25rem] w-full items-center justify-between gap-3 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/70 via-red-950/45 to-red-950/70 px-4 py-3 shadow-[0_0_32px_rgba(220,38,38,0.2)] transition-transform active:scale-[0.99] lg:hidden"
-            aria-label={`${formatSignalsViewerCount(signalsViewers)} people watching Kind Joe Signals — open live feed`}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="relative flex h-3 w-3 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/55" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[11px] font-black tracking-[0.2em] text-red-500">
-                    LIVE
-                  </span>
-                  <span className="font-mono text-2xl font-bold tabular-nums leading-none text-white sm:text-[1.65rem]">
-                    {formatSignalsViewerCount(signalsViewers)}
-                  </span>
-                  <span className="text-sm font-medium text-red-100/90">
-                    watching
-                  </span>
-                </div>
-                <p className="mt-1 truncate text-xs text-red-200/70">
-                  Kind Joe Signals — tap for the live map and feed
-                </p>
-              </div>
-            </div>
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-              <ChevronRight className="h-6 w-6 text-red-300" aria-hidden strokeWidth={2.25} />
-            </span>
-          </Link>
+          {/* Mobile LIVE watching strip — disabled for now
+          <Link href="/kindjoe-signals" className="mb-3 ... lg:hidden">...</Link>
+          */}
         </nav>
       </header>
 
@@ -210,28 +159,9 @@ export default function Navbar() {
                 </button>
               </div>
 
-              <Link
-                href="/kindjoe-signals"
-                onClick={() => setOpen(false)}
-                className="mb-4 flex min-h-[4.5rem] w-full items-center justify-between gap-3 rounded-2xl border border-red-500/45 bg-gradient-to-br from-red-950/60 to-red-950/25 px-4 py-3.5 shadow-[0_0_28px_rgba(220,38,38,0.2)]"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/50" />
-                      <span className="relative h-2.5 w-2.5 rounded-full bg-red-500" />
-                    </span>
-                    <span className="text-[10px] font-black tracking-[0.2em] text-red-500">
-                      LIVE NOW
-                    </span>
-                  </div>
-                  <p className="mt-1.5 font-mono text-2xl font-bold tabular-nums text-white">
-                    {formatSignalsViewerCount(signalsViewers)}
-                  </p>
-                  <p className="text-xs text-red-200/80">watching Signals</p>
-                </div>
-                <ChevronRight className="h-7 w-7 shrink-0 text-red-300/90" />
-              </Link>
+              {/* Drawer LIVE watching block — disabled for now
+              <Link href="/kindjoe-signals" onClick={...} className="mb-4 ...">...</Link>
+              */}
 
               <button
                 type="button"
