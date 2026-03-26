@@ -3,6 +3,7 @@ export type Category =
   | "Geopolitics"
   | "Conflicts & Wars"
   | "Economy & Markets"
+  | "Business"
   | "Tech & Science"
   | "Disasters & Emergencies"
   | "Viral / Social";

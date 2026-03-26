@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Cursor IDE — session debug logs and other local artifacts (not app source)
+.cursor/*.log
+
 # debug
 npm-debug.log*
 yarn-debug.log*

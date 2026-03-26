@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Pusher from "pusher-js";
-import { motion, useAnimation } from "framer-motion";
+import { motion, useAnimation, useDragControls } from "framer-motion";
 import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/kindjoe-signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
 import FilterModal from "@/components/kindjoe-signals/filter-modal";
+import SignalsAccessGate from "@/components/kindjoe-signals/signals-access-gate";
 import {
   Signal,
   Category,
@@ -15,7 +16,11 @@ import {
   type GeographicScope,
   type PusherSignalPayload,
 } from "@/lib/aggregator/types";
-import { getHistory, triggerSync } from "@/lib/actions/news-signal";
+import {
+  getHistory,
+  triggerSync,
+  checkSignalsAccess,
+} from "@/lib/actions/news-signal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
@@ -23,6 +28,7 @@ const CATEGORY_SET = new Set<Category>([
   "Geopolitics",
   "Conflicts & Wars",
   "Economy & Markets",
+  "Business",
   "Tech & Science",
   "Disasters & Emergencies",
   "Viral / Social",
@@ -84,19 +90,28 @@ const GlobeComponent = dynamic(
 );
 
 export default function Home() {
+  const [signalsAccessChecked, setSignalsAccessChecked] = useState(false);
+  const [hasSignalsAccess, setHasSignalsAccess] = useState(false);
   const [signals, setSignals] = useState<Signal[]>([]);
-  const signalsRef = useRef<Signal[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | "All">(
     "All",
   );
   const [selectedCountry, setSelectedCountry] = useState<string | "All">("All");
   const [selectedTag, setSelectedTag] = useState<string | "All">("All");
+  const [selectedGeographicScope, setSelectedGeographicScope] = useState<
+    GeographicScope | "All"
+  >("All");
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [globeStyle, setGlobeStyle] = useState<
     "realistic" | "dark" | "wireframe"
   >("dark");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterModalInitialTab, setFilterModalInitialTab] = useState<
+    "scale" | "region" | "topic" | "tags"
+  >("topic");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
 
   // useEffect(() => {
   //   // Only run this on the client
@@ -117,12 +132,29 @@ export default function Home() {
   //   initBeams();
   // }, []);
 
-  // Keep ref updated for intervals
   useEffect(() => {
-    signalsRef.current = signals;
-  }, [signals]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const ok = await checkSignalsAccess();
+        if (!cancelled) {
+          setHasSignalsAccess(ok);
+        }
+      } catch {
+        if (!cancelled) {
+          setHasSignalsAccess(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setSignalsAccessChecked(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  // Mock data generator
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -133,7 +165,7 @@ export default function Home() {
         console.error("Init Error:", err);
       }
     };
-    initApp();
+    void initApp();
 
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
@@ -150,7 +182,6 @@ export default function Home() {
       forceTLS: true,
     });
 
-    // --- DEBUG LOGS FOR CONNECTION ---
     pusher.connection.bind(
       "state_change",
       (states: { current: string; previous?: string }) => {
@@ -167,7 +198,6 @@ export default function Home() {
       console.log("🔥 NEW SIGNAL DETECTED:", newSignal.headline);
 
       setSignals((prev) => {
-        // 🛡️ DEDUPLICATION
         const idExists = prev.some((s) => s.id === newSignal.id);
         const headlineExists = prev.some(
           (s) =>
@@ -192,42 +222,70 @@ export default function Home() {
       pusher.unsubscribe("aether-live");
       pusher.disconnect();
     };
-  }, []); // Keeps strictly to mount-only
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       if (e.key === "Escape") {
         setSelectedSignal(null);
         setIsFilterModalOpen(false);
-      } else if (e.key === "1") {
-        setSelectedCategory("All");
-      } else if (e.key === "2") {
-        setSelectedCategory("Geopolitics");
-      } else if (e.key === "3") {
-        setSelectedCategory("Conflicts & Wars");
-      } else if (e.key === "4") {
-        setSelectedCategory("Economy & Markets");
+      } else if (!isFilterModalOpen) {
+        if (e.key === "1") {
+          setSelectedCategory("All");
+        } else if (e.key === "2") {
+          setSelectedCategory("Geopolitics");
+        } else if (e.key === "3") {
+          setSelectedCategory("Conflicts & Wars");
+        } else if (e.key === "4") {
+          setSelectedCategory("Economy & Markets");
+        } else if (e.key === "5") {
+          setSelectedCategory("Business");
+        } else if (
+          e.key === "/" ||
+          (e.metaKey && e.key.toLowerCase() === "k") ||
+          (e.ctrlKey && e.key.toLowerCase() === "k")
+        ) {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isFilterModalOpen]);
 
   const filteredSignals = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    const tagNeedle =
+      selectedTag === "All" ? null : selectedTag.toLowerCase();
     return signals.filter((s) => {
       const categoryMatch =
         selectedCategory === "All" || s.category === selectedCategory;
       const countryMatch =
         selectedCountry === "All" || s.country === selectedCountry;
 
-      const tagMatch =
-        selectedTag === "All" ||
-        (s.tags && s.tags.includes(selectedTag.toLowerCase()));
+      const scopeMatch =
+        selectedGeographicScope === "All" ||
+        s.geographicScope === selectedGeographicScope;
 
-      if (!(categoryMatch && countryMatch && tagMatch)) return false;
+      const tagMatch =
+        tagNeedle === null ||
+        (s.tags ?? []).some((t) => t.toLowerCase() === tagNeedle);
+
+      if (!(categoryMatch && countryMatch && tagMatch && scopeMatch))
+        return false;
 
       if (!q) return true;
 
@@ -250,8 +308,16 @@ export default function Home() {
     selectedCategory,
     selectedCountry,
     selectedTag,
+    selectedGeographicScope,
     searchQuery,
   ]);
+
+  const presetAll = useCallback(() => {
+    setSelectedCategory("All");
+    setSelectedCountry("All");
+    setSelectedTag("All");
+    setSelectedGeographicScope("All");
+  }, []);
 
   const handleSignalClick = useCallback((signal: Signal | null) => {
     setSelectedSignal(signal);
@@ -259,24 +325,34 @@ export default function Home() {
 
   const isMobile = useIsMobile();
   const controls = useAnimation();
+  const sheetDragControls = useDragControls();
 
-  // Handle snapping logic
-  const onDragEnd = (
-    _event: MouseEvent | TouchEvent | PointerEvent,
-    info: { offset: { y: number }; velocity: { y: number }; point: { y: number } },
-  ) => {
-    const shouldExpand = info.offset.y < -100 || info.velocity.y < -500;
-    const shouldMinimize = info.offset.y > 100 || info.velocity.y > 500;
+  const onSheetDragEnd = useCallback(
+    (
+      _event: MouseEvent | TouchEvent | PointerEvent,
+      info: {
+        offset: { y: number };
+        velocity: { y: number };
+        point: { y: number };
+      },
+    ) => {
+      const shouldExpand = info.offset.y < -100 || info.velocity.y < -500;
+      const shouldMinimize = info.offset.y > 100 || info.velocity.y > 500;
 
-    if (shouldExpand) {
-      controls.start("expanded");
-    } else if (shouldMinimize) {
-      controls.start("minimized");
-    } else {
-      // Return to current state if drag wasn't significant
-      controls.start(info.point.y < window.innerHeight / 2 ? "expanded" : "minimized");
-    }
-  };
+      if (shouldExpand) {
+        void controls.start("expanded");
+      } else if (shouldMinimize) {
+        void controls.start("minimized");
+      } else {
+        void controls.start(
+          info.point.y < window.innerHeight / 2 ? "expanded" : "minimized",
+        );
+      }
+    },
+    [controls],
+  );
+
+  const sidebarFeedUnlocked = signalsAccessChecked && hasSignalsAccess;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-white overflow-hidden font-sans selection:bg-[#00BFFF]/30">
@@ -304,30 +380,47 @@ export default function Home() {
               expanded: { y: "0%" },
               minimized: { y: "calc(100% - 60px)" },
             }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{
+              type: "tween",
+              duration: 0.22,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
             drag="y"
+            dragControls={sheetDragControls}
+            dragListener={false}
+            dragMomentum={false}
+            dragElastic={0.08}
+            dragTransition={{ bounceStiffness: 400, bounceDamping: 35 }}
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.05}
-            onDragEnd={onDragEnd}
-            className="fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] touch-pan-y flex-col border-t border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+            onDragEnd={onSheetDragEnd}
+            style={{ willChange: "transform" }}
+            className="fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] flex-col border-t border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)] [transform:translateZ(0)]"
           >
-            {/* Drag Handle Container (Handles the drag for the whole sheet) */}
-            <motion.div 
-              className="flex flex-col items-center py-3 shrink-0 cursor-grab active:cursor-grabbing bg-[#0A0A0F]"
-              onPointerDown={(e) => e.stopPropagation()}
+            <div
+              className="flex min-h-[52px] shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-2 bg-[#0A0A0F] py-3 active:cursor-grabbing"
+              onPointerDown={(e) => sheetDragControls.start(e)}
             >
-              <div className="w-12 h-1.5 rounded-full bg-white/20 mb-2" />
-              <div className="text-[8px] text-gray-600 font-bold uppercase tracking-[0.2em] pointer-events-none">
+              <div className="h-1.5 w-12 rounded-full bg-white/20" />
+              <div className="pointer-events-none text-[8px] font-bold uppercase tracking-[0.2em] text-gray-600">
                 Drag Intel Dossier
               </div>
-            </motion.div>
-            
-            <div className="flex-1 overflow-hidden">
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-hidden overscroll-y-contain">
               <Feed
                 signals={filteredSignals}
                 onSignalClick={handleSignalClick}
                 selectedSignal={selectedSignal}
-                onOpenFilters={() => setIsFilterModalOpen(true)}
+                onOpenFilters={() => {
+                  setFilterModalInitialTab("topic");
+                  setIsFilterModalOpen(true);
+                }}
+                totalUnfilteredCount={signals.length}
+                onClearFilters={presetAll}
+                sidebarAccessUnlocked={sidebarFeedUnlocked}
+                accessCheckPending={!signalsAccessChecked}
+                onOpenUnlockModal={() => setLeadModalOpen(true)}
+                mapSignalCount={filteredSignals.length}
               />
             </div>
           </motion.div>
@@ -336,7 +429,16 @@ export default function Home() {
             signals={filteredSignals}
             onSignalClick={handleSignalClick}
             selectedSignal={selectedSignal}
-            onOpenFilters={() => setIsFilterModalOpen(true)}
+            onOpenFilters={() => {
+              setFilterModalInitialTab("topic");
+              setIsFilterModalOpen(true);
+            }}
+            totalUnfilteredCount={signals.length}
+            onClearFilters={presetAll}
+            sidebarAccessUnlocked={sidebarFeedUnlocked}
+            accessCheckPending={!signalsAccessChecked}
+            onOpenUnlockModal={() => setLeadModalOpen(true)}
+            mapSignalCount={filteredSignals.length}
           />
         )}
       </div>
@@ -357,22 +459,40 @@ export default function Home() {
         onSearchChange={setSearchQuery}
         filteredCount={filteredSignals.length}
         totalCount={signals.length}
-        onOpenFilters={() => setIsFilterModalOpen(true)}
+        onOpenFilters={() => {
+          setFilterModalInitialTab("topic");
+          setIsFilterModalOpen(true);
+        }}
+        searchInputRef={searchInputRef}
       />
 
       {isFilterModalOpen && (
         <FilterModal
           isOpen={isFilterModalOpen}
           onClose={() => setIsFilterModalOpen(false)}
+          initialTab={filterModalInitialTab}
           selectedCategory={selectedCategory}
-          signals={signals} // 🚨 CHANGE THIS from filteredSignals to signals
+          signals={signals}
           setSelectedCategory={setSelectedCategory}
           selectedCountry={selectedCountry}
           setSelectedCountry={setSelectedCountry}
           selectedTag={selectedTag}
-          setSelectedTag={setSelectedTag}
+          setSelectedTag={(t) =>
+            setSelectedTag(t === "All" ? "All" : t.toLowerCase())
+          }
+          selectedGeographicScope={selectedGeographicScope}
+          setSelectedGeographicScope={setSelectedGeographicScope}
         />
       )}
+
+      <SignalsAccessGate
+        open={leadModalOpen}
+        onClose={() => setLeadModalOpen(false)}
+        onAccessGranted={() => {
+          setHasSignalsAccess(true);
+          setLeadModalOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ export const CATEGORIES: Category[] = [
   'Geopolitics',
   'Conflicts & Wars',
   'Economy & Markets',
+  'Business',
   'Tech & Science',
   'Disasters & Emergencies',
   'Viral / Social',
@@ -42,6 +43,8 @@ export const POPULAR_TAGS = [
 const HEADLINES = [
   "Major policy shift announced",
   "Unprecedented market volatility",
+  "Major merger talks advance",
+  "Quarterly earnings beat expectations",
   "New technological breakthrough",
   "Diplomatic talks stall",
   "Emergency response initiated",

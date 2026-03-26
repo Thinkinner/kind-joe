@@ -16,7 +16,7 @@ const signalSchema: Schema = {
     category: {
       type: Type.STRING,
       description:
-        "MUST BE: 'Geopolitics', 'Conflicts & Wars', 'Economy & Markets', 'Tech & Science', 'Disasters & Emergencies', 'Viral / Social', or 'Ignore'.",
+        "MUST BE: 'Geopolitics', 'Conflicts & Wars', 'Economy & Markets', 'Business', 'Tech & Science', 'Disasters & Emergencies', 'Viral / Social', or 'Ignore'.",
     },
     city: {
       type: Type.STRING,
@@ -107,6 +107,10 @@ export const analyzeSignalWithAI = async (
     3. SPECIALIZED MONITORING: [ICE / BORDER / DOMESTIC]
        - You are highly attuned to US Border activity, ICE operations, and immigration developments.
        - These are always categorized under "Geopolitics" due to their policy impact.
+
+    3b. BUSINESS VS ECONOMY & MARKETS
+       - Use "Economy & Markets" for macro and system-level finance: central banks, rates, inflation, sovereign debt, broad indices, trade policy framed as macro, financial stability.
+       - Use "Business" for company- and industry-centric stories: M&A, earnings, executive moves, product launches, corporate restructuring, labor disputes at a specific firm, sector news where the primary lens is companies (not macro policy alone).
 
     4. TAGGING PROTOCOL:
        - Tag 1: Country (#usa, #russia, #china, etc.)

@@ -1,33 +1,56 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
-import { Category, Signal } from "@/lib/aggregator/types";
+import {
+  useMemo,
+  useEffect,
+  useState,
+  useCallback,
+  type ComponentType,
+} from "react";
+import {
+  Category,
+  Signal,
+  type GeographicScope,
+  GEO_SCOPE_LABELS,
+} from "@/lib/aggregator/types";
+import FilterDiscoveryStrip, {
+  resolveUsaCountryFromSignals,
+} from "@/components/kindjoe-signals/filter-discovery-strip";
 import {
   X,
   Globe,
   TrendingUp,
+  Briefcase,
   Cpu,
   Flame,
   MapPin,
-  Hash,
   Target,
   Zap,
-  BarChart3,
-  Terminal,
+  Layers,
+  Hash,
+  Search,
 } from "lucide-react";
 
-const CATEGORY_ICONS: Record<Category, any> = {
-  Geopolitics: Globe,
-  "Conflicts & Wars": Flame,
-  "Economy & Markets": TrendingUp,
-  "Tech & Science": Cpu,
-  "Disasters & Emergencies": Zap,
-  "Viral / Social": Target,
-};
+const CATEGORY_ICONS: Record<
+  Category,
+  ComponentType<{ size?: number; className?: string }>
+> =
+  {
+    Geopolitics: Globe,
+    "Conflicts & Wars": Flame,
+    "Economy & Markets": TrendingUp,
+    Business: Briefcase,
+    "Tech & Science": Cpu,
+    "Disasters & Emergencies": Zap,
+    "Viral / Social": Target,
+  };
+
+export type FilterModalTab = "scale" | "region" | "topic" | "tags";
 
 interface FilterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: FilterModalTab;
   signals: Signal[];
   selectedCategory: Category | "All";
   setSelectedCategory: (cat: Category | "All") => void;
@@ -35,11 +58,28 @@ interface FilterModalProps {
   setSelectedCountry: (country: string | "All") => void;
   selectedTag: string | "All";
   setSelectedTag: (tag: string | "All") => void;
+  selectedGeographicScope: GeographicScope | "All";
+  setSelectedGeographicScope: (scope: GeographicScope | "All") => void;
 }
+
+const TABS: { id: FilterModalTab; label: string }[] = [
+  { id: "scale", label: "Story scale" },
+  { id: "region", label: "Region" },
+  { id: "topic", label: "Topic" },
+  { id: "tags", label: "Trending tags" },
+];
+
+const GEO_ORDER: GeographicScope[] = [
+  "local",
+  "regional",
+  "national",
+  "global",
+];
 
 export default function FilterModal({
   isOpen,
   onClose,
+  initialTab = "topic",
   signals = [],
   selectedCategory,
   setSelectedCategory,
@@ -47,10 +87,16 @@ export default function FilterModal({
   setSelectedCountry,
   selectedTag,
   setSelectedTag,
+  selectedGeographicScope,
+  setSelectedGeographicScope,
 }: FilterModalProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [tab, setTab] = useState<FilterModalTab>(initialTab);
+  const [listFilter, setListFilter] = useState("");
 
-  // --- 📊 DYNAMIC TREND & SEARCH ANALYSIS ---
+  useEffect(() => {
+    if (isOpen) setTab(initialTab);
+  }, [isOpen, initialTab]);
+
   const trends = useMemo(() => {
     const stats = {
       categories: {} as Record<string, number>,
@@ -60,40 +106,88 @@ export default function FilterModal({
 
     if (!signals || !Array.isArray(signals)) return null;
 
-    // 1. Calculate global counts from all signals
     signals.forEach((s) => {
       if (!s) return;
       stats.categories[s.category] = (stats.categories[s.category] || 0) + 1;
       stats.countries[s.country] = (stats.countries[s.country] || 0) + 1;
       if (s.tags) {
         s.tags.forEach((tag) => {
-          stats.tags[tag] = (stats.tags[tag] || 0) + 1;
+          const key = tag.toLowerCase();
+          stats.tags[key] = (stats.tags[key] || 0) + 1;
         });
       }
     });
 
-    const query = searchQuery.toLowerCase().trim();
+    const query = listFilter.toLowerCase().trim();
 
-    // 2. Filter based on Search Query
     return {
-      activeCategories: Object.keys(CATEGORY_ICONS).filter((c) =>
-        c.toLowerCase().includes(query),
+      activeCategories: (Object.keys(CATEGORY_ICONS) as Category[]).filter(
+        (c) => c.toLowerCase().includes(query),
       ),
       activeCountries: Object.entries(stats.countries)
         .filter(([name]) => name.toLowerCase().includes(query))
-        .sort((a, b) => b[1] - a[1]), // Sort by volume (Most news first)
+        .sort((a, b) => b[1] - a[1]),
       trendingTags: Object.entries(stats.tags)
         .filter(([name]) => name.toLowerCase().includes(query))
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 30),
+        .slice(0, 40),
       counts: stats,
     };
-  }, [signals, searchQuery]);
+  }, [signals, listFilter]);
 
-  // Handle Search Input focus
-  const inputRef = (node: HTMLInputElement) => {
-    if (node) node.focus();
-  };
+  const usaCountry = useMemo(
+    () => resolveUsaCountryFromSignals(signals),
+    [signals],
+  );
+
+  const presetAll = useCallback(() => {
+    setSelectedCategory("All");
+    setSelectedCountry("All");
+    setSelectedTag("All");
+    setSelectedGeographicScope("All");
+  }, [
+    setSelectedCategory,
+    setSelectedCountry,
+    setSelectedTag,
+    setSelectedGeographicScope,
+  ]);
+
+  const presetLocal = useCallback(() => {
+    setSelectedCategory("All");
+    setSelectedCountry("All");
+    setSelectedTag("All");
+    setSelectedGeographicScope("local");
+  }, [
+    setSelectedCategory,
+    setSelectedCountry,
+    setSelectedTag,
+    setSelectedGeographicScope,
+  ]);
+
+  const presetUsa = useCallback(() => {
+    setSelectedCategory("All");
+    setSelectedTag("All");
+    setSelectedGeographicScope("All");
+    setSelectedCountry(resolveUsaCountryFromSignals(signals));
+  }, [
+    signals,
+    setSelectedCategory,
+    setSelectedTag,
+    setSelectedGeographicScope,
+    setSelectedCountry,
+  ]);
+
+  const presetGlobalScale = useCallback(() => {
+    setSelectedCategory("All");
+    setSelectedCountry("All");
+    setSelectedTag("All");
+    setSelectedGeographicScope("global");
+  }, [
+    setSelectedCategory,
+    setSelectedCountry,
+    setSelectedTag,
+    setSelectedGeographicScope,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,193 +200,275 @@ export default function FilterModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#050508]/95 backdrop-blur-xl">
-      <div className="bg-[#0A0A0F] border border-white/10 rounded-sm w-full max-w-5xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/[0.02]">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-[#00BFFF]/10 border border-[#00BFFF]/30 rounded-sm">
-              <BarChart3 size={18} className="text-[#00BFFF]" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050508]/95 p-3 backdrop-blur-xl sm:p-4">
+      <div
+        data-signals-filter-modal
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-white/10 bg-[#0A0A0F] shadow-[0_0_80px_rgba(0,0,0,1)] sm:max-w-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-md border border-[#00BFFF]/30 bg-[#00BFFF]/10 p-2">
+              <Layers size={18} className="text-[#00BFFF]" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-mono text-[#00BFFF] tracking-[0.3em] font-bold uppercase">
-                Dynamic Filter Engine
-              </span>
-              <h2 className="text-sm font-mono text-white font-bold tracking-tight uppercase">
-                Intel_Search_Terminal
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-red-400/90">
+                Signals
+              </p>
+              <h2 className="text-sm font-semibold text-white">
+                Find the news you want
               </h2>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-500 hover:text-white border border-white/5"
+            className="rounded-full border border-white/10 p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* 🔍 TACTICAL SEARCH BAR */}
-        <div className="px-8 py-4 bg-white/[0.03] border-b border-white/5 flex items-center gap-4 group">
-          <Terminal
-            size={16}
-            className="text-[#00BFFF] opacity-50 group-focus-within:opacity-100"
+        <div className="border-b border-white/10 bg-[#06060a] py-1">
+          <FilterDiscoveryStrip
+            signals={signals}
+            selectedCategory={selectedCategory}
+            selectedCountry={selectedCountry}
+            selectedTag={selectedTag}
+            selectedGeographicScope={selectedGeographicScope}
+            onPresetAll={presetAll}
+            onPresetLocal={presetLocal}
+            onPresetUsa={presetUsa}
+            onPresetGlobalScale={presetGlobalScale}
+            onOpenTrending={() => setTab("tags")}
+            setSelectedCategory={setSelectedCategory}
+            setSelectedCountry={setSelectedCountry}
+            setSelectedTag={setSelectedTag}
+            setSelectedGeographicScope={setSelectedGeographicScope}
           />
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="EXECUTE_INTEL_QUERY (COUNTRY, TAG, OR SECTOR)..."
-            className="bg-transparent border-none outline-none text-white font-mono text-xs w-full tracking-[0.2em] placeholder:text-gray-700 uppercase"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="text-[10px] font-mono text-gray-500 hover:text-white transition-colors border border-white/10 px-2 py-1 rounded"
-            >
-              [CLEAR_QUERY]
-            </button>
-          )}
         </div>
 
-        {/* HUD Body */}
-        <div className="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-          {/* Column 1: Sectors */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                Sectors
-              </span>
-              <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Count: {trends?.activeCategories.length}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {!searchQuery && (
-                <FilterButton
-                  label="ALL_SIGNALS"
-                  count={signals.length}
-                  isSelected={selectedCategory === "All"}
-                  onClick={() => setSelectedCategory("All")}
-                  icon={Globe}
-                />
-              )}
-              {trends?.activeCategories.map((cat) => (
-                <FilterButton
-                  key={cat}
-                  label={cat.toUpperCase()}
-                  count={trends.counts.categories[cat]}
-                  isSelected={selectedCategory === cat}
-                  onClick={() => {
-                    setSelectedCategory(cat as any);
-                    onClose();
-                  }}
-                  icon={CATEGORY_ICONS[cat as Category]}
-                />
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-1 border-b border-white/5 bg-black/30 px-3 py-2 sm:px-4">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                tab === t.id
+                  ? "bg-red-600/25 text-red-200 ring-1 ring-red-500/40"
+                  : "text-gray-500 hover:bg-white/5 hover:text-gray-300"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Column 2: Regions (Sorted by volume) */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                Active Regions
-              </span>
-              <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Latest Activity
-              </span>
-            </div>
-            <div className="flex flex-col gap-1.5 h-[400px] overflow-y-auto custom-scrollbar pr-2">
-              {!searchQuery && (
-                <FilterButton
-                  label="GLOBAL_OVERRIDE"
-                  isSelected={selectedCountry === "All"}
-                  onClick={() => setSelectedCountry("All")}
-                  icon={Globe}
-                />
-              )}
-              {trends?.activeCountries.map(([country, count]) => (
-                <FilterButton
-                  key={country}
-                  label={country.toUpperCase()}
-                  count={count}
-                  isSelected={selectedCountry === country}
+        <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.02] px-4 py-3 sm:px-6">
+          <Search size={16} className="shrink-0 text-[#00BFFF]/70" />
+          <input
+            type="text"
+            value={listFilter}
+            onChange={(e) => setListFilter(e.target.value)}
+            placeholder="Filter these lists…"
+            className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
+          />
+          {listFilter ? (
+            <button
+              type="button"
+              onClick={() => setListFilter("")}
+              className="shrink-0 text-xs text-gray-500 hover:text-white"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+
+        <div className="min-h-[min(50vh,320px)] flex-1 overflow-y-auto p-4 sm:p-6">
+          {tab === "scale" && (
+            <div className="space-y-2">
+              <p className="mb-3 text-xs text-gray-500">
+                How big the story is geographically — local bulletins vs
+                cross-border coverage.
+              </p>
+              <FilterRow
+                label="Any scale"
+                description="Show all story sizes"
+                isSelected={selectedGeographicScope === "All"}
+                onClick={() => {
+                  setSelectedGeographicScope("All");
+                  onClose();
+                }}
+                icon={Globe}
+              />
+              {GEO_ORDER.map((scope) => (
+                <FilterRow
+                  key={scope}
+                  label={GEO_SCOPE_LABELS[scope]}
+                  description={
+                    scope === "local"
+                      ? "City or neighborhood"
+                      : scope === "regional"
+                        ? "State, province, or metro"
+                        : scope === "national"
+                          ? "Whole country"
+                          : "Cross-border / worldwide"
+                  }
+                  isSelected={selectedGeographicScope === scope}
                   onClick={() => {
-                    setSelectedCountry(country);
+                    setSelectedGeographicScope(scope);
                     onClose();
                   }}
                   icon={MapPin}
                 />
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Column 3: Pattern Match (Trending Tags) */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                Intel Patterns
-              </span>
-              <span className="text-[9px] font-mono text-[#00BFFF]/50">
-                Trending
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 content-start">
-              {!searchQuery && (
-                <button
+          {tab === "region" && (
+            <div className="space-y-2">
+              <p className="mb-3 text-xs text-gray-500">
+                Narrow the map and feed to one country, or browse everywhere.
+              </p>
+              <FilterRow
+                label="Everywhere"
+                description="All countries"
+                isSelected={selectedCountry === "All"}
+                onClick={() => {
+                  setSelectedCountry("All");
+                  onClose();
+                }}
+                icon={Globe}
+              />
+              {signals.some((s) => s.country === usaCountry) && (
+                <FilterRow
+                  label="United States"
+                  description={`Match: ${usaCountry}`}
+                  isSelected={selectedCountry === usaCountry}
+                  count={trends?.counts?.countries?.[usaCountry]}
                   onClick={() => {
-                    setSelectedTag("All");
+                    setSelectedCountry(usaCountry);
                     onClose();
                   }}
-                  className={`px-3 py-2 font-mono text-[10px] border transition-all ${
-                    selectedTag === "All"
-                      ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/10"
-                      : "border-white/5 text-gray-500 hover:border-white/20"
-                  }`}
-                >
-                  * ALL_PATTERNS
-                </button>
+                  icon={MapPin}
+                />
               )}
-              {trends?.trendingTags.map(([tag, count]) => (
-                <button
-                  key={tag}
+              <div className="pt-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                By activity
+              </div>
+              <div className="max-h-[40vh] space-y-1 overflow-y-auto pr-1">
+                {trends?.activeCountries
+                  ?.filter(([country]) => country !== usaCountry)
+                  ?.map(([country, count]) => (
+                    <FilterButton
+                      key={country}
+                      label={country}
+                      count={count}
+                      isSelected={selectedCountry === country}
+                      onClick={() => {
+                        setSelectedCountry(country);
+                        onClose();
+                      }}
+                      icon={MapPin}
+                    />
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "topic" && (
+            <div className="space-y-1">
+              <p className="mb-3 text-xs text-gray-500">
+                Broad categories — same as keyboard shortcuts 1–5 for some
+                topics.
+              </p>
+              {!listFilter && (
+                <FilterButton
+                  label="All topics"
+                  count={signals.length}
+                  isSelected={selectedCategory === "All"}
                   onClick={() => {
-                    setSelectedTag(tag);
+                    setSelectedCategory("All");
                     onClose();
                   }}
-                  className={`flex items-center gap-2 px-3 py-2 font-mono text-[10px] border transition-all ${
-                    selectedTag === tag
-                      ? "border-[#00BFFF] text-[#00BFFF] bg-[#00BFFF]/15 shadow-[0_0_15px_rgba(0,191,255,0.1)]"
-                      : "border-white/5 bg-white/[0.02] text-gray-400 hover:text-white hover:border-white/20"
-                  }`}
-                >
-                  <span className="opacity-40">#</span>
-                  <span>{tag.toUpperCase()}</span>
-                  <span className="text-[8px] bg-[#00BFFF]/10 px-1 rounded text-[#00BFFF] font-bold">
-                    {count}
-                  </span>
-                </button>
+                  icon={Globe}
+                />
+              )}
+              {trends?.activeCategories?.map((cat) => (
+                <FilterButton
+                  key={cat}
+                  label={cat}
+                  count={trends?.counts?.categories?.[cat]}
+                  isSelected={selectedCategory === cat}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    onClose();
+                  }}
+                  icon={CATEGORY_ICONS[cat]}
+                />
               ))}
             </div>
-          </div>
+          )}
+
+          {tab === "tags" && (
+            <div>
+              <p className="mb-3 text-xs text-gray-500">
+                Trending keywords in the current feed — tap to filter.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {!listFilter && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTag("All");
+                      onClose();
+                    }}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold transition-all ${
+                      selectedTag === "All"
+                        ? "border-[#00BFFF] bg-[#00BFFF]/10 text-[#00BFFF]"
+                        : "border-white/10 text-gray-500 hover:border-white/25 hover:text-white"
+                    }`}
+                  >
+                    All tags
+                  </button>
+                )}
+                {trends?.trendingTags?.map(([tag, count]) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTag(tag);
+                      onClose();
+                    }}
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs transition-all ${
+                      selectedTag === tag
+                        ? "border-[#00BFFF] bg-[#00BFFF]/15 text-[#00BFFF] shadow-[0_0_15px_rgba(0,191,255,0.08)]"
+                        : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <Hash className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                    <span>{tag}</span>
+                    <span className="rounded bg-[#00BFFF]/15 px-1.5 text-[10px] font-bold text-[#00BFFF]">
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
-          <div className="text-[9px] font-mono text-gray-600 uppercase flex items-center gap-4 tracking-widest">
-            <span className="flex items-center gap-1.5">
-              <div className="w-1 h-1 bg-[#00BFFF] rounded-full animate-ping" />{" "}
-              FEED_SYNC_OK
-            </span>
-            <span className="opacity-20">|</span>
-            <span>DATA_OBJECTS_TOTAL: {signals.length}</span>
-          </div>
+        <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.02] px-4 py-4 sm:px-6">
+          <p className="text-[10px] text-gray-600">
+            {signals.length}{" "}
+            {signals.length === 1 ? "story" : "stories"} loaded
+          </p>
           <button
+            type="button"
             onClick={onClose}
-            className="px-10 py-2.5 bg-[#00BFFF] hover:bg-[#00BFFF]/80 text-black font-mono font-bold text-[11px] tracking-widest uppercase transition-all shadow-[0_0_30px_rgba(0,191,255,0.2)] active:scale-95"
+            className="rounded-md bg-[#00BFFF] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_24px_rgba(0,191,255,0.2)] transition-all hover:bg-[#00BFFF]/85 active:scale-[0.98]"
           >
-            Engage Parameters
+            Done
           </button>
         </div>
       </div>
@@ -300,28 +476,87 @@ export default function FilterModal({
   );
 }
 
-function FilterButton({ label, count, isSelected, onClick, icon: Icon }: any) {
+function FilterRow({
+  label,
+  description,
+  count,
+  isSelected,
+  onClick,
+  icon: Icon,
+}: {
+  label: string;
+  description: string;
+  count?: number;
+  isSelected: boolean;
+  onClick: () => void;
+  icon: ComponentType<{ size?: number; className?: string }>;
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex items-center justify-between px-3 py-3 font-mono text-[11px] transition-all border ${
+      className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-3 text-left transition-all ${
         isSelected
-          ? "bg-[#00BFFF]/10 border-[#00BFFF]/50 text-[#00BFFF] shadow-[inset_0_0_15px_rgba(0,191,255,0.05)]"
-          : "border-transparent text-gray-400 hover:bg-white/5"
+          ? "border-[#00BFFF]/50 bg-[#00BFFF]/10 text-[#00BFFF]"
+          : "border-transparent text-gray-400 hover:bg-white/[0.04]"
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <Icon
+          size={16}
+          className={isSelected ? "text-[#00BFFF]" : "text-gray-600"}
+        />
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white">{label}</div>
+          <div className="text-[11px] text-gray-500">{description}</div>
+        </div>
+      </div>
+      {count !== undefined && (
+        <span
+          className={`shrink-0 text-xs font-bold ${isSelected ? "text-[#00BFFF]" : "text-gray-600"}`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function FilterButton({
+  label,
+  count,
+  isSelected,
+  onClick,
+  icon: Icon,
+}: {
+  label: string;
+  count?: number;
+  isSelected: boolean;
+  onClick: () => void;
+  icon: ComponentType<{ size?: number; className?: string }>;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-all ${
+        isSelected
+          ? "border-[#00BFFF]/50 bg-[#00BFFF]/10 text-[#00BFFF]"
+          : "border-transparent text-gray-400 hover:bg-white/[0.04]"
       }`}
     >
       <div className="flex items-center gap-3">
         <Icon
-          size={14}
+          size={15}
           className={isSelected ? "text-[#00BFFF]" : "text-gray-600"}
         />
-        <span className="tracking-tighter">{label}</span>
+        <span className="font-medium">{label}</span>
       </div>
       {count !== undefined && (
         <span
-          className={`text-[9px] font-bold ${isSelected ? "text-[#00BFFF]" : "text-gray-700"}`}
+          className={`text-xs font-bold ${isSelected ? "text-[#00BFFF]" : "text-gray-600"}`}
         >
-          [{count}]
+          {count}
         </span>
       )}
     </button>
