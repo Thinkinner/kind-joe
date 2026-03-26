@@ -1,30 +1,30 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, Eye } from "lucide-react";
+import { Menu, X, Search, Eye, ChevronRight } from "lucide-react";
 import {
   formatSignalsViewerCount,
   useSignalsLiveViewers,
 } from "@/hooks/use-signals-live-viewers";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import SearchModal from "@/components/modals/search-modal"; // Import the modal we created
+import SearchModal from "@/components/modals/search-modal";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false); // NEW: Search state
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
   const signalsViewers = useSignalsLiveViewers();
 
   const links = [
     { name: "Home", href: "/" },
-    { name: "KJ Featured Articles", href: "/news" },
+    { name: "Featured", href: "/news", title: "KJ Featured Articles" },
     { name: "Ventura County", href: "/ventura-county" },
     { name: "Signals", href: "/kindjoe-signals" },
-  ];
+  ] as const;
 
-  // Global keyboard listener for Cmd+K
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -37,125 +37,140 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    // lock body scroll when sidebar OR search is open
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
+  const livePillInner = (
+    <>
+      <span className="relative flex h-3 w-3 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/55" />
+        <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.95)]" />
+      </span>
+      <span className="shrink-0 text-[11px] font-black tracking-[0.22em] text-red-500">
+        LIVE
+      </span>
+      <Eye className="h-5 w-5 shrink-0 text-red-400" aria-hidden strokeWidth={2.25} />
+      <span className="min-w-0 truncate font-mono text-xl font-bold tabular-nums text-white xl:text-2xl">
+        {formatSignalsViewerCount(signalsViewers)}
+      </span>
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-200/95">
+        watching
+      </span>
+    </>
+  );
+
   return (
     <>
-      <nav className="bg-slate-950 shadow-lg sticky top-0 z-[60]">
-        <div className="px-3 py-2.5 sm:p-4">
-          <div className="flex items-center justify-between gap-2">
-            {/* Left: Logo */}
-            <Link href="/" className="flex min-w-0 shrink items-center">
+      <header className="sticky top-0 z-[60] border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-600/25 to-transparent" />
+
+        <nav className="relative mx-auto max-w-[1440px] px-3 sm:px-5 lg:px-8">
+          {/* Main bar */}
+          <div className="flex h-[3.25rem] items-center justify-between gap-3 sm:h-14 lg:h-[3.75rem]">
+            <Link
+              href="/"
+              className="flex min-w-0 shrink-0 items-center rounded-lg outline-none ring-red-500/0 transition ring-offset-2 ring-offset-[#030304] focus-visible:ring-2"
+            >
               <Image
                 src="/brand/horizontal-logo.svg"
                 width={120}
                 height={28}
-                alt="KindJoe Horizontal Logo"
-                className="cursor-pointer w-[108px] h-auto sm:w-[120px] md:w-[165px] md:h-[38px]"
+                alt="Kind Joe"
+                className="h-auto w-[100px] sm:w-[118px] lg:w-[138px]"
+                priority
               />
             </Link>
 
-            {/* Center: Nav Links (Desktop) */}
-            <div className="hidden lg:flex gap-8">
-              {links.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`
-                text-white pb-1 font-medium transition-colors duration-200
-                ${isActive ? "text-red-600" : "hover:text-red-600"}
-              `}
-                  >
-                    {link.name}
-                  </Link>
-                );
-              })}
+            {/* Desktop navigation */}
+            <div className="hidden flex-1 justify-center lg:flex">
+              <div className="flex items-center gap-1 rounded-full border border-white/[0.05] bg-black/55 p-1">
+                {links.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      title={"title" in link ? link.title : undefined}
+                      className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors sm:px-4 ${
+                        isActive
+                          ? "bg-white/[0.08] text-white shadow-inner shadow-black/40"
+                          : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+                      }`}
+                    >
+                      {link.name}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Right: Search, Subscribe & Mobile Toggle */}
-            <div className="flex items-center gap-1.5 sm:gap-3 lg:gap-4 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href="/kindjoe-signals"
-                className="hidden lg:flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/80 px-3 py-2 text-slate-300 transition-colors hover:border-[#00BFFF]/40 hover:text-white"
+                title="Kind Joe Signals — live feed"
+                className="hidden max-w-[min(100%,20rem)] items-center gap-2.5 rounded-full border border-red-500/45 bg-gradient-to-b from-red-950/55 to-red-950/25 px-4 py-2 shadow-[0_0_28px_rgba(220,38,38,0.18)] transition-all hover:border-red-500/65 hover:shadow-[0_0_36px_rgba(220,38,38,0.28)] lg:inline-flex"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                <Eye size={16} className="text-[#00BFFF]/90" aria-hidden />
-                <span className="text-xs font-medium tabular-nums">
-                  {formatSignalsViewerCount(signalsViewers)} watching Signals
-                </span>
-              </Link>
-
-              {/* Desktop Search Icon */}
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="hidden lg:flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-slate-900 px-3 py-2 rounded-md border border-slate-800"
-              >
-                <Search size={18} />
-                <span className="text-xs font-medium">Search</span>
-                <kbd className="text-[10px] opacity-50 bg-slate-800 px-1 rounded border border-slate-700">
-                  ⌘K
-                </kbd>
-              </button>
-
-              <button
-                className="hidden lg:block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 px-6 rounded-md transition-colors duration-200"
-                onClick={() => (window.location.href = "/newsletter")}
-              >
-                Newsletters
-              </button>
-
-              {/* Mobile Search Icon */}
-              <Link
-                href="/kindjoe-signals"
-                className="lg:hidden flex h-11 min-w-[2.75rem] items-center justify-center gap-1.5 rounded-lg border border-cyan-500/35 bg-gradient-to-b from-slate-900 to-slate-950 px-2.5 text-slate-200 shadow-[0_0_0_1px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] active:scale-[0.98] transition-transform sm:min-w-0 sm:px-3"
-                aria-label={`${formatSignalsViewerCount(signalsViewers)} watching KindJoe Signals`}
-              >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/55" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                </span>
-                <Eye size={17} className="text-[#00BFFF] shrink-0" aria-hidden />
-                <span className="hidden min-[360px]:flex flex-col items-start leading-none">
-                  <span className="text-[11px] font-semibold tabular-nums text-white">
-                    {formatSignalsViewerCount(signalsViewers)}
-                  </span>
-                  <span className="text-[9px] font-medium uppercase tracking-wide text-cyan-400/80">
-                    live
-                  </span>
-                </span>
+                {livePillInner}
               </Link>
 
               <button
+                type="button"
                 onClick={() => setSearchOpen(true)}
-                className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg text-white hover:bg-white/5 hover:text-red-500 transition-colors"
-                aria-label="Search"
+                title="Search (⌘K)"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-500 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-red-400 lg:h-9 lg:w-9 lg:rounded-lg"
+                aria-label="Search articles"
               >
-                <Search size={22} />
+                <Search className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]" strokeWidth={2} />
               </button>
 
               <button
+                type="button"
                 aria-label={open ? "Close menu" : "Open menu"}
                 onClick={() => setOpen((s) => !s)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-white hover:bg-white/5 hover:text-red-500 transition-colors duration-200 lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-300 transition-colors hover:border-red-500/30 hover:bg-black/55 hover:text-red-400 lg:hidden"
               >
-                {open ? <X size={24} /> : <Menu size={24} />}
+                {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
           </div>
-        </div>
-      </nav>
 
-      {/* The Actual Search Modal */}
+          {/* Mobile / tablet: full-width LIVE strip — high visibility, easy tap */}
+          <Link
+            href="/kindjoe-signals"
+            className="mb-3 flex min-h-[3.25rem] w-full items-center justify-between gap-3 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/70 via-red-950/45 to-red-950/70 px-4 py-3 shadow-[0_0_32px_rgba(220,38,38,0.2)] transition-transform active:scale-[0.99] lg:hidden"
+            aria-label={`${formatSignalsViewerCount(signalsViewers)} people watching Kind Joe Signals — open live feed`}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/55" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-[11px] font-black tracking-[0.2em] text-red-500">
+                    LIVE
+                  </span>
+                  <span className="font-mono text-2xl font-bold tabular-nums leading-none text-white sm:text-[1.65rem]">
+                    {formatSignalsViewerCount(signalsViewers)}
+                  </span>
+                  <span className="text-sm font-medium text-red-100/90">
+                    watching
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-xs text-red-200/70">
+                  Kind Joe Signals — tap for the live map and feed
+                </p>
+              </div>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+              <ChevronRight className="h-6 w-6 text-red-300" aria-hidden strokeWidth={2.25} />
+            </span>
+          </Link>
+        </nav>
+      </header>
+
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Sidebar + backdrop for mobile */}
       <AnimatePresence>
         {open && (
           <>
@@ -164,8 +179,9 @@ export default function Navbar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-sm lg:hidden"
               onClick={() => setOpen(false)}
+              aria-hidden
             />
 
             <motion.aside
@@ -173,73 +189,86 @@ export default function Navbar() {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-slate-950 shadow-2xl p-6 flex flex-col lg:hidden"
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              className="fixed inset-y-0 right-0 z-[90] flex h-[100dvh] max-h-[100dvh] w-full max-w-sm flex-col border-l border-white/[0.05] bg-[#020203] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] shadow-2xl lg:hidden"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="mb-6 flex items-center justify-between">
                 <Image
                   src="/brand/horizontal-logo.svg"
-                  width={140}
-                  height={32}
-                  alt="KindJoe"
+                  width={130}
+                  height={30}
+                  alt="Kind Joe"
+                  className="h-auto w-[120px]"
                 />
                 <button
+                  type="button"
                   onClick={() => setOpen(false)}
-                  className="p-2 text-white hover:text-red-600 transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-black/35 text-zinc-400 transition-colors hover:border-red-500/30 hover:bg-black/50 hover:text-red-400"
+                  aria-label="Close menu"
                 >
-                  <X size={20} />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Search inside Sidebar (Mobile) */}
+              <Link
+                href="/kindjoe-signals"
+                onClick={() => setOpen(false)}
+                className="mb-4 flex min-h-[4.5rem] w-full items-center justify-between gap-3 rounded-2xl border border-red-500/45 bg-gradient-to-br from-red-950/60 to-red-950/25 px-4 py-3.5 shadow-[0_0_28px_rgba(220,38,38,0.2)]"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/50" />
+                      <span className="relative h-2.5 w-2.5 rounded-full bg-red-500" />
+                    </span>
+                    <span className="text-[10px] font-black tracking-[0.2em] text-red-500">
+                      LIVE NOW
+                    </span>
+                  </div>
+                  <p className="mt-1.5 font-mono text-2xl font-bold tabular-nums text-white">
+                    {formatSignalsViewerCount(signalsViewers)}
+                  </p>
+                  <p className="text-xs text-red-200/80">watching Signals</p>
+                </div>
+                <ChevronRight className="h-7 w-7 shrink-0 text-red-300/90" />
+              </Link>
+
               <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setSearchOpen(true);
                 }}
-                className="flex items-center gap-3 w-full bg-slate-900 text-slate-400 p-3 rounded-lg border border-slate-800 mb-6"
+                className="mb-6 flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-black/40 p-3.5 text-left text-zinc-500 transition-colors hover:border-red-500/25 hover:bg-black/55 hover:text-zinc-200"
               >
-                <Search size={20} />
-                <span>Search Articles...</span>
+                <Search className="h-5 w-5 shrink-0 text-zinc-500" />
+                <span className="text-sm font-medium">Search articles…</span>
               </button>
 
-              <nav className="flex-1 space-y-4 text-white">
+              <nav className="flex-1 space-y-1 overflow-y-auto">
                 {[
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
                   { name: "Signals", href: "/kindjoe-signals" },
-                  { name: "Newsletters", href: "/newsletter" },
-                ].map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center justify-between gap-3 text-lg font-semibold py-3 border-b border-slate-800 hover:text-red-600 transition-colors ${pathname === item.href ? "text-red-600" : ""}`}
-                  >
-                    <span>{item.name}</span>
-                    {item.href === "/kindjoe-signals" && (
-                      <span className="flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs font-mono font-semibold tabular-nums text-cyan-300">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/50" />
-                          <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        </span>
-                        {formatSignalsViewerCount(signalsViewers)}
-                      </span>
-                    )}
-                  </Link>
-                ))}
+                ].map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center rounded-xl px-3 py-3.5 text-base font-semibold transition-colors ${
+                        isActive
+                          ? "bg-white/[0.06] text-red-400"
+                          : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
               </nav>
-
-              <button
-                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md mt-8"
-                onClick={() => {
-                  window.location.href = "/newsletter";
-                  setOpen(false);
-                }}
-              >
-                Newsletter
-              </button>
             </motion.aside>
           </>
         )}

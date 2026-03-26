@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Pusher from "pusher-js";
+import { motion, useAnimation } from "framer-motion";
 import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/kindjoe-signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
@@ -9,29 +11,56 @@ import FilterModal from "@/components/kindjoe-signals/filter-modal";
 import {
   Signal,
   Category,
+  Source,
   type GeographicScope,
+  type PusherSignalPayload,
 } from "@/lib/aggregator/types";
+import { getHistory, triggerSync } from "@/lib/actions/news-signal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-function normalizePusherSignal(raw: Signal): Signal {
+const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
+const CATEGORY_SET = new Set<Category>([
+  "Geopolitics",
+  "Conflicts & Wars",
+  "Economy & Markets",
+  "Tech & Science",
+  "Disasters & Emergencies",
+  "Viral / Social",
+]);
+
+/** Coerces live Pusher payloads into a full Signal (missing geo fields + legacy events). */
+function normalizePusherSignal(raw: PusherSignalPayload): Signal {
   const g = raw.geographicScope;
   const scope: GeographicScope =
     g === "local" || g === "regional" || g === "national" || g === "global"
       ? g
       : "global";
+
+  const source: Source =
+    raw.source !== undefined && SOURCE_SET.has(raw.source) ? raw.source : "RSS";
+
+  const category: Category =
+    raw.category !== undefined && CATEGORY_SET.has(raw.category)
+      ? raw.category
+      : "Geopolitics";
+
   return {
-    ...raw,
-    geographicScope: scope,
-    adminArea: raw.adminArea ?? "",
+    id: raw.id,
+    headline: raw.headline,
     summary: raw.summary ?? "",
+    source,
+    category,
+    lat: raw.lat,
+    lng: raw.lng,
     city: raw.city ?? "Unknown",
     country: raw.country ?? "Unknown",
+    geographicScope: scope,
+    adminArea: raw.adminArea ?? "",
+    impactScore: raw.impactScore,
+    timestamp: raw.timestamp,
     tags: raw.tags ?? [],
   };
 }
-import Pusher from "pusher-js";
-import { getHistory, triggerSync } from "@/lib/actions/news-signal";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { motion, useAnimation, useDragControls } from "framer-motion";
 
 // Dynamically import GlobeComponent to avoid SSR issues with react-globe.gl
 const GlobeComponent = dynamic(
@@ -122,15 +151,18 @@ export default function Home() {
     });
 
     // --- DEBUG LOGS FOR CONNECTION ---
-    pusher.connection.bind("state_change", (states: any) => {
-      console.log(`🔌 Pusher Connection State: ${states.current}`);
-    });
+    pusher.connection.bind(
+      "state_change",
+      (states: { current: string; previous?: string }) => {
+        console.log(`🔌 Pusher Connection State: ${states.current}`);
+      },
+    );
 
     const channel = pusher.subscribe("aether-live");
 
     console.log("📡 Pusher: Subscribed to 'aether-live'");
 
-    channel.bind("new-signal", (incoming: Signal) => {
+    channel.bind("new-signal", (incoming: PusherSignalPayload) => {
       const newSignal = normalizePusherSignal(incoming);
       console.log("🔥 NEW SIGNAL DETECTED:", newSignal.headline);
 
@@ -229,7 +261,10 @@ export default function Home() {
   const controls = useAnimation();
 
   // Handle snapping logic
-  const onDragEnd = (event: any, info: any) => {
+  const onDragEnd = (
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    info: { offset: { y: number }; velocity: { y: number }; point: { y: number } },
+  ) => {
     const shouldExpand = info.offset.y < -100 || info.velocity.y < -500;
     const shouldMinimize = info.offset.y > 100 || info.velocity.y > 500;
 

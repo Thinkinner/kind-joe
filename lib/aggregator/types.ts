@@ -38,7 +38,7 @@ export interface Signal {
 
 /**
  * Payload on Pusher `new-signal`: older publishers may omit fields (e.g. geographicScope).
- * Always pass through {@link normalizePusherSignal} (or equivalent) before treating as {@link Signal}.
+ * Normalize on the client (see `normalizePusherSignal` in the Signals page) before using as {@link Signal}.
  */
 export type PusherSignalPayload = Partial<Signal> &
   Pick<Signal, "id" | "headline" | "timestamp" | "lat" | "lng" | "impactScore">;
