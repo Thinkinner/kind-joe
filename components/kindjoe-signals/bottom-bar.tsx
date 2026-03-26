@@ -2,6 +2,8 @@
 
 import type { RefObject } from "react";
 import { Filter, Globe, Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 export type GlobeStyleOption = "realistic" | "dark" | "wireframe";
 
@@ -26,13 +28,26 @@ export default function BottomBar({
   onOpenFilters,
   searchInputRef,
 }: BottomBarProps) {
+  const { mode } = useSignalsColorMode();
+  const isLight = mode === "light";
+
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-[60] border-t border-red-950/35 bg-[#050508]/95 pb-[env(safe-area-inset-bottom,0px)] font-mono shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-[60] border-t pb-[env(safe-area-inset-bottom,0px)] font-mono backdrop-blur-md",
+        isLight
+          ? "border-red-200/80 bg-white/95 shadow-[0_-8px_32px_rgba(15,23,42,0.08)]"
+          : "border-red-950/35 bg-[#050508]/95 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
+      )}
       role="toolbar"
       aria-label="Signals toolbar"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-600/30 to-transparent" />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent",
+          isLight ? "via-red-500/20" : "via-red-600/30",
+        )}
+      />
 
       <div className="relative flex min-h-12 items-center justify-between gap-2 px-3 py-1.5 md:gap-4 md:px-6 md:py-2">
         <div className="flex min-w-0 items-center gap-2 md:flex-1 md:gap-4">
@@ -45,9 +60,21 @@ export default function BottomBar({
             <span className="hidden sm:inline">Filters</span>
           </button>
 
-          <div className="hidden h-4 w-px shrink-0 bg-white/10 md:block" />
+          <div
+            className={cn(
+              "hidden h-4 w-px shrink-0 md:block",
+              isLight ? "bg-slate-200" : "bg-white/10",
+            )}
+          />
 
-          <div className="relative hidden min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/5 bg-white/[0.02] px-2.5 py-1.5 md:flex md:max-w-md md:border-transparent md:bg-transparent md:px-0 md:py-0">
+          <div
+            className={cn(
+              "relative hidden min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md border px-2.5 py-1.5 md:flex md:max-w-md md:border-transparent md:bg-transparent md:px-0 md:py-0",
+              isLight
+                ? "border-slate-200/80 bg-slate-100/80"
+                : "border-white/5 bg-white/[0.02]",
+            )}
+          >
             <Search
               className="h-4 w-4 shrink-0 text-red-500/50"
               aria-hidden
@@ -63,13 +90,23 @@ export default function BottomBar({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search headlines, places, tags…"
               autoComplete="off"
-              className="min-h-9 min-w-0 flex-1 bg-transparent py-1 text-[12px] text-white placeholder:text-gray-600 focus:outline-none md:min-h-0 md:text-[11px] md:uppercase md:tracking-wider"
+              className={cn(
+                "min-h-9 min-w-0 flex-1 bg-transparent py-1 text-[12px] focus:outline-none md:min-h-0 md:text-[11px] md:uppercase md:tracking-wider",
+                isLight
+                  ? "text-slate-900 placeholder:text-slate-400"
+                  : "text-white placeholder:text-gray-600",
+              )}
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => onSearchChange("")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-white/10 hover:text-white"
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500",
+                  isLight
+                    ? "hover:bg-slate-200 hover:text-slate-900"
+                    : "hover:bg-white/10 hover:text-white",
+                )}
                 aria-label="Clear search"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -79,19 +116,45 @@ export default function BottomBar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 md:gap-4">
-          <div className="hidden text-[9px] tracking-widest text-gray-500 uppercase md:flex md:flex-row md:items-center md:gap-2">
-            <span className="text-red-400/80">View</span>
-            <span className="tabular-nums text-gray-300">
+          <div
+            className={cn(
+              "hidden text-[9px] uppercase tracking-widest md:flex md:flex-row md:items-center md:gap-2",
+              isLight ? "text-slate-500" : "text-gray-500",
+            )}
+          >
+            <span className={isLight ? "text-red-600/90" : "text-red-400/80"}>
+              View
+            </span>
+            <span
+              className={cn(
+                "tabular-nums",
+                isLight ? "text-slate-700" : "text-gray-300",
+              )}
+            >
               {filteredCount}
-              <span className="text-gray-600"> / </span>
+              <span className={isLight ? "text-slate-400" : "text-gray-600"}>
+                {" "}
+                /{" "}
+              </span>
               {totalCount}
             </span>
           </div>
 
-          <div className="hidden h-4 w-px shrink-0 bg-white/10 md:block" />
+          <div
+            className={cn(
+              "hidden h-4 w-px shrink-0 md:block",
+              isLight ? "bg-slate-200" : "bg-white/10",
+            )}
+          />
 
           <div className="flex items-center gap-1.5 md:gap-2">
-            <Globe className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+            <Globe
+              className={cn(
+                "h-4 w-4 shrink-0",
+                isLight ? "text-slate-500" : "text-gray-500",
+              )}
+              aria-hidden
+            />
             <label className="sr-only" htmlFor="signals-globe-layer">
               Globe appearance
             </label>
@@ -101,15 +164,29 @@ export default function BottomBar({
               onChange={(e) =>
                 setGlobeStyle(e.target.value as GlobeStyleOption)
               }
-              className="max-w-[7.5rem] cursor-pointer bg-transparent text-[10px] text-gray-400 uppercase tracking-tight hover:text-white focus:outline-none md:max-w-none"
+              className={cn(
+                "max-w-[7.5rem] cursor-pointer bg-transparent text-[10px] uppercase tracking-tight focus:outline-none md:max-w-none",
+                isLight
+                  ? "text-slate-600 hover:text-slate-900"
+                  : "text-gray-400 hover:text-white",
+              )}
             >
-              <option value="dark" className="bg-[#0A0A0F]">
+              <option
+                value="dark"
+                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+              >
                 Vector dark
               </option>
-              <option value="realistic" className="bg-[#0A0A0F]">
+              <option
+                value="realistic"
+                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+              >
                 Satellite
               </option>
-              <option value="wireframe" className="bg-[#0A0A0F]">
+              <option
+                value="wireframe"
+                className={isLight ? "bg-slate-100" : "bg-[#0A0A0F]"}
+              >
                 Topo grid
               </option>
             </select>

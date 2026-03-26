@@ -22,6 +22,8 @@ import {
   checkSignalsAccess,
 } from "@/lib/actions/news-signal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
 const CATEGORY_SET = new Set<Category>([
@@ -68,24 +70,35 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
   };
 }
 
+function GlobeLoadingFallback() {
+  const { mode } = useSignalsColorMode();
+  const isLight = mode === "light";
+  return (
+    <div
+      className={cn(
+        "flex h-full w-full items-center justify-center",
+        isLight ? "bg-slate-200" : "bg-[#0A0A0F]",
+      )}
+    >
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative flex h-8 w-8">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00BFFF] opacity-75" />
+          <span className="relative inline-flex h-8 w-8 rounded-full bg-[#00BFFF]" />
+        </div>
+        <span className="font-mono text-sm tracking-widest text-[#00BFFF] animate-pulse">
+          INITIALIZING AETHER...
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // Dynamically import GlobeComponent to avoid SSR issues with react-globe.gl
 const GlobeComponent = dynamic(
   () => import("@/components/kindjoe-signals/globe-component"),
   {
     ssr: false,
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-[#0A0A0F]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-8 w-8">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00BFFF] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-8 w-8 bg-[#00BFFF]"></span>
-          </div>
-          <span className="font-mono text-[#00BFFF] text-sm tracking-widest animate-pulse">
-            INITIALIZING AETHER...
-          </span>
-        </div>
-      </div>
-    ),
+    loading: () => <GlobeLoadingFallback />,
   },
 );
 
@@ -354,21 +367,49 @@ export default function Home() {
 
   const sidebarFeedUnlocked = signalsAccessChecked && hasSignalsAccess;
 
+  const { mode } = useSignalsColorMode();
+  const isLight = mode === "light";
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-white overflow-hidden font-sans selection:bg-[#00BFFF]/30">
+    <div
+      className={cn(
+        "flex h-screen w-screen flex-col overflow-hidden font-sans",
+        isLight
+          ? "bg-slate-100 text-slate-900 selection:bg-[#00BFFF]/25"
+          : "bg-[#0A0A0F] text-white selection:bg-[#00BFFF]/30",
+      )}
+    >
       <TopBar />
 
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative">
-        <main className="relative bg-[#050508] h-full md:h-auto md:flex-1 w-full shrink-0">
+      <div className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
+        <main
+          className={cn(
+            "relative h-full w-full shrink-0 md:h-auto md:flex-1",
+            isLight ? "bg-slate-200/90" : "bg-[#050508]",
+          )}
+        >
           {/* Background grid effect */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,191,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,191,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay",
+              isLight ? "opacity-[0.14]" : "opacity-20",
+            )}
+          />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0 bg-[size:40px_40px]",
+              isLight
+                ? "bg-[linear-gradient(rgba(14,165,233,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(14,165,233,0.07)_1px,transparent_1px)]"
+                : "bg-[linear-gradient(rgba(0,191,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,191,255,0.03)_1px,transparent_1px)]",
+            )}
+          />
 
           <GlobeComponent
             signals={filteredSignals}
             selectedSignal={selectedSignal}
             onSignalClick={handleSignalClick}
             globeStyle={globeStyle}
+            uiColorMode={mode}
           />
         </main>
 
@@ -394,14 +435,32 @@ export default function Home() {
             dragConstraints={{ top: 0, bottom: 0 }}
             onDragEnd={onSheetDragEnd}
             style={{ willChange: "transform" }}
-            className="fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] flex-col border-t border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)] [transform:translateZ(0)]"
+            className={cn(
+              "fixed inset-x-0 bottom-11 z-50 flex h-[80dvh] max-h-[calc(100dvh-7rem)] flex-col border-t [transform:translateZ(0)]",
+              isLight
+                ? "border-slate-200 bg-slate-50 shadow-[0_-12px_40px_rgba(15,23,42,0.1)]"
+                : "border-white/10 bg-[#0A0A0F] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]",
+            )}
           >
             <div
-              className="flex min-h-[52px] shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-2 bg-[#0A0A0F] py-3 active:cursor-grabbing"
+              className={cn(
+                "flex min-h-[52px] shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-2 py-3 active:cursor-grabbing",
+                isLight ? "bg-slate-50" : "bg-[#0A0A0F]",
+              )}
               onPointerDown={(e) => sheetDragControls.start(e)}
             >
-              <div className="h-1.5 w-12 rounded-full bg-white/20" />
-              <div className="pointer-events-none text-[8px] font-bold uppercase tracking-[0.2em] text-gray-600">
+              <div
+                className={cn(
+                  "h-1.5 w-12 rounded-full",
+                  isLight ? "bg-slate-300" : "bg-white/20",
+                )}
+              />
+              <div
+                className={cn(
+                  "pointer-events-none text-[8px] font-bold uppercase tracking-[0.2em]",
+                  isLight ? "text-slate-500" : "text-gray-600",
+                )}
+              >
                 Drag Intel Dossier
               </div>
             </div>

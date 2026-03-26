@@ -2,6 +2,8 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { Layers, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 const LS_KEY = "kj_signals_lead_ok";
 
@@ -16,6 +18,8 @@ export default function SignalsAccessGate({
   onClose,
   onAccessGranted,
 }: SignalsAccessGateProps) {
+  const { mode } = useSignalsColorMode();
+  const isLight = mode === "light";
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -96,7 +100,10 @@ export default function SignalsAccessGate({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#050508]/80 p-4 backdrop-blur-md"
+      className={cn(
+        "fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-md",
+        isLight ? "bg-slate-900/35" : "bg-[#050508]/80",
+      )}
       role="presentation"
       onClick={onClose}
     >
@@ -104,13 +111,23 @@ export default function SignalsAccessGate({
         role="dialog"
         aria-modal="true"
         aria-labelledby="signals-lead-title"
-        className="relative w-full max-w-md rounded-lg border border-white/10 bg-[#0A0A0F] p-6 shadow-[0_0_80px_rgba(0,0,0,1)] sm:p-8"
+        className={cn(
+          "relative w-full max-w-md rounded-lg border p-6 shadow-[0_0_80px_rgba(0,0,0,1)] sm:p-8",
+          isLight
+            ? "border-slate-200 bg-white"
+            : "border-white/10 bg-[#0A0A0F]",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 rounded-full border border-white/10 p-2 text-gray-500 transition-colors hover:bg-white/5 hover:text-white"
+          className={cn(
+            "absolute right-3 top-3 rounded-full border p-2 transition-colors",
+            isLight
+              ? "border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              : "border-white/10 text-gray-500 hover:bg-white/5 hover:text-white",
+          )}
           aria-label="Close"
         >
           <X size={18} aria-hidden />
@@ -121,16 +138,32 @@ export default function SignalsAccessGate({
             <Layers size={20} className="text-[#00BFFF]" aria-hidden />
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-red-400/90">
+            <p
+              className={cn(
+                "text-[10px] font-semibold uppercase tracking-[0.2em]",
+                isLight ? "text-red-600" : "text-red-400/90",
+              )}
+            >
               Kind Joe Signals
             </p>
-            <h1 id="signals-lead-title" className="text-lg font-semibold text-white">
+            <h1
+              id="signals-lead-title"
+              className={cn(
+                "text-lg font-semibold",
+                isLight ? "text-slate-900" : "text-white",
+              )}
+            >
               Unlock the intel stream
             </h1>
           </div>
         </div>
 
-        <p className="mb-6 text-sm text-gray-400">
+        <p
+          className={cn(
+            "mb-6 text-sm",
+            isLight ? "text-slate-600" : "text-gray-400",
+          )}
+        >
           The live map stays open for everyone. Share your details once to read
           the full headline list here and get updates from Kind Joe.
         </p>
@@ -138,7 +171,12 @@ export default function SignalsAccessGate({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              <span
+                className={cn(
+                  "mb-1 block text-[10px] font-bold uppercase tracking-widest",
+                  isLight ? "text-slate-500" : "text-gray-500",
+                )}
+              >
                 First name
               </span>
               <input
@@ -147,11 +185,21 @@ export default function SignalsAccessGate({
                 autoComplete="given-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none ring-[#00BFFF]/0 transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20"
+                className={cn(
+                  "w-full rounded-md border px-3 py-2.5 text-sm outline-none ring-[#00BFFF]/0 transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
+                  isLight
+                    ? "border-slate-200 bg-slate-50 text-slate-900"
+                    : "border-white/10 bg-black/40 text-white",
+                )}
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              <span
+                className={cn(
+                  "mb-1 block text-[10px] font-bold uppercase tracking-widest",
+                  isLight ? "text-slate-500" : "text-gray-500",
+                )}
+              >
                 Last name
               </span>
               <input
@@ -160,13 +208,23 @@ export default function SignalsAccessGate({
                 autoComplete="family-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20"
+                className={cn(
+                  "w-full rounded-md border px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
+                  isLight
+                    ? "border-slate-200 bg-slate-50 text-slate-900"
+                    : "border-white/10 bg-black/40 text-white",
+                )}
               />
             </label>
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            <span
+              className={cn(
+                "mb-1 block text-[10px] font-bold uppercase tracking-widest",
+                isLight ? "text-slate-500" : "text-gray-500",
+              )}
+            >
               Email
             </span>
             <input
@@ -175,18 +233,40 @@ export default function SignalsAccessGate({
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20"
+              className={cn(
+                "w-full rounded-md border px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
+                isLight
+                  ? "border-slate-200 bg-slate-50 text-slate-900"
+                  : "border-white/10 bg-black/40 text-white",
+              )}
             />
           </label>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-md border border-white/5 bg-white/[0.02] p-3">
+          <label
+            className={cn(
+              "flex cursor-pointer items-start gap-3 rounded-md border p-3",
+              isLight
+                ? "border-slate-200 bg-slate-50"
+                : "border-white/5 bg-white/[0.02]",
+            )}
+          >
             <input
               type="checkbox"
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-[#00BFFF] focus:ring-[#00BFFF]/30"
+              className={cn(
+                "mt-0.5 h-4 w-4 shrink-0 rounded text-[#00BFFF] focus:ring-[#00BFFF]/30",
+                isLight
+                  ? "border-slate-300 bg-white"
+                  : "border-white/20 bg-black/40",
+              )}
             />
-            <span className="text-xs leading-snug text-gray-400">
+            <span
+              className={cn(
+                "text-xs leading-snug",
+                isLight ? "text-slate-600" : "text-gray-400",
+              )}
+            >
               I agree to share my contact information with Kind Joe for updates
               related to Signals and related products.
             </span>

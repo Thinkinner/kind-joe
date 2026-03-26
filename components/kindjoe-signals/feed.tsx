@@ -13,6 +13,8 @@ import {
   Lock,
   Radio,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 interface FeedProps {
   signals: Signal[];
@@ -75,17 +77,44 @@ export default function Feed({
 
   const showUnlockPanel = !sidebarAccessUnlocked;
 
+  const { mode } = useSignalsColorMode();
+  const isLight = mode === "light";
+
   return (
-    <div className="w-full md:w-80 lg:w-96 bg-[#0A0A0F] border-t md:border-t-0 md:border-l border-white/10 flex flex-col shrink-0 z-10 overflow-hidden flex-1 md:flex-none md:h-auto font-mono">
-      <div className="p-4 border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
-        <h2 className="text-[10px] text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2 font-bold">
+    <div
+      className={cn(
+        "z-10 flex w-full shrink-0 flex-col overflow-hidden border-t font-mono md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
+        isLight
+          ? "border-slate-200 bg-slate-50"
+          : "border-white/10 bg-[#0A0A0F]",
+      )}
+    >
+      <div
+        className={cn(
+          "sticky top-0 z-20 flex items-center justify-between border-b p-4 backdrop-blur-md",
+          isLight
+            ? "border-slate-200 bg-white/70"
+            : "border-white/10 bg-black/50",
+        )}
+      >
+        <h2
+          className={cn(
+            "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]",
+            isLight ? "text-slate-500" : "text-gray-500",
+          )}
+        >
           <Activity size={12} className="text-[#00BFFF]" />
           <span>Intel_Stream</span>
         </h2>
         <button
           type="button"
           onClick={onOpenFilters}
-          className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors text-[9px] border border-white/10 uppercase tracking-widest"
+          className={cn(
+            "flex items-center gap-1.5 rounded border px-2 py-1 text-[9px] uppercase tracking-widest transition-colors",
+            isLight
+              ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+              : "border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
+          )}
         >
           <Filter size={10} /> Filters
         </button>
@@ -114,7 +143,12 @@ export default function Feed({
               </div>
             </div>
 
-            <h3 className="text-[13px] font-bold text-white leading-tight mb-2 uppercase italic tracking-tighter">
+            <h3
+              className={cn(
+                "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
+                isLight ? "text-slate-900" : "text-white",
+              )}
+            >
               {spotlightSignal.headline}
             </h3>
 
@@ -132,7 +166,14 @@ export default function Feed({
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div
+        className={cn(
+          "flex-1 space-y-2 overflow-y-auto p-2 scrollbar-thin scrollbar-track-transparent",
+          isLight
+            ? "scrollbar-thumb-slate-300"
+            : "scrollbar-thumb-white/10",
+        )}
+      >
         {showUnlockPanel ? (
           <div className="flex min-h-[180px] flex-col items-center justify-center rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5 p-5 text-center md:min-h-[240px]">
             {accessCheckPending ? (
@@ -141,7 +182,12 @@ export default function Feed({
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00BFFF] opacity-50" />
                   <span className="relative inline-flex h-7 w-7 rounded-full bg-[#00BFFF]" />
                 </div>
-                <p className="text-[11px] font-medium text-gray-300">
+                <p
+                  className={cn(
+                    "text-[11px] font-medium",
+                    isLight ? "text-slate-600" : "text-gray-300",
+                  )}
+                >
                   Checking access…
                 </p>
               </>
@@ -150,10 +196,20 @@ export default function Feed({
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#00BFFF]/35 bg-[#00BFFF]/10">
                   <Lock className="h-5 w-5 text-[#00BFFF]" aria-hidden />
                 </div>
-                <p className="text-[11px] font-semibold text-white">
+                <p
+                  className={cn(
+                    "text-[11px] font-semibold",
+                    isLight ? "text-slate-900" : "text-white",
+                  )}
+                >
                   Live map is on — unlock the feed
                 </p>
-                <p className="mt-2 text-[10px] leading-relaxed text-gray-500">
+                <p
+                  className={cn(
+                    "mt-2 text-[10px] leading-relaxed",
+                    isLight ? "text-slate-600" : "text-gray-500",
+                  )}
+                >
                   Watch breaking signals on the globe in real time. Add your
                   email once to read full headlines and summaries in this panel.
                 </p>
@@ -181,8 +237,18 @@ export default function Feed({
             {mainFeedSignals.length === 0 &&
               totalUnfilteredCount !== undefined &&
               totalUnfilteredCount > 0 && (
-                <div className="rounded-sm border border-amber-500/25 bg-amber-950/20 p-4 text-center">
-                  <p className="text-[11px] font-medium text-amber-100/90">
+                <div
+                  className={cn(
+                    "rounded-sm border border-amber-500/25 p-4 text-center",
+                    isLight ? "bg-amber-50" : "bg-amber-950/20",
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "text-[11px] font-medium",
+                      isLight ? "text-amber-950" : "text-amber-100/90",
+                    )}
+                  >
                     No signals match your filters or search.
                   </p>
                   {onClearFilters && (
@@ -215,11 +281,27 @@ export default function Feed({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     onClick={() => onSignalClick(signal)}
-                    className={`p-4 rounded-sm border cursor-pointer transition-all duration-300 group ${isSelected ? "bg-gray-900 border-[#00BFFF] shadow-[0_0_15px_rgba(0,191,255,0.1)]" : "bg-white/[0.01] border-white/5 hover:border-white/15"}`}
+                    className={cn(
+                      "group cursor-pointer rounded-sm border p-4 transition-all duration-300",
+                      isSelected
+                        ? "border-[#00BFFF] shadow-[0_0_15px_rgba(0,191,255,0.1)]"
+                        : isLight
+                          ? "border-slate-200 bg-white hover:border-slate-300"
+                          : "border-white/5 bg-white/[0.01] hover:border-white/15",
+                      isSelected &&
+                        (isLight ? "bg-sky-50" : "bg-gray-900"),
+                    )}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span
-                        className={`text-[9px] uppercase tracking-widest font-bold ${timeDiff < 120000 ? "text-[#00BFFF]" : "text-gray-600"}`}
+                        className={cn(
+                          "text-[9px] font-bold uppercase tracking-widest",
+                          timeDiff < 120000
+                            ? "text-[#00BFFF]"
+                            : isLight
+                              ? "text-slate-500"
+                              : "text-gray-600",
+                        )}
                       >
                         {timeLabel}
                       </span>
@@ -233,16 +315,38 @@ export default function Feed({
                       )}
                     </div>
 
-                    <h3 className="text-[12px] font-bold text-gray-200 mb-2 leading-snug group-hover:text-white transition-colors tracking-tight uppercase">
+                    <h3
+                      className={cn(
+                        "mb-2 text-[12px] font-bold uppercase leading-snug tracking-tight transition-colors",
+                        isLight
+                          ? "text-slate-800 group-hover:text-slate-950"
+                          : "text-gray-200 group-hover:text-white",
+                      )}
+                    >
                       {signal.headline}
                     </h3>
 
-                    <p className="text-[10px] text-gray-500 line-clamp-2 mb-3 leading-relaxed font-medium">
+                    <p
+                      className={cn(
+                        "mb-3 line-clamp-2 text-[10px] font-medium leading-relaxed",
+                        isLight ? "text-slate-600" : "text-gray-500",
+                      )}
+                    >
                       {signal.summary}
                     </p>
 
-                    <div className="flex items-center justify-between text-[8px] border-t border-white/5 pt-3 tracking-widest">
-                      <span className="text-gray-600 uppercase font-black">
+                    <div
+                      className={cn(
+                        "flex items-center justify-between border-t pt-3 text-[8px] tracking-widest",
+                        isLight ? "border-slate-200" : "border-white/5",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "font-black uppercase",
+                          isLight ? "text-slate-600" : "text-gray-600",
+                        )}
+                      >
                         {signal.category}
                       </span>
                       <div className="flex items-center gap-2">
@@ -250,11 +354,23 @@ export default function Feed({
                           {[1, 2, 3, 4, 5].map((i) => (
                             <div
                               key={i}
-                              className={`w-0.5 h-1.5 rounded-full ${i <= signal.impactScore / 20 ? "bg-[#00BFFF]" : "bg-white/5"}`}
+                              className={cn(
+                                "h-1.5 w-0.5 rounded-full",
+                                i <= signal.impactScore / 20
+                                  ? "bg-[#00BFFF]"
+                                  : isLight
+                                    ? "bg-slate-200"
+                                    : "bg-white/5",
+                              )}
                             />
                           ))}
                         </div>
-                        <span className="text-gray-400 font-bold">
+                        <span
+                          className={cn(
+                            "font-bold",
+                            isLight ? "text-slate-500" : "text-gray-400",
+                          )}
+                        >
                           {signal.impactScore}
                         </span>
                       </div>

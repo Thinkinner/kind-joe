@@ -8,9 +8,15 @@ import {
   formatLatLng,
   macroRegionForCountry,
 } from "@/lib/signals/macro-region";
+import { cn } from "@/lib/utils";
+import type { SignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 const DARK_GLOBE_TEXTURE =
   "https://unpkg.com/three-globe@2.32.0/example/img/earth-dark.jpg";
+const REALISTIC_GLOBE_TEXTURE =
+  "https://unpkg.com/three-globe@2.32.0/example/img/earth-blue-marble.jpg";
+const WIREFRAME_GLOBE_TEXTURE =
+  "https://unpkg.com/three-globe@2.32.0/example/img/earth-topology.png";
 
 function escapeHtml(s: string) {
   return s
@@ -20,38 +26,64 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
-function signalPointTooltip(d: Signal) {
+function signalPointTooltip(d: Signal, mode: SignalsColorMode) {
   const region = macroRegionForCountry(d.country);
   const coords = formatLatLng(d.lat, d.lng);
-  return `<div style="font-family:ui-monospace,monospace;font-size:11px;max-width:260px;background:rgba(3,3,6,0.95);padding:10px 12px;border:1px solid rgba(220,38,38,0.45);border-radius:6px;color:#e5e5e5;line-height:1.45;box-shadow:0 8px 32px rgba(0,0,0,0.65)">
-    <div style="color:#f87171;font-weight:800;font-size:10px;letter-spacing:0.12em;margin-bottom:6px">SIGNAL</div>
-    <div style="font-weight:700;color:#fff;margin-bottom:8px;font-size:12px">${escapeHtml(d.headline.slice(0, 140))}${d.headline.length > 140 ? "…" : ""}</div>
-    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;display:grid;gap:4px;font-size:10px">
-      <div><span style="color:#9ca3af">City / locality</span> · <span style="color:#f3f4f6">${escapeHtml(d.city)}</span></div>
-      <div><span style="color:#9ca3af">Country</span> · <span style="color:#f3f4f6">${escapeHtml(d.country)}</span></div>
-      <div><span style="color:#9ca3af">Region</span> · <span style="color:#f3f4f6">${escapeHtml(region)}</span></div>
-      <div><span style="color:#9ca3af">Sector</span> · <span style="color:#f3f4f6">${escapeHtml(d.category)}</span></div>
-      <div><span style="color:#9ca3af">Coordinates</span> · <span style="color:#fca5a5">${escapeHtml(coords)}</span></div>
-      <div><span style="color:#9ca3af">Impact</span> · <span style="color:#f3f4f6">${d.impactScore}</span></div>
+  const isLight = mode === "light";
+  const panelBg = isLight ? "rgba(255,255,255,0.98)" : "rgba(3,3,6,0.95)";
+  const border = isLight
+    ? "1px solid rgba(220,38,38,0.35)"
+    : "1px solid rgba(220,38,38,0.45)";
+  const shadow = isLight
+    ? "0 8px 32px rgba(15,23,42,0.12)"
+    : "0 8px 32px rgba(0,0,0,0.65)";
+  const headlineColor = isLight ? "#0f172a" : "#fff";
+  const muted = isLight ? "#64748b" : "#9ca3af";
+  const value = isLight ? "#1e293b" : "#f3f4f6";
+  const divider = isLight ? "1px solid rgba(15,23,42,0.08)" : "1px solid rgba(255,255,255,0.08)";
+  return `<div style="font-family:ui-monospace,monospace;font-size:11px;max-width:260px;background:${panelBg};padding:10px 12px;border:${border};border-radius:6px;color:${isLight ? "#334155" : "#e5e5e5"};line-height:1.45;box-shadow:${shadow}">
+    <div style="color:#dc2626;font-weight:800;font-size:10px;letter-spacing:0.12em;margin-bottom:6px">SIGNAL</div>
+    <div style="font-weight:700;color:${headlineColor};margin-bottom:8px;font-size:12px">${escapeHtml(d.headline.slice(0, 140))}${d.headline.length > 140 ? "…" : ""}</div>
+    <div style="border-top:${divider};padding-top:8px;display:grid;gap:4px;font-size:10px">
+      <div><span style="color:${muted}">City / locality</span> · <span style="color:${value}">${escapeHtml(d.city)}</span></div>
+      <div><span style="color:${muted}">Country</span> · <span style="color:${value}">${escapeHtml(d.country)}</span></div>
+      <div><span style="color:${muted}">Region</span> · <span style="color:${value}">${escapeHtml(region)}</span></div>
+      <div><span style="color:${muted}">Sector</span> · <span style="color:${value}">${escapeHtml(d.category)}</span></div>
+      <div><span style="color:${muted}">Coordinates</span> · <span style="color:#dc2626">${escapeHtml(coords)}</span></div>
+      <div><span style="color:${muted}">Impact</span> · <span style="color:${value}">${d.impactScore}</span></div>
     </div>
   </div>`;
 }
 
-function countryPolygonTooltip(feature: {
-  properties?: Record<string, unknown>;
-}) {
+function countryPolygonTooltip(
+  feature: { properties?: Record<string, unknown> },
+  mode: SignalsColorMode,
+) {
   const p = feature.properties ?? {};
   const name = String(p.NAME ?? p.ADMIN ?? "Area");
   const continent = String(p.CONTINENT ?? "—");
   const iso = String(p.ISO_A2 ?? p.ADM0_A3 ?? "—");
   const pop = p.POP_EST != null ? Number(p.POP_EST).toLocaleString() : null;
-  return `<div style="font-family:ui-monospace,monospace;font-size:11px;min-width:200px;max-width:280px;background:rgba(3,3,6,0.95);padding:10px 12px;border:1px solid rgba(120,120,130,0.5);border-radius:6px;color:#e5e5e5;line-height:1.5">
-    <div style="color:#94a3b8;font-size:9px;letter-spacing:0.15em;margin-bottom:6px">TERRITORY</div>
-    <div style="font-weight:800;color:#fff;margin-bottom:8px;font-size:13px">${escapeHtml(name)}</div>
-    <div style="display:grid;gap:4px;font-size:10px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px">
-      <div><span style="color:#9ca3af">Continent</span> · <span style="color:#e5e7eb">${escapeHtml(continent)}</span></div>
-      <div><span style="color:#9ca3af">ISO</span> · <span style="color:#e5e7eb">${escapeHtml(iso)}</span></div>
-      ${pop ? `<div><span style="color:#9ca3af">Population (est.)</span> · <span style="color:#e5e7eb">${pop}</span></div>` : ""}
+  const isLight = mode === "light";
+  const panelBg = isLight ? "rgba(255,255,255,0.98)" : "rgba(3,3,6,0.95)";
+  const border = isLight
+    ? "1px solid rgba(148,163,184,0.55)"
+    : "1px solid rgba(120,120,130,0.5)";
+  const shadow = isLight
+    ? "0 8px 24px rgba(15,23,42,0.1)"
+    : "0 8px 24px rgba(0,0,0,0.5)";
+  const titleMuted = isLight ? "#64748b" : "#94a3b8";
+  const headline = isLight ? "#0f172a" : "#fff";
+  const divider = isLight ? "1px solid rgba(15,23,42,0.08)" : "1px solid rgba(255,255,255,0.08)";
+  const label = isLight ? "#64748b" : "#9ca3af";
+  const val = isLight ? "#334155" : "#e5e7eb";
+  return `<div style="font-family:ui-monospace,monospace;font-size:11px;min-width:200px;max-width:280px;background:${panelBg};padding:10px 12px;border:${border};border-radius:6px;color:${isLight ? "#475569" : "#e5e5e5"};line-height:1.5;box-shadow:${shadow}">
+    <div style="color:${titleMuted};font-size:9px;letter-spacing:0.15em;margin-bottom:6px">TERRITORY</div>
+    <div style="font-weight:800;color:${headline};margin-bottom:8px;font-size:13px">${escapeHtml(name)}</div>
+    <div style="display:grid;gap:4px;font-size:10px;border-top:${divider};padding-top:8px">
+      <div><span style="color:${label}">Continent</span> · <span style="color:${val}">${escapeHtml(continent)}</span></div>
+      <div><span style="color:${label}">ISO</span> · <span style="color:${val}">${escapeHtml(iso)}</span></div>
+      ${pop ? `<div><span style="color:${label}">Population (est.)</span> · <span style="color:${val}">${pop}</span></div>` : ""}
     </div>
   </div>`;
 }
@@ -61,6 +93,7 @@ interface GlobeComponentProps {
   selectedSignal: Signal | null;
   onSignalClick: (signal: Signal | null) => void;
   globeStyle: "realistic" | "dark" | "wireframe";
+  uiColorMode?: SignalsColorMode;
 }
 
 // Impact color logic
@@ -79,7 +112,14 @@ const COUNTRY_NAME_MAP: Record<string, string> = {
 };
 
 export default function GlobeComponent(props: GlobeComponentProps) {
-  const { signals, selectedSignal, onSignalClick } = props;
+  const {
+    signals,
+    selectedSignal,
+    onSignalClick,
+    globeStyle,
+    uiColorMode = "dark",
+  } = props;
+  const isLight = uiColorMode === "light";
   const globeRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [geoData, setGeoData] = useState({ features: [] });
@@ -114,6 +154,25 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     }));
   }, [signals]);
 
+  const globeImageUrl = useMemo(() => {
+    switch (globeStyle) {
+      case "realistic":
+        return REALISTIC_GLOBE_TEXTURE;
+      case "wireframe":
+        return WIREFRAME_GLOBE_TEXTURE;
+      default:
+        return DARK_GLOBE_TEXTURE;
+    }
+  }, [globeStyle]);
+
+  const globeBg = isLight ? "rgba(241,245,249,0.94)" : "rgba(2,2,3,0.96)";
+  const atmosphereColor = isLight
+    ? "rgba(14, 165, 233, 0.25)"
+    : "rgba(40, 10, 12, 0.35)";
+  const defaultCap = isLight ? "rgba(226, 232, 240, 0.75)" : "rgba(6, 6, 10, 0.88)";
+  const defaultStroke = isLight ? "rgba(100, 116, 139, 0.4)" : "rgba(90, 90, 102, 0.35)";
+  const idleLabelColor = isLight ? "rgba(51, 65, 85, 0.55)" : "rgba(220, 220, 228, 0.55)";
+
   // 🔭 Zoom to Local or Global scale based on news type
   useEffect(() => {
     if (selectedSignal && globeRef.current) {
@@ -137,21 +196,34 @@ export default function GlobeComponent(props: GlobeComponentProps) {
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full overflow-hidden bg-[#020203] font-mono"
+      className={cn(
+        "relative h-full w-full overflow-hidden font-mono",
+        isLight ? "bg-slate-200" : "bg-[#020203]",
+      )}
     >
       {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
       {selectedSignal && (
-        <div className="absolute top-16 right-4 md:top-20 md:right-8 z-30 flex flex-col items-end pointer-events-none animate-pulse">
-          <span className="text-[8px] md:text-[9px] text-gray-500 tracking-[0.3em]">
+        <div className="pointer-events-none absolute right-4 top-16 z-30 flex animate-pulse flex-col items-end md:right-8 md:top-20">
+          <span
+            className={cn(
+              "text-[8px] tracking-[0.3em] md:text-[9px]",
+              isLight ? "text-slate-500" : "text-gray-500",
+            )}
+          >
             GPS_LOCK_CONFIRMED
           </span>
           <span
-            className="text-[10px] md:text-xs font-bold tracking-widest text-white"
+            className="text-[10px] font-bold tracking-widest md:text-xs"
             style={{ color: activeColor }}
           >
             {formatLatLng(selectedSignal.lat, selectedSignal.lng)}
           </span>
-          <span className="mt-1 max-w-[14rem] text-right text-[9px] leading-snug text-gray-500">
+          <span
+            className={cn(
+              "mt-1 max-w-[14rem] text-right text-[9px] leading-snug",
+              isLight ? "text-slate-600" : "text-gray-500",
+            )}
+          >
             {selectedSignal.city} · {selectedSignal.country} ·{" "}
             {macroRegionForCountry(selectedSignal.country)}
           </span>
@@ -162,11 +234,11 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl={DARK_GLOBE_TEXTURE}
-        backgroundColor="rgba(2,2,3,0.96)"
+        globeImageUrl={globeImageUrl}
+        backgroundColor={globeBg}
         showGraticules={true}
         showAtmosphere={true}
-        atmosphereColor="rgba(40, 10, 12, 0.35)"
+        atmosphereColor={atmosphereColor}
         atmosphereAltitude={0.12}
         polygonsData={geoData.features}
         polygonCapColor={(d: any) => {
@@ -176,7 +248,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           if (selectedSignal && name === mappedName) {
             return getImpactColor(selectedSignal.impactScore, 0.22);
           }
-          return "rgba(6, 6, 10, 0.88)";
+          return defaultCap;
         }}
         polygonSideColor={() => "rgba(0, 0, 0, 0)"}
         polygonStrokeColor={(d: any) => {
@@ -186,9 +258,9 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           if (selectedSignal && name === mappedName) {
             return getImpactColor(selectedSignal.impactScore, 0.55);
           }
-          return "rgba(90, 90, 102, 0.35)";
+          return defaultStroke;
         }}
-        polygonLabel={(d: any) => countryPolygonTooltip(d)}
+        polygonLabel={(d: any) => countryPolygonTooltip(d, uiColorMode)}
         // --- 🎯 HYPER-LOCAL MARKING (SECTOR HIGHLIGHT) ---
         ringsData={selectedSignal ? [selectedSignal] : []}
         ringLat="lat"
@@ -204,7 +276,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         pointColor={(d: any) => getImpactColor(d.impactScore)}
         pointAltitude={0.01}
         pointRadius={(d: any) => (d.id === selectedSignal?.id ? 1.5 : 0.7)}
-        pointLabel={(d: any) => signalPointTooltip(d as Signal)}
+        pointLabel={(d: any) => signalPointTooltip(d as Signal, uiColorMode)}
         labelsData={labelsData}
         labelLat="lat"
         labelLng="lng"
@@ -214,7 +286,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         labelColor={(d: any) =>
           d.id === selectedSignal?.id
             ? getImpactColor(d.impactScore)
-            : "rgba(220, 220, 228, 0.55)"
+            : idleLabelColor
         }
         labelDotRadius={0.35}
         onLabelClick={(label: any) => onSignalClick(label)}
@@ -222,22 +294,46 @@ export default function GlobeComponent(props: GlobeComponentProps) {
 
       {/* 📂 TACTICAL DOSSIER (FULLSCREEN MOBILE / SIDEBAR DESKTOP) */}
       {selectedSignal && (
-        <div className="fixed inset-0 z-[100] md:absolute md:inset-auto md:top-6 md:left-6 md:bottom-6 md:w-96 bg-[#0A0A0F]/95 md:bg-[#0A0A0F]/85 backdrop-blur-3xl md:border border-white/10 flex flex-col shadow-[20px_0_60px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 md:zoom-in-100 md:slide-in-from-left duration-300 md:duration-500">
+        <div
+          className={cn(
+            "fixed inset-0 z-[100] flex animate-in flex-col fade-in duration-300 zoom-in-95 backdrop-blur-3xl md:absolute md:inset-auto md:bottom-6 md:left-6 md:top-6 md:w-96 md:zoom-in-100 md:slide-in-from-left md:duration-500",
+            isLight
+              ? "border-slate-200 bg-white/95 shadow-[20px_0_60px_rgba(15,23,42,0.12)] md:border md:bg-white/90"
+              : "border-white/10 bg-[#0A0A0F]/95 shadow-[20px_0_60px_rgba(0,0,0,0.9)] md:border md:bg-[#0A0A0F]/85",
+          )}
+        >
           {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+          <div
+            className={cn(
+              "flex items-center justify-between border-b px-6 py-5 md:hidden",
+              isLight
+                ? "border-slate-200 bg-slate-50/80"
+                : "border-white/5 bg-white/[0.02]",
+            )}
+          >
             <div className="flex items-center gap-3">
               <div
-                className="w-2 h-2 rounded-full animate-pulse"
+                className="h-2 w-2 animate-pulse rounded-full"
                 style={{ backgroundColor: activeColor }}
               />
-              <span className="text-[10px] text-gray-400 font-black tracking-[0.3em] uppercase">
+              <span
+                className={cn(
+                  "text-[10px] font-black uppercase tracking-[0.3em]",
+                  isLight ? "text-slate-500" : "text-gray-400",
+                )}
+              >
                 Dossier_Lock_Active
               </span>
             </div>
             <button
               type="button"
               onClick={() => onSignalClick(null)}
-              className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+              className={cn(
+                "rounded-full p-2 transition-colors",
+                isLight
+                  ? "text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                  : "text-gray-400 hover:bg-white/10 hover:text-white",
+              )}
             >
               <X size={24} />
             </button>
@@ -265,21 +361,34 @@ export default function GlobeComponent(props: GlobeComponentProps) {
                         : "Strategic Signal Locked"}
                     </span>
                   </div>
-                <div className="text-[9px] md:text-[9px] text-gray-500 tracking-widest uppercase">
+                <div
+                  className={cn(
+                    "text-[9px] uppercase tracking-widest md:text-[9px]",
+                    isLight ? "text-slate-500" : "text-gray-500",
+                  )}
+                >
                   ID: {selectedSignal.id.slice(0, 12)}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => onSignalClick(null)}
-                className="hidden md:block p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-white"
+                className={cn(
+                  "hidden rounded-full p-1.5 md:block",
+                  isLight
+                    ? "text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                    : "text-gray-500 hover:bg-white/10 hover:text-white",
+                )}
               >
                 <X size={20} />
               </button>
             </div>
 
             <h2
-              className="text-xl md:text-xl font-bold text-white mb-6 md:mb-6 leading-[1.2] tracking-tight border-l-2 pl-4 italic"
+              className={cn(
+                "mb-6 border-l-2 pl-4 text-xl font-bold italic leading-[1.2] tracking-tight md:mb-6 md:text-xl",
+                isLight ? "text-slate-900" : "text-white",
+              )}
               style={{ borderLeftColor: activeColor }}
             >
               {selectedSignal.headline}
@@ -312,11 +421,23 @@ export default function GlobeComponent(props: GlobeComponentProps) {
               </div>
             </div>
 
-            <div className="space-y-4 md:space-y-4 mb-8 md:mb-8">
-              <div className="flex items-center gap-2 text-[10px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
+            <div className="mb-8 space-y-4 md:mb-8 md:space-y-4">
+              <div
+                className={cn(
+                  "flex items-center gap-2 border-b pb-2 text-[10px] font-bold uppercase tracking-widest md:text-[10px]",
+                  isLight
+                    ? "border-slate-200 text-slate-500"
+                    : "border-white/5 text-gray-400",
+                )}
+              >
                 Situational Summary
               </div>
-              <p className="text-[13px] md:text-[13px] text-gray-300 leading-relaxed font-medium">
+              <p
+                className={cn(
+                  "text-[13px] font-medium leading-relaxed md:text-[13px]",
+                  isLight ? "text-slate-700" : "text-gray-300",
+                )}
+              >
                 {selectedSignal.summary}
               </p>
 
@@ -355,15 +476,25 @@ export default function GlobeComponent(props: GlobeComponentProps) {
               */}
             </div>
 
-            <div className="space-y-4 md:space-y-4 mb-10 md:mb-10">
-              <div className="text-[10px] md:text-[10px] text-gray-600 uppercase font-bold tracking-widest flex items-center gap-2">
-                <Hash className="w-3 h-3 md:w-3 md:h-3" /> Pattern Match
+            <div className="mb-10 space-y-4 md:mb-10 md:space-y-4">
+              <div
+                className={cn(
+                  "flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest md:text-[10px]",
+                  isLight ? "text-slate-500" : "text-gray-600",
+                )}
+              >
+                <Hash className="h-3 w-3 md:h-3 md:w-3" /> Pattern Match
               </div>
               <div className="flex flex-wrap gap-2">
                 {(selectedSignal.tags || []).map((tag) => (
                   <span
                     key={tag}
-                    className="text-[9px] md:text-[9px] font-black px-2.5 py-1 bg-white/5 border border-white/10 text-gray-400 hover:text-white uppercase"
+                    className={cn(
+                      "px-2.5 py-1 text-[9px] font-black uppercase md:text-[9px]",
+                      isLight
+                        ? "border border-slate-200 bg-slate-100 text-slate-600 hover:text-slate-900"
+                        : "border border-white/10 bg-white/5 text-gray-400 hover:text-white",
+                    )}
                   >
                     #{tag}
                   </span>
@@ -372,12 +503,27 @@ export default function GlobeComponent(props: GlobeComponentProps) {
             </div>
 
             {/* 📍 LOCAL SPECIFICS */}
-            <div className="grid grid-cols-2 gap-6 md:gap-6 border-t border-white/10 pt-8 md:pt-8">
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-6 border-t pt-8 md:gap-6 md:pt-8",
+                isLight ? "border-slate-200" : "border-white/10",
+              )}
+            >
               <div className="space-y-1.5">
-                <div className="text-[9px] md:text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                <div
+                  className={cn(
+                    "text-[9px] font-bold uppercase tracking-tighter md:text-[9px]",
+                    isLight ? "text-slate-500" : "text-gray-600",
+                  )}
+                >
                   Operational Scale
                 </div>
-                <div className="text-[11px] md:text-[11px] text-white font-black uppercase">
+                <div
+                  className={cn(
+                    "text-[11px] font-black uppercase md:text-[11px]",
+                    isLight ? "text-slate-900" : "text-white",
+                  )}
+                >
                   {selectedSignal.impactScore < 40
                     ? "Tactical_Local"
                     : selectedSignal.impactScore < 75
@@ -386,17 +532,34 @@ export default function GlobeComponent(props: GlobeComponentProps) {
                 </div>
               </div>
               <div className="space-y-1.5 text-right">
-                <div className="text-[9px] md:text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                <div
+                  className={cn(
+                    "text-[9px] font-bold uppercase tracking-tighter md:text-[9px]",
+                    isLight ? "text-slate-500" : "text-gray-600",
+                  )}
+                >
                   Sector
                 </div>
-                <div className="text-[11px] md:text-[11px] font-black uppercase text-white">
+                <div
+                  className={cn(
+                    "text-[11px] font-black uppercase md:text-[11px]",
+                    isLight ? "text-slate-900" : "text-white",
+                  )}
+                >
                   {selectedSignal.category}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="p-5 md:p-5 border-t border-white/5 bg-white/5 flex justify-between items-center text-[9px] md:text-[9px] text-gray-600 tracking-[0.3em] uppercase">
+          <div
+            className={cn(
+              "flex items-center justify-between border-t p-5 text-[9px] uppercase tracking-[0.3em] md:p-5 md:text-[9px]",
+              isLight
+                ? "border-slate-200 bg-slate-100/90 text-slate-500"
+                : "border-white/5 bg-white/5 text-gray-600",
+            )}
+          >
             <div className="flex items-center gap-2">
               <div
                 className="w-1.5 h-1.5 rounded-full animate-ping"
