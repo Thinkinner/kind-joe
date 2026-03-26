@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Minus, Plus, Activity, Database, Clock } from "lucide-react";
+import { Minus, Plus, Database, Clock, Eye } from "lucide-react";
+import {
+  formatSignalsViewerCount,
+  useSignalsLiveViewers,
+} from "@/hooks/use-signals-live-viewers";
 import Image from "next/image";
 
 interface TopBarProps {
@@ -11,11 +15,10 @@ interface TopBarProps {
 }
 
 export default function TopBar({ tension, setTension, signalCount }: TopBarProps) {
-  const [time, setTime] = useState(new Date());
-  const [mounted, setMounted] = useState(false);
+  const [time, setTime] = useState(() => new Date());
+  const liveViewers = useSignalsLiveViewers();
 
   useEffect(() => {
-    setMounted(true);
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -35,19 +38,38 @@ export default function TopBar({ tension, setTension, signalCount }: TopBarProps
   };
 
   return (
-    <div className="h-14 bg-[#050508] border-b border-white/10 flex items-center justify-between px-4 md:px-6 shrink-0 z-30 relative overflow-hidden">
+    <div className="min-h-14 h-14 bg-[#050508] border-b border-white/10 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 shrink-0 z-30 relative overflow-hidden">
       {/* Background Accent */}
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00BFFF]/20 to-transparent" />
 
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-2 min-w-0 sm:gap-4 lg:gap-8">
         {/* Logo */}
         <Image
           src="/brand/horizontal-logo.svg"
           width={130}
           height={30}
           alt="Aether"
-          className="opacity-90 hover:opacity-100 transition-opacity"
+          className="opacity-90 hover:opacity-100 transition-opacity shrink-0 w-[88px] sm:w-[115px] md:w-[130px] h-auto"
         />
+
+        <div
+          className="flex sm:hidden items-center gap-1.5 shrink-0 rounded-md border border-[#00BFFF]/25 bg-[#00BFFF]/[0.06] px-2 py-1.5 shadow-[0_0_12px_rgba(0,191,255,0.12)]"
+          title="Estimated live viewers"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+          </span>
+          <Eye size={13} className="text-[#00BFFF]" aria-hidden />
+          <div className="flex flex-col leading-none">
+            <span className="text-[9px] font-mono font-bold tabular-nums text-[#00BFFF] tracking-tight">
+              {formatSignalsViewerCount(liveViewers)}
+            </span>
+            <span className="text-[6px] font-mono text-gray-500 uppercase tracking-[0.14em] mt-0.5">
+              watching
+            </span>
+          </div>
+        </div>
 
         {/* System Status */}
         <div className="hidden lg:flex items-center gap-4 border-l border-white/10 pl-8">
@@ -90,27 +112,56 @@ export default function TopBar({ tension, setTension, signalCount }: TopBarProps
       </div>
 
       {/* Telemetry Data */}
-      <div className="flex items-center gap-6">
-        <div className="flex flex-col items-end">
+      <div className="flex items-stretch gap-2 sm:gap-4 md:gap-6 shrink-0">
+        <div className="hidden sm:flex flex-col items-end justify-center">
           <div className="flex items-center gap-1.5 text-gray-500">
-             <Database size={10} />
-             <span className="text-[9px] font-mono tracking-widest uppercase">Nodes</span>
+            <Eye size={10} />
+            <span className="text-[9px] font-mono tracking-widest uppercase">
+              Watching
+            </span>
           </div>
-          <span className="text-white font-mono font-bold text-xs">{signalCount.toLocaleString()}</span>
+          <span className="text-[#00BFFF] font-mono font-bold text-xs tabular-nums">
+            {formatSignalsViewerCount(liveViewers)}
+          </span>
         </div>
 
-        <div className="h-8 w-px bg-white/10" />
+        <div className="hidden sm:block w-px self-center h-8 bg-white/10" />
 
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1.5 text-gray-500">
-             <Clock size={10} />
-             <span className="text-[9px] font-mono tracking-widest uppercase">Universal</span>
+        <div className="flex flex-col items-end justify-center">
+          <div className="flex items-center gap-1 text-gray-500 sm:gap-1.5">
+            <Database size={10} className="shrink-0" aria-hidden />
+            <span className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase">
+              Nodes
+            </span>
           </div>
-          <span className="text-white font-mono text-xs tracking-wider">
-            {mounted ? time.toISOString().substring(11, 19) : "00:00:00"}<span className="text-[10px] opacity-40 ml-1">Z</span>
+          <span className="text-white font-mono font-bold text-[11px] sm:text-xs tabular-nums">
+            {signalCount.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="w-px self-center h-7 sm:h-8 bg-white/10" />
+
+        <div className="flex flex-col items-end justify-center min-w-[4.5rem] sm:min-w-0">
+          <div className="flex items-center gap-1 text-gray-500 sm:gap-1.5">
+            <Clock size={10} className="shrink-0" aria-hidden />
+            <span className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase max-[380px]:sr-only">
+              Universal
+            </span>
+            <span className="hidden max-[380px]:inline text-[8px] font-mono tracking-widest uppercase">
+              UTC
+            </span>
+          </div>
+          <span
+            className="text-white font-mono text-[11px] sm:text-xs tracking-wider tabular-nums"
+            suppressHydrationWarning
+          >
+            {time.toISOString().substring(11, 19)}
+            <span className="text-[9px] sm:text-[10px] opacity-40 ml-0.5 sm:ml-1">
+              Z
+            </span>
           </span>
         </div>
       </div>
     </div>
   );
-}/*  */
+}
