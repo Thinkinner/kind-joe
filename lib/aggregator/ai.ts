@@ -48,7 +48,7 @@ const signalSchema: Schema = {
       type: Type.ARRAY,
       items: { type: Type.STRING },
       description:
-        "Exactly 5 technical tags. Example: #usa, #california, #border, #security, #active.",
+        "Up to 20 distinct filter tags: lowercase slugs (no #). Cover geography (country, region, city if local), core story topics, subtopics, actors/orgs, sector, and status. Most important first; omit padding if fewer apply.",
     },
   },
   required: [
@@ -112,12 +112,9 @@ export const analyzeSignalWithAI = async (
        - Use "Economy & Markets" for macro and system-level finance: central banks, rates, inflation, sovereign debt, broad indices, trade policy framed as macro, financial stability.
        - Use "Business" for company- and industry-centric stories: M&A, earnings, executive moves, product launches, corporate restructuring, labor disputes at a specific firm, sector news where the primary lens is companies (not macro policy alone).
 
-    4. TAGGING PROTOCOL:
-       - Tag 1: Country (#usa, #russia, #china, etc.)
-       - Tag 2: Region/State (#california, #southeastasia, #europe, etc.)
-       - Tag 3: Core Topic (#border, #energy, #finance, #military, etc.)
-       - Tag 4: Sub-Topic (#ice, #semiconductors, #inflation, etc.)
-       - Tag 5: Status (#active, #ongoing, #resolved, #alert, etc.)
+    4. TAGGING PROTOCOL (up to 20 tags, lowercase, no # character in strings):
+       - Aim for rich coverage so users can filter in the UI: geography stack (country, region/state, city or metro if local), 2–6 core and sub-topics, notable entities or org types if relevant, sector/industry, mechanism (policy, markets, military, legal, etc.), and status (ongoing, resolved, alert).
+       - Each tag is one slug or short hyphenated phrase (e.g. "south-china-sea", "rate-cut"). No duplicates. Order by importance. Use as many as genuinely apply, up to 20; do not pad with generic filler.
 
     5. DATA INPUT:
        "${rawContent}"
@@ -140,10 +137,22 @@ export const analyzeSignalWithAI = async (
     try {
       const result = JSON.parse(cleanedText);
 
-      // Post-analysis refinement
-      result.tags = result.tags.map((t: string) =>
-        t.toLowerCase().replace("#", ""),
-      );
+      // Post-analysis: normalize, dedupe, cap at 20
+      const rawTags = Array.isArray(result.tags) ? result.tags : [];
+      const seen = new Set<string>();
+      const normalized: string[] = [];
+      for (const t of rawTags) {
+        const tag = String(t)
+          .toLowerCase()
+          .replace(/#/g, "")
+          .trim()
+          .replace(/\s+/g, "-");
+        if (!tag || seen.has(tag)) continue;
+        seen.add(tag);
+        normalized.push(tag);
+        if (normalized.length >= 20) break;
+      }
+      result.tags = normalized;
 
       // Final Noise Filter
       if (result.impactScore < 8 && result.category === "Viral / Social") {

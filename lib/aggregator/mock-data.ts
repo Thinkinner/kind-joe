@@ -36,8 +36,41 @@ const LOCATIONS = [
 export const COUNTRIES = Array.from(new Set(LOCATIONS.map(loc => loc.country))).sort();
 
 export const POPULAR_TAGS = [
-  'trump', 'usa', 'iran', 'ice', 'election', 'economy', 
-  'crisis', 'ai', 'crypto', 'fed', 'nato', 'china', 'border'
+  "trump",
+  "usa",
+  "iran",
+  "ice",
+  "election",
+  "economy",
+  "crisis",
+  "ai",
+  "crypto",
+  "fed",
+  "nato",
+  "china",
+  "border",
+  "ukraine",
+  "eu",
+  "opec",
+  "energy",
+  "defense",
+  "cyber",
+  "climate",
+  "healthcare",
+  "supply-chain",
+  "tariffs",
+  "sanctions",
+  "semiconductors",
+  "immigration",
+  "trade",
+  "rates",
+  "inflation",
+  "stocks",
+  "mergers",
+  "middle-east",
+  "pacific",
+  "nuclear",
+  "humanitarian",
 ];
 
 const HEADLINES = [
@@ -65,9 +98,9 @@ export function generateSignal(): Signal {
   const lat = loc.lat + (Math.random() - 0.5) * 2;
   const lng = loc.lng + (Math.random() - 0.5) * 2;
 
-  const numTags = Math.floor(Math.random() * 3) + 1;
+  const tagCount = 10 + Math.floor(Math.random() * 11);
   const shuffledTags = [...POPULAR_TAGS].sort(() => 0.5 - Math.random());
-  const tags = shuffledTags.slice(0, numTags);
+  const tags = shuffledTags.slice(0, Math.min(tagCount, POPULAR_TAGS.length));
 
   const scopes: GeographicScope[] = [
     "local",
