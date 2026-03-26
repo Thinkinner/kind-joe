@@ -102,12 +102,12 @@ export default function GlobeComponent({
     >
       {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
       {selectedSignal && (
-        <div className="absolute top-20 right-8 z-30 flex flex-col items-end pointer-events-none animate-pulse">
-          <span className="text-[9px] text-gray-500 tracking-[0.3em]">
+        <div className="absolute top-16 right-4 md:top-20 md:right-8 z-30 flex flex-col items-end pointer-events-none animate-pulse">
+          <span className="text-[8px] md:text-[9px] text-gray-500 tracking-[0.3em]">
             GPS_LOCK_CONFIRMED
           </span>
           <span
-            className="text-xs text-white font-bold tracking-widest"
+            className="text-[10px] md:text-xs text-white font-bold tracking-widest"
             style={{ color: activeColor }}
           >
             {selectedSignal.lat.toFixed(4)}°N / {selectedSignal.lng.toFixed(4)}
@@ -172,54 +172,73 @@ export default function GlobeComponent({
         onLabelClick={(label: any) => onSignalClick(label)}
       />
 
-      {/* 📂 TACTICAL DOSSIER (SIDEBAR) */}
+      {/* 📂 TACTICAL DOSSIER (FULLSCREEN MOBILE / SIDEBAR DESKTOP) */}
       {selectedSignal && (
-        <div className="absolute top-6 left-6 bottom-6 w-[85vw] md:w-96 bg-[#0A0A0F]/85 backdrop-blur-3xl border border-white/10 z-20 flex flex-col shadow-[20px_0_60px_rgba(0,0,0,0.9)] animate-in slide-in-from-left duration-500">
+        <div className="fixed inset-0 z-[100] md:absolute md:inset-auto md:top-6 md:left-6 md:bottom-6 md:w-96 bg-[#0A0A0F]/95 md:bg-[#0A0A0F]/85 backdrop-blur-3xl md:border border-white/10 flex flex-col shadow-[20px_0_60px_rgba(0,0,0,0.9)] animate-in fade-in zoom-in-95 md:zoom-in-100 md:slide-in-from-left duration-300 md:duration-500">
+          {/* Mobile Header */}
+          <div className="md:hidden flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: activeColor }}
+              />
+              <span className="text-[10px] text-gray-400 font-black tracking-[0.3em] uppercase">
+                Dossier_Lock_Active
+              </span>
+            </div>
+            <button
+              onClick={() => onSignalClick(null as any)}
+              className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
           <div
-            className="h-[2px] w-full shadow-lg"
+            className="h-[2px] w-full shadow-lg shrink-0"
             style={{
               backgroundColor: activeColor,
               boxShadow: `0 0 20px ${activeColor}`,
             }}
           />
 
-          <div className="p-7 flex-1 overflow-y-auto custom-scrollbar">
+          <div className="p-7 md:p-7 flex-1 overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-start mb-8">
               <div className="space-y-1.5">
                 <div
-                  className="flex items-center gap-2"
-                  style={{ color: activeColor }}
-                >
-                  <Target size={16} className="animate-pulse" />
-                  <span className="text-[11px] font-black tracking-[0.25em] uppercase">
-                    {selectedSignal.impactScore < 40
-                      ? "Local Asset Identified"
-                      : "Strategic Signal Locked"}
-                  </span>
-                </div>
-                <div className="text-[9px] text-gray-500 tracking-widest uppercase">
+                    className="flex items-center gap-2"
+                    style={{ color: activeColor }}
+                  >
+                    <Target className="w-4 h-4 md:w-4 md:h-4 animate-pulse" />
+                    <span className="text-[11px] md:text-[11px] font-black tracking-[0.25em] uppercase">
+                      {selectedSignal.impactScore < 40
+                        ? "Local Asset Identified"
+                        : "Strategic Signal Locked"}
+                    </span>
+                  </div>
+                <div className="text-[9px] md:text-[9px] text-gray-500 tracking-widest uppercase">
                   ID: {selectedSignal.id.slice(0, 12)}
                 </div>
               </div>
               <button
                 onClick={() => onSignalClick(null as any)}
-                className="p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-white"
+                className="hidden md:block p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-white"
               >
                 <X size={20} />
               </button>
             </div>
 
             <h2
-              className="text-xl font-bold text-white mb-6 leading-[1.2] tracking-tight border-l-2 pl-4 italic"
+              className="text-xl md:text-xl font-bold text-white mb-6 md:mb-6 leading-[1.2] tracking-tight border-l-2 pl-4 italic"
               style={{ borderLeftColor: activeColor }}
             >
               {selectedSignal.headline}
             </h2>
 
-            <div className="flex flex-wrap gap-2.5 mb-8">
+            <div className="flex flex-wrap gap-2.5 md:gap-2.5 mb-8 md:mb-8">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5">
-                <MapPin size={12} className="text-[#00BFFF]" />
-                <span className="text-[10px] text-[#00BFFF] font-black uppercase">
+                <MapPin className="w-3 h-3 md:w-3 md:h-3 text-[#00BFFF]" />
+                <span className="text-[10px] md:text-[10px] text-[#00BFFF] font-black uppercase">
                   {selectedSignal.city} // {selectedSignal.country}
                 </span>
               </div>
@@ -233,9 +252,9 @@ export default function GlobeComponent({
                   borderColor: getImpactColor(selectedSignal.impactScore, 0.3),
                 }}
               >
-                <Activity size={12} style={{ color: activeColor }} />
+                <Activity className="w-3 h-3 md:w-3 md:h-3" style={{ color: activeColor }} />
                 <span
-                  className="text-[10px] uppercase font-black"
+                  className="text-[10px] md:text-[10px] uppercase font-black"
                   style={{ color: activeColor }}
                 >
                   IMPACT: {selectedSignal.impactScore}
@@ -243,24 +262,24 @@ export default function GlobeComponent({
               </div>
             </div>
 
-            <div className="space-y-4 mb-10">
-              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
+            <div className="space-y-4 md:space-y-4 mb-10 md:mb-10">
+              <div className="flex items-center gap-2 text-[10px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
                 Situational Summary
               </div>
-              <p className="text-[13px] text-gray-300 leading-relaxed font-medium">
+              <p className="text-[13px] md:text-[13px] text-gray-300 leading-relaxed font-medium">
                 {selectedSignal.summary}
               </p>
             </div>
 
-            <div className="space-y-4 mb-10">
-              <div className="text-[10px] text-gray-600 uppercase font-bold tracking-widest flex items-center gap-2">
-                <Hash size={12} /> Pattern Match
+            <div className="space-y-4 md:space-y-4 mb-10 md:mb-10">
+              <div className="text-[10px] md:text-[10px] text-gray-600 uppercase font-bold tracking-widest flex items-center gap-2">
+                <Hash className="w-3 h-3 md:w-3 md:h-3" /> Pattern Match
               </div>
               <div className="flex flex-wrap gap-2">
                 {(selectedSignal.tags || []).map((tag) => (
                   <span
                     key={tag}
-                    className="text-[9px] font-black px-2.5 py-1 bg-white/5 border border-white/10 text-gray-400 hover:text-white uppercase"
+                    className="text-[9px] md:text-[9px] font-black px-2.5 py-1 bg-white/5 border border-white/10 text-gray-400 hover:text-white uppercase"
                   >
                     #{tag}
                   </span>
@@ -269,12 +288,12 @@ export default function GlobeComponent({
             </div>
 
             {/* 📍 LOCAL SPECIFICS */}
-            <div className="grid grid-cols-2 gap-6 border-t border-white/10 pt-8">
+            <div className="grid grid-cols-2 gap-6 md:gap-6 border-t border-white/10 pt-8 md:pt-8">
               <div className="space-y-1.5">
-                <div className="text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                <div className="text-[9px] md:text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
                   Operational Scale
                 </div>
-                <div className="text-[11px] text-white font-black uppercase">
+                <div className="text-[11px] md:text-[11px] text-white font-black uppercase">
                   {selectedSignal.impactScore < 40
                     ? "Tactical_Local"
                     : selectedSignal.impactScore < 75
@@ -283,17 +302,17 @@ export default function GlobeComponent({
                 </div>
               </div>
               <div className="space-y-1.5 text-right">
-                <div className="text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
+                <div className="text-[9px] md:text-[9px] text-gray-600 uppercase tracking-tighter font-bold">
                   Sector
                 </div>
-                <div className="text-[11px] font-black uppercase text-white">
+                <div className="text-[11px] md:text-[11px] font-black uppercase text-white">
                   {selectedSignal.category}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="p-5 border-t border-white/5 bg-white/5 flex justify-between items-center text-[9px] text-gray-600 tracking-[0.3em] uppercase">
+          <div className="p-5 md:p-5 border-t border-white/5 bg-white/5 flex justify-between items-center text-[9px] md:text-[9px] text-gray-600 tracking-[0.3em] uppercase">
             <div className="flex items-center gap-2">
               <div
                 className="w-1.5 h-1.5 rounded-full animate-ping"

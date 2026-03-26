@@ -9,6 +9,8 @@ import FilterModal from "@/components/kindjoe-signals/filter-modal";
 import { Signal, Category } from "@/lib/aggregator/types";
 import Pusher from "pusher-js";
 import { getHistory, triggerSync } from "@/lib/actions/news-signal";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { motion, useAnimation, useDragControls } from "framer-motion";
 
 // Dynamically import GlobeComponent to avoid SSR issues with react-globe.gl
 const GlobeComponent = dynamic(
@@ -211,6 +213,24 @@ export default function Home() {
     setSelectedSignal(signal);
   }, []);
 
+  const isMobile = useIsMobile();
+  const controls = useAnimation();
+
+  // Handle snapping logic
+  const onDragEnd = (event: any, info: any) => {
+    const shouldExpand = info.offset.y < -100 || info.velocity.y < -500;
+    const shouldMinimize = info.offset.y > 100 || info.velocity.y > 500;
+
+    if (shouldExpand) {
+      controls.start("expanded");
+    } else if (shouldMinimize) {
+      controls.start("minimized");
+    } else {
+      // Return to current state if drag wasn't significant
+      controls.start(info.point.y < window.innerHeight / 2 ? "expanded" : "minimized");
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0F] text-white overflow-hidden font-sans selection:bg-[#00BFFF]/30">
       <TopBar
@@ -220,7 +240,7 @@ export default function Home() {
       />
 
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative">
-        <main className="relative bg-[#050508] h-[35vh] shrink-0 md:h-auto md:flex-1">
+        <main className="relative bg-[#050508] h-full md:h-auto md:flex-1 w-full shrink-0">
           {/* Background grid effect */}
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,191,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,191,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
@@ -233,12 +253,49 @@ export default function Home() {
           />
         </main>
 
-        <Feed
-          signals={filteredSignals}
-          onSignalClick={handleSignalClick}
-          selectedSignal={selectedSignal}
-          onOpenFilters={() => setIsFilterModalOpen(true)}
-        />
+        {isMobile ? (
+          <motion.div
+            initial="minimized"
+            animate={controls}
+            variants={{
+              expanded: { y: "0%" },
+              minimized: { y: "calc(100% - 60px)" }
+            }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.05}
+            onDragEnd={onDragEnd}
+            className="fixed inset-x-0 bottom-0 z-50 flex flex-col h-[80vh] bg-[#0A0A0F] border-t border-white/10 touch-pan-y shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+          >
+            {/* Drag Handle Container (Handles the drag for the whole sheet) */}
+            <motion.div 
+              className="flex flex-col items-center py-3 shrink-0 cursor-grab active:cursor-grabbing bg-[#0A0A0F]"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-1.5 rounded-full bg-white/20 mb-2" />
+              <div className="text-[8px] text-gray-600 font-bold uppercase tracking-[0.2em] pointer-events-none">
+                Drag Intel Dossier
+              </div>
+            </motion.div>
+            
+            <div className="flex-1 overflow-hidden">
+              <Feed
+                signals={filteredSignals}
+                onSignalClick={handleSignalClick}
+                selectedSignal={selectedSignal}
+                onOpenFilters={() => setIsFilterModalOpen(true)}
+              />
+            </div>
+          </motion.div>
+        ) : (
+          <Feed
+            signals={filteredSignals}
+            onSignalClick={handleSignalClick}
+            selectedSignal={selectedSignal}
+            onOpenFilters={() => setIsFilterModalOpen(true)}
+          />
+        )}
       </div>
 
       <BottomBar globeStyle={globeStyle} setGlobeStyle={setGlobeStyle} />
