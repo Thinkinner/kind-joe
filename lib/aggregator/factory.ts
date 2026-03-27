@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { signals } from "@/db/schema";
 import { analyzeSignalWithAI } from "./ai";
+import { eq } from "drizzle-orm";
 import Pusher from "pusher";
 
 const pusher = new Pusher({
@@ -16,14 +17,27 @@ export async function processIntelRaw(params: {
   text: string;
   source: any;
   timestamp?: Date;
+  /** Original story URL (RSS `link`, etc.); null when unknown. */
+  sourceUrl?: string | null;
 }) {
-  const { id, text, source, timestamp = new Date() } = params;
+  const { id, text, source, timestamp = new Date(), sourceUrl = null } =
+    params;
 
   try {
     console.log(`-----------------------------------------`);
     console.log(
       `📥 [FACTORY] Ingesting from ${source}: ${text.slice(0, 50)}...`,
     );
+
+    const already = await db
+      .select({ id: signals.id })
+      .from(signals)
+      .where(eq(signals.id, id))
+      .limit(1);
+    if (already.length > 0) {
+      console.log(`⏩ [FACTORY] Skip existing id (no Gemini): ${id.slice(0, 48)}…`);
+      return null;
+    }
 
     // 1. AI Analysis with Speed Tracking
     console.time("Gemini-Analysis");
@@ -42,6 +56,7 @@ export async function processIntelRaw(params: {
       headline: aiData.intelHeadline,
       summary: aiData.intelSummary,
       source,
+      sourceUrl,
       category: aiData.category,
       lat: aiData.lat,
       lng: aiData.lng,
@@ -54,14 +69,18 @@ export async function processIntelRaw(params: {
       timestamp: timestamp > now ? now : timestamp,
     };
 
-    // 3. Save to DB (onConflictDoNothing handles the duplicate IDs)
+    // 3. Save to DB (onConflictDoNothing handles races / duplicate IDs)
     const inserted = await db
       .insert(signals)
       .values(newSignal)
       .onConflictDoNothing()
       .returning();
 
-    // 4. BROADCAST (We do this regardless of DB insert success for testing)
+    if (inserted.length === 0) {
+      console.log(`⏩ [FACTORY] No insert (duplicate or race); skip broadcast.`);
+      return null;
+    }
+
     console.log(`✅ [FACTORY] Broadcasting: ${newSignal.headline}`);
 
     await pusher.trigger("aether-live", "new-signal", {

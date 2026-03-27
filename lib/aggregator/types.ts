@@ -1,4 +1,10 @@
-export type Source = "X" | "Telegram" | "Discord" | "RSS";
+export type Source =
+  | "X"
+  | "Telegram"
+  | "Discord"
+  | "RSS"
+  | "Google News"
+  | "Apple Newsroom";
 export type Category =
   | "Geopolitics"
   | "Conflicts & Wars"
@@ -23,6 +29,8 @@ export interface Signal {
   headline: string;
   summary: string;
   source: Source;
+  /** Permalink to the story or feed item; omitted for legacy / webhook-only signals. */
+  sourceUrl?: string | null;
   category: Category;
   lat: number;
   lng: number;

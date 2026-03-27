@@ -37,7 +37,14 @@ import {
   MOBILE_INTEL_SHEET_MIN_VISIBLE_PX,
 } from "@/components/kindjoe-signals/mobile-intel-sheet";
 
-const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
+const SOURCE_SET = new Set<Source>([
+  "X",
+  "Telegram",
+  "Discord",
+  "RSS",
+  "Google News",
+  "Apple Newsroom",
+]);
 const CATEGORY_SET = new Set<Category>([
   "Geopolitics",
   "Conflicts & Wars",
@@ -64,11 +71,18 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
       ? raw.category
       : "Geopolitics";
 
+  const sourceUrlRaw = raw.sourceUrl;
+  const sourceUrl =
+    typeof sourceUrlRaw === "string" && sourceUrlRaw.trim()
+      ? sourceUrlRaw.trim()
+      : undefined;
+
   return {
     id: raw.id,
     headline: raw.headline,
     summary: raw.summary ?? "",
     source,
+    sourceUrl,
     category,
     lat: raw.lat,
     lng: raw.lng,

@@ -2,7 +2,9 @@ import { syncRealTimeNews } from "@/lib/aggregator";
 import { NextResponse } from "next/server";
 
 // This tells Next.js not to cache this route
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+/** Match vercel.json; allows up to 12 Gemini-backed items per run. */
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   // 1. Security check (Optional but recommended)

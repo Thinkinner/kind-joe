@@ -172,7 +172,7 @@ export default function Feed({
               )}
             >
               <span>Sector: {spotlightSignal.category}</span>
-              <span className="flex items-center gap-2">
+              <span className="flex shrink-0 items-center gap-2">
                 <span
                   className={cn(
                     "rounded border px-1.5 py-0.5 text-[7px] font-black tracking-wider",

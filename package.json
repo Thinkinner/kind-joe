@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed-posts": "tsx scripts/seed-posts.ts"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",

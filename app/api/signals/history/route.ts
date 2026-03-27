@@ -18,6 +18,7 @@ export async function getHistory(): Promise<Signal[]> {
     headline: s.headline,
     summary: s.summary ?? "",
     source: s.source as Signal["source"],
+    sourceUrl: s.sourceUrl?.trim() || undefined,
     category: s.category as Signal["category"],
     lat: s.lat,
     lng: s.lng,

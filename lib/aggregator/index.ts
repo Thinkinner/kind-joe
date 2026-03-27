@@ -4,42 +4,158 @@ import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { desc, gt, lt } from "drizzle-orm";
 import { processIntelRaw } from "./factory";
 import Parser from "rss-parser";
+import type { Source } from "./types";
 
 const parser = new Parser();
 
-const FEEDS = [
-  "https://feeds.bbci.co.uk/news/world/rss.xml",
-  "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
-  "https://www.aljazeera.com/xml/rss/all.xml",
-  "https://kyivindependent.com/feed/",
-  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
-];
+/**
+ * Max items sent to Gemini per cron run (each item = one AI call).
+ * Raise/lower with cost and `/api/cron/sync` maxDuration in mind.
+ */
+const MAX_ITEMS_TO_PROCESS = 12;
 
 /**
- * 1. SYNC REAL TIME NEWS (RSS Swarm)
+ * Minimum newest items to reserve from each feed before global merge.
+ * Stops one feed (e.g. USGS bursts) from starving Google News / Apple Newsroom.
+ */
+const MIN_CANDIDATES_PER_FEED = 2;
+
+type FeedSpec = {
+  url: string;
+  source: Source;
+  maxCandidates: number;
+};
+
+const FEED_SPECS: FeedSpec[] = [
+  {
+    url: "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
+    source: "Google News",
+    maxCandidates: 15,
+  },
+  {
+    url: "https://www.apple.com/newsroom/rss-feed.rss",
+    source: "Apple Newsroom",
+    maxCandidates: 8,
+  },
+  {
+    url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
+    source: "RSS",
+    maxCandidates: 5,
+  },
+];
+
+function cacheBustUrl(url: string): string {
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}t=${Date.now()}`;
+}
+
+type RssItem = Parser.Item & { updated?: string; date?: string };
+
+function itemTimestamp(item: RssItem): Date {
+  const raw =
+    item.pubDate ?? item.isoDate ?? item.updated ?? item.date;
+  if (raw) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date(0);
+}
+
+function itemBody(item: RssItem): string {
+  const snippet = item.contentSnippet ?? "";
+  const c = item.content;
+  const content =
+    typeof c === "string"
+      ? c
+      : c && typeof c === "object" && "_" in c
+        ? String((c as { _: string })._)
+        : "";
+  return `${item.title ?? ""} ${snippet || content}`.trim();
+}
+
+type Candidate = { item: RssItem; source: Source; ts: Date };
+
+function candidateKey(c: Candidate): string | null {
+  const id = c.item.guid ?? c.item.link;
+  if (!id || String(id).trim() === "") return null;
+  return String(id).trim();
+}
+
+/** Dedupe by guid/link, guarantee up to MIN per feed, then fill by global recency. */
+function selectCandidatesForProcessing(batches: Candidate[][]): Candidate[] {
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+
+  for (const batch of batches) {
+    let taken = 0;
+    for (const c of batch) {
+      if (taken >= MIN_CANDIDATES_PER_FEED) break;
+      const key = candidateKey(c);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+      taken++;
+    }
+  }
+
+  const rest = batches
+    .flat()
+    .filter((c) => {
+      const key = candidateKey(c);
+      return key !== null && !seen.has(key);
+    })
+    .sort((a, b) => b.ts.getTime() - a.ts.getTime());
+
+  for (const c of rest) {
+    if (out.length >= MAX_ITEMS_TO_PROCESS) break;
+    const key = candidateKey(c)!;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+
+  out.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+  return out.slice(0, MAX_ITEMS_TO_PROCESS);
+}
+
+async function fetchFeedCandidates(spec: FeedSpec): Promise<Candidate[]> {
+  const feed = await parser
+    .parseURL(cacheBustUrl(spec.url))
+    .catch((): { items: RssItem[] } => ({ items: [] }));
+
+  const sorted = [...feed.items].sort(
+    (a, b) => itemTimestamp(b).getTime() - itemTimestamp(a).getTime(),
+  );
+
+  return sorted.slice(0, spec.maxCandidates).map((item) => ({
+    item: item as RssItem,
+    source: spec.source,
+    ts: itemTimestamp(item as RssItem),
+  }));
+}
+
+/**
+ * 1. SYNC REAL TIME NEWS (Google News + Apple Newsroom + USGS)
  */
 export async function syncRealTimeNews() {
   try {
-    const selectedFeeds = [...FEEDS]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 5);
+    const batches = await Promise.all(FEED_SPECS.map(fetchFeedCandidates));
+    const top = selectCandidatesForProcessing(batches);
 
-    // Fetch all RSS feeds in parallel
-    const feedPromises = selectedFeeds.map((url) =>
-      parser.parseURL(`${url}?t=${Date.now()}`).catch(() => ({ items: [] })),
-    );
-    const results = await Promise.all(feedPromises);
-    const allItems = results.flatMap((f) => f.items.slice(0, 3));
+    const processPromises = top.map(({ item, source, ts }) => {
+      const id = item.guid ?? item.link;
+      if (!id) return Promise.resolve(null);
 
-    // Send the top items to the Factory for AI processing
-    const processPromises = allItems.slice(0, 3).map((item) =>
-      processIntelRaw({
-        id: item.guid || item.link!,
-        text: (item.title || "") + " " + (item.contentSnippet || ""),
-        source: "RSS",
-        timestamp: item.pubDate ? new Date(item.pubDate) : new Date(),
-      }),
-    );
+      const timestamp = ts.getTime() > 0 ? ts : new Date();
+
+      return processIntelRaw({
+        id: String(id),
+        text: itemBody(item),
+        source,
+        timestamp,
+        sourceUrl: item.link?.trim() || null,
+      });
+    });
 
     return await Promise.all(processPromises);
   } catch (error) {

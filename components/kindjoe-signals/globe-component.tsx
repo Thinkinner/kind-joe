@@ -34,8 +34,6 @@ import {
   signalCountryToAdminName,
 } from "@/lib/signals/globe-country-heat";
 
-const DARK_GLOBE_TEXTURE =
-  "https://unpkg.com/three-globe@2.32.0/example/img/earth-dark.jpg";
 const REALISTIC_GLOBE_TEXTURE =
   "https://unpkg.com/three-globe@2.32.0/example/img/earth-blue-marble.jpg";
 const WIREFRAME_GLOBE_TEXTURE =
@@ -307,9 +305,10 @@ export default function GlobeComponent(props: GlobeComponentProps) {
       case "wireframe":
         return WIREFRAME_GLOBE_TEXTURE;
       default:
-        return isLight ? DARK_GLOBE_TEXTURE : null;
+        /** Vector style: no basemap — polygon caps on background (light + dark UI). */
+        return null;
     }
-  }, [globeStyle, isLight]);
+  }, [globeStyle]);
 
   const globeBg = isLight ? "rgba(241,245,249,0.94)" : "#000000";
   const defaultCap = isLight
@@ -325,17 +324,13 @@ export default function GlobeComponent(props: GlobeComponentProps) {
 
   const idleLabelColor = useMemo(() => {
     if (!isLight) return "rgba(148, 163, 184, 0.45)";
-    if (globeStyle === "dark") {
-      return "rgba(255, 255, 255, 0.94)";
-    }
     return "rgba(15, 23, 42, 0.96)";
-  }, [isLight, globeStyle]);
+  }, [isLight]);
 
   const idleLabelSize = useMemo(() => {
     if (!isLight) return 0.35;
-    if (globeStyle === "dark") return 0.44;
     return 0.52;
-  }, [isLight, globeStyle]);
+  }, [isLight]);
 
   useEffect(() => {
     if (!globeGlReady) return;
@@ -617,26 +612,16 @@ export default function GlobeComponent(props: GlobeComponentProps) {
 
           <div className="p-7 md:p-7 flex-1 overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-start mb-8">
-              <div className="space-y-1.5">
-                <div
-                    className="flex items-center gap-2"
-                    style={{ color: activeColor }}
-                  >
-                    <Target className="w-4 h-4 md:w-4 md:h-4 animate-pulse" />
-                    <span className="text-[11px] md:text-[11px] font-black tracking-[0.25em] uppercase">
-                      {selectedSignal.impactScore < 40
-                        ? "Local Asset Identified"
-                        : "Strategic Signal Locked"}
-                    </span>
-                  </div>
-                <div
-                  className={cn(
-                    "text-[9px] uppercase tracking-widest md:text-[9px]",
-                    isLight ? "text-slate-500" : "text-gray-500",
-                  )}
-                >
-                  ID: {selectedSignal.id.slice(0, 12)}
-                </div>
+              <div
+                className="flex items-center gap-2"
+                style={{ color: activeColor }}
+              >
+                <Target className="w-4 h-4 md:w-4 md:h-4 animate-pulse" />
+                <span className="text-[11px] md:text-[11px] font-black tracking-[0.25em] uppercase">
+                  {selectedSignal.impactScore < 40
+                    ? "Local Asset Identified"
+                    : "Strategic Signal Locked"}
+                </span>
               </div>
               <button
                 type="button"

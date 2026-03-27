@@ -40,6 +40,13 @@ const signalSchema = z.object({
   tags: z.array(z.string()).optional().default([]),
   geographicScope: geographicScopeSchema.optional().default("global"),
   adminArea: adminAreaSchema.optional().default(""),
+  sourceUrl: z
+    .union([z.string(), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => {
+      const t = typeof v === "string" ? v.trim() : "";
+      return t || undefined;
+    }),
 });
 
 const bodySchema = z.object({
@@ -63,6 +70,7 @@ export async function POST(req: Request) {
       headline: s.headline,
       summary: s.summary,
       source: s.source as Signal["source"],
+      sourceUrl: s.sourceUrl,
       category: s.category as Signal["category"],
       country: s.country,
       city: s.city,

@@ -1,21 +1,85 @@
 import Image from "next/image";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { asc, desc, eq, isNull, or } from "drizzle-orm";
+import { db } from "@/db";
+import { posts } from "@/db/schema";
 
-async function getPosts() {
-  const managerUrl = process.env.NEXT_PUBLIC_ADMIN_API || "";
+type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
-  // Clean up the URL to ensure it's valid
-  const apiUrl = managerUrl.endsWith("/")
-    ? `${managerUrl}posts`
-    : `${managerUrl}/posts`;
+/** Server `fetch` must use an absolute URL; empty env was producing `/posts` and throwing. */
+async function resolvePostsApiUrl(): Promise<string | null> {
+  const raw = (process.env.NEXT_PUBLIC_ADMIN_API || "").trim();
+  if (!raw) return null;
 
-  const res = await fetch(apiUrl, {
-    // Changed to no-store so new posts show up instantly without revalidate logic
-    cache: "no-store",
-  });
+  const joinPosts = (base: string) =>
+    base.endsWith("/") ? `${base}posts` : `${base}/posts`;
 
-  if (!res.ok) return [];
-  return res.json();
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return joinPosts(raw);
+  }
+
+  if (raw.startsWith("/")) {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    if (!host) return null;
+    const protoHeader = h.get("x-forwarded-proto");
+    const proto =
+      protoHeader?.split(",")[0]?.trim() ??
+      (host.startsWith("localhost") || host.startsWith("127.")
+        ? "http"
+        : "https");
+    return joinPosts(`${proto}://${host}${raw}`);
+  }
+
+  return joinPosts(`https://${raw.replace(/^\/+/, "")}`);
+}
+
+async function getPostsFromDb(): Promise<PostCard[]> {
+  if (!process.env.DATABASE_URL) return [];
+
+  const rows = await db
+    .select({
+      id: posts.id,
+      imageUrl: posts.imageUrl,
+      destinationUrl: posts.destinationUrl,
+    })
+    .from(posts)
+    .where(or(eq(posts.isActive, true), isNull(posts.isActive)))
+    .orderBy(desc(posts.isPinned), asc(posts.order), desc(posts.id));
+
+  return rows;
+}
+
+/**
+ * 1) If `NEXT_PUBLIC_ADMIN_API` is set, try that JSON endpoint (separate admin app).
+ * 2) Otherwise, or if fetch fails / returns a non-array, load from this app’s `posts` table.
+ */
+async function getPosts(): Promise<PostCard[]> {
+  const apiUrl = await resolvePostsApiUrl();
+  if (apiUrl) {
+    try {
+      const res = await fetch(apiUrl, { cache: "no-store" });
+      if (res.ok) {
+        const data: unknown = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data as PostCard[];
+        }
+      }
+    } catch {
+      /* fall through to DB */
+    }
+  }
+
+  return getPostsFromDb();
+}
+
+function cloudinaryFourByFive(imageUrl: string) {
+  if (!imageUrl.includes("/upload/")) return imageUrl;
+  return imageUrl.replace(
+    "/upload/",
+    "/upload/ar_4:5,c_fill,g_auto,w_800/",
+  );
 }
 
 export default async function LikeShop() {
@@ -37,12 +101,8 @@ export default async function LikeShop() {
       </header>
 
       <div className="grid grid-cols-3">
-        {allPosts.map((post: any) => {
-          // THE 4:5 THING: This AI-crops the image to 4:5 automatically
-          const optimizedImage = post.imageUrl.replace(
-            "/upload/",
-            "/upload/ar_4:5,c_fill,g_auto,w_800/",
-          );
+        {allPosts.map((post) => {
+          const optimizedImage = cloudinaryFourByFive(post.imageUrl);
 
           return (
             <Link

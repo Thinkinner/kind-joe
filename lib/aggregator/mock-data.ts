@@ -1,6 +1,13 @@
 import { Signal, Source, Category, type GeographicScope } from './types';
 
-const SOURCES: Source[] = ['X', 'Telegram', 'Discord', 'RSS'];
+const SOURCES: Source[] = [
+  'X',
+  'Telegram',
+  'Discord',
+  'RSS',
+  'Google News',
+  'Apple Newsroom',
+];
 export const CATEGORIES: Category[] = [
   'Geopolitics',
   'Conflicts & Wars',

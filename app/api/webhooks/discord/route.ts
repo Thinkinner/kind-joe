@@ -15,10 +15,17 @@ export async function POST(req: Request) {
 
     // 🚨 🚨 THE MOST IMPORTANT LINE 🚨 🚨
     // We MUST await this so Vercel doesn't kill the process
+    const embedUrl = payload.embeds?.[0]?.url;
+    const sourceUrl =
+      typeof embedUrl === "string" && embedUrl.startsWith("http")
+        ? embedUrl
+        : null;
+
     await processIntelRaw({
       id: `discord-${Date.now()}`,
       text: text,
-      source: "X",
+      source: "Discord",
+      sourceUrl,
     });
 
     return NextResponse.json({ status: "Success" });
