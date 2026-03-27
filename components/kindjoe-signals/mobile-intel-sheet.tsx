@@ -8,10 +8,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { animate, motion, useMotionValue } from "motion/react";
+import { motion, useMotionValue } from "motion/react";
 import { cn } from "@/lib/utils";
 
-const PEEK_PX = 168;
+/**
+ * Minimum visible sheet height — user cannot drag the feed fully off-screen.
+ * Keep in sync with globe mobile inset (`--signals-intel-peek`) on the signals page.
+ */
+export const MOBILE_INTEL_SHEET_MIN_VISIBLE_PX = 220;
+const MIN_VISIBLE_PX = MOBILE_INTEL_SHEET_MIN_VISIBLE_PX;
 const EXPANDED_FRACTION = 0.9;
 
 type MobileIntelSheetProps = {
@@ -23,6 +28,8 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [sheetHeight, setSheetHeight] = useState(400);
   const y = useMotionValue(0);
+  /** One-time: set initial offset after first layout (mid travel so globe + feed both show). */
+  const didApplyInitialOffset = useRef(false);
 
   const dragRef = useRef({
     active: false,
@@ -31,7 +38,7 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
     startOffset: 0,
   });
 
-  const maxY = Math.max(0, sheetHeight - PEEK_PX);
+  const maxY = Math.max(0, sheetHeight - MIN_VISIBLE_PX);
   const maxYRef = useRef(maxY);
   maxYRef.current = maxY;
 
@@ -41,8 +48,16 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
 
     const measure = () => {
       const h = el.getBoundingClientRect().height;
-      const next = Math.max(200, Math.round(h * EXPANDED_FRACTION));
+      const next = Math.max(
+        MIN_VISIBLE_PX + 72,
+        Math.round(h * EXPANDED_FRACTION),
+      );
       setSheetHeight(next);
+      if (!didApplyInitialOffset.current) {
+        const cap = Math.max(0, next - MIN_VISIBLE_PX);
+        y.set(Math.round(cap * 0.5));
+        didApplyInitialOffset.current = true;
+      }
     };
 
     const ro = new ResizeObserver(measure);
@@ -57,14 +72,6 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
       y.set(maxY);
     }
   }, [maxY, y]);
-
-  const snapToNearest = useCallback(() => {
-    const cap = maxYRef.current;
-    const current = y.get();
-    const mid = cap / 2;
-    const target = cap <= 0 ? 0 : current > mid ? cap : 0;
-    animate(y, target, { type: "spring", stiffness: 520, damping: 42 });
-  }, [y]);
 
   const onHandlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -103,9 +110,10 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
         /* already released */
       }
       d.pointerId = -1;
-      snapToNearest();
+      const cap = maxYRef.current;
+      y.set(Math.min(cap, Math.max(0, y.get())));
     },
-    [snapToNearest],
+    [y],
   );
 
   return (

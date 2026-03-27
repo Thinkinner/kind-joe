@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo } from "react";
+import type { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import Globe from "react-globe.gl";
 import { Signal } from "@/lib/aggregator/types";
 import { X, Target, MapPin, Activity, Hash } from "lucide-react";
@@ -10,6 +11,19 @@ import {
 } from "@/lib/signals/macro-region";
 import { cn } from "@/lib/utils";
 import type { SignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  GLOBE_BLOOM_NEON,
+  addGlobeBloomPass,
+  removeGlobeBloomPass,
+  syncBloomDrawingBufferSize,
+} from "@/lib/signals/globe-bloom";
+import {
+  buildCountryActivity,
+  heatPolygonCapRgba,
+  heatPolygonStrokeRgba,
+  signalCountryToAdminName,
+} from "@/lib/signals/globe-country-heat";
 
 const DARK_GLOBE_TEXTURE =
   "https://unpkg.com/three-globe@2.32.0/example/img/earth-dark.jpg";
@@ -26,32 +40,45 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
+/** Glint Vision Terminal–style impact tiers (docs.glint.trade). */
+function signalImpactTier(score: number): "critical" | "high" | "low" {
+  if (score >= 85) return "critical";
+  if (score >= 60) return "high";
+  return "low";
+}
+
+function glintImpactLabel(score: number): string {
+  const t = signalImpactTier(score);
+  if (t === "critical") return "Critical";
+  if (t === "high") return "High";
+  return "Low";
+}
+
+/** Hover card: headline + impact (matches Glint “pulse dot” tooltip pattern). */
 function signalPointTooltip(d: Signal, mode: SignalsColorMode) {
-  const region = macroRegionForCountry(d.country);
-  const coords = formatLatLng(d.lat, d.lng);
   const isLight = mode === "light";
-  const panelBg = isLight ? "rgba(255,255,255,0.98)" : "rgba(3,3,6,0.95)";
+  const tier = signalImpactTier(d.impactScore);
+  const tierColor =
+    tier === "critical"
+      ? "#ff2dd6"
+      : tier === "high"
+        ? "#f5f23c"
+        : isLight
+          ? "#64748b"
+          : "#22d3ee";
+  const panelBg = isLight ? "rgba(255,255,255,0.98)" : "rgba(3,3,6,0.96)";
   const border = isLight
-    ? "1px solid rgba(220,38,38,0.35)"
-    : "1px solid rgba(220,38,38,0.45)";
+    ? "1px solid rgba(15,23,42,0.1)"
+    : "1px solid rgba(255,255,255,0.1)";
   const shadow = isLight
-    ? "0 8px 32px rgba(15,23,42,0.12)"
-    : "0 8px 32px rgba(0,0,0,0.65)";
+    ? "0 8px 28px rgba(15,23,42,0.12)"
+    : "0 8px 28px rgba(0,0,0,0.55)";
   const headlineColor = isLight ? "#0f172a" : "#fff";
-  const muted = isLight ? "#64748b" : "#9ca3af";
-  const value = isLight ? "#1e293b" : "#f3f4f6";
-  const divider = isLight ? "1px solid rgba(15,23,42,0.08)" : "1px solid rgba(255,255,255,0.08)";
-  return `<div style="font-family:ui-monospace,monospace;font-size:11px;max-width:260px;background:${panelBg};padding:10px 12px;border:${border};border-radius:6px;color:${isLight ? "#334155" : "#e5e5e5"};line-height:1.45;box-shadow:${shadow}">
-    <div style="color:#dc2626;font-weight:800;font-size:10px;letter-spacing:0.12em;margin-bottom:6px">SIGNAL</div>
-    <div style="font-weight:700;color:${headlineColor};margin-bottom:8px;font-size:12px">${escapeHtml(d.headline.slice(0, 140))}${d.headline.length > 140 ? "…" : ""}</div>
-    <div style="border-top:${divider};padding-top:8px;display:grid;gap:4px;font-size:10px">
-      <div><span style="color:${muted}">City / locality</span> · <span style="color:${value}">${escapeHtml(d.city)}</span></div>
-      <div><span style="color:${muted}">Country</span> · <span style="color:${value}">${escapeHtml(d.country)}</span></div>
-      <div><span style="color:${muted}">Region</span> · <span style="color:${value}">${escapeHtml(region)}</span></div>
-      <div><span style="color:${muted}">Sector</span> · <span style="color:${value}">${escapeHtml(d.category)}</span></div>
-      <div><span style="color:${muted}">Coordinates</span> · <span style="color:#dc2626">${escapeHtml(coords)}</span></div>
-      <div><span style="color:${muted}">Impact</span> · <span style="color:${value}">${d.impactScore}</span></div>
-    </div>
+  const sub = isLight ? "#64748b" : "#9ca3af";
+  return `<div style="font-family:ui-sans-serif,system-ui,ui-monospace,monospace;font-size:12px;max-width:280px;background:${panelBg};padding:10px 12px;border:${border};border-radius:8px;line-height:1.45;box-shadow:${shadow}">
+    <div style="font-weight:600;color:${headlineColor};margin-bottom:6px">${escapeHtml(d.headline.slice(0, 160))}${d.headline.length > 160 ? "…" : ""}</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:${tierColor}">IMPACT · ${glintImpactLabel(d.impactScore).toUpperCase()} (${d.impactScore})</div>
+    <div style="margin-top:6px;font-size:10px;color:${sub}">${escapeHtml(d.city)} · ${escapeHtml(d.country)}</div>
   </div>`;
 }
 
@@ -96,19 +123,67 @@ interface GlobeComponentProps {
   uiColorMode?: SignalsColorMode;
 }
 
-// Impact color logic
+/** Dot / ring / highlights — neon tiers (magenta / electric yellow / cyan). */
 const getImpactColor = (score: number, opacity: number = 1) => {
-  if (score >= 85) return `rgba(239, 68, 68, ${opacity})`; // Red (Critical)
-  if (score >= 60) return `rgba(245, 158, 11, ${opacity})`; // Orange (High)
-  if (score >= 30) return `rgba(0, 191, 255, ${opacity})`; // Cyan (Moderate)
-  return `rgba(16, 185, 129, ${opacity})`; // Green (Nominal)
+  const t = signalImpactTier(score);
+  if (t === "critical") return `rgba(255, 45, 214, ${opacity})`;
+  if (t === "high") return `rgba(250, 245, 60, ${opacity})`;
+  return `rgba(34, 211, 238, ${opacity})`;
 };
 
-const COUNTRY_NAME_MAP: Record<string, string> = {
-  USA: "United States of America",
-  UK: "United Kingdom",
-  UAE: "United Arab Emirates",
-  Russia: "Russian Federation",
+function selectedGeoAdminName(signal: Signal | null): string | null {
+  if (!signal?.country?.trim()) return null;
+  return signalCountryToAdminName(signal.country) ?? signal.country.trim();
+}
+
+function ringCentroid(ring: number[][]): { lat: number; lng: number } | null {
+  if (!ring?.length) return null;
+  let slat = 0;
+  let slng = 0;
+  for (const pt of ring) {
+    slng += pt[0];
+    slat += pt[1];
+  }
+  const n = ring.length;
+  return { lat: slat / n, lng: slng / n };
+}
+
+/** Rough centroid for Natural Earth admin-0 features (label placement). */
+function geoFeatureCentroid(feature: {
+  geometry?: { type: string; coordinates: unknown };
+}): { lat: number; lng: number } | null {
+  const g = feature.geometry;
+  if (!g) return null;
+  if (g.type === "Polygon") {
+    const coords = g.coordinates as number[][][];
+    return ringCentroid(coords[0] ?? []);
+  }
+  if (g.type === "MultiPolygon") {
+    const polys = g.coordinates as number[][][][];
+    let best: { lat: number; lng: number } | null = null;
+    let bestN = 0;
+    for (const poly of polys) {
+      const outer = poly[0];
+      const n = outer?.length ?? 0;
+      if (n > bestN) {
+        best = ringCentroid(outer ?? []);
+        bestN = n;
+      }
+    }
+    return best;
+  }
+  return null;
+}
+
+type CountryGlobeLabel = {
+  id: string;
+  lat: number;
+  lng: number;
+  labelName: string;
+  hasSignal: boolean;
+  representativeSignal: Signal | null;
+  impactScore: number;
+  popEst: number;
 };
 
 export default function GlobeComponent(props: GlobeComponentProps) {
@@ -120,10 +195,80 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     uiColorMode = "dark",
   } = props;
   const isLight = uiColorMode === "light";
+  const isMobile = useIsMobile();
   const globeRef = useRef<any>(null);
+  const bloomPassRef = useRef<UnrealBloomPass | null>(null);
+  const [globeGlReady, setGlobeGlReady] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [geoData, setGeoData] = useState({ features: [] });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const countryActivity = useMemo(
+    () => buildCountryActivity(signals),
+    [signals],
+  );
+
+  /** Pulse rings are expensive — cap count; always include selected signal if missing. */
+  const ringsData = useMemo(() => {
+    if (!signals.length) return [];
+    const cap = isMobile ? 14 : 32;
+    const sorted = [...signals].sort((a, b) => b.impactScore - a.impactScore);
+    const pick = sorted.slice(0, cap);
+    const ids = new Set(pick.map((s) => s.id));
+    if (selectedSignal && !ids.has(selectedSignal.id)) {
+      return [...pick.slice(0, -1), selectedSignal].sort(
+        (a, b) => b.impactScore - a.impactScore,
+      );
+    }
+    return pick;
+  }, [signals, selectedSignal, isMobile]);
+
+  /**
+   * Country names from admin-0 GeoJSON (centroid), with signals pinned to their coords.
+   * No lat/lng graticule — borders come only from polygon strokes (country outlines).
+   */
+  const labelsData = useMemo((): CountryGlobeLabel[] => {
+    const features = (geoData as { features?: object[] }).features;
+    if (!features?.length) return [];
+
+    const signalByAdmin = new Map<string, Signal>();
+    for (const s of signals) {
+      const raw = s.country?.trim();
+      if (!raw) continue;
+      const admin = signalCountryToAdminName(s.country) ?? raw;
+      const prev = signalByAdmin.get(admin);
+      if (!prev || s.impactScore > prev.impactScore) {
+        signalByAdmin.set(admin, s);
+      }
+    }
+
+    const minPop = isMobile ? 6_000_000 : 1_200_000;
+    const out: CountryGlobeLabel[] = [];
+
+    for (const f of features) {
+      const feat = f as { properties?: Record<string, unknown>; geometry?: unknown };
+      const name = feat.properties?.NAME;
+      if (typeof name !== "string" || !name) continue;
+      const centroid = geoFeatureCentroid(feat as { geometry?: { type: string; coordinates: unknown } });
+      if (!centroid) continue;
+      const rep = signalByAdmin.get(name) ?? null;
+      const hasSignal = !!rep;
+      const pop = Number(feat.properties?.POP_EST ?? 0);
+      if (!hasSignal && pop > 0 && pop < minPop) continue;
+
+      out.push({
+        id: `country-${name}`,
+        lat: rep?.lat ?? centroid.lat,
+        lng: rep?.lng ?? centroid.lng,
+        labelName: name.toUpperCase(),
+        hasSignal,
+        representativeSignal: rep,
+        impactScore: rep?.impactScore ?? 0,
+        popEst: pop,
+      });
+    }
+    return out;
+  }, [geoData, signals, isMobile]);
 
   useEffect(() => {
     fetch(
@@ -134,34 +279,31 @@ export default function GlobeComponent(props: GlobeComponentProps) {
   }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    const el = containerRef.current;
+    if (!el) return;
 
-  /** One label per country (no city/region); placed at the strongest signal in that country. */
-  const labelsData = useMemo(() => {
-    const byCountry = new Map<string, Signal>();
-    for (const s of signals) {
-      const key = s.country?.trim() || "Unknown";
-      const prev = byCountry.get(key);
-      if (!prev || s.impactScore > prev.impactScore) {
-        byCountry.set(key, s);
-      }
-    }
-    return Array.from(byCountry.values()).map((s) => ({
-      ...s,
-      labelName: (s.country?.trim() || "Unknown").toUpperCase(),
-    }));
-  }, [signals]);
+    let raf = 0;
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        if (w > 0 && h > 0) {
+          setDimensions({ width: w, height: h });
+        }
+      });
+    };
+
+    scheduleMeasure();
+    const ro = new ResizeObserver(scheduleMeasure);
+    ro.observe(el);
+    window.addEventListener("resize", scheduleMeasure);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, []);
 
   const globeImageUrl = useMemo(() => {
     switch (globeStyle) {
@@ -170,19 +312,24 @@ export default function GlobeComponent(props: GlobeComponentProps) {
       case "wireframe":
         return WIREFRAME_GLOBE_TEXTURE;
       default:
-        return DARK_GLOBE_TEXTURE;
+        return isLight ? DARK_GLOBE_TEXTURE : null;
     }
-  }, [globeStyle]);
+  }, [globeStyle, isLight]);
 
-  const globeBg = isLight ? "rgba(241,245,249,0.94)" : "rgba(2,2,3,0.96)";
-  const atmosphereColor = isLight
-    ? "rgba(14, 165, 233, 0.25)"
-    : "rgba(40, 10, 12, 0.35)";
-  const defaultCap = isLight ? "rgba(226, 232, 240, 0.75)" : "rgba(6, 6, 10, 0.88)";
-  const defaultStroke = isLight ? "rgba(100, 116, 139, 0.4)" : "rgba(90, 90, 102, 0.35)";
-  /** Dark UI: faint light glyphs. Light UI: match globe texture (dark earth → bright text; bright maps → dark text). */
+  const globeBg = isLight ? "rgba(241,245,249,0.94)" : "#000000";
+  const defaultCap = isLight
+    ? "rgba(226, 232, 240, 0.75)"
+    : "rgba(0, 0, 0, 0.94)";
+  /** Country outlines only — dim on black so separation reads without heavy fill. */
+  const defaultStroke = isLight
+    ? "rgba(71, 85, 105, 0.55)"
+    : "rgba(100, 116, 139, 0.28)";
+  const defaultStrokeRgb = isLight
+    ? { r: 71, g: 85, b: 105, a: 0.55 }
+    : { r: 100, g: 116, b: 139, a: 0.28 };
+
   const idleLabelColor = useMemo(() => {
-    if (!isLight) return "rgba(220, 220, 228, 0.55)";
+    if (!isLight) return "rgba(148, 163, 184, 0.45)";
     if (globeStyle === "dark") {
       return "rgba(255, 255, 255, 0.94)";
     }
@@ -194,6 +341,42 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     if (globeStyle === "dark") return 0.44;
     return 0.52;
   }, [isLight, globeStyle]);
+
+  useEffect(() => {
+    if (!globeGlReady) return;
+    const g = globeRef.current;
+    if (!g) return;
+    const composer = g.postProcessingComposer();
+    const renderer = g.renderer();
+
+    if (bloomPassRef.current) {
+      removeGlobeBloomPass(composer, bloomPassRef.current);
+      bloomPassRef.current = null;
+    }
+
+    if (isLight || isMobile) return;
+
+    const bloom = addGlobeBloomPass(composer, renderer, GLOBE_BLOOM_NEON);
+    bloomPassRef.current = bloom;
+
+    return () => {
+      const inst = globeRef.current;
+      if (!inst || !bloomPassRef.current) return;
+      try {
+        removeGlobeBloomPass(inst.postProcessingComposer(), bloomPassRef.current);
+      } catch {
+        /* composer may be torn down */
+      }
+      bloomPassRef.current = null;
+    };
+  }, [globeGlReady, isLight, isMobile]);
+
+  useEffect(() => {
+    const bp = bloomPassRef.current;
+    const g = globeRef.current;
+    if (!bp || !g || isLight || isMobile) return;
+    syncBloomDrawingBufferSize(bp, g.renderer());
+  }, [dimensions.width, dimensions.height, isLight, isMobile]);
 
   // 🔭 Zoom to Local or Global scale based on news type
   useEffect(() => {
@@ -220,7 +403,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
       ref={containerRef}
       className={cn(
         "relative h-full w-full overflow-hidden font-mono",
-        isLight ? "bg-slate-100" : "bg-[#020203]",
+        isLight ? "bg-slate-100" : "bg-black",
       )}
     >
       {/* 📡 HUD OVERLAY: ACTIVE COORDINATES */}
@@ -258,62 +441,111 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         height={dimensions.height}
         globeImageUrl={globeImageUrl}
         backgroundColor={globeBg}
-        showGraticules={true}
-        showAtmosphere={true}
-        atmosphereColor={atmosphereColor}
-        atmosphereAltitude={0.12}
+        showGraticules={false}
+        showAtmosphere={false}
+        onGlobeReady={() => setGlobeGlReady(true)}
         polygonsData={geoData.features}
+        polygonAltitude={0}
+        polygonCapCurvatureResolution={isMobile ? 10 : 7}
         polygonCapColor={(d: any) => {
-          const name = d.properties.NAME;
-          const target = selectedSignal?.country;
-          const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
-          if (selectedSignal && name === mappedName) {
+          const name = d.properties.NAME as string;
+          const selAdmin = selectedGeoAdminName(selectedSignal);
+          if (selectedSignal && selAdmin && name === selAdmin) {
             return getImpactColor(selectedSignal.impactScore, 0.22);
           }
-          return defaultCap;
+          const heated = heatPolygonCapRgba(name, countryActivity, isLight);
+          return heated ?? defaultCap;
         }}
         polygonSideColor={() => "rgba(0, 0, 0, 0)"}
         polygonStrokeColor={(d: any) => {
-          const name = d.properties.NAME;
-          const target = selectedSignal?.country;
-          const mappedName = COUNTRY_NAME_MAP[target || ""] || target;
-          if (selectedSignal && name === mappedName) {
+          const name = d.properties.NAME as string;
+          const selAdmin = selectedGeoAdminName(selectedSignal);
+          if (selectedSignal && selAdmin && name === selAdmin) {
             return getImpactColor(selectedSignal.impactScore, 0.55);
           }
-          return defaultStroke;
+          const heated = heatPolygonStrokeRgba(
+            name,
+            countryActivity,
+            isLight,
+            defaultStrokeRgb,
+          );
+          return heated ?? defaultStroke;
         }}
         polygonLabel={(d: any) => countryPolygonTooltip(d, uiColorMode)}
-        // --- 🎯 HYPER-LOCAL MARKING (SECTOR HIGHLIGHT) ---
-        ringsData={selectedSignal ? [selectedSignal] : []}
+        // --- Pulse rings at each signal (Glint-style news pulse dots) ---
+        ringsData={ringsData}
         ringLat="lat"
         ringLng="lng"
-        ringColor={(d: any) => getImpactColor(d.impactScore)}
-        ringMaxRadius={(d: any) => (d.impactScore < 40 ? 3 : 12)} // Smaller ring for local news
-        ringPropagationSpeed={2.5}
-        ringRepeatPeriod={800}
-        // --- 📍 SIGNAL POINTS ---
+        ringColor={(d: any) => getImpactColor((d as Signal).impactScore, 0.92)}
+        ringMaxRadius={(d: any) => {
+          const s = d as Signal;
+          const base =
+            s.impactScore >= 85 ? 3.1 : s.impactScore >= 60 ? 2.35 : 1.45;
+          return s.id === selectedSignal?.id ? base * 1.32 : base;
+        }}
+        ringPropagationSpeed={(d: any) => {
+          const s = d as Signal;
+          return s.impactScore >= 85 ? 3.3 : s.impactScore >= 60 ? 2.05 : 1.2;
+        }}
+        ringRepeatPeriod={(d: any) => {
+          const s = d as Signal;
+          const base =
+            s.impactScore >= 85 ? 540 : s.impactScore >= 60 ? 820 : 1280;
+          return s.id === selectedSignal?.id ? Math.round(base * 0.72) : base;
+        }}
+        // --- Flat pulse dots; hover = headline + impact (open dossier on click) ---
         pointsData={signals}
         pointLat="lat"
         pointLng="lng"
-        pointColor={(d: any) => getImpactColor(d.impactScore)}
-        pointAltitude={0.01}
-        pointRadius={(d: any) => (d.id === selectedSignal?.id ? 1.5 : 0.7)}
+        pointColor={(d: any) => getImpactColor((d as Signal).impactScore, 1)}
+        pointAltitude={0.018}
+        pointRadius={(d: any) => {
+          const s = d as Signal;
+          const base =
+            s.impactScore >= 85 ? 1.58 : s.impactScore >= 60 ? 1.18 : 0.86;
+          return s.id === selectedSignal?.id ? base * 1.28 : base;
+        }}
+        pointResolution={isMobile ? 10 : 12}
         pointLabel={(d: any) => signalPointTooltip(d as Signal, uiColorMode)}
+        onPointClick={(d: any) => onSignalClick(d as Signal)}
         labelsData={labelsData}
         labelLat="lat"
         labelLng="lng"
         labelText="labelName"
         labelAltitude={0.02}
-        labelSize={(d: any) =>
-          d.id === selectedSignal?.id ? 0.95 : idleLabelSize
-        }
-        labelColor={(d: any) =>
-          d.id === selectedSignal?.id
-            ? getImpactColor(d.impactScore)
-            : idleLabelColor
-        }
+        labelSize={(d: any) => {
+          const x = d as CountryGlobeLabel;
+          const isSel =
+            !!selectedSignal &&
+            !!x.representativeSignal &&
+            x.representativeSignal.id === selectedSignal.id;
+          if (isSel) return 0.98;
+          if (x.hasSignal) {
+            const base =
+              x.impactScore >= 85 ? 0.52 : x.impactScore >= 60 ? 0.44 : 0.36;
+            return base;
+          }
+          if (x.popEst >= 50_000_000) return idleLabelSize * 0.58;
+          if (x.popEst >= 10_000_000) return idleLabelSize * 0.48;
+          return idleLabelSize * 0.4;
+        }}
+        labelColor={(d: any) => {
+          const x = d as CountryGlobeLabel;
+          const isSel =
+            !!selectedSignal &&
+            !!x.representativeSignal &&
+            x.representativeSignal.id === selectedSignal.id;
+          if (isSel || (x.hasSignal && x.representativeSignal)) {
+            return getImpactColor(x.impactScore, isSel ? 1 : 0.88);
+          }
+          return idleLabelColor;
+        }}
+        labelIncludeDot={(d: any) => !!(d as CountryGlobeLabel).hasSignal}
         labelDotRadius={isLight ? 0.42 : 0.35}
-        onLabelClick={(label: any) => onSignalClick(label)}
+        onLabelClick={(label: any) => {
+          const x = label as CountryGlobeLabel;
+          if (x.representativeSignal) onSignalClick(x.representativeSignal);
+        }}
       />
 
       {/* 📂 TACTICAL DOSSIER (FULLSCREEN MOBILE / SIDEBAR DESKTOP) */}
@@ -440,7 +672,8 @@ export default function GlobeComponent(props: GlobeComponentProps) {
                   className="text-[10px] md:text-[10px] uppercase font-black"
                   style={{ color: activeColor }}
                 >
-                  IMPACT: {selectedSignal.impactScore}
+                  {glintImpactLabel(selectedSignal.impactScore)} ·{" "}
+                  {selectedSignal.impactScore}
                 </span>
               </div>
             </div>

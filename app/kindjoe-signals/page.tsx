@@ -6,6 +6,7 @@ import {
   useCallback,
   useRef,
   useMemo,
+  type CSSProperties,
 } from "react";
 import dynamic from "next/dynamic";
 import Pusher from "pusher-js";
@@ -29,7 +30,10 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
-import { MobileIntelSheet } from "@/components/kindjoe-signals/mobile-intel-sheet";
+import {
+  MobileIntelSheet,
+  MOBILE_INTEL_SHEET_MIN_VISIBLE_PX,
+} from "@/components/kindjoe-signals/mobile-intel-sheet";
 
 const SOURCE_SET = new Set<Source>(["X", "Telegram", "Discord", "RSS"]);
 const CATEGORY_SET = new Set<Category>([
@@ -352,18 +356,23 @@ export default function Home() {
   return (
     <div
       className={cn(
-        "flex h-screen w-screen flex-col overflow-hidden font-sans",
+        "flex h-[100dvh] min-h-[100dvh] w-screen max-h-[100dvh] flex-col overflow-hidden font-sans",
         isLight
           ? "bg-slate-50 text-slate-950 antialiased selection:bg-[#00BFFF]/30"
           : "bg-[#0A0A0F] text-white selection:bg-[#00BFFF]/30",
       )}
+      style={
+        {
+          ["--signals-intel-peek" as string]: `${MOBILE_INTEL_SHEET_MIN_VISIBLE_PX}px`,
+        } as CSSProperties
+      }
     >
       <TopBar />
 
-      <div className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <main
           className={cn(
-            "relative h-full w-full shrink-0 md:h-auto md:flex-1",
+            "relative flex min-h-0 w-full flex-1 flex-col md:h-auto md:min-h-0",
             isLight ? "bg-slate-100" : "bg-[#050508]",
           )}
         >
@@ -383,13 +392,16 @@ export default function Home() {
             )}
           />
 
-          <GlobeComponent
-            signals={filteredSignals}
-            selectedSignal={selectedSignal}
-            onSignalClick={handleSignalClick}
-            globeStyle={globeStyle}
-            uiColorMode={mode}
-          />
+          {/* Match visible strip above the mobile intel sheet so the globe centers like a map (peek state). */}
+          <div className="relative max-md:h-[calc(100%-var(--signals-intel-peek))] min-h-0 w-full md:h-full">
+            <GlobeComponent
+              signals={filteredSignals}
+              selectedSignal={selectedSignal}
+              onSignalClick={handleSignalClick}
+              globeStyle={globeStyle}
+              uiColorMode={mode}
+            />
+          </div>
         </main>
 
         {isMobile ? (
