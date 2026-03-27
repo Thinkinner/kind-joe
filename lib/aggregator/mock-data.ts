@@ -7,6 +7,7 @@ const SOURCES: Source[] = [
   'RSS',
   'Google News',
   'Apple Newsroom',
+  'USGS Earthquakes',
 ];
 export const CATEGORIES: Category[] = [
   'Geopolitics',

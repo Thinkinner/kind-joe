@@ -20,8 +20,8 @@ export async function processIntelRaw(params: {
   /** Original story URL (RSS `link`, etc.); null when unknown. */
   sourceUrl?: string | null;
 }) {
-  const { id, text, source, timestamp = new Date(), sourceUrl = null } =
-    params;
+  const { id, text, source, sourceUrl = null } = params;
+  const timestamp = params.timestamp ?? new Date();
 
   try {
     console.log(`-----------------------------------------`);

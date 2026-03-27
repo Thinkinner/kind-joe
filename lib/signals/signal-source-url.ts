@@ -8,6 +8,7 @@ export const DEFAULT_SOURCE_HOME: Record<Source, string> = {
   RSS: "https://www.usgs.gov/programs/earthquake-hazards",
   "Google News": "https://news.google.com",
   "Apple Newsroom": "https://www.apple.com/newsroom/",
+  "USGS Earthquakes": "https://earthquake.usgs.gov/earthquakes/map/",
 };
 
 export function resolveSignalSourceUrl(

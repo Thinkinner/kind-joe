@@ -4,7 +4,8 @@ export type Source =
   | "Discord"
   | "RSS"
   | "Google News"
-  | "Apple Newsroom";
+  | "Apple Newsroom"
+  | "USGS Earthquakes";
 export type Category =
   | "Geopolitics"
   | "Conflicts & Wars"

@@ -166,7 +166,7 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
           />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden overscroll-y-contain">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-y-contain">
           {children}
         </div>
       </motion.div>
