@@ -20,7 +20,7 @@ export async function checkSignalsAccess(): Promise<boolean> {
 
 /**
  * 1. GET HISTORY (Fast)
- * Just reads the last 50 signals already in Drizzle.
+ * Reads recent signals from Drizzle (see SIGNALS_HISTORY_LIMIT).
  */
 export async function getHistory(): Promise<Signal[]> {
   const rawData = await getSignalsFromDB();

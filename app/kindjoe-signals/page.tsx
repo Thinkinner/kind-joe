@@ -27,7 +27,9 @@ import {
   triggerSync,
   checkSignalsAccess,
 } from "@/lib/actions/news-signal";
+import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSpotlightSignal } from "@/hooks/use-spotlight-signal";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
@@ -236,7 +238,7 @@ export default function Home() {
         const updated = [newSignal, ...prev].sort(
           (a, b) => b.timestamp - a.timestamp,
         );
-        return updated.slice(0, 50);
+        return updated.slice(0, SIGNALS_HISTORY_LIMIT);
       });
     });
 
@@ -335,6 +337,13 @@ export default function Home() {
     searchQuery,
   ]);
 
+  useEffect(() => {
+    setSelectedSignal((prev) => {
+      if (!prev) return prev;
+      return filteredSignals.some((s) => s.id === prev.id) ? prev : null;
+    });
+  }, [filteredSignals]);
+
   const presetAll = useCallback(() => {
     setSelectedCategory("All");
     setSelectedCountry("All");
@@ -349,6 +358,9 @@ export default function Home() {
   const isMobile = useIsMobile();
 
   const sidebarFeedUnlocked = signalsAccessChecked && hasSignalsAccess;
+
+  /** True global HOT: highest impact in the 2m window across all signals, not the filtered subset. */
+  const spotlightSignal = useSpotlightSignal(signals, sidebarFeedUnlocked);
 
   const { mode } = useSignalsColorMode();
   const isLight = mode === "light";
@@ -396,6 +408,7 @@ export default function Home() {
           <div className="relative max-md:h-[calc(100%-var(--signals-intel-peek))] min-h-0 w-full md:h-full">
             <GlobeComponent
               signals={filteredSignals}
+              spotlightSignalId={spotlightSignal?.id ?? null}
               selectedSignal={selectedSignal}
               onSignalClick={handleSignalClick}
               globeStyle={globeStyle}
@@ -408,6 +421,7 @@ export default function Home() {
           <MobileIntelSheet isLight={isLight}>
             <Feed
               signals={filteredSignals}
+              spotlightSignal={spotlightSignal}
               onSignalClick={handleSignalClick}
               selectedSignal={selectedSignal}
               onOpenFilters={() => {
@@ -424,6 +438,7 @@ export default function Home() {
         ) : (
           <Feed
             signals={filteredSignals}
+            spotlightSignal={spotlightSignal}
             onSignalClick={handleSignalClick}
             selectedSignal={selectedSignal}
             onOpenFilters={() => {

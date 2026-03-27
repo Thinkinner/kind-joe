@@ -43,11 +43,11 @@ export function buildCountryActivity(signals: Signal[]): CountryActivity {
   return { byAdmin, maxCount: Math.max(maxCount, 1) };
 }
 
-/** Matches globe neon tiers: critical magenta, high electric yellow, low cyan. */
+/** Matches globe tiers: Glint-forward critical red, high amber, low green. */
 function heatTintRgb(maxScore: number): { r: number; g: number; b: number } {
-  if (maxScore >= 85) return { r: 255, g: 45, b: 214 };
-  if (maxScore >= 60) return { r: 250, g: 245, b: 60 };
-  return { r: 34, g: 211, b: 238 };
+  if (maxScore >= 85) return { r: 248, g: 113, b: 113 };
+  if (maxScore >= 60) return { r: 245, g: 158, b: 11 };
+  return { r: 34, g: 197, b: 94 };
 }
 
 function lerp(a: number, b: number, t: number): number {

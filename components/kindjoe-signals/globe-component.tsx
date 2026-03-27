@@ -1,5 +1,14 @@
 "use client";
 
+import { feedAccentHex, feedMarkerRgba } from "@/lib/signals/feed-marker-colors";
+import { GLOBE_SIGNAL_DISPLAY_LIMIT } from "@/lib/signals/globe-signal-display-limit";
+import {
+  getImpactSeverity,
+  impactTierBadgeClass,
+  impactTierHex,
+  impactTierLabel,
+  impactTierScoreTextClass,
+} from "@/lib/signals/impact-tier";
 import { useEffect, useRef, useState, useMemo } from "react";
 import type { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import Globe from "react-globe.gl";
@@ -40,32 +49,17 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
-/** Glint Vision Terminal–style impact tiers (docs.glint.trade). */
-function signalImpactTier(score: number): "critical" | "high" | "low" {
-  if (score >= 85) return "critical";
-  if (score >= 60) return "high";
-  return "low";
-}
-
-function glintImpactLabel(score: number): string {
-  const t = signalImpactTier(score);
-  if (t === "critical") return "Critical";
-  if (t === "high") return "High";
-  return "Low";
-}
-
-/** Hover card: headline + impact (matches Glint “pulse dot” tooltip pattern). */
-function signalPointTooltip(d: Signal, mode: SignalsColorMode) {
+/** Hover card: headline + impact (tier colors match feed; red when HOT spotlight). */
+function signalPointTooltip(
+  d: Signal,
+  mode: SignalsColorMode,
+  spotlightId: string | null,
+) {
   const isLight = mode === "light";
-  const tier = signalImpactTier(d.impactScore);
-  const tierColor =
-    tier === "critical"
-      ? "#ff2dd6"
-      : tier === "high"
-        ? "#f5f23c"
-        : isLight
-          ? "#64748b"
-          : "#22d3ee";
+  const isHot = spotlightId !== null && d.id === spotlightId;
+  const tierColor = isHot
+    ? "#ef4444"
+    : impactTierHex(getImpactSeverity(d.impactScore));
   const panelBg = isLight ? "rgba(255,255,255,0.98)" : "rgba(3,3,6,0.96)";
   const border = isLight
     ? "1px solid rgba(15,23,42,0.1)"
@@ -77,7 +71,7 @@ function signalPointTooltip(d: Signal, mode: SignalsColorMode) {
   const sub = isLight ? "#64748b" : "#9ca3af";
   return `<div style="font-family:ui-sans-serif,system-ui,ui-monospace,monospace;font-size:12px;max-width:280px;background:${panelBg};padding:10px 12px;border:${border};border-radius:8px;line-height:1.45;box-shadow:${shadow}">
     <div style="font-weight:600;color:${headlineColor};margin-bottom:6px">${escapeHtml(d.headline.slice(0, 160))}${d.headline.length > 160 ? "…" : ""}</div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:${tierColor}">IMPACT · ${glintImpactLabel(d.impactScore).toUpperCase()} (${d.impactScore})</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:${tierColor}">IMPACT · ${impactTierLabel(getImpactSeverity(d.impactScore)).toUpperCase()} (${d.impactScore})</div>
     <div style="margin-top:6px;font-size:10px;color:${sub}">${escapeHtml(d.city)} · ${escapeHtml(d.country)}</div>
   </div>`;
 }
@@ -117,19 +111,13 @@ function countryPolygonTooltip(
 
 interface GlobeComponentProps {
   signals: Signal[];
+  /** Same HOT signal as the feed priority strip (red on map when set). */
+  spotlightSignalId: string | null;
   selectedSignal: Signal | null;
   onSignalClick: (signal: Signal | null) => void;
   globeStyle: "realistic" | "dark" | "wireframe";
   uiColorMode?: SignalsColorMode;
 }
-
-/** Dot / ring / highlights — neon tiers (magenta / electric yellow / cyan). */
-const getImpactColor = (score: number, opacity: number = 1) => {
-  const t = signalImpactTier(score);
-  if (t === "critical") return `rgba(255, 45, 214, ${opacity})`;
-  if (t === "high") return `rgba(250, 245, 60, ${opacity})`;
-  return `rgba(34, 211, 238, ${opacity})`;
-};
 
 function selectedGeoAdminName(signal: Signal | null): string | null {
   if (!signal?.country?.trim()) return null;
@@ -189,6 +177,7 @@ type CountryGlobeLabel = {
 export default function GlobeComponent(props: GlobeComponentProps) {
   const {
     signals,
+    spotlightSignalId,
     selectedSignal,
     onSignalClick,
     globeStyle,
@@ -208,20 +197,26 @@ export default function GlobeComponent(props: GlobeComponentProps) {
     [signals],
   );
 
-  /** Pulse rings are expensive — cap count; always include selected signal if missing. */
+  /**
+   * Pulse rings + points: top signals by impact, capped for perf.
+   * Always include selected if it would drop off the capped list.
+   */
   const ringsData = useMemo(() => {
     if (!signals.length) return [];
-    const cap = isMobile ? 14 : 32;
     const sorted = [...signals].sort((a, b) => b.impactScore - a.impactScore);
-    const pick = sorted.slice(0, cap);
+
+    let pick =
+      sorted.length <= GLOBE_SIGNAL_DISPLAY_LIMIT
+        ? sorted
+        : sorted.slice(0, GLOBE_SIGNAL_DISPLAY_LIMIT);
     const ids = new Set(pick.map((s) => s.id));
     if (selectedSignal && !ids.has(selectedSignal.id)) {
-      return [...pick.slice(0, -1), selectedSignal].sort(
+      pick = [...pick.slice(0, -1), selectedSignal].sort(
         (a, b) => b.impactScore - a.impactScore,
       );
     }
     return pick;
-  }, [signals, selectedSignal, isMobile]);
+  }, [signals, selectedSignal]);
 
   /**
    * Country names from admin-0 GeoJSON (centroid), with signals pinned to their coords.
@@ -395,8 +390,13 @@ export default function GlobeComponent(props: GlobeComponentProps) {
   }, [selectedSignal]);
 
   const activeColor = selectedSignal
-    ? getImpactColor(selectedSignal.impactScore)
+    ? feedAccentHex(selectedSignal, spotlightSignalId)
     : "#00BFFF";
+
+  const dossierIsHot =
+    !!spotlightSignalId &&
+    !!selectedSignal &&
+    selectedSignal.id === spotlightSignalId;
 
   return (
     <div
@@ -451,7 +451,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           const name = d.properties.NAME as string;
           const selAdmin = selectedGeoAdminName(selectedSignal);
           if (selectedSignal && selAdmin && name === selAdmin) {
-            return getImpactColor(selectedSignal.impactScore, 0.22);
+            return feedMarkerRgba(selectedSignal, spotlightSignalId, 0.22);
           }
           const heated = heatPolygonCapRgba(name, countryActivity, isLight);
           return heated ?? defaultCap;
@@ -461,7 +461,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
           const name = d.properties.NAME as string;
           const selAdmin = selectedGeoAdminName(selectedSignal);
           if (selectedSignal && selAdmin && name === selAdmin) {
-            return getImpactColor(selectedSignal.impactScore, 0.55);
+            return feedMarkerRgba(selectedSignal, spotlightSignalId, 0.48);
           }
           const heated = heatPolygonStrokeRgba(
             name,
@@ -476,37 +476,45 @@ export default function GlobeComponent(props: GlobeComponentProps) {
         ringsData={ringsData}
         ringLat="lat"
         ringLng="lng"
-        ringColor={(d: any) => getImpactColor((d as Signal).impactScore, 0.92)}
+        ringColor={(d: any) => {
+          const s = d as Signal;
+          return feedMarkerRgba(s, spotlightSignalId, 0.88);
+        }}
         ringMaxRadius={(d: any) => {
           const s = d as Signal;
           const base =
-            s.impactScore >= 85 ? 3.1 : s.impactScore >= 60 ? 2.35 : 1.45;
+            s.impactScore >= 85 ? 5.1 : s.impactScore >= 60 ? 3.35 : 1.85;
           return s.id === selectedSignal?.id ? base * 1.32 : base;
         }}
         ringPropagationSpeed={(d: any) => {
           const s = d as Signal;
-          return s.impactScore >= 85 ? 3.3 : s.impactScore >= 60 ? 2.05 : 1.2;
+          return s.impactScore >= 85 ? 2.45 : s.impactScore >= 60 ? 1.52 : 0.88;
         }}
         ringRepeatPeriod={(d: any) => {
           const s = d as Signal;
           const base =
-            s.impactScore >= 85 ? 540 : s.impactScore >= 60 ? 820 : 1280;
+            s.impactScore >= 85 ? 728 : s.impactScore >= 60 ? 1108 : 1728;
           return s.id === selectedSignal?.id ? Math.round(base * 0.72) : base;
         }}
         // --- Flat pulse dots; hover = headline + impact (open dossier on click) ---
-        pointsData={signals}
+        pointsData={ringsData}
         pointLat="lat"
         pointLng="lng"
-        pointColor={(d: any) => getImpactColor((d as Signal).impactScore, 1)}
-        pointAltitude={0.018}
+        pointColor={(d: any) => {
+          const s = d as Signal;
+          return feedMarkerRgba(s, spotlightSignalId, 1);
+        }}
+        pointAltitude={0.024}
         pointRadius={(d: any) => {
           const s = d as Signal;
           const base =
-            s.impactScore >= 85 ? 1.58 : s.impactScore >= 60 ? 1.18 : 0.86;
-          return s.id === selectedSignal?.id ? base * 1.28 : base;
+            s.impactScore >= 85 ? 2.75 : s.impactScore >= 60 ? 1.68 : 1.05;
+          return s.id === selectedSignal?.id ? base * 1.32 : base;
         }}
-        pointResolution={isMobile ? 10 : 12}
-        pointLabel={(d: any) => signalPointTooltip(d as Signal, uiColorMode)}
+        pointResolution={isMobile ? 12 : 14}
+        pointLabel={(d: any) =>
+          signalPointTooltip(d as Signal, uiColorMode, spotlightSignalId)
+        }
         onPointClick={(d: any) => onSignalClick(d as Signal)}
         labelsData={labelsData}
         labelLat="lat"
@@ -536,7 +544,11 @@ export default function GlobeComponent(props: GlobeComponentProps) {
             !!x.representativeSignal &&
             x.representativeSignal.id === selectedSignal.id;
           if (isSel || (x.hasSignal && x.representativeSignal)) {
-            return getImpactColor(x.impactScore, isSel ? 1 : 0.88);
+            return feedMarkerRgba(
+              x.representativeSignal!,
+              spotlightSignalId,
+              isSel ? 1 : 0.88,
+            );
           }
           return idleLabelColor;
         }}
@@ -658,21 +670,41 @@ export default function GlobeComponent(props: GlobeComponentProps) {
                 </span>
               </div>
               <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-sm border"
-                style={{
-                  backgroundColor: getImpactColor(
-                    selectedSignal.impactScore,
-                    0.1,
-                  ),
-                  borderColor: getImpactColor(selectedSignal.impactScore, 0.3),
-                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-sm border px-3 py-1.5",
+                  dossierIsHot
+                    ? isLight
+                      ? "border-red-200 bg-red-50"
+                      : "border-red-500/30 bg-red-500/10"
+                    : impactTierBadgeClass(
+                        getImpactSeverity(selectedSignal.impactScore),
+                        isLight,
+                      ),
+                )}
               >
-                <Activity className="w-3 h-3 md:w-3 md:h-3" style={{ color: activeColor }} />
+                <Activity
+                  className={cn(
+                    "h-3 w-3 md:h-3 md:w-3",
+                    dossierIsHot
+                      ? "text-red-500"
+                      : impactTierScoreTextClass(
+                          getImpactSeverity(selectedSignal.impactScore),
+                          isLight,
+                        ),
+                  )}
+                />
                 <span
-                  className="text-[10px] md:text-[10px] uppercase font-black"
-                  style={{ color: activeColor }}
+                  className={cn(
+                    "text-[10px] font-black uppercase md:text-[10px]",
+                    dossierIsHot
+                      ? "text-red-500"
+                      : impactTierScoreTextClass(
+                          getImpactSeverity(selectedSignal.impactScore),
+                          isLight,
+                        ),
+                  )}
                 >
-                  {glintImpactLabel(selectedSignal.impactScore)} ·{" "}
+                  {impactTierLabel(getImpactSeverity(selectedSignal.impactScore))} ·{" "}
                   {selectedSignal.impactScore}
                 </span>
               </div>

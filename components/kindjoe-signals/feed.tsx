@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Signal } from "@/lib/aggregator/types";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
@@ -14,9 +14,23 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
+import {
+  getImpactSeverity,
+  impactTierAccentTextClass,
+  impactTierBadgeClass,
+  impactTierBarSegmentClass,
+  impactTierBorderLeftClass,
+  impactTierFreshTimeClass,
+  impactTierLabel,
+  impactTierScoreTextClass,
+  impactTierSelectedCardClass,
+  impactTierTag,
+} from "@/lib/signals/impact-tier";
 
 interface FeedProps {
   signals: Signal[];
+  /** Live HOT row — computed by parent so globe can match the same signal. */
+  spotlightSignal: Signal | null;
   onSignalClick: (signal: Signal) => void;
   selectedSignal: Signal | null;
   onOpenFilters: () => void;
@@ -32,6 +46,7 @@ interface FeedProps {
 
 export default function Feed({
   signals,
+  spotlightSignal,
   onSignalClick,
   selectedSignal,
   onOpenFilters,
@@ -46,23 +61,6 @@ export default function Feed({
     const timer = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(timer);
   }, []);
-
-  const spotlightSignal = useMemo(() => {
-    if (!sidebarAccessUnlocked || signals.length === 0) return null;
-    const TWO_MINUTES = 2 * 60 * 1000;
-
-    const hotSignals = signals.filter((s) => now - s.timestamp < TWO_MINUTES);
-
-    if (hotSignals.length === 0) return null;
-
-    const highestImpactHotSignal = hotSignals.reduce((prev, current) =>
-      prev.impactScore > current.impactScore ? prev : current,
-    );
-
-    return highestImpactHotSignal.impactScore >= 60
-      ? highestImpactHotSignal
-      : null;
-  }, [signals, now, sidebarAccessUnlocked]);
 
   const mainFeedSignals = useMemo(() => {
     const sorted = [...signals].sort((a, b) => b.timestamp - a.timestamp);
@@ -174,8 +172,20 @@ export default function Feed({
               )}
             >
               <span>Sector: {spotlightSignal.category}</span>
-              <span className="flex gap-1">
-                <span className="animate-ping text-red-500">●</span> HOT
+              <span className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "rounded border px-1.5 py-0.5 text-[7px] font-black tracking-wider",
+                    isLight
+                      ? "border-red-200 bg-red-100 text-red-900"
+                      : "border-red-500/35 bg-red-950/50 text-red-200",
+                  )}
+                >
+                  {impactTierLabel(getImpactSeverity(spotlightSignal.impactScore))}
+                </span>
+                <span className="flex gap-1">
+                  <span className="animate-ping text-red-500">●</span> HOT
+                </span>
               </span>
             </div>
           </motion.div>
@@ -273,6 +283,7 @@ export default function Feed({
               {mainFeedSignals.map((signal) => {
                 const isSelected = selectedSignal?.id === signal.id;
                 const timeDiff = now - signal.timestamp;
+                const tier = getImpactSeverity(signal.impactScore);
 
                 const timeLabel =
                   timeDiff < 60000 || signal.timestamp > now
@@ -289,14 +300,13 @@ export default function Feed({
                     exit={{ opacity: 0, scale: 0.95 }}
                     onClick={() => onSignalClick(signal)}
                     className={cn(
-                      "group cursor-pointer rounded-sm border p-4 transition-all duration-300",
+                      "group cursor-pointer rounded-sm border border-l-2 p-4 transition-all duration-300",
+                      impactTierBorderLeftClass(tier),
                       isSelected
-                        ? "border-[#00BFFF] shadow-[0_0_15px_rgba(0,191,255,0.1)]"
+                        ? impactTierSelectedCardClass(tier, isLight)
                         : isLight
                           ? "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white"
                           : "border-white/5 bg-white/[0.01] hover:border-white/15",
-                      isSelected &&
-                        (isLight ? "border-sky-500 bg-sky-50" : "bg-gray-900"),
                     )}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -304,7 +314,7 @@ export default function Feed({
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-widest",
                           timeDiff < 120000
-                            ? "text-[#00BFFF]"
+                            ? impactTierFreshTimeClass(tier, isLight)
                             : isLight
                               ? "text-slate-700"
                               : "text-gray-600",
@@ -313,9 +323,14 @@ export default function Feed({
                         {timeLabel}
                       </span>
                       {isSelected && (
-                        <div className="flex items-center gap-1">
-                          <Target size={10} className="text-[#00BFFF]" />
-                          <span className="text-[8px] text-[#00BFFF] uppercase font-bold">
+                        <div
+                          className={cn(
+                            "flex items-center gap-1",
+                            impactTierAccentTextClass(tier, isLight),
+                          )}
+                        >
+                          <Target size={10} className="shrink-0" />
+                          <span className="text-[8px] uppercase font-bold">
                             Locked
                           </span>
                         </div>
@@ -364,7 +379,7 @@ export default function Feed({
                               className={cn(
                                 "h-1.5 w-0.5 rounded-full",
                                 i <= signal.impactScore / 20
-                                  ? "bg-[#00BFFF]"
+                                  ? impactTierBarSegmentClass(tier)
                                   : isLight
                                     ? "bg-slate-200"
                                     : "bg-white/5",
@@ -374,8 +389,16 @@ export default function Feed({
                         </div>
                         <span
                           className={cn(
-                            "font-bold",
-                            isLight ? "text-slate-800" : "text-gray-400",
+                            "rounded border px-1.5 py-px text-[7px] font-black tracking-wider",
+                            impactTierBadgeClass(tier, isLight),
+                          )}
+                        >
+                          {impactTierTag(tier)}
+                        </span>
+                        <span
+                          className={cn(
+                            "font-bold tabular-nums",
+                            impactTierScoreTextClass(tier, isLight),
                           )}
                         >
                           {signal.impactScore}

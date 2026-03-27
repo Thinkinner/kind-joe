@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { motion, useMotionValue } from "motion/react";
+import { animate, motion, useMotionValue } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -73,6 +73,14 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
     }
   }, [maxY, y]);
 
+  const snapToNearest = useCallback(() => {
+    const cap = maxYRef.current;
+    const current = Math.min(cap, Math.max(0, y.get()));
+    const mid = cap / 2;
+    const target = cap <= 0 ? 0 : current > mid ? cap : 0;
+    animate(y, target, { type: "spring", stiffness: 520, damping: 42 });
+  }, [y]);
+
   const onHandlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
@@ -110,10 +118,9 @@ export function MobileIntelSheet({ isLight, children }: MobileIntelSheetProps) {
         /* already released */
       }
       d.pointerId = -1;
-      const cap = maxYRef.current;
-      y.set(Math.min(cap, Math.max(0, y.get())));
+      snapToNearest();
     },
-    [y],
+    [snapToNearest],
   );
 
   return (

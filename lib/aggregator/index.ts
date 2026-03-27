@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { signals } from "@/db/schema";
+import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { desc, gt, lt } from "drizzle-orm";
 import { processIntelRaw } from "./factory";
 import Parser from "rss-parser";
@@ -51,15 +52,15 @@ export async function syncRealTimeNews() {
  * 2. GET SIGNALS FROM DB (The missing export!)
  */
 export async function getSignalsFromDB() {
-  // Relax the window to 12 hours so the map has data on reload
-  const TWELVE_HOURS_AGO = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  // Wider window + higher limit so the feed and globe can show a dense signal stream
+  const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   return await db
     .select()
     .from(signals)
-    .where(gt(signals.timestamp, TWELVE_HOURS_AGO))
+    .where(gt(signals.timestamp, TWENTY_FOUR_HOURS_AGO))
     .orderBy(desc(signals.timestamp))
-    .limit(50);
+    .limit(SIGNALS_HISTORY_LIMIT);
 }
 
 export async function purgeOldSignals() {
