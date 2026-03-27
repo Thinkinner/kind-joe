@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { processIntelRaw } from "@/lib/aggregator/factory";
+import type { Source } from "@/lib/aggregator/types";
 
 export const maxDuration = 120;
+
+/** Must match {@link Source}; worker payloads must use one of these strings. */
+const RSS_INTEL_SOURCES = [
+  "X",
+  "Telegram",
+  "Discord",
+  "RSS",
+  "Google News",
+  "Apple Newsroom",
+  "USGS Earthquakes",
+] as const satisfies readonly Source[];
+
+const sourceSchema = z.enum(RSS_INTEL_SOURCES);
 
 const bodySchema = z.object({
   id: z.string().min(1).max(2048),
   text: z.string().min(1).max(200_000),
-  source: z.string().min(1).max(120),
+  source: sourceSchema,
   sourceUrl: z
     .union([z.string(), z.null(), z.undefined()])
     .optional()
@@ -60,7 +74,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const { id, text, source, sourceUrl, timestamp } = parsed.data;
+  const { id, text, source, sourceUrl, timestamp: parsedTs } = parsed.data;
+  const timestamp = parsedTs ?? new Date();
 
   await processIntelRaw({
     id,

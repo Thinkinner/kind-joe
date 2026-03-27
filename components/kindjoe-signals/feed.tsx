@@ -27,6 +27,95 @@ import {
   impactTierTag,
 } from "@/lib/signals/impact-tier";
 
+function PrioritySpotlightCard({
+  signal,
+  isLight,
+  onSignalClick,
+  visibilityClass,
+}: {
+  signal: Signal;
+  isLight: boolean;
+  onSignalClick: (s: Signal) => void;
+  /** e.g. `hidden md:block` (desktop only) or `md:hidden` (mobile, inside scroll). */
+  visibilityClass: string;
+}) {
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      onClick={() => onSignalClick(signal)}
+      className={cn(
+        "group relative shrink-0 cursor-pointer overflow-hidden border-b p-4 transition-all",
+        visibilityClass,
+        isLight
+          ? "border-red-200 bg-red-50 hover:bg-red-100/90"
+          : "border-red-500/40 bg-red-500/10 hover:bg-red-500/20",
+      )}
+    >
+      <div className="absolute bottom-0 left-0 top-0 w-1 bg-red-500 animate-pulse" />
+
+      <div className="mb-2 flex items-center gap-2">
+        <ShieldAlert size={14} className="animate-pulse text-red-500" />
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-500">
+          Priority Asset
+        </span>
+        <div
+          className={cn(
+            "ml-auto flex items-center gap-1 text-[8px] font-bold",
+            isLight ? "text-red-800/80" : "text-red-500/60",
+          )}
+        >
+          <Clock size={10} />
+          LIVE_WINDOW
+        </div>
+      </div>
+
+      <h3
+        className={cn(
+          "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
+          isLight ? "text-slate-900" : "text-white",
+        )}
+      >
+        {signal.headline}
+      </h3>
+
+      <p
+        className={cn(
+          "mb-3 line-clamp-3 text-[10px] leading-relaxed",
+          isLight ? "text-red-950/85" : "text-red-200/80",
+        )}
+      >
+        {signal.summary}
+      </p>
+
+      <div
+        className={cn(
+          "flex items-center justify-between text-[9px] font-bold uppercase tracking-widest",
+          isLight ? "text-red-900/90" : "text-red-400/70",
+        )}
+      >
+        <span>Sector: {signal.category}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span
+            className={cn(
+              "rounded border px-1.5 py-0.5 text-[7px] font-black tracking-wider",
+              isLight
+                ? "border-red-200 bg-red-100 text-red-900"
+                : "border-red-500/35 bg-red-950/50 text-red-200",
+            )}
+          >
+            {impactTierLabel(getImpactSeverity(signal.impactScore))}
+          </span>
+          <span className="flex gap-1">
+            <span className="animate-ping text-red-500">●</span> HOT
+          </span>
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
 interface FeedProps {
   signals: Signal[];
   /** Live HOT row — computed by parent so globe can match the same signal. */
@@ -77,7 +166,7 @@ export default function Feed({
   return (
     <div
       className={cn(
-        "z-10 flex w-full shrink-0 flex-col overflow-hidden border-t font-mono md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
+        "z-10 flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t font-mono md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
         isLight
           ? "border-slate-300 bg-white"
           : "border-white/10 bg-[#0A0A0F]",
@@ -85,7 +174,7 @@ export default function Feed({
     >
       <div
         className={cn(
-          "sticky top-0 z-20 flex items-center justify-between border-b p-4 backdrop-blur-md",
+          "z-20 flex shrink-0 items-center justify-between border-b p-4 backdrop-blur-md md:sticky md:top-0",
           isLight
             ? "border-slate-200 bg-slate-50"
             : "border-white/10 bg-black/50",
@@ -114,92 +203,40 @@ export default function Feed({
         </button>
       </div>
 
+      {/* Desktop: priority stays above the scroll list */}
       <AnimatePresence mode="wait">
-        {spotlightSignal && (
-          <motion.div
+        {spotlightSignal ? (
+          <PrioritySpotlightCard
             key={spotlightSignal.id}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            onClick={() => onSignalClick(spotlightSignal)}
-            className={cn(
-              "group relative cursor-pointer overflow-hidden border-b p-4 transition-all",
-              isLight
-                ? "border-red-200 bg-red-50 hover:bg-red-100/90"
-                : "border-red-500/40 bg-red-500/10 hover:bg-red-500/20",
-            )}
-          >
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 animate-pulse" />
-
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldAlert size={14} className="text-red-500 animate-pulse" />
-              <span className="text-[9px] font-black text-red-500 tracking-[0.2em] uppercase">
-                Priority Asset
-              </span>
-              <div
-                className={cn(
-                  "ml-auto flex items-center gap-1 text-[8px] font-bold",
-                  isLight ? "text-red-800/80" : "text-red-500/60",
-                )}
-              >
-                <Clock size={10} />
-                LIVE_WINDOW
-              </div>
-            </div>
-
-            <h3
-              className={cn(
-                "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
-                isLight ? "text-slate-900" : "text-white",
-              )}
-            >
-              {spotlightSignal.headline}
-            </h3>
-
-            <p
-              className={cn(
-                "mb-3 line-clamp-3 text-[10px] leading-relaxed",
-                isLight ? "text-red-950/85" : "text-red-200/80",
-              )}
-            >
-              {spotlightSignal.summary}
-            </p>
-
-            <div
-              className={cn(
-                "flex items-center justify-between text-[9px] font-bold uppercase tracking-widest",
-                isLight ? "text-red-900/90" : "text-red-400/70",
-              )}
-            >
-              <span>Sector: {spotlightSignal.category}</span>
-              <span className="flex shrink-0 items-center gap-2">
-                <span
-                  className={cn(
-                    "rounded border px-1.5 py-0.5 text-[7px] font-black tracking-wider",
-                    isLight
-                      ? "border-red-200 bg-red-100 text-red-900"
-                      : "border-red-500/35 bg-red-950/50 text-red-200",
-                  )}
-                >
-                  {impactTierLabel(getImpactSeverity(spotlightSignal.impactScore))}
-                </span>
-                <span className="flex gap-1">
-                  <span className="animate-ping text-red-500">●</span> HOT
-                </span>
-              </span>
-            </div>
-          </motion.div>
-        )}
+            signal={spotlightSignal}
+            isLight={isLight}
+            onSignalClick={onSignalClick}
+            visibilityClass="hidden shrink-0 md:block"
+          />
+        ) : null}
       </AnimatePresence>
 
       <div
         className={cn(
-          "flex-1 space-y-2 overflow-y-auto overscroll-y-contain p-2 scrollbar-thin scrollbar-track-transparent",
+          "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain p-2 [-webkit-overflow-scrolling:touch] scrollbar-thin scrollbar-track-transparent",
           isLight
             ? "scrollbar-thumb-slate-300"
             : "scrollbar-thumb-white/10",
         )}
       >
+        {/* Mobile: priority scrolls with the feed */}
+        <AnimatePresence mode="wait">
+          {spotlightSignal ? (
+            <PrioritySpotlightCard
+              key={`m-${spotlightSignal.id}`}
+              signal={spotlightSignal}
+              isLight={isLight}
+              onSignalClick={onSignalClick}
+              visibilityClass="md:hidden"
+            />
+          ) : null}
+        </AnimatePresence>
+
         {showUnlockPanel ? (
           <div
             className={cn(
