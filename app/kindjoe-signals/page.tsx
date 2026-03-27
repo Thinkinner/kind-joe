@@ -44,6 +44,7 @@ const SOURCE_SET = new Set<Source>([
   "RSS",
   "Google News",
   "Apple Newsroom",
+  "USGS Earthquakes",
 ]);
 const CATEGORY_SET = new Set<Category>([
   "Geopolitics",

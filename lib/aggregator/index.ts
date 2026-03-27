@@ -10,13 +10,14 @@ const parser = new Parser();
 
 /**
  * Max items sent to Gemini per cron run (each item = one AI call).
- * Raise/lower with cost and `/api/cron/sync` maxDuration in mind.
+ * Raise/lower with cost and serverless `maxDuration` (manual sync / optional cron route) in mind.
  */
 const MAX_ITEMS_TO_PROCESS = 12;
 
 /**
  * Minimum newest items to reserve from each feed before global merge.
- * Stops one feed (e.g. USGS bursts) from starving Google News / Apple Newsroom.
+ * Cron only polls USGS here; Google News + Apple Newsroom use `kindjoe-signal-worker`
+ * → POST /api/webhooks/rss-intel.
  */
 const MIN_CANDIDATES_PER_FEED = 2;
 
@@ -26,21 +27,12 @@ type FeedSpec = {
   maxCandidates: number;
 };
 
+/** If the worker uses `INCLUDE_USGS=1`, remove this entry (or disable cron) to avoid duplicate USGS. */
 const FEED_SPECS: FeedSpec[] = [
   {
-    url: "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
-    source: "Google News",
-    maxCandidates: 15,
-  },
-  {
-    url: "https://www.apple.com/newsroom/rss-feed.rss",
-    source: "Apple Newsroom",
-    maxCandidates: 8,
-  },
-  {
     url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
-    source: "RSS",
-    maxCandidates: 5,
+    source: "USGS Earthquakes",
+    maxCandidates: 12,
   },
 ];
 
@@ -135,7 +127,7 @@ async function fetchFeedCandidates(spec: FeedSpec): Promise<Candidate[]> {
 }
 
 /**
- * 1. SYNC REAL TIME NEWS (Google News + Apple Newsroom + USGS)
+ * 1. SYNC REAL TIME NEWS (USGS only here; Google/Apple via RSS worker webhook.)
  */
 export async function syncRealTimeNews() {
   try {
