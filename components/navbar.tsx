@@ -42,8 +42,9 @@ export default function Navbar() {
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  const livePillClass =
-    "inline-flex max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 px-2.5 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 sm:gap-2.5 sm:px-3 sm:py-1.5";
+  /** Visuals only — set `display` separately so `hidden` / `lg:inline-flex` are not overridden by `inline-flex`. */
+  const livePillBoxClass =
+    "max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 px-2.5 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 sm:gap-2.5 sm:px-3 sm:py-1.5";
 
   const livePillInner = (
     <>
@@ -115,7 +116,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href={signalsWatchHref}
-                className={`${livePillClass} hidden lg:inline-flex`}
+                className={`${livePillBoxClass} hidden lg:inline-flex`}
                 title="Open Kind Joe Watch live feed"
               >
                 {livePillInner}
@@ -144,7 +145,7 @@ export default function Navbar() {
 
           <Link
             href={signalsWatchHref}
-            className={`${livePillClass} mb-3 w-full justify-center lg:hidden`}
+            className={`${livePillBoxClass} mb-3 flex w-full justify-center lg:hidden`}
             title="Open Kind Joe Watch live feed"
           >
             {livePillInner}
@@ -192,15 +193,6 @@ export default function Navbar() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-
-              <Link
-                href={signalsWatchHref}
-                onClick={() => setOpen(false)}
-                className={`${livePillClass} mb-4 w-full justify-center`}
-                title="Open Kind Joe Watch live feed"
-              >
-                {livePillInner}
-              </Link>
 
               <button
                 type="button"
