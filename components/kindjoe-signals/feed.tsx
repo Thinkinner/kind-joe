@@ -11,7 +11,13 @@ import {
   Activity,
   Clock,
   Lock,
+  ExternalLink,
 } from "lucide-react";
+import {
+  isXOrTwitterStoryHref,
+  resolveSignalSourceUrl,
+  signalOutboundLinkLabel,
+} from "@/lib/signals/signal-source-url";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
@@ -26,6 +32,91 @@ import {
   impactTierSelectedCardClass,
   impactTierTag,
 } from "@/lib/signals/impact-tier";
+
+function SignalSourceLink({
+  signal,
+  isLight,
+  variant,
+}: {
+  signal: Signal;
+  isLight: boolean;
+  variant: "spotlight" | "row";
+}) {
+  const href = resolveSignalSourceUrl(signal.source, signal.sourceUrl);
+  if (!href) return null;
+
+  const label = signalOutboundLinkLabel(
+    href,
+    signal.source,
+    variant === "spotlight" ? 52 : 48,
+  );
+  const isX = isXOrTwitterStoryHref(href);
+
+  const shellClass = cn(
+    "inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5",
+    variant === "spotlight"
+      ? "max-w-[min(100%,13rem)]"
+      : "max-w-[12rem] sm:max-w-[16rem]",
+    variant === "spotlight"
+      ? isLight
+        ? "border-red-200/90 bg-red-50/90 text-red-900"
+        : "border-red-500/35 bg-red-950/50 text-red-200/95"
+      : isLight
+        ? "border-slate-300 bg-white text-slate-800"
+        : "border-white/15 bg-white/[0.04] text-gray-400",
+    variant === "spotlight"
+      ? isLight
+        ? "cursor-pointer transition-colors hover:border-red-400 hover:bg-red-100"
+        : "cursor-pointer transition-colors hover:border-red-400/50 hover:bg-red-500/15"
+      : isLight
+        ? "cursor-pointer transition-colors hover:border-[#00BFFF] hover:bg-sky-50 hover:text-slate-900"
+        : "cursor-pointer transition-colors hover:border-[#00BFFF]/40 hover:bg-[#00BFFF]/10 hover:text-white",
+  );
+
+  const textClass = cn(
+    "pointer-events-none min-w-0 truncate text-[8px] leading-tight",
+    isX
+      ? cn(
+          "font-black uppercase tracking-wider underline-offset-2 group-hover:underline",
+          variant === "spotlight"
+            ? isLight
+              ? "text-red-950/90"
+              : "text-red-100/95"
+            : isLight
+              ? "text-slate-800"
+              : "text-gray-200",
+        )
+      : cn(
+          "font-mono font-bold tracking-tight underline-offset-2 group-hover:underline",
+          variant === "spotlight"
+            ? isLight
+              ? "text-red-950/90"
+              : "text-red-100/95"
+            : isLight
+              ? "text-slate-800"
+              : "text-gray-200",
+        ),
+  );
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        shellClass,
+        "group relative z-20 cursor-pointer pointer-events-auto select-text",
+      )}
+      title={href}
+      aria-label={`Open source: ${href}`}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <ExternalLink className="pointer-events-none h-3 w-3 shrink-0 opacity-90" strokeWidth={2.5} />
+      <span className={textClass}>{label}</span>
+    </a>
+  );
+}
 
 function PrioritySpotlightCard({
   signal,
@@ -60,14 +151,21 @@ function PrioritySpotlightCard({
         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-500">
           Priority Asset
         </span>
-        <div
-          className={cn(
-            "ml-auto flex items-center gap-1 text-[8px] font-bold",
-            isLight ? "text-red-800/80" : "text-red-500/60",
-          )}
-        >
-          <Clock size={10} />
-          LIVE_WINDOW
+        <div className="ml-auto flex items-center gap-2">
+          <SignalSourceLink
+            signal={signal}
+            isLight={isLight}
+            variant="spotlight"
+          />
+          <div
+            className={cn(
+              "flex items-center gap-1 text-[8px] font-bold",
+              isLight ? "text-red-800/80" : "text-red-500/60",
+            )}
+          >
+            <Clock size={10} />
+            LIVE_WINDOW
+          </div>
         </div>
       </div>
 
@@ -346,7 +444,7 @@ export default function Feed({
                           : "border-white/5 bg-white/[0.01] hover:border-white/15",
                     )}
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="mb-3 flex items-center justify-between gap-2">
                       <span
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-widest",
@@ -359,19 +457,26 @@ export default function Feed({
                       >
                         {timeLabel}
                       </span>
-                      {isSelected && (
-                        <div
-                          className={cn(
-                            "flex items-center gap-1",
-                            impactTierAccentTextClass(tier, isLight),
-                          )}
-                        >
-                          <Target size={10} className="shrink-0" />
-                          <span className="text-[8px] uppercase font-bold">
-                            Locked
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <SignalSourceLink
+                          signal={signal}
+                          isLight={isLight}
+                          variant="row"
+                        />
+                        {isSelected && (
+                          <div
+                            className={cn(
+                              "flex items-center gap-1",
+                              impactTierAccentTextClass(tier, isLight),
+                            )}
+                          >
+                            <Target size={10} className="shrink-0" />
+                            <span className="text-[8px] font-bold uppercase">
+                              Locked
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <h3

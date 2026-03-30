@@ -322,8 +322,9 @@ export const signals = pgTable("signals", {
   id: text("id").primaryKey(),
   headline: text("headline").notNull(),
   summary: text("summary"),
+  /** Original publisher / platform for the story (`Source` union), not the ingest pipe (e.g. Discord → X link ⇒ `X`). */
   source: text("source").notNull(),
-  /** Kind Joe signals: story permalink when known (migration `0003_signals_source_url`). */
+  /** Canonical story URL when known (article, post, etc.); not Discord attachment/CDN unless no other URL exists. */
   sourceUrl: text("source_url"),
   category: text("category").notNull(),
   lat: doublePrecision("lat").notNull(),

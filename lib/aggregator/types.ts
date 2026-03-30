@@ -51,4 +51,7 @@ export interface Signal {
  * Normalize on the client (see `normalizePusherSignal` in the Signals page) before using as {@link Signal}.
  */
 export type PusherSignalPayload = Partial<Signal> &
-  Pick<Signal, "id" | "headline" | "timestamp" | "lat" | "lng" | "impactScore">;
+  Pick<Signal, "id" | "headline" | "timestamp" | "lat" | "lng" | "impactScore"> & {
+    /** Snake_case alias; some publishers / serializers use this instead of {@link Signal.sourceUrl}. */
+    source_url?: string;
+  };
