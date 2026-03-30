@@ -18,6 +18,7 @@ import ArticleTracker from "@/components/article-tracker";
 import { ArticleCard } from "@/components/stories/stories/article-card";
 import { formatToLA } from "@/lib/format-date";
 import { RecommendedCard } from "@/components/cards/recommended-card";
+import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 
 export const revalidate = 60;
 
@@ -96,6 +97,7 @@ export default async function ArticleBySlug(props: {
     <main className={`py-8 ${googleSans.variable}`}>
       <ArticleTracker articleId={a.id} />
       <div className="mx-auto max-w-6xl lg:px-4">
+        <BreakingLiveNewsCta />
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
           <article className="lg:pb-8">
             <header className="px-4 lg:px-6 pt-4 pb-3">
