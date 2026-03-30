@@ -13,7 +13,12 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import type { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import Globe from "react-globe.gl";
 import { Signal } from "@/lib/aggregator/types";
-import { X, Target, MapPin, Activity, Hash } from "lucide-react";
+import { X, Target, MapPin, Activity, Hash, ExternalLink } from "lucide-react";
+import {
+  isXOrTwitterStoryHref,
+  resolveSignalSourceUrl,
+  signalOutboundLinkLabel,
+} from "@/lib/signals/signal-source-url";
 import {
   formatLatLng,
   macroRegionForCountry,
@@ -557,6 +562,51 @@ export default function GlobeComponent(props: GlobeComponentProps) {
 
       {/* 📂 TACTICAL DOSSIER (FULLSCREEN MOBILE / SIDEBAR DESKTOP) */}
       {selectedSignal && (
+        <DossierPanel
+          selectedSignal={selectedSignal}
+          isLight={isLight}
+          activeColor={activeColor}
+          dossierIsHot={dossierIsHot}
+          onClose={() => onSignalClick(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DossierPanel({
+  selectedSignal,
+  isLight,
+  activeColor,
+  dossierIsHot,
+  onClose,
+}: {
+  selectedSignal: Signal;
+  isLight: boolean;
+  activeColor: string;
+  dossierIsHot: boolean;
+  onClose: () => void;
+}) {
+  const sourceHref = resolveSignalSourceUrl(
+    selectedSignal.source,
+    selectedSignal.sourceUrl,
+  );
+  const sourceLinkLabel = sourceHref
+    ? signalOutboundLinkLabel(sourceHref, selectedSignal.source, 56)
+    : null;
+  const sourceLinkIsX = sourceHref ? isXOrTwitterStoryHref(sourceHref) : false;
+
+  const sourceLinkShell = cn(
+    "flex min-w-0 max-w-full items-center gap-2 rounded-sm border px-3 py-1.5",
+    isLight
+      ? "border-slate-300 bg-white text-slate-800"
+      : "border-white/10 bg-white/[0.04] text-gray-300",
+    isLight
+      ? "cursor-pointer transition-colors hover:border-[#00BFFF] hover:bg-sky-50"
+      : "cursor-pointer transition-colors hover:border-[#00BFFF]/40 hover:bg-[#00BFFF]/10 hover:text-white",
+  );
+
+  return (
         <div
           className={cn(
             "fixed inset-0 z-[100] flex animate-in flex-col fade-in duration-300 zoom-in-95 backdrop-blur-3xl md:absolute md:inset-auto md:bottom-6 md:left-6 md:top-6 md:w-96 md:zoom-in-100 md:slide-in-from-left md:duration-500",
@@ -590,7 +640,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
             </div>
             <button
               type="button"
-              onClick={() => onSignalClick(null)}
+              onClick={onClose}
               className={cn(
                 "rounded-full p-2 transition-colors",
                 isLight
@@ -625,7 +675,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
               </div>
               <button
                 type="button"
-                onClick={() => onSignalClick(null)}
+                onClick={onClose}
                 className={cn(
                   "hidden rounded-full p-1.5 md:block",
                   isLight
@@ -693,6 +743,31 @@ export default function GlobeComponent(props: GlobeComponentProps) {
                   {selectedSignal.impactScore}
                 </span>
               </div>
+              {sourceHref && sourceLinkLabel ? (
+                <a
+                  href={sourceHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    sourceLinkShell,
+                    "group relative z-20 cursor-pointer pointer-events-auto select-text",
+                  )}
+                  title={sourceHref}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="pointer-events-none h-3 w-3 shrink-0 text-[#00BFFF]" />
+                  <span
+                    className={cn(
+                      "pointer-events-none min-w-0 truncate text-[10px] underline-offset-2 group-hover:underline md:text-[10px]",
+                      sourceLinkIsX
+                        ? "font-black uppercase tracking-wide"
+                        : "font-mono font-bold tracking-tight",
+                    )}
+                  >
+                    {sourceLinkLabel}
+                  </span>
+                </a>
+              ) : null}
             </div>
 
             <div className="mb-8 space-y-4 md:mb-8 md:space-y-4">
@@ -844,7 +919,5 @@ export default function GlobeComponent(props: GlobeComponentProps) {
             <span>KindJoe.SYS</span>
           </div>
         </div>
-      )}
-    </div>
   );
 }

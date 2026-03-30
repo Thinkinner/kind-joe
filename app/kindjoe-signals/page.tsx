@@ -72,7 +72,8 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
       ? raw.category
       : "Geopolitics";
 
-  const sourceUrlRaw = raw.sourceUrl;
+  const rawRec = raw as Record<string, unknown>;
+  const sourceUrlRaw = raw.sourceUrl ?? rawRec.source_url;
   const sourceUrl =
     typeof sourceUrlRaw === "string" && sourceUrlRaw.trim()
       ? sourceUrlRaw.trim()
