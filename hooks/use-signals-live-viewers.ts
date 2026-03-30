@@ -61,10 +61,14 @@ export function useSignalsLiveViewers() {
 
   useEffect(() => {
     ensureTicker();
-    const cb = (n: number) => setViewers(n);
+    let mounted = true;
+    const cb = (n: number) => {
+      if (mounted) setViewers(n);
+    };
     subscribers.add(cb);
-    queueMicrotask(() => cb(sharedCount));
+    setViewers(sharedCount);
     return () => {
+      mounted = false;
       subscribers.delete(cb);
     };
   }, []);

@@ -16,22 +16,18 @@ export function useSignalArticlePublish(selectedSignal: Signal | null) {
 
   useEffect(() => {
     if (!selectedSignal) {
-      queueMicrotask(() => {
-        setCachedSlug(null);
-        setStatus("idle");
-        setError(null);
-      });
+      setCachedSlug(null);
+      setStatus("idle");
+      setError(null);
       return;
     }
 
     if (typeof window === "undefined") return;
 
     const slug = sessionStorage.getItem(slugStorageKey(selectedSignal.id));
-    queueMicrotask(() => {
-      setCachedSlug(slug || null);
-      setStatus("idle");
-      setError(null);
-    });
+    setCachedSlug(slug || null);
+    setStatus("idle");
+    setError(null);
   }, [selectedSignal]);
 
   const publishOrOpen = useCallback(async () => {

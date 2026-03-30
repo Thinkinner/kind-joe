@@ -8,6 +8,13 @@
       "when": 1774634705969,
       "tag": "0000_hard_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774895078436,
+      "tag": "0001_better_auth",
+      "breakpoints": true
     }
   ]
 }

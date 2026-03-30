@@ -11,6 +11,8 @@ import {
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import KindJoeModalForm from "./modals/kindjoe-capture-modal";
+import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -152,6 +154,14 @@ export function Footer() {
                 </li>
                 <li>
                   <a
+                    href="/disclaimer"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Disclaimer
+                  </a>
+                </li>
+                <li>
+                  <a
                     href="/editorial-policy"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
@@ -159,6 +169,16 @@ export function Footer() {
                   </a>
                 </li>
               </ul>
+              <p className="text-xs text-gray-500 leading-relaxed pt-3 max-w-[16rem]">
+                If you are a content owner and want material reviewed or removed, contact us at{" "}
+                <a
+                  href={`mailto:${PUBLIC_CONTACT_EMAIL}`}
+                  className="text-gray-400 hover:text-red-400 underline-offset-2 hover:underline"
+                >
+                  {PUBLIC_CONTACT_EMAIL}
+                </a>
+                .
+              </p>
             </div>
           </div>
         </div>
@@ -166,6 +186,12 @@ export function Footer() {
         {/* Bottom Section: Socials & Copyright */}
         <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6">
           <div className="text-center md:text-left space-y-1">
+            <p className="text-xs text-amber-200/90 max-w-xl md:max-w-none leading-relaxed border-l-2 border-amber-600/60 pl-3 mb-3 md:mb-0">
+              {AI_SUMMARY_DISCLAIMER}{" "}
+              <a href="/disclaimer" className="text-amber-400/95 underline-offset-2 hover:underline whitespace-nowrap">
+                Full disclaimer
+              </a>
+            </p>
             <p className="text-sm text-gray-500">
               &copy; {year}{" "}
               <span className="text-white font-medium">Kind Joe</span>. All

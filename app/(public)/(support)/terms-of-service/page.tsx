@@ -1,6 +1,7 @@
 'use client'
 import React from "react";
 import { animate, motion, useReducedMotion } from "framer-motion";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 export default function TermsOfService() {
   return (
@@ -17,7 +18,7 @@ export default function TermsOfService() {
       <header className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 z-20">
         <div className="mx-auto max-w-6xl px-6 py-6">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Terms of Service</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1">Last updated: November 12, 2025</p>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Last updated: March 31, 2026</p>
         </div>
       </header>
 
@@ -30,6 +31,10 @@ export default function TermsOfService() {
             <div className="space-y-5">
               <p className="text-gray-700">
                 Welcome to <strong>Kind Joe</strong> (<a className="underline" href="https://www.kindjoe.com" target="_blank" rel="noopener noreferrer">kindjoe.com</a>), a platform providing daily, unbiased news and related content (the “Services”). By accessing or using the Services, you agree to these Terms of Service (the “Terms”). If you do not agree, do not use the Services.
+              </p>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-800 text-base">
+                <span className="font-medium text-gray-900">Notice:</span> Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources. See our{" "}
+                <a className="underline" href="/disclaimer">Disclaimer</a> for more detail.
               </p>
             </div>
 
@@ -53,7 +58,10 @@ export default function TermsOfService() {
             </Section>
 
             <Section id="ip" title="5. Content & Intellectual Property">
-              We and our licensors own all rights, title, and interest in and to the Services and content on the site, including articles, designs, text, graphics, and logos, which are protected by intellectual property laws. No rights are granted except as expressly set out in these Terms. You may not reproduce, distribute, or modify our content without prior written permission.
+              Kind Joe may curate, summarize, or present information drawn from publicly available sources (for example, news reporting, official releases, or other materials that are already public).{" "}
+              <span className="font-medium">Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources.</span>{" "}
+              Third-party names, marks, and materials remain the property of their respective owners.
+              We and our licensors own rights in the selection, arrangement, presentation, original writing, design, software, branding, and other proprietary aspects of the Services, subject to those third-party rights. No rights are granted except as expressly set out in these Terms. You may not reproduce, distribute, or modify our content without prior written permission.
             </Section>
 
             <Section id="editorial" title="6. Editorial Independence & Corrections">
@@ -92,8 +100,14 @@ export default function TermsOfService() {
               Your use of the Services is also governed by our Privacy Policy, which explains how we collect, use, and protect personal information (including names, emails, ZIP codes, and news preferences) and our use of cookies and analytics.
             </Section>
 
-            <Section id="contact" title="15. Contact">
-              If you have questions about these Terms, contact us at <a href="mailto:hi@kindjoe.com" className="underline">hi@kindjoe.com</a>.
+            <Section id="takedown" title="15. Content owners">
+              If you are a content owner and want material reviewed or removed, contact us at{" "}
+              <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
+            </Section>
+
+            <Section id="contact" title="16. Contact">
+              If you have questions about these Terms, contact us at{" "}
+              <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
             </Section>
           </section>
 
@@ -117,6 +131,7 @@ export default function TermsOfService() {
                   <TOCLink href="#termination">Suspension/Termination</TOCLink>
                   <TOCLink href="#governing-law">Governing Law</TOCLink>
                   <TOCLink href="#privacy">Privacy</TOCLink>
+                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>
@@ -141,6 +156,7 @@ export default function TermsOfService() {
                   <TOCLink href="#termination">Suspension/Termination</TOCLink>
                   <TOCLink href="#governing-law">Governing Law</TOCLink>
                   <TOCLink href="#privacy">Privacy</TOCLink>
+                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>

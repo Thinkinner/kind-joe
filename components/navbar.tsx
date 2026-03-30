@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search } from "lucide-react";
-// import { Eye, ChevronRight } from "lucide-react";
-// import {
-//   formatSignalsViewerCount,
-//   useSignalsLiveViewers,
-// } from "@/hooks/use-signals-live-viewers";
+import { Menu, X, Search, Eye } from "lucide-react";
+import {
+  formatSignalsViewerCount,
+  useSignalsLiveViewers,
+} from "@/hooks/use-signals-live-viewers";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
@@ -17,7 +16,9 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-  // const signalsViewers = useSignalsLiveViewers();
+  const signalsViewers = useSignalsLiveViewers();
+
+  const signalsWatchHref = "/kindjoe-watch";
 
   const links = [
     { name: "Home", href: "/" },
@@ -40,6 +41,31 @@ export default function Navbar() {
   useEffect(() => {
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
+
+  const livePillClass =
+    "inline-flex max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 px-2.5 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 sm:gap-2.5 sm:px-3 sm:py-1.5";
+
+  const livePillInner = (
+    <>
+      <span className="relative flex h-2 w-2 shrink-0 sm:h-2.5 sm:w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/45" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)] sm:h-2.5 sm:w-2.5" />
+      </span>
+      <span className="shrink-0 text-[9px] font-black tracking-[0.22em] text-red-500 sm:text-[10px] sm:tracking-[0.26em]">
+        LIVE
+      </span>
+      <Eye
+        className="hidden h-[15px] w-[15px] shrink-0 text-red-400 sm:block sm:h-[17px] sm:w-[17px]"
+        aria-hidden
+      />
+      <span className="truncate font-mono text-sm font-bold tabular-nums text-white sm:text-base">
+        {formatSignalsViewerCount(signalsViewers)}
+      </span>
+      <span className="shrink-0 text-[8px] font-semibold uppercase tracking-[0.1em] text-red-200/85 sm:text-[9px] sm:tracking-[0.12em]">
+        watching
+      </span>
+    </>
+  );
 
   return (
     <>
@@ -87,9 +113,13 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* LIVE watching pill — disabled for now
-              <Link href="/kindjoe-signals" ...>{livePillInner}</Link>
-              */}
+              <Link
+                href={signalsWatchHref}
+                className={`${livePillClass} hidden lg:inline-flex`}
+                title="Open Kind Joe Watch live feed"
+              >
+                {livePillInner}
+              </Link>
 
               <button
                 type="button"
@@ -112,9 +142,13 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile LIVE watching strip — disabled for now
-          <Link href="/kindjoe-signals" className="mb-3 ... lg:hidden">...</Link>
-          */}
+          <Link
+            href={signalsWatchHref}
+            className={`${livePillClass} mb-3 w-full justify-center lg:hidden`}
+            title="Open Kind Joe Watch live feed"
+          >
+            {livePillInner}
+          </Link>
         </nav>
       </header>
 
@@ -159,9 +193,14 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* Drawer LIVE watching block — disabled for now
-              <Link href="/kindjoe-signals" onClick={...} className="mb-4 ...">...</Link>
-              */}
+              <Link
+                href={signalsWatchHref}
+                onClick={() => setOpen(false)}
+                className={`${livePillClass} mb-4 w-full justify-center`}
+                title="Open Kind Joe Watch live feed"
+              >
+                {livePillInner}
+              </Link>
 
               <button
                 type="button"
@@ -180,7 +219,7 @@ export default function Navbar() {
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Signals", href: "/kindjoe-signals" },
+                  { name: "Kind Joe Watch", href: "/kindjoe-watch" },
                 ].map((item) => {
                   const isActive = pathname === item.href;
                   return (

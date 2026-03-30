@@ -1,6 +1,7 @@
 'use client'
 import React from "react";
 import { animate, motion, useReducedMotion } from "framer-motion";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 export default function PrivacyPolicy() {
   return (
@@ -17,7 +18,7 @@ export default function PrivacyPolicy() {
       <header className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 z-20">
         <div className="mx-auto max-w-6xl px-6 py-6">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Privacy Policy</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1">Last updated: November 12, 2025</p>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Last updated: March 31, 2026</p>
         </div>
       </header>
 
@@ -30,6 +31,12 @@ export default function PrivacyPolicy() {
             <div className="space-y-5">
               <p className="text-gray-700">
                 This Privacy Policy explains how <strong>Kind Joe</strong> (<a className="underline" href="https://www.kindjoe.com" target="_blank" rel="noopener noreferrer">kindjoe.com</a>) collects, uses, and safeguards your information when you visit our site and when you subscribe to our newsletter (“Kind Joe Top Stories”). If you do not agree with this Policy, please do not use the Services.
+              </p>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-800 text-base">
+                Our editorial content may reference or summarize publicly available information.{" "}
+                <span className="font-medium">Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources.</span>{" "}
+                For how we handle <em>your</em> personal data, see the sections below. See also our{" "}
+                <a className="underline" href="/disclaimer">Disclaimer</a>.
               </p>
             </div>
 
@@ -83,7 +90,7 @@ export default function PrivacyPolicy() {
               <ul className="list-disc pl-6 mt-2">
                 <li><span className="font-medium">Unsubscribe:</span> use the link in our emails to stop receiving newsletters.</li>
                 <li><span className="font-medium">Cookies:</span> manage or block cookies via your browser settings.</li>
-                <li><span className="font-medium">Access/Update/Delete:</span> you can request access to, correction of, or deletion of your personal information by contacting <a className="underline" href="mailto:hi@kindjoe.com">hi@kindjoe.com</a>. We will respond in a reasonable time.</li>
+                <li><span className="font-medium">Access/Update/Delete:</span> you can request access to, correction of, or deletion of your personal information by contacting <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>. We will respond in a reasonable time.</li>
               </ul>
             </Section>
 
@@ -100,7 +107,14 @@ export default function PrivacyPolicy() {
             </Section>
 
             <Section id="contact" title="12. Contact Us">
-              If you have questions or requests about this Privacy Policy, contact us at <a className="underline" href="mailto:hi@kindjoe.com">hi@kindjoe.com</a>.
+              <p>
+                If you have questions or requests about this Privacy Policy, contact us at{" "}
+                <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>.
+              </p>
+              <p className="mt-4">
+                If you are a content owner and want material reviewed or removed, contact us at{" "}
+                <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>.
+              </p>
             </Section>
 
             <Section id="jurisdiction" title="13. Jurisdiction">
