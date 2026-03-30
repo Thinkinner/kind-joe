@@ -8,7 +8,6 @@ import {
   Filter,
   ShieldAlert,
   Target,
-  Activity,
   Clock,
   Lock,
   ExternalLink,
@@ -279,15 +278,7 @@ export default function Feed({
             : "border-white/10 bg-black/50",
         )}
       >
-        <h2
-          className={cn(
-            "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]",
-            isLight ? "text-slate-800" : "text-gray-500",
-          )}
-        >
-          <Activity size={12} className="text-[#00BFFF]" />
-          <span>Intel_Stream</span>
-        </h2>
+        <h2 className="sr-only">Signal feed</h2>
         <button
           type="button"
           onClick={onOpenFilters}

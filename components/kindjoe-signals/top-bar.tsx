@@ -128,35 +128,6 @@ export default function TopBar() {
               <Sun className="h-[18px] w-[18px]" aria-hidden />
             )}
           </button>
-
-          <div
-            className={cn(
-              "hidden shrink-0 flex-col items-end gap-0.5 text-right sm:flex",
-            )}
-          >
-            <span
-              className={cn(
-                "text-[8px] font-mono uppercase tracking-[0.2em]",
-                isLight ? "text-red-700/70" : "text-red-900/80",
-              )}
-            >
-              Feed
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/40" />
-                <span className="relative h-1.5 w-1.5 rounded-full bg-red-500" />
-              </span>
-              <span
-                className={cn(
-                  "text-[9px] font-mono font-bold tracking-wide md:text-[10px]",
-                  isLight ? "text-red-600" : "text-red-400",
-                )}
-              >
-                LIVE_SYNC
-              </span>
-            </div>
-          </div>
         </div>
       </div>
     </header>
