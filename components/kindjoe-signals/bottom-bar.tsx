@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import { Filter, Globe, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 export type GlobeStyleOption = "realistic" | "dark" | "wireframe";
@@ -39,8 +40,7 @@ export default function BottomBar({
           ? "border-slate-200 bg-white shadow-[0_-4px_24px_rgba(15,23,42,0.08)]"
           : "border-red-950/35 bg-[#050508]/95 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
       )}
-      role="toolbar"
-      aria-label="Signals toolbar"
+      aria-label="Signals toolbar and disclaimer"
     >
       <div
         className={cn(
@@ -49,7 +49,22 @@ export default function BottomBar({
         )}
       />
 
-      <div className="relative flex min-h-12 items-center justify-between gap-2 px-3 py-1.5 md:gap-4 md:px-6 md:py-2">
+      <p
+        className={cn(
+          "border-b px-3 py-1.5 text-center font-sans text-[9px] font-medium leading-snug sm:px-5 sm:text-[10px]",
+          isLight
+            ? "border-amber-200/90 bg-amber-50 text-amber-950"
+            : "border-amber-500/25 bg-amber-950/45 text-amber-100/95",
+        )}
+        role="status"
+      >
+        {AI_SUMMARY_DISCLAIMER}
+      </p>
+
+      <div
+        className="relative flex min-h-12 items-center justify-between gap-2 px-3 py-1.5 md:gap-4 md:px-6 md:py-2"
+        role="toolbar"
+      >
         <div className="flex min-w-0 items-center gap-2 md:flex-1 md:gap-4">
           <button
             type="button"

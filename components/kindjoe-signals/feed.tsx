@@ -18,7 +18,6 @@ import {
   signalOutboundLinkLabel,
 } from "@/lib/signals/signal-source-url";
 import { cn } from "@/lib/utils";
-import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
   getImpactSeverity,
@@ -292,18 +291,6 @@ export default function Feed({
           <Filter size={10} /> Filters
         </button>
       </div>
-
-      <p
-        className={cn(
-          "shrink-0 border-b px-3 py-2 text-[9px] font-sans font-medium leading-snug sm:px-4 sm:text-[10px]",
-          isLight
-            ? "border-slate-200 bg-amber-50/90 text-amber-950"
-            : "border-white/10 bg-amber-950/35 text-amber-100/90",
-        )}
-        role="status"
-      >
-        {AI_SUMMARY_DISCLAIMER}
-      </p>
 
       {/* Desktop: priority stays above the scroll list */}
       <AnimatePresence mode="wait">

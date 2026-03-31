@@ -31,7 +31,6 @@ import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSpotlightSignal } from "@/hooks/use-spotlight-signal";
 import { cn } from "@/lib/utils";
-import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
   MobileIntelSheet,
@@ -398,18 +397,6 @@ export default function Home() {
     >
       <TopBar />
 
-      <div
-        className={cn(
-          "shrink-0 border-b px-3 py-2 text-center text-[10px] font-medium leading-snug sm:px-5 sm:text-[11px] md:py-2.5",
-          isLight
-            ? "border-amber-200/90 bg-amber-50 text-amber-950"
-            : "border-amber-500/30 bg-amber-950/50 text-amber-100/95",
-        )}
-        role="status"
-      >
-        {AI_SUMMARY_DISCLAIMER}
-      </div>
-
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <main
           className={cn(
@@ -487,7 +474,7 @@ export default function Home() {
       <div
         className="shrink-0"
         style={{
-          height: "calc(2.75rem + env(safe-area-inset-bottom, 0px))",
+          height: "calc(5.75rem + env(safe-area-inset-bottom, 0px))",
         }}
         aria-hidden
       />
