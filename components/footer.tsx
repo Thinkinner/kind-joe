@@ -185,22 +185,6 @@ export function Footer() {
 
         {/* Bottom Section: Socials & Copyright */}
         <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6">
-          <div className="text-center md:text-left space-y-1">
-            <p className="text-xs text-amber-200/90 max-w-xl md:max-w-none leading-relaxed border-l-2 border-amber-600/60 pl-3 mb-3 md:mb-0">
-              {AI_SUMMARY_DISCLAIMER}{" "}
-              <a href="/disclaimer" className="text-amber-400/95 underline-offset-2 hover:underline whitespace-nowrap">
-                Full disclaimer
-              </a>
-            </p>
-            <p className="text-sm text-gray-500">
-              &copy; {year}{" "}
-              <span className="text-white font-medium">Kind Joe</span>. All
-              rights reserved.
-            </p>
-            <p className="text-xs text-gray-600">
-              Proudly made in Ventura County.
-            </p>
-          </div>
 
           <div className="flex gap-4">
             <SocialLink
