@@ -3,22 +3,84 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, Eye } from "lucide-react";
-import {
-  formatSignalsViewerCount,
-  useSignalsLiveViewers,
-} from "@/hooks/use-signals-live-viewers";
+import { Menu, X, Search } from "lucide-react";
+// Kind Joe Watch live pill — re-enable with Eye import and hook below.
+// import {
+//   formatSignalsViewerCount,
+//   useSignalsLiveViewers,
+// } from "@/hooks/use-signals-live-viewers";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
+import { authClient } from "@/lib/auth-client";
+import { getAccountType } from "@/lib/auth/account-type";
+import {
+  clearNavSessionHint,
+  peekNavSessionHint,
+} from "@/lib/auth/nav-session-hint";
 
-export default function Navbar() {
+const navAuthBtnClass =
+  "inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 px-3.5 text-sm font-medium text-zinc-300 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-white lg:h-9 lg:rounded-lg lg:px-3";
+
+export type NavbarSessionUser = {
+  id: string;
+  email: string;
+  name: string;
+  image?: string | null;
+  accountType?: string | null;
+  staffRole?: string | null;
+};
+
+type NavbarProps = {
+  /** From RSC `getServerSession()` so the bar matches cookies on first paint. */
+  initialSessionUser?: NavbarSessionUser | null;
+};
+
+export default function Navbar({
+  initialSessionUser = null,
+}: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-  const signalsViewers = useSignalsLiveViewers();
+  // const signalsViewers = useSignalsLiveViewers();
+  // const signalsWatchHref = "/kindjoe-watch";
+  const { data: sessionData, isPending: sessionPending, refetch } =
+    authClient.useSession();
 
-  const signalsWatchHref = "/kindjoe-watch";
+  /** Must not read sessionStorage during SSR / hydration — it differs from server and causes mismatches. */
+  const [navReady, setNavReady] = useState(false);
+  const [hintUser, setHintUser] = useState<NavbarSessionUser | null>(null);
+
+  const serverUser =
+    initialSessionUser?.id && initialSessionUser.id.length > 0
+      ? initialSessionUser
+      : null;
+  const authedUser =
+    sessionData?.user ?? serverUser ?? hintUser ?? undefined;
+  const accountKind = getAccountType(authedUser);
+  const authLoading =
+    (!navReady && !serverUser) ||
+    (sessionPending &&
+      !serverUser &&
+      !(hintUser?.id && hintUser.id.length > 0));
+
+  useEffect(() => {
+    const hint = peekNavSessionHint();
+    setHintUser(
+      hint?.id
+        ? {
+            ...hint,
+            image: null as string | null,
+          }
+        : null,
+    );
+    setNavReady(true);
+    void (async () => {
+      await refetch();
+      clearNavSessionHint();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const links = [
     { name: "Home", href: "/" },
@@ -42,7 +104,7 @@ export default function Navbar() {
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  /** Visuals only — set `display` separately so `hidden` / `lg:inline-flex` are not overridden by `inline-flex`. */
+  /* Kind Joe Watch live viewer pill — restore with useSignalsLiveViewers + Eye icon.
   const livePillBoxClass =
     "max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 px-2.5 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 sm:gap-2.5 sm:px-3 sm:py-1.5";
 
@@ -67,6 +129,7 @@ export default function Navbar() {
       </span>
     </>
   );
+  */
 
   return (
     <>
@@ -114,6 +177,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Kind Joe Watch desktop pill
               <Link
                 href={signalsWatchHref}
                 className={`${livePillBoxClass} hidden lg:inline-flex`}
@@ -121,6 +185,25 @@ export default function Navbar() {
               >
                 {livePillInner}
               </Link>
+              */}
+
+              {/* {authLoading ? (
+                <span
+                  className="inline-block h-10 w-[5.25rem] animate-pulse rounded-xl bg-white/[0.06] lg:h-9 lg:w-[5.5rem] lg:rounded-lg"
+                  aria-hidden
+                />
+              ) : authedUser ? (
+                <Link
+                  href={accountKind === "staff" ? "/admin" : "/account"}
+                  className={navAuthBtnClass}
+                >
+                  {accountKind === "staff" ? "Admin" : "Account"}
+                </Link>
+              ) : (
+                <Link href="/login" className={navAuthBtnClass}>
+                  Sign in
+                </Link>
+              )} */}
 
               <button
                 type="button"
@@ -143,6 +226,7 @@ export default function Navbar() {
             </div>
           </div>
 
+          {/* Kind Joe Watch mobile full-width pill
           <Link
             href={signalsWatchHref}
             className={`${livePillBoxClass} mb-3 flex w-full justify-center lg:hidden`}
@@ -150,6 +234,7 @@ export default function Navbar() {
           >
             {livePillInner}
           </Link>
+          */}
         </nav>
       </header>
 
@@ -211,7 +296,7 @@ export default function Navbar() {
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Kind Joe Watch", href: "/kindjoe-watch" },
+                  // { name: "Kind Joe Watch", href: "/kindjoe-watch" },
                 ].map((item) => {
                   const isActive = pathname === item.href;
                   return (
@@ -229,6 +314,23 @@ export default function Navbar() {
                     </Link>
                   );
                 })}
+                {!authLoading && authedUser ? (
+                  <Link
+                    href={accountKind === "staff" ? "/admin" : "/account"}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
+                  >
+                    {accountKind === "staff" ? "Admin dashboard" : "My account"}
+                  </Link>
+                ) : !authLoading ? (
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
+                  >
+                    Sign in
+                  </Link>
+                ) : null}
               </nav>
             </motion.aside>
           </>

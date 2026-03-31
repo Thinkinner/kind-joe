@@ -2,6 +2,8 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { GeographicScope, Signal } from "@/lib/aggregator/types";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { resolveStaffApi } from "@/lib/auth/server";
 import { publishArticleFromSignal } from "@/lib/signals/publish-signal-article";
 
 function parseGeographicScope(raw: unknown): GeographicScope {
@@ -55,6 +57,14 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+    if (!staff.ok) {
+      if (staff.reason === "unauthenticated") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const json = await req.json();
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {

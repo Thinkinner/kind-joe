@@ -8,10 +8,15 @@ type BreakingLiveNewsCtaProps = {
   variant?: "default" | "inline";
 };
 
+/** Set true when Kind Joe Watch is public again (see middleware + navbar). */
+const KINDJOE_WATCH_CTA_ENABLED = false;
+
 export default function BreakingLiveNewsCta({
   className,
   variant = "default",
 }: BreakingLiveNewsCtaProps) {
+  if (!KINDJOE_WATCH_CTA_ENABLED) return null;
+
   if (variant === "inline") {
     return (
       <section

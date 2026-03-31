@@ -1,3 +1,4 @@
+/** Public POST/PUT: newsletter lead capture → GHL; no user session. */
 import { NextResponse } from "next/server";
 
 // Function to add contact to Go High Level

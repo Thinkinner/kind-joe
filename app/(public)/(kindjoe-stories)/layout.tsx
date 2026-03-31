@@ -1,5 +1,5 @@
 import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
-import Navbar from "@/components/navbar";
+import { NavbarWithSession } from "@/components/navbar-with-session";
 import { Footer } from "@/components/footer";
 
 export default function DashboardLayout({
@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      <Navbar />
+      <NavbarWithSession />
       <main>{children}</main>
       <Footer />
     </>

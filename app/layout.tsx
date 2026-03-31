@@ -117,7 +117,7 @@ export default async function RootLayout({
         className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
       >
         <GoogleAnalytics />
-        <main className="min-h-[calc(100dvh-4rem)]">{children}</main>
+        <main className="min-h-dvh">{children}</main>
         <Toaster position="top-center" richColors closeButton />
       <CookieConsent />
         <Analytics />

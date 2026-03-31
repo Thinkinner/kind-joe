@@ -1,3 +1,4 @@
+/** Public POST: marketing signup → GoHighLevel; no user session (not reader-private). */
 import { NextResponse } from "next/server";
 import {
   SIGNALS_ACCESS_COOKIE,

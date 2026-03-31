@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
@@ -14,7 +15,26 @@ export const user = pgTable("user", {
     .notNull(),
   accountType: text("account_type").default("reader"),
   staffRole: text("staff_role").default(""),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
+
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("two_factor_user_id_idx").on(table.userId),
+    index("two_factor_secret_idx").on(table.secret),
+  ],
+);
 
 export const session = pgTable(
   "session",
@@ -78,6 +98,14 @@ export const verification = pgTable(
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  twoFactors: many(twoFactor),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+  user: one(user, {
+    fields: [twoFactor.userId],
+    references: [user.id],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

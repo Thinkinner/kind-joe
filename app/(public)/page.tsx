@@ -11,7 +11,7 @@ import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stor
 import KindJoeModal from "@/components/modals/kindjoe-introduction/kindjoe-modal";
 import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
 import { getStocksFromFinnhub } from "@/lib/stocks";
-import Navbar from "@/components/navbar";
+import { NavbarWithSession } from "@/components/navbar-with-session";
 import { Footer } from "@/components/footer";
 
 export const revalidate = 300;
@@ -54,7 +54,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <Navbar />
+      <NavbarWithSession />
       <div>
         <div>
           <FeaturedStoriesCarouselHero />

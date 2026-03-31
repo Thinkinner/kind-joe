@@ -11,10 +11,24 @@ export function AdminShell({ children }: AdminShellProps) {
     <div className="min-h-[calc(100dvh-4rem)] bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <span className="text-sm font-semibold tracking-tight text-slate-800">
               Kind Joe Admin
             </span>
+            <nav className="flex items-center gap-3 text-sm">
+              <Link
+                href="/admin"
+                className="font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/admin/security"
+                className="font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+              >
+                Security
+              </Link>
+            </nav>
           </div>
           {publicSite ? (
             <a

@@ -9,7 +9,7 @@ const STORAGE_KEY = "kj-signals-viewers";
 
 /** Compact label for thousands-scale counts (e.g. 3124 → "3.1k"). */
 export function formatSignalsViewerCount(n: number): string {
-  if (n < 1000) return n.toLocaleString();
+  if (n < 1000) return n.toLocaleString("en-US");
   return `${(n / 1000).toFixed(1)}k`;
 }
 

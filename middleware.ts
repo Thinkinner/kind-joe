@@ -18,6 +18,11 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const search = request.nextUrl.search;
 
+  // Kind Joe Watch / Signals UI is temporarily disabled — remove to restore /kindjoe-watch.
+  if (path === "/kindjoe-watch" || path.startsWith("/kindjoe-watch/")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   if (adminHost && host === adminHost) {
     if (path === "/") {
       const url = request.nextUrl.clone();

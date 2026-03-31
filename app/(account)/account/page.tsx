@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { SignOutButton } from "@/components/account/reader-auth-forms";
+import { AuthCard } from "@/components/account/auth-card";
+import { ReaderAccountPanel } from "@/components/account/reader-account-panel";
 import { getServerSession } from "@/lib/auth/server";
 
 export const metadata: Metadata = {
@@ -10,24 +11,16 @@ export const metadata: Metadata = {
 export default async function ReaderAccountPage() {
   const session = await getServerSession();
   const user = session?.user as { name?: string; email?: string } | undefined;
+  const email = user?.email ?? "";
+  const initialName = user?.name?.trim() ?? "";
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h1 className="text-lg font-semibold">My account</h1>
-      <p className="text-sm text-slate-600">
-        Signed in as <span className="font-medium text-slate-900">{user?.email}</span>
-        {user?.name ? (
-          <>
-            {" "}
-            ({user.name})
-          </>
-        ) : null}
-      </p>
-      <p className="text-sm text-slate-600">
-        Reader profile and subscriptions can be added here without touching public
-        articles.
-      </p>
-      <SignOutButton />
-    </div>
+    <AuthCard
+      eyebrow="Kind Joe"
+      title="My account"
+      description="You are signed in with your email and password."
+    >
+      <ReaderAccountPanel initialName={initialName} email={email} />
+    </AuthCard>
   );
 }
