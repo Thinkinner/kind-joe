@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
+import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
@@ -86,17 +87,22 @@ export default async function LikeShop() {
   const allPosts = await getPosts();
 
   return (
-    <main className="max-w-4xl mx-auto">
-      <header className="py-10 text-center border-b mb-10">
-        <div className="flex items-center gap-2 justify-center">
-          <Image
-            src="/brand/kindjoe-profile.jpg"
-            width={40}
-            height={40}
-            alt="thekindjoe profile"
-            className="rounded-full"
-          />
-          <span>thekindjoe</span>
+    <main className="mx-auto max-w-4xl pt-4 sm:pt-6">
+      <header className="mb-8 border-b px-3 pb-8 pt-2 sm:mb-10 sm:px-4 sm:pb-10 sm:pt-4">
+        <div className="mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-6">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Image
+              src="/brand/kindjoe-profile.jpg"
+              width={40}
+              height={40}
+              alt="thekindjoe profile"
+              className="rounded-full ring-2 ring-neutral-100"
+            />
+            <span className="text-sm font-semibold tracking-tight text-neutral-900 sm:text-base">
+              thekindjoe
+            </span>
+          </div>
+          <BreakingLiveNewsCta variant="inline" className="shrink-0 px-0" />
         </div>
       </header>
 
