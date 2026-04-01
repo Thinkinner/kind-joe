@@ -17,6 +17,7 @@ export type Category =
 
 /** How “big” the story is geographically — drives local-area news and filters. */
 export type GeographicScope = "local" | "regional" | "national" | "global";
+export type SignalTrustTier = "low" | "medium" | "high";
 
 export const GEO_SCOPE_LABELS: Record<GeographicScope, string> = {
   local: "Local",
@@ -44,6 +45,19 @@ export interface Signal {
   impactScore: number; // 1-100
   timestamp: number;
   tags: string[];
+  /** Canonical normalized source URL with tracking params removed. */
+  canonicalSourceUrl?: string | null;
+  /** Display metadata used by Glint-style source row. */
+  sourceDisplayName?: string | null;
+  sourceHandle?: string | null;
+  sourceIconKey?: string | null;
+  sourceAvatarUrl?: string | null;
+  sourceVerified?: boolean | null;
+  /** Reputation metadata for source chip. */
+  trustTier?: SignalTrustTier | null;
+  trustScore?: number | null;
+  /** Extracted media URLs from summary/body markdown. */
+  mediaUrls?: string[] | null;
 }
 
 /**

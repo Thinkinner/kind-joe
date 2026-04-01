@@ -29,6 +29,15 @@ export async function getHistory(): Promise<Signal[]> {
     impactScore: s.impactScore ?? 0,
     timestamp: s.timestamp ? s.timestamp.getTime() : Date.now(),
     tags: (s.tags as string[]) ?? [],
+    canonicalSourceUrl: s.canonicalSourceUrl?.trim() || undefined,
+    sourceDisplayName: s.sourceDisplayName?.trim() || undefined,
+    sourceHandle: s.sourceHandle?.trim() || undefined,
+    sourceIconKey: s.sourceIconKey?.trim() || undefined,
+    sourceAvatarUrl: s.sourceAvatarUrl?.trim() || undefined,
+    sourceVerified: s.sourceVerified ?? false,
+    trustTier: (s.trustTier as Signal["trustTier"]) ?? undefined,
+    trustScore: s.trustScore ?? undefined,
+    mediaUrls: (s.mediaUrls as string[]) ?? [],
   }));
 }
 

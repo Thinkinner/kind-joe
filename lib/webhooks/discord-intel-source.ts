@@ -3,6 +3,7 @@ import {
   normalizeTextForUrlSearch,
   parseHttpStoryUrlCandidate,
 } from "@/lib/signals/signal-source-url";
+import { canonicalizeSignalUrl } from "@/lib/signals/signal-enrichment";
 
 const HTTP_URL_RE = /https?:\/\/[^\s<>\[\]()'"]+/gi;
 
@@ -307,10 +308,11 @@ export function extractDiscordStoryUrl(payload: unknown): string | null {
 
   for (const href of ordered) {
     const h = hostnameOf(href);
-    if (h && !isDiscordInfrastructureHost(h)) return href;
+    if (h && !isDiscordInfrastructureHost(h)) return canonicalizeSignalUrl(href) ?? href;
   }
 
-  return ordered[0] ?? null;
+  const fallback = ordered[0] ?? null;
+  return canonicalizeSignalUrl(fallback) ?? fallback;
 }
 
 /**
@@ -318,13 +320,13 @@ export function extractDiscordStoryUrl(payload: unknown): string | null {
  * wrappers, then parse coerced Discord `content` / `embeds`.
  */
 export function resolveDiscordWebhookSourceUrl(payload: unknown): string | null {
-  const extracted = extractDiscordStoryUrl(payload);
+  const extracted = canonicalizeSignalUrl(extractDiscordStoryUrl(payload));
 
   let bridgeFirst: string | null = null;
   for (const hint of collectBridgeSourceUrlCandidates(payload)) {
     const u = parseHttpStoryUrlCandidate(hint);
     if (u) {
-      bridgeFirst = u;
+      bridgeFirst = canonicalizeSignalUrl(u) ?? u;
       break;
     }
   }

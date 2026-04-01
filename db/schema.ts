@@ -328,6 +328,19 @@ export const signals = pgTable("signals", {
   source: text("source").notNull(),
   /** Canonical story URL when known (article, post, etc.); not Discord attachment/CDN unless no other URL exists. */
   sourceUrl: text("source_url"),
+  /** Canonical source URL with tracking params stripped. */
+  canonicalSourceUrl: text("canonical_source_url"),
+  /** Source identity metadata for UI cards. */
+  sourceDisplayName: text("source_display_name"),
+  sourceHandle: text("source_handle"),
+  sourceIconKey: text("source_icon_key"),
+  sourceAvatarUrl: text("source_avatar_url"),
+  sourceVerified: boolean("source_verified").default(false),
+  /** Reputation metadata (Glint-like HIGH/MED/LOW mapping). */
+  trustTier: text("trust_tier").default("medium"),
+  trustScore: integer("trust_score").default(50),
+  /** Extracted image/media candidates from markdown or links. */
+  mediaUrls: jsonb("media_urls").$type<string[]>().default([]),
   category: text("category").notNull(),
   lat: doublePrecision("lat").notNull(),
   lng: doublePrecision("lng").notNull(),

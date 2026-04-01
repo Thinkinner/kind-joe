@@ -21,6 +21,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
+  SignalRichText,
+  signalHeadlinePlain,
+} from "@/components/kindjoe-signals/signal-rich-text";
+import { SignalSourceIdentity } from "@/components/kindjoe-signals/signal-source-identity";
+import {
   getImpactSeverity,
   impactTierAccentTextClass,
   impactTierBadgeClass,
@@ -87,7 +92,7 @@ function SignalSourceLink({
               : "text-gray-200",
         )
       : cn(
-          "font-mono font-bold tracking-tight underline-offset-2 group-hover:underline",
+          "font-sans text-[9px] font-bold tabular-nums tracking-tight underline-offset-2 group-hover:underline",
           variant === "spotlight"
             ? isLight
               ? "text-red-950/90"
@@ -115,6 +120,39 @@ function SignalSourceLink({
       <ExternalLink className="pointer-events-none h-3 w-3 shrink-0 opacity-90" strokeWidth={2.5} />
       <span className={textClass}>{label}</span>
     </a>
+  );
+}
+
+function SignalMediaPreview({
+  signal,
+  isSelected,
+  isLight,
+}: {
+  signal: Signal;
+  isSelected: boolean;
+  isLight: boolean;
+}) {
+  const src = signal.mediaUrls?.[0];
+  if (!src) return null;
+  return (
+    <div
+      className={cn(
+        "mb-3 overflow-hidden rounded-md border",
+        isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black/20",
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- remote social media URLs */}
+      <img
+        src={src}
+        alt=""
+        className={cn(
+          "w-full object-cover",
+          isSelected ? "max-h-72" : "h-36",
+        )}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+    </div>
   );
 }
 
@@ -169,36 +207,41 @@ function PrioritySpotlightCard({
         </div>
       </div>
 
+      <div className="mb-3">
+        <SignalSourceIdentity signal={signal} isLight={isLight} compact />
+      </div>
+
       {signalUsesSingleBodyBlock(signal) ? (
-        <p
+        <div
           className={cn(
-            "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[11px] font-medium leading-relaxed",
+            "mb-3 max-h-72 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
             isLight ? "text-red-950/90" : "text-red-100/90",
           )}
         >
-          {signal.summary}
-        </p>
+          <SignalRichText text={signal.summary} isLight={isLight} />
+        </div>
       ) : (
         <>
           <h3
             className={cn(
-              "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
+              "mb-2 font-sans text-[13px] font-semibold normal-case not-italic leading-snug tracking-tight",
               isLight ? "text-slate-900" : "text-white",
             )}
           >
-            {signal.headline}
+            {signalHeadlinePlain(signal.headline)}
           </h3>
 
-          <p
+          <div
             className={cn(
-              "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[10px] leading-relaxed",
-              isLight ? "text-red-950/85" : "text-red-200/80",
+              "mb-3 max-h-56 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
+              isLight ? "text-red-950/85" : "text-red-200/85",
             )}
           >
-            {signal.summary}
-          </p>
+            <SignalRichText text={signal.summary} isLight={isLight} />
+          </div>
         </>
       )}
+      <SignalMediaPreview signal={signal} isSelected={true} isLight={isLight} />
 
       <div
         className={cn(
@@ -277,7 +320,7 @@ export default function Feed({
   return (
     <div
       className={cn(
-        "z-10 flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t font-mono md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
+        "z-10 flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t font-sans md:w-80 lg:w-96 md:border-l md:border-t-0 md:flex-none md:h-auto flex-1",
         isLight
           ? "border-slate-300 bg-white"
           : "border-white/10 bg-[#0A0A0F]",
@@ -449,6 +492,13 @@ export default function Feed({
                           : "border-white/5 bg-white/[0.01] hover:border-white/15",
                     )}
                   >
+                    <div className="mb-2">
+                      <SignalSourceIdentity
+                        signal={signal}
+                        isLight={isLight}
+                      />
+                    </div>
+
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span
                         className={cn(
@@ -462,7 +512,7 @@ export default function Feed({
                       >
                         {timeLabel}
                       </span>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         <SignalSourceLink
                           signal={signal}
                           isLight={isLight}
@@ -485,43 +535,56 @@ export default function Feed({
                     </div>
 
                     {signalUsesSingleBodyBlock(signal) ? (
-                      <p
+                      <div
                         className={cn(
-                          "mb-3 text-[11px] font-medium leading-relaxed whitespace-pre-wrap break-words",
+                          "mb-3 text-[12px] font-normal leading-relaxed",
                           isSelected
-                            ? "max-h-56 overflow-y-auto pr-1"
-                            : "line-clamp-2",
+                            ? "max-h-72 overflow-y-auto pr-1"
+                            : "line-clamp-2 overflow-hidden",
                           isLight ? "text-slate-800" : "text-gray-300",
                         )}
                       >
-                        {signal.summary}
-                      </p>
+                        <SignalRichText
+                          text={signal.summary}
+                          isLight={isLight}
+                          compact={!isSelected}
+                        />
+                      </div>
                     ) : (
                       <>
                         <h3
                           className={cn(
-                            "mb-2 text-[12px] font-bold uppercase leading-snug tracking-tight transition-colors",
+                            "mb-2 font-sans text-[12px] font-semibold normal-case leading-snug tracking-tight transition-colors",
                             isLight
                               ? "text-slate-950 group-hover:text-slate-950"
                               : "text-gray-200 group-hover:text-white",
                           )}
                         >
-                          {signal.headline}
+                          {signalHeadlinePlain(signal.headline)}
                         </h3>
 
-                        <p
+                        <div
                           className={cn(
-                            "mb-3 text-[10px] font-medium leading-relaxed whitespace-pre-wrap break-words",
+                            "mb-3 text-[12px] font-normal leading-relaxed",
                             isSelected
-                              ? "max-h-56 overflow-y-auto pr-1"
-                              : "line-clamp-2",
-                            isLight ? "text-slate-700" : "text-gray-500",
+                              ? "max-h-72 overflow-y-auto pr-1"
+                              : "line-clamp-2 overflow-hidden",
+                            isLight ? "text-slate-700" : "text-gray-400",
                           )}
                         >
-                          {signal.summary}
-                        </p>
+                          <SignalRichText
+                            text={signal.summary}
+                            isLight={isLight}
+                            compact={!isSelected}
+                          />
+                        </div>
                       </>
                     )}
+                    <SignalMediaPreview
+                      signal={signal}
+                      isSelected={isSelected}
+                      isLight={isLight}
+                    />
 
                     <div
                       className={cn(

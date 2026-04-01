@@ -7,6 +7,10 @@ import {
   isXOrTwitterStoryHref,
   resolveSignalSourceUrl,
 } from "@/lib/signals/signal-source-url";
+import {
+  markdownToPlainText,
+  normalizeSignalBodyText,
+} from "@/lib/signals/signal-enrichment";
 import type { Category, GeographicScope, Source } from "./types";
 
 const HEADLINE_MAX = 140;
@@ -57,7 +61,7 @@ function usgsImpactScore(text: string): number {
 
 function headlineFromText(text: string, override?: string | null): string {
   if (override?.trim()) return override.trim().slice(0, 512);
-  const t = text.trim();
+  const t = markdownToPlainText(text).trim();
   if (!t) return "(no text)";
   const lines = t.split(/\r?\n/);
   const firstLine = lines.find((l) => l.trim())?.trim() ?? t;
@@ -115,7 +119,7 @@ export function buildVerbatimSignalFields(params: {
     };
   }
 
-  const summary = text.trim();
+  const summary = normalizeSignalBodyText(text);
   const headline = headlineFromText(summary || "(no text)", headlineOverride);
   const bodyForSummary = summary || headline;
 

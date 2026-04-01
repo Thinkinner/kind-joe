@@ -50,6 +50,20 @@
       "when": 1775063965270,
       "tag": "0006_prediction_likes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775081435174,
+      "tag": "0007_signals_enrichment",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775082275684,
+      "tag": "0008_signals_identity_avatar",
+      "breakpoints": true
     }
   ]
 }

@@ -38,9 +38,9 @@ export async function getHistory(): Promise<Signal[]> {
       id: s.id,
       headline: s.headline,
       summary: s.summary ?? "",
-      source: s.source as any,
+      source: s.source as Signal["source"],
       sourceUrl: s.sourceUrl?.trim() || undefined,
-      category: s.category as any,
+      category: s.category as Signal["category"],
       lat: s.lat,
       lng: s.lng,
       city: s.city ?? "Unknown",
@@ -50,6 +50,15 @@ export async function getHistory(): Promise<Signal[]> {
       impactScore: s.impactScore ?? 0,
       timestamp: timeValue, // Sending purely universal number to frontend
       tags: (s.tags as string[]) ?? [],
+      canonicalSourceUrl: s.canonicalSourceUrl?.trim() || undefined,
+      sourceDisplayName: s.sourceDisplayName?.trim() || undefined,
+      sourceHandle: s.sourceHandle?.trim() || undefined,
+      sourceIconKey: s.sourceIconKey?.trim() || undefined,
+      sourceAvatarUrl: s.sourceAvatarUrl?.trim() || undefined,
+      sourceVerified: s.sourceVerified ?? false,
+      trustTier: (s.trustTier as Signal["trustTier"]) ?? undefined,
+      trustScore: s.trustScore ?? undefined,
+      mediaUrls: (s.mediaUrls as string[]) ?? [],
     };
   });
 }

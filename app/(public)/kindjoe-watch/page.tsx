@@ -96,6 +96,39 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
     impactScore: raw.impactScore,
     timestamp: raw.timestamp,
     tags: raw.tags ?? [],
+    canonicalSourceUrl:
+      typeof rawRec.canonicalSourceUrl === "string"
+        ? rawRec.canonicalSourceUrl
+        : undefined,
+    sourceDisplayName:
+      typeof rawRec.sourceDisplayName === "string"
+        ? rawRec.sourceDisplayName
+        : undefined,
+    sourceHandle:
+      typeof rawRec.sourceHandle === "string" ? rawRec.sourceHandle : undefined,
+    sourceIconKey:
+      typeof rawRec.sourceIconKey === "string"
+        ? rawRec.sourceIconKey
+        : undefined,
+    sourceAvatarUrl:
+      typeof rawRec.sourceAvatarUrl === "string"
+        ? rawRec.sourceAvatarUrl
+        : typeof rawRec.source_avatar_url === "string"
+          ? rawRec.source_avatar_url
+          : undefined,
+    sourceVerified:
+      rawRec.sourceVerified === true || rawRec.source_verified === true,
+    trustTier:
+      rawRec.trustTier === "low" ||
+      rawRec.trustTier === "medium" ||
+      rawRec.trustTier === "high"
+        ? rawRec.trustTier
+        : undefined,
+    trustScore:
+      typeof rawRec.trustScore === "number" ? rawRec.trustScore : undefined,
+    mediaUrls: Array.isArray(rawRec.mediaUrls)
+      ? (rawRec.mediaUrls.filter((v) => typeof v === "string") as string[])
+      : undefined,
   };
 }
 

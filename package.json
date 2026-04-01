@@ -9,6 +9,7 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "db:migrate": "drizzle-kit migrate",
+    "signals:backfill-enrichment": "tsx scripts/backfill-signal-enrichment.ts",
     "auth:promote-staff": "tsx scripts/promote-auth-staff.ts",
     "db:seed-posts": "tsx scripts/seed-posts.ts"
   },

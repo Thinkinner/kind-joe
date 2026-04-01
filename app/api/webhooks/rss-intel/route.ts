@@ -39,6 +39,20 @@ const bodySchema = z.object({
       const d = new Date(v);
       return Number.isNaN(d.getTime()) ? undefined : d;
     }),
+  enriched: z
+    .object({
+      canonicalSourceUrl: z.string().optional(),
+      sourceDisplayName: z.string().optional(),
+      sourceHandle: z.string().optional(),
+      sourceIconKey: z.string().optional(),
+      sourceAvatarUrl: z.string().optional(),
+      sourceVerified: z.boolean().optional(),
+      trustTier: z.enum(["low", "medium", "high"]).optional(),
+      trustScore: z.number().optional(),
+      mediaUrls: z.array(z.string()).optional(),
+    })
+    .partial()
+    .optional(),
 });
 
 /**
@@ -74,7 +88,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { id, text, source, sourceUrl, timestamp: parsedTs } = parsed.data;
+  const { id, text, source, sourceUrl, timestamp: parsedTs, enriched } = parsed.data;
   const timestamp = parsedTs ?? new Date();
 
   await processIntelRaw({
@@ -83,6 +97,7 @@ export async function POST(req: Request) {
     source,
     sourceUrl,
     timestamp,
+    enriched,
   });
 
   return NextResponse.json({ ok: true });

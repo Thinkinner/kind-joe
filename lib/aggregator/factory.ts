@@ -5,6 +5,14 @@ import { buildVerbatimSignalFields } from "./verbatim-signal";
 import type { Source } from "./types";
 import { eq } from "drizzle-orm";
 import Pusher from "pusher";
+import {
+  canonicalizeSignalUrl,
+  deriveSignalIdentity,
+  deriveTrustMetadata,
+  extractMediaUrls,
+  markdownToPlainText,
+  normalizeSignalBodyText,
+} from "@/lib/signals/signal-enrichment";
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
@@ -46,6 +54,18 @@ export async function processIntelRaw(params: {
   /** Epicenter / pin when known (e.g. USGS Atom georss:point). */
   lat?: number | null;
   lng?: number | null;
+  /** Optional worker-enriched source identity + media metadata. */
+  enriched?: {
+    canonicalSourceUrl?: string | null;
+    sourceDisplayName?: string | null;
+    sourceHandle?: string | null;
+    sourceIconKey?: string | null;
+    sourceAvatarUrl?: string | null;
+    sourceVerified?: boolean | null;
+    trustTier?: "low" | "medium" | "high" | null;
+    trustScore?: number | null;
+    mediaUrls?: string[] | null;
+  };
 }) {
   const {
     id,
@@ -55,6 +75,7 @@ export async function processIntelRaw(params: {
     headline = null,
     lat = null,
     lng = null,
+    enriched,
   } = params;
   const timestamp = params.timestamp ?? new Date();
 
@@ -83,13 +104,40 @@ export async function processIntelRaw(params: {
       lng,
     });
 
+    const canonicalSourceUrl =
+      canonicalizeSignalUrl(enriched?.canonicalSourceUrl) ??
+      canonicalizeSignalUrl(sourceUrl);
+    const normalizedSummary = normalizeSignalBodyText(fields.summary);
+    const normalizedHeadline = markdownToPlainText(fields.headline).slice(0, 512);
+    const identity = deriveSignalIdentity(source, canonicalSourceUrl);
+    const trust = deriveTrustMetadata(source);
+    const mediaUrls =
+      Array.isArray(enriched?.mediaUrls) && enriched.mediaUrls.length > 0
+        ? enriched.mediaUrls
+            .map((u) => canonicalizeSignalUrl(u) ?? null)
+            .filter((u): u is string => typeof u === "string")
+            .slice(0, 6)
+        : extractMediaUrls(normalizedSummary, canonicalSourceUrl);
+
     const now = new Date();
     const newSignal = {
       id,
-      headline: fields.headline,
-      summary: fields.summary,
+      headline: normalizedHeadline || fields.headline,
+      summary: normalizedSummary,
       source,
-      sourceUrl,
+      sourceUrl: canonicalSourceUrl ?? sourceUrl,
+      canonicalSourceUrl,
+      sourceDisplayName: enriched?.sourceDisplayName?.trim() || identity.sourceDisplayName,
+      sourceHandle: enriched?.sourceHandle?.trim() || identity.sourceHandle,
+      sourceIconKey: enriched?.sourceIconKey?.trim() || identity.sourceIconKey,
+      sourceAvatarUrl: canonicalizeSignalUrl(enriched?.sourceAvatarUrl),
+      sourceVerified: enriched?.sourceVerified === true,
+      trustTier: enriched?.trustTier ?? trust.trustTier,
+      trustScore:
+        typeof enriched?.trustScore === "number"
+          ? Math.max(0, Math.min(100, Math.round(enriched.trustScore)))
+          : trust.trustScore,
+      mediaUrls,
       category: fields.category,
       lat: fields.lat,
       lng: fields.lng,

@@ -16,6 +16,11 @@ import { Signal } from "@/lib/aggregator/types";
 import { X, Target, MapPin, Activity, Hash, ExternalLink } from "lucide-react";
 import { signalUsesSingleBodyBlock } from "@/lib/signals/signal-body-display";
 import {
+  SignalRichText,
+  signalHeadlinePlain,
+} from "@/components/kindjoe-signals/signal-rich-text";
+import { SignalSourceIdentity } from "@/components/kindjoe-signals/signal-source-identity";
+import {
   isXOrTwitterStoryHref,
   resolveSignalSourceUrl,
   signalOutboundLinkLabel,
@@ -688,15 +693,22 @@ function DossierPanel({
               </button>
             </div>
 
+            <div className="mb-6">
+              <SignalSourceIdentity
+                signal={selectedSignal}
+                isLight={isLight}
+              />
+            </div>
+
             {!signalUsesSingleBodyBlock(selectedSignal) ? (
               <h2
                 className={cn(
-                  "mb-6 border-l-2 pl-4 text-xl font-bold italic leading-[1.2] tracking-tight md:mb-6 md:text-xl",
+                  "mb-6 border-l-2 pl-4 font-sans text-xl font-semibold not-italic leading-[1.25] tracking-tight md:mb-6 md:text-xl",
                   isLight ? "text-slate-900" : "text-white",
                 )}
                 style={{ borderLeftColor: activeColor }}
               >
-                {selectedSignal.headline}
+                {signalHeadlinePlain(selectedSignal.headline)}
               </h2>
             ) : null}
 
@@ -764,7 +776,7 @@ function DossierPanel({
                       "pointer-events-none min-w-0 truncate text-[10px] underline-offset-2 group-hover:underline md:text-[10px]",
                       sourceLinkIsX
                         ? "font-black uppercase tracking-wide"
-                        : "font-mono font-bold tracking-tight",
+                        : "font-sans text-[10px] font-bold tabular-nums tracking-tight",
                     )}
                   >
                     {sourceLinkLabel}
@@ -784,14 +796,35 @@ function DossierPanel({
               >
                 Post
               </div>
-              <p
+              <div
                 className={cn(
-                  "whitespace-pre-wrap text-[13px] font-medium leading-relaxed md:text-[13px]",
+                  "text-[13px] font-normal leading-relaxed md:text-[13px]",
                   isLight ? "text-slate-700" : "text-gray-300",
                 )}
               >
-                {selectedSignal.summary}
-              </p>
+                <SignalRichText
+                  text={selectedSignal.summary}
+                  isLight={isLight}
+                />
+              </div>
+
+              {selectedSignal.mediaUrls?.[0] ? (
+                <div
+                  className={cn(
+                    "overflow-hidden rounded-md border",
+                    isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black/20",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- remote social media URLs */}
+                  <img
+                    src={selectedSignal.mediaUrls[0]}
+                    alt=""
+                    className="max-h-96 w-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ) : null}
 
               {/* Read full article — disabled for now.
                   To restore: import useSignalArticlePublish + Newspaper, Loader2; call
