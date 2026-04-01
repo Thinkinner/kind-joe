@@ -47,8 +47,8 @@ export default function TopBar() {
           />
         </Link>
 
-        {/* Center: LIVE audience — red theme */}
-        <div className="flex min-w-0 flex-1 justify-center">
+        {/* Center: LIVE audience — hidden on small screens (site navbar shows LIVE below); lg+ inline with logo */}
+        <div className="hidden min-w-0 flex-1 justify-center lg:flex">
           <div
             className={cn(
               "inline-flex max-w-full items-center gap-2.5 rounded-full border px-3 py-1.5 pl-3 pr-4 sm:gap-3 sm:px-5 sm:py-2",

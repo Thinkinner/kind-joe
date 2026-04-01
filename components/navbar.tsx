@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, LogIn, Shield, Settings } from "lucide-react";
-// Kind Joe Watch live pill — re-enable with Eye import and hook below.
-// import {
-//   formatSignalsViewerCount,
-//   useSignalsLiveViewers,
-// } from "@/hooks/use-signals-live-viewers";
+import { Menu, X, Search, LogIn, Shield, Settings, Eye } from "lucide-react";
+import {
+  formatSignalsViewerCount,
+  useSignalsLiveViewers,
+} from "@/hooks/use-signals-live-viewers";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
@@ -52,8 +51,8 @@ export default function Navbar({
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-  // const signalsViewers = useSignalsLiveViewers();
-  // const signalsWatchHref = "/kindjoe-watch";
+  const signalsViewers = useSignalsLiveViewers();
+  const signalsWatchHref = "/kindjoe-watch";
   const { data: sessionData, isPending: sessionPending, refetch } =
     authClient.useSession();
 
@@ -106,9 +105,7 @@ export default function Navbar({
   const links = [
     { name: "Home", href: "/" },
     { name: "Featured", href: "/news", title: "KJ Featured Articles" },
-    { name: "News Predictions", href: "/predictions" },
     { name: "Ventura County", href: "/ventura-county" },
-    { name: "Watch", href: "/kindjoe-watch", title: "Kind Joe Watch" },
   ] as const;
 
   useEffect(() => {
@@ -126,9 +123,15 @@ export default function Navbar({
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  /* Kind Joe Watch live viewer pill — restore with useSignalsLiveViewers + Eye icon.
-  const livePillBoxClass =
-    "max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 px-2.5 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 sm:gap-2.5 sm:px-3 sm:py-1.5";
+  /** Shared LIVE pill look (no display utilities — avoid conflicting with `hidden` / `lg:inline-flex`). */
+  const livePillSurfaceClass =
+    "items-center rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 active:opacity-95";
+
+  const livePillDesktopClass = `${livePillSurfaceClass} hidden min-w-0 max-w-full shrink-0 gap-2 px-2.5 py-1.5 sm:gap-2.5 sm:px-3 sm:py-1.5 lg:inline-flex`;
+
+  /** Mobile nav: compact height — minimal vertical footprint */
+  const livePillMobileClass =
+    "inline-flex h-7 max-w-full shrink-0 items-center gap-1 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/20 px-2.5 leading-none shadow-[0_0_8px_rgba(220,38,38,0.07)] ring-1 ring-red-500/10 transition-colors hover:border-red-500/50 hover:from-red-950/65 hover:to-red-950/28 active:opacity-95 sm:gap-1.5 sm:px-3";
 
   const livePillInner = (
     <>
@@ -140,7 +143,7 @@ export default function Navbar({
         LIVE
       </span>
       <Eye
-        className="hidden h-[15px] w-[15px] shrink-0 text-red-400 sm:block sm:h-[17px] sm:w-[17px]"
+        className="h-[15px] w-[15px] shrink-0 text-red-300/90 sm:h-[17px] sm:w-[17px]"
         aria-hidden
       />
       <span className="truncate font-mono text-sm font-bold tabular-nums text-white sm:text-base">
@@ -151,16 +154,37 @@ export default function Navbar({
       </span>
     </>
   );
-  */
+
+  const livePillInnerMobile = (
+    <>
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/40" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.55)]" />
+      </span>
+      <span className="shrink-0 text-[8px] font-black tracking-[0.16em] text-red-500">
+        LIVE
+      </span>
+      <Eye
+        className="h-3 w-3 shrink-0 text-red-300/90"
+        aria-hidden
+      />
+      <span className="font-mono text-[11px] font-bold tabular-nums text-white">
+        {formatSignalsViewerCount(signalsViewers)}
+      </span>
+      <span className="shrink-0 text-[6.5px] font-semibold uppercase tracking-[0.07em] text-red-200/80">
+        watching
+      </span>
+    </>
+  );
 
   return (
     <>
       <header className="sticky top-0 z-[60] border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-600/25 to-transparent" />
 
-        <nav className="relative mx-auto max-w-[1440px] px-3 pb-3 sm:px-5 lg:px-8 lg:pb-0">
-          {/* Main bar */}
-          <div className="flex h-[3.25rem] items-center justify-between gap-3 sm:h-14 lg:h-[3.75rem]">
+        <nav className="relative mx-auto max-w-[1440px] px-3 pb-2 sm:px-5 sm:pb-2 lg:px-8 lg:pb-0">
+          {/* Main bar — mobile: logo + search + menu only; desktop: includes LIVE + account */}
+          <div className="flex h-[3.25rem] items-center justify-between gap-3 sm:h-14 lg:h-[3.75rem] lg:pb-0">
             <Link
               href="/"
               className="flex min-w-0 shrink-0 items-center rounded-lg outline-none ring-red-500/0 transition ring-offset-2 ring-offset-[#030304] focus-visible:ring-2"
@@ -198,55 +222,68 @@ export default function Navbar({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Kind Joe Watch desktop pill
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <Link
                 href={signalsWatchHref}
-                className={`${livePillBoxClass} hidden lg:inline-flex`}
+                className={livePillDesktopClass}
                 title="Open Kind Joe Watch live feed"
               >
                 {livePillInner}
               </Link>
-              */}
 
-              {authLoading ? (
-                <span
-                  className="inline-block h-10 w-10 shrink-0 animate-pulse rounded-xl bg-white/[0.06] lg:h-9 lg:w-9 lg:rounded-lg"
-                  aria-hidden
-                />
-              ) : authedUser ? (
-                accountKind === "staff" ? (
-                  <Link
-                    href={profileHref}
-                    className={navProfileBtnClass}
-                    title={profileTitle}
-                    aria-label={profileTitle}
-                  >
-                    <Shield
-                      className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                  </Link>
-                ) : typeof authedUser.image === "string" &&
-                  authedUser.image.length > 0 ? (
-                  <span className="flex items-center gap-2">
+              <div className="hidden shrink-0 items-center gap-1 sm:gap-1.5 lg:flex">
+                {authLoading ? (
+                  <span
+                    className="inline-block h-10 w-10 shrink-0 animate-pulse rounded-xl bg-white/[0.06] lg:h-9 lg:w-9 lg:rounded-lg"
+                    aria-hidden
+                  />
+                ) : authedUser ? (
+                  accountKind === "staff" ? (
                     <Link
                       href={profileHref}
                       className={navProfileBtnClass}
                       title={profileTitle}
                       aria-label={profileTitle}
                     >
-                      {
-                        // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
-                        <img
-                          src={authedUser.image}
-                          alt=""
-                          className="h-[1.35rem] w-[1.35rem] rounded-full object-cover ring-1 ring-white/10 lg:h-5 lg:w-5"
-                          referrerPolicy="no-referrer"
-                        />
-                      }
+                      <Shield
+                        className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
                     </Link>
+                  ) : typeof authedUser.image === "string" &&
+                    authedUser.image.length > 0 ? (
+                    <span className="flex items-center gap-1 sm:gap-1.5">
+                      <Link
+                        href={profileHref}
+                        className={navProfileBtnClass}
+                        title={profileTitle}
+                        aria-label={profileTitle}
+                      >
+                        {
+                          // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
+                          <img
+                            src={authedUser.image}
+                            alt=""
+                            className="h-[1.35rem] w-[1.35rem] rounded-full object-cover ring-1 ring-white/10 lg:h-5 lg:w-5"
+                            referrerPolicy="no-referrer"
+                          />
+                        }
+                      </Link>
+                      <Link
+                        href={profileHref}
+                        className={navProfileBtnClass}
+                        title={profileTitle}
+                        aria-label={profileTitle}
+                      >
+                        <Settings
+                          className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                      </Link>
+                    </span>
+                  ) : (
                     <Link
                       href={profileHref}
                       className={navProfileBtnClass}
@@ -259,66 +296,67 @@ export default function Navbar({
                         aria-hidden
                       />
                     </Link>
-                  </span>
+                  )
                 ) : (
                   <Link
-                    href={profileHref}
+                    href="/login"
                     className={navProfileBtnClass}
-                    title={profileTitle}
-                    aria-label={profileTitle}
+                    title="Sign in"
+                    aria-label="Sign in"
                   >
-                    <Settings
+                    <LogIn
                       className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
                       strokeWidth={2}
                       aria-hidden
                     />
                   </Link>
-                )
-              ) : (
-                <Link
-                  href="/login"
-                  className={navProfileBtnClass}
-                  title="Sign in"
-                  aria-label="Sign in"
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  title="Search (⌘K)"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-500 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-red-400 lg:h-9 lg:w-9 lg:rounded-lg"
+                  aria-label="Search articles"
                 >
-                  <LogIn
-                    className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                </Link>
-              )}
+                  <Search className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]" strokeWidth={2} />
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                title="Search (⌘K)"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-500 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-red-400 lg:h-9 lg:w-9 lg:rounded-lg"
-                aria-label="Search articles"
-              >
-                <Search className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]" strokeWidth={2} />
-              </button>
-
-              <button
-                type="button"
-                aria-label={open ? "Close menu" : "Open menu"}
-                onClick={() => setOpen((s) => !s)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-300 transition-colors hover:border-red-500/30 hover:bg-black/55 hover:text-red-400 lg:hidden"
-              >
-                {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
+              <div className="flex items-center gap-2 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  title="Search (⌘K)"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-500 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-red-400"
+                  aria-label="Search articles"
+                >
+                  <Search className="h-[18px] w-[18px]" strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={open ? "Close menu" : "Open menu"}
+                  onClick={() => setOpen((s) => !s)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-300 transition-colors hover:border-red-500/30 hover:bg-black/55 hover:text-red-400"
+                >
+                  {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Kind Joe Watch mobile full-width pill
-          <Link
-            href={signalsWatchHref}
-            className={`${livePillBoxClass} mb-3 flex w-full justify-center lg:hidden`}
-            title="Open Kind Joe Watch live feed"
-          >
-            {livePillInner}
-          </Link>
-          */}
+          {/* Mobile only: compact LIVE row */}
+          <div className="border-t border-white/[0.05] lg:hidden">
+            <div className="flex justify-center px-3 pb-0.5 pt-1.5 sm:px-5 sm:pt-2">
+              <Link
+                href={signalsWatchHref}
+                className={livePillMobileClass}
+                title="Open Kind Joe Watch live feed"
+              >
+                {livePillInnerMobile}
+              </Link>
+            </div>
+          </div>
         </nav>
       </header>
 
@@ -369,19 +407,79 @@ export default function Navbar({
                   setOpen(false);
                   setSearchOpen(true);
                 }}
-                className="mb-6 flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-black/40 p-3.5 text-left text-zinc-500 transition-colors hover:border-red-500/25 hover:bg-black/55 hover:text-zinc-200"
+                className="mb-4 flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-black/40 p-3.5 text-left text-zinc-500 transition-colors hover:border-red-500/25 hover:bg-black/55 hover:text-zinc-200"
               >
                 <Search className="h-5 w-5 shrink-0 text-zinc-500" />
                 <span className="text-sm font-medium">Search articles…</span>
               </button>
 
+              <div className="mb-6 space-y-1 border-b border-white/[0.06] pb-6">
+                {authLoading ? (
+                  <div
+                    className="h-14 animate-pulse rounded-xl bg-white/[0.06]"
+                    aria-hidden
+                  />
+                ) : authedUser ? (
+                  <>
+                    <Link
+                      href={profileHref}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
+                    >
+                      {typeof authedUser.image === "string" &&
+                      authedUser.image.length > 0 ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
+                        <img
+                          src={authedUser.image}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/10"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : accountKind === "staff" ? (
+                        <Shield
+                          className="h-6 w-6 shrink-0 text-zinc-400"
+                          aria-hidden
+                        />
+                      ) : (
+                        <Settings
+                          className="h-6 w-6 shrink-0 text-zinc-400"
+                          aria-hidden
+                        />
+                      )}
+                      <span>{profileLabel}</span>
+                    </Link>
+                    {typeof authedUser.image === "string" &&
+                    authedUser.image.length > 0 &&
+                    accountKind !== "staff" ? (
+                      <Link
+                        href={profileHref}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-zinc-400 transition-colors hover:bg-white/[0.04] hover:text-zinc-200"
+                      >
+                        <Settings
+                          className="h-5 w-5 shrink-0 text-zinc-500"
+                          aria-hidden
+                        />
+                        <span>Account settings</span>
+                      </Link>
+                    ) : null}
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
+                  >
+                    Sign in
+                  </Link>
+                )}
+              </div>
+
               <nav className="flex-1 space-y-1 overflow-y-auto">
                 {[
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
-                  { name: "News Predictions", href: "/predictions" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Kind Joe Watch", href: "/kindjoe-watch" },
                 ].map((item) => {
                   const isActive = pathname === item.href;
                   return (
@@ -399,43 +497,6 @@ export default function Navbar({
                     </Link>
                   );
                 })}
-                {!authLoading && authedUser ? (
-                  <Link
-                    href={profileHref}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
-                  >
-                    {typeof authedUser.image === "string" &&
-                    authedUser.image.length > 0 ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
-                      <img
-                        src={authedUser.image}
-                        alt=""
-                        className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/10"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : accountKind === "staff" ? (
-                      <Shield
-                        className="h-6 w-6 shrink-0 text-zinc-400"
-                        aria-hidden
-                      />
-                    ) : (
-                      <Settings
-                        className="h-6 w-6 shrink-0 text-zinc-400"
-                        aria-hidden
-                      />
-                    )}
-                    <span>{profileLabel}</span>
-                  </Link>
-                ) : !authLoading ? (
-                  <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
-                  >
-                    Sign in
-                  </Link>
-                ) : null}
               </nav>
             </motion.aside>
           </>

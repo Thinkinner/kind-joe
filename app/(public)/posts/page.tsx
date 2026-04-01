@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
-import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
+import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
@@ -88,9 +88,9 @@ export default async function LikeShop() {
 
   return (
     <main className="mx-auto max-w-4xl pt-4 sm:pt-6">
-      <header className="mb-8 border-b px-3 pb-8 pt-2 sm:mb-10 sm:px-4 sm:pb-10 sm:pt-4">
-        <div className="mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-6">
-          <div className="flex shrink-0 items-center gap-2.5">
+      <header className="mb-8 border-b border-neutral-200/80 px-3 pb-8 pt-2 sm:mb-10 sm:px-4 sm:pb-10 sm:pt-4">
+        <div className="mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2.5 sm:gap-x-5 sm:gap-y-3">
+          <div className="flex h-10 shrink-0 items-center gap-2.5">
             <Image
               src="/brand/kindjoe-profile.jpg"
               width={40}
@@ -98,11 +98,13 @@ export default async function LikeShop() {
               alt="thekindjoe profile"
               className="rounded-full ring-2 ring-neutral-100"
             />
-            <span className="text-sm font-semibold tracking-tight text-neutral-900 sm:text-base">
+            <span className="text-sm font-semibold leading-none tracking-tight text-neutral-900 sm:text-base">
               thekindjoe
             </span>
           </div>
-          <BreakingLiveNewsCta variant="inline" className="shrink-0 px-0" />
+          <div className="flex h-10 items-center">
+            <CompactLiveWatchPill variant="light" />
+          </div>
         </div>
       </header>
 

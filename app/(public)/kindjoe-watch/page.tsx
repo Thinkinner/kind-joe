@@ -27,6 +27,7 @@ import {
   triggerSync,
   checkSignalsAccess,
 } from "@/lib/actions/news-signal";
+import { authClient } from "@/lib/auth-client";
 import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSpotlightSignal } from "@/hooks/use-spotlight-signal";
@@ -152,7 +153,7 @@ export default function Home() {
     "scale" | "region" | "topic" | "tags"
   >("topic");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // useEffect(() => {
   //   // Only run this on the client
@@ -195,6 +196,13 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+
+  useEffect(() => {
+    if (sessionPending) return;
+    setHasSignalsAccess(Boolean(session?.user));
+  }, [sessionPending, session?.user]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -448,7 +456,7 @@ export default function Home() {
               onClearFilters={presetAll}
               sidebarAccessUnlocked={sidebarFeedUnlocked}
               accessCheckPending={!signalsAccessChecked}
-              onOpenUnlockModal={() => setLeadModalOpen(true)}
+              onOpenUnlockModal={() => setAuthModalOpen(true)}
             />
           </MobileIntelSheet>
         ) : (
@@ -465,7 +473,7 @@ export default function Home() {
             onClearFilters={presetAll}
             sidebarAccessUnlocked={sidebarFeedUnlocked}
             accessCheckPending={!signalsAccessChecked}
-            onOpenUnlockModal={() => setLeadModalOpen(true)}
+            onOpenUnlockModal={() => setAuthModalOpen(true)}
           />
         )}
       </div>
@@ -513,12 +521,8 @@ export default function Home() {
       )}
 
       <SignalsAccessGate
-        open={leadModalOpen}
-        onClose={() => setLeadModalOpen(false)}
-        onAccessGranted={() => {
-          setHasSignalsAccess(true);
-          setLeadModalOpen(false);
-        }}
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
       />
     </div>
   );

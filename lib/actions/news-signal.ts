@@ -1,9 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { getSignalsFromDB, syncRealTimeNews } from "@/lib/aggregator";
 import { Signal, type GeographicScope } from "@/lib/aggregator/types";
-import { hasSignalsAccess } from "@/lib/signals/access";
+import { getServerSession } from "@/lib/auth/server";
 
 function normalizeScope(raw: string | null | undefined): GeographicScope {
   const v = (raw ?? "global").toLowerCase().trim();
@@ -14,8 +13,8 @@ function normalizeScope(raw: string | null | undefined): GeographicScope {
 }
 
 export async function checkSignalsAccess(): Promise<boolean> {
-  const cookieStore = await cookies();
-  return hasSignalsAccess(cookieStore);
+  const session = await getServerSession();
+  return Boolean(session?.user);
 }
 
 /**

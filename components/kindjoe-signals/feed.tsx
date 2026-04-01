@@ -375,7 +375,7 @@ export default function Feed({
                     isLight ? "text-slate-900" : "text-white",
                   )}
                 >
-                  Enter your info to access KindJoe signals.
+                  Sign in to view the full feed.
                 </p>
                 {onOpenUnlockModal ? (
                   <button
@@ -383,7 +383,7 @@ export default function Feed({
                     onClick={onOpenUnlockModal}
                     className="mt-5 w-full rounded-md bg-[#00BFFF] py-2.5 text-[10px] font-bold uppercase tracking-wider text-black shadow-[0_0_20px_rgba(0,191,255,0.25)] transition-colors hover:bg-[#00BFFF]/90"
                   >
-                    Enter your info
+                    Sign in
                   </button>
                 ) : null}
               </>

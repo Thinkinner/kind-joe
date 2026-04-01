@@ -1,42 +1,26 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useEffect } from "react";
+import Link from "next/link";
 import { Layers, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
-const LS_KEY = "kj_signals_lead_ok";
+const WATCH_NEXT = "/kindjoe-watch";
+const loginHref = `/login?next=${encodeURIComponent(WATCH_NEXT)}`;
+const registerHref = `/register?next=${encodeURIComponent(WATCH_NEXT)}`;
 
 interface SignalsAccessGateProps {
   open: boolean;
   onClose: () => void;
-  onAccessGranted: () => void;
 }
 
 export default function SignalsAccessGate({
   open,
   onClose,
-  onAccessGranted,
 }: SignalsAccessGateProps) {
   const { mode } = useSignalsColorMode();
   const isLight = mode === "light";
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [agree, setAgree] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setAgree(false);
-      setError(null);
-      setSubmitting(false);
-    }
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,55 +30,6 @@ export default function SignalsAccessGate({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      setError("Please fill in all fields.");
-      return;
-    }
-    if (!agree) {
-      setError("Please agree to continue.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/signals-lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          agree: true,
-        }),
-      });
-
-      const data = (await res.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-
-      if (!res.ok) {
-        setError(data?.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(LS_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-
-      onAccessGranted();
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (!open) return null;
 
@@ -110,7 +45,7 @@ export default function SignalsAccessGate({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="signals-lead-title"
+        aria-labelledby="signals-auth-title"
         className={cn(
           "relative w-full max-w-md rounded-lg border p-6 shadow-[0_0_80px_rgba(0,0,0,1)] sm:p-8",
           isLight
@@ -144,16 +79,16 @@ export default function SignalsAccessGate({
                 isLight ? "text-red-600" : "text-red-400/90",
               )}
             >
-              Kind Joe Signals
+              Kind Joe Watch
             </p>
             <h1
-              id="signals-lead-title"
+              id="signals-auth-title"
               className={cn(
                 "text-lg font-semibold",
                 isLight ? "text-slate-900" : "text-white",
               )}
             >
-              Unlock the intel stream
+              View the full feed
             </h1>
           </div>
         </div>
@@ -164,128 +99,29 @@ export default function SignalsAccessGate({
             isLight ? "text-slate-600" : "text-gray-400",
           )}
         >
-          The live map stays open for everyone. Share your details once to read
-          the full headline list here and get updates from Kind Joe.
+          Sign in or create an account to view the full headline list and live
+          updates here.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span
-                className={cn(
-                  "mb-1 block text-[10px] font-bold uppercase tracking-widest",
-                  isLight ? "text-slate-500" : "text-gray-500",
-                )}
-              >
-                First name
-              </span>
-              <input
-                type="text"
-                name="firstName"
-                autoComplete="given-name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={cn(
-                  "w-full rounded-md border px-3 py-2.5 text-sm outline-none ring-[#00BFFF]/0 transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
-                  isLight
-                    ? "border-slate-200 bg-slate-50 text-slate-900"
-                    : "border-white/10 bg-black/40 text-white",
-                )}
-              />
-            </label>
-            <label className="block">
-              <span
-                className={cn(
-                  "mb-1 block text-[10px] font-bold uppercase tracking-widest",
-                  isLight ? "text-slate-500" : "text-gray-500",
-                )}
-              >
-                Last name
-              </span>
-              <input
-                type="text"
-                name="lastName"
-                autoComplete="family-name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className={cn(
-                  "w-full rounded-md border px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
-                  isLight
-                    ? "border-slate-200 bg-slate-50 text-slate-900"
-                    : "border-white/10 bg-black/40 text-white",
-                )}
-              />
-            </label>
-          </div>
-
-          <label className="block">
-            <span
-              className={cn(
-                "mb-1 block text-[10px] font-bold uppercase tracking-widest",
-                isLight ? "text-slate-500" : "text-gray-500",
-              )}
-            >
-              Email
-            </span>
-            <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={cn(
-                "w-full rounded-md border px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[#00BFFF]/40 focus:ring-2 focus:ring-[#00BFFF]/20",
-                isLight
-                  ? "border-slate-200 bg-slate-50 text-slate-900"
-                  : "border-white/10 bg-black/40 text-white",
-              )}
-            />
-          </label>
-
-          <label
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-3">
+          <Link
+            href={loginHref}
+            className="flex w-full items-center justify-center rounded-md bg-[#00BFFF] py-3 text-center text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_24px_rgba(0,191,255,0.2)] transition-all hover:bg-[#00BFFF]/85"
+          >
+            Sign in
+          </Link>
+          <Link
+            href={registerHref}
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-md border p-3",
+              "flex w-full items-center justify-center rounded-md border py-3 text-center text-xs font-bold uppercase tracking-wider transition-colors",
               isLight
-                ? "border-slate-200 bg-slate-50"
-                : "border-white/5 bg-white/[0.02]",
+                ? "border-slate-300 text-slate-800 hover:border-slate-400 hover:bg-slate-50"
+                : "border-white/15 text-gray-200 hover:border-white/25 hover:bg-white/[0.04]",
             )}
           >
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
-              className={cn(
-                "mt-0.5 h-4 w-4 shrink-0 rounded text-[#00BFFF] focus:ring-[#00BFFF]/30",
-                isLight
-                  ? "border-slate-300 bg-white"
-                  : "border-white/20 bg-black/40",
-              )}
-            />
-            <span
-              className={cn(
-                "text-xs leading-snug",
-                isLight ? "text-slate-600" : "text-gray-400",
-              )}
-            >
-              I agree to share my contact information with Kind Joe for updates
-              related to Signals and related products.
-            </span>
-          </label>
-
-          {error ? (
-            <p className="text-sm text-red-400/90" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-[#00BFFF] py-3 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_24px_rgba(0,191,255,0.2)] transition-all hover:bg-[#00BFFF]/85 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? "Submitting…" : "Unlock feed"}
-          </button>
-        </form>
+            Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );
