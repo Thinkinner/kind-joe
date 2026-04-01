@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 // This tells Next.js not to cache this route
 export const dynamic = "force-dynamic";
-/** Match vercel.json; allows up to 12 Gemini-backed items per run. */
+/** Match vercel.json; USGS Atom ingest (up to 12 items per run). */
 export const maxDuration = 120;
 
 export async function GET(request: Request) {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   try {
     console.log("🕒 Cron Job Started: Syncing Real-Time News...");
     
-    // 2. Run the Aggregator (RSS -> Gemini -> DB -> Pusher)
+    // 2. Run the Aggregator (USGS Atom -> verbatim fields -> DB -> Pusher)
     const newSignals = await syncRealTimeNews();
 
     return NextResponse.json({ 

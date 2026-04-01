@@ -1,6 +1,7 @@
 // /db/schema.ts
 import type { DbArticle, NewsletterData } from "@/lib/(newsletter-automations)/types";
 import { relations } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   pgTable,
   serial,
@@ -413,5 +414,55 @@ export const predictionVotes = pgTable(
       t.marketId,
       t.voterId,
     ),
+  }),
+);
+
+export const predictionLikes = pgTable(
+  "prediction_likes",
+  {
+    id: serial("id").primaryKey(),
+    marketId: integer("market_id")
+      .notNull()
+      .references(() => predictionMarkets.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    marketIdx: index("prediction_likes_market_id_idx").on(t.marketId),
+    userIdx: index("prediction_likes_user_id_idx").on(t.userId),
+    oneLikePerMarketPerUser: uniqueIndex("prediction_likes_market_user_unique").on(
+      t.marketId,
+      t.userId,
+    ),
+  }),
+);
+
+export const predictionComments = pgTable(
+  "prediction_comments",
+  {
+    id: serial("id").primaryKey(),
+    marketId: integer("market_id")
+      .notNull()
+      .references(() => predictionMarkets.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    parentId: integer("parent_id").references(
+      (): AnyPgColumn => predictionComments.id,
+      { onDelete: "cascade" },
+    ),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    marketCreatedIdx: index("prediction_comments_market_created_idx").on(
+      t.marketId,
+      t.createdAt,
+    ),
+    parentIdx: index("prediction_comments_parent_id_idx").on(t.parentId),
   }),
 );

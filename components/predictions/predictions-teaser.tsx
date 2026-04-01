@@ -34,7 +34,12 @@ export function PredictionsTeaser({
             className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
-              {m.title}
+              <Link
+                href={`/predictions/${m.slug}`}
+                className="hover:underline hover:underline-offset-4"
+              >
+                {m.title}
+              </Link>
             </h3>
             <div className="mt-3 space-y-2">
               {m.options.slice(0, 3).map((o) => (
@@ -52,9 +57,16 @@ export function PredictionsTeaser({
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">
-              {m.totalVotes.toLocaleString()} votes
-            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span>{m.totalVotes.toLocaleString()} votes</span>
+              <Link
+                href={`/predictions/${m.slug}`}
+                className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900"
+              >
+                Discuss
+                {m.commentCount > 0 ? ` (${m.commentCount})` : ""}
+              </Link>
+            </div>
           </article>
         ))}
       </div>

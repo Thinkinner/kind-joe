@@ -194,7 +194,7 @@ function mergeWorkerFlatEmbeds(
 
 /**
  * Workers often wrap the Discord-shaped body as `message`, gateway `d`, or `data`.
- * Produces `{ content, embeds }` for URL extraction and for the text passed to Gemini.
+ * Produces `{ content, embeds }` for URL extraction and for the aggregated ingest text.
  * Flat `embed_*` fields from `kindjoe-signal-worker` are merged into `embeds` even when `content` exists.
  */
 export function coerceDiscordIntelPayload(payload: unknown): {

@@ -7,7 +7,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const statusRaw = searchParams.get("status");
     const limitRaw = searchParams.get("limit");
+    const offsetRaw = searchParams.get("offset");
     const limit = Number(limitRaw ?? "20");
+    const offset = Number(offsetRaw ?? "0");
 
     const status =
       statusRaw === "open" || statusRaw === "locked" || statusRaw === "resolved"
@@ -21,9 +23,14 @@ export async function GET(request: Request) {
     const markets = await listPredictionMarkets({
       status,
       limit: Number.isFinite(limit) ? limit : 20,
+      offset: Number.isFinite(offset) ? offset : 0,
       viewerId,
     });
-    return NextResponse.json({ markets });
+    return NextResponse.json({
+      markets,
+      hasMore: markets.length === Math.max(1, Math.min(100, Number.isFinite(limit) ? limit : 20)),
+      nextOffset: (Number.isFinite(offset) ? Math.max(0, offset) : 0) + markets.length,
+    });
   } catch (err) {
     console.error("predictions_list_failed", err);
     return NextResponse.json(

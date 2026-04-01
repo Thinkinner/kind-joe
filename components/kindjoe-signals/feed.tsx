@@ -179,7 +179,7 @@ function PrioritySpotlightCard({
 
       <p
         className={cn(
-          "mb-3 line-clamp-3 text-[10px] leading-relaxed",
+          "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[10px] leading-relaxed",
           isLight ? "text-red-950/85" : "text-red-200/80",
         )}
       >
@@ -483,7 +483,10 @@ export default function Feed({
 
                     <p
                       className={cn(
-                        "mb-3 line-clamp-2 text-[10px] font-medium leading-relaxed",
+                        "mb-3 text-[10px] font-medium leading-relaxed whitespace-pre-wrap break-words",
+                        isSelected
+                          ? "max-h-56 overflow-y-auto pr-1"
+                          : "line-clamp-2",
                         isLight ? "text-slate-700" : "text-gray-500",
                       )}
                     >

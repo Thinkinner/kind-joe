@@ -36,6 +36,13 @@ export default async function PredictionsPage() {
             change your vote while a topic is open.
           </p>
           <div className="mt-4 text-sm text-slate-600">
+            Try the new{" "}
+            <Link href="/feed" className="font-semibold underline underline-offset-4">
+              endless prediction feed
+            </Link>
+            .{" "}
+          </div>
+          <div className="mt-2 text-sm text-slate-600">
             Want to suggest a market?{" "}
             <Link href="/contact" className="font-semibold underline underline-offset-4">
               Contact the team

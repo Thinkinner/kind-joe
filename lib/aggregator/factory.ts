@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { signals } from "@/db/schema";
-import { analyzeSignalWithAI } from "./ai";
+import { buildVerbatimSignalFields } from "./verbatim-signal";
+import type { Source } from "./types";
 import { eq } from "drizzle-orm";
 import Pusher from "pusher";
 
@@ -12,15 +13,48 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
+/** Pusher per-event payload limit is ~10KB; keep headroom for other JSON fields. */
+const PUSHER_SUMMARY_MAX_CHARS = 7000;
+
+function pusherNewSignalPayload(newSignal: {
+  summary: string | null;
+  timestamp: Date;
+  [key: string]: unknown;
+}) {
+  const base = {
+    ...newSignal,
+    timestamp: newSignal.timestamp.getTime(),
+  };
+  const s = base.summary ?? "";
+  if (s.length <= PUSHER_SUMMARY_MAX_CHARS) return base;
+  return {
+    ...base,
+    summary: `${s.slice(0, PUSHER_SUMMARY_MAX_CHARS)}…`,
+  };
+}
+
 export async function processIntelRaw(params: {
   id: string;
   text: string;
-  source: any;
+  source: Source;
   timestamp?: Date;
   /** Original story URL (RSS `link`, etc.); null when unknown. */
   sourceUrl?: string | null;
+  /** RSS title (e.g. USGS); otherwise first line of `text` is used. */
+  headline?: string | null;
+  /** Epicenter / pin when known (e.g. USGS Atom georss:point). */
+  lat?: number | null;
+  lng?: number | null;
 }) {
-  const { id, text, source, sourceUrl = null } = params;
+  const {
+    id,
+    text,
+    source,
+    sourceUrl = null,
+    headline = null,
+    lat = null,
+    lng = null,
+  } = params;
   const timestamp = params.timestamp ?? new Date();
 
   try {
@@ -35,41 +69,37 @@ export async function processIntelRaw(params: {
       .where(eq(signals.id, id))
       .limit(1);
     if (already.length > 0) {
-      console.log(`⏩ [FACTORY] Skip existing id (no Gemini): ${id.slice(0, 48)}…`);
+      console.log(`⏩ [FACTORY] Skip existing id: ${id.slice(0, 48)}…`);
       return null;
     }
 
-    // 1. AI Analysis with Speed Tracking
-    console.time("Gemini-Analysis");
-    const aiData = await analyzeSignalWithAI(text, `Source: ${source}`);
-    console.timeEnd("Gemini-Analysis");
+    const fields = buildVerbatimSignalFields({
+      text,
+      source,
+      headline,
+      lat,
+      lng,
+    });
 
-    if (!aiData || aiData.category === "Ignore") {
-      console.log(`⏩ [FACTORY] Signal discarded by AI (Ignore Category).`);
-      return null;
-    }
-
-    // 2. Format Signal
     const now = new Date();
     const newSignal = {
       id,
-      headline: aiData.intelHeadline,
-      summary: aiData.intelSummary,
+      headline: fields.headline,
+      summary: fields.summary,
       source,
       sourceUrl,
-      category: aiData.category,
-      lat: aiData.lat,
-      lng: aiData.lng,
-      city: aiData.city,
-      country: aiData.country,
-      geographicScope: aiData.geographicScope,
-      adminArea: aiData.adminArea || null,
-      impactScore: aiData.impactScore,
-      tags: aiData.tags || [],
+      category: fields.category,
+      lat: fields.lat,
+      lng: fields.lng,
+      city: fields.city,
+      country: fields.country,
+      geographicScope: fields.geographicScope,
+      adminArea: fields.adminArea || null,
+      impactScore: fields.impactScore,
+      tags: fields.tags,
       timestamp: timestamp > now ? now : timestamp,
     };
 
-    // 3. Save to DB (onConflictDoNothing handles races / duplicate IDs)
     const inserted = await db
       .insert(signals)
       .values(newSignal)
@@ -83,10 +113,11 @@ export async function processIntelRaw(params: {
 
     console.log(`✅ [FACTORY] Broadcasting: ${newSignal.headline}`);
 
-    await pusher.trigger("aether-live", "new-signal", {
-      ...newSignal,
-      timestamp: newSignal.timestamp.getTime(),
-    });
+    await pusher.trigger(
+      "aether-live",
+      "new-signal",
+      pusherNewSignalPayload(newSignal),
+    );
 
     return newSignal;
   } catch (error) {

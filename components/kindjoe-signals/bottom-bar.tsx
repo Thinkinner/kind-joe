@@ -3,7 +3,7 @@
 import type { RefObject } from "react";
 import { Filter, Globe, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
+import { KINDJOE_WATCH_SOURCE_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 
 export type GlobeStyleOption = "realistic" | "dark" | "wireframe";
@@ -58,7 +58,7 @@ export default function BottomBar({
         )}
         role="status"
       >
-        {AI_SUMMARY_DISCLAIMER}
+        {KINDJOE_WATCH_SOURCE_DISCLAIMER}
       </p>
 
       <div

@@ -6,11 +6,15 @@ import { processIntelRaw } from "./factory";
 import Parser from "rss-parser";
 import type { Source } from "./types";
 
-const parser = new Parser();
+const parser = new Parser({
+  customFields: {
+    item: [["georss:point", "georssPoint"]],
+  },
+});
 
 /**
- * Max items sent to Gemini per cron run (each item = one AI call).
- * Raise/lower with cost and serverless `maxDuration` (manual sync / optional cron route) in mind.
+ * Max USGS Atom entries processed per cron run.
+ * Raise/lower with serverless `maxDuration` (manual sync / optional cron route) in mind.
  */
 const MAX_ITEMS_TO_PROCESS = 12;
 
@@ -41,7 +45,25 @@ function cacheBustUrl(url: string): string {
   return `${url}${sep}t=${Date.now()}`;
 }
 
-type RssItem = Parser.Item & { updated?: string; date?: string };
+type RssItem = Parser.Item & {
+  updated?: string;
+  date?: string;
+  /** USGS Atom `<georss:point>lat lng</georss:point>` via rss-parser customFields */
+  georssPoint?: string;
+};
+
+function parseUsgsGeorssPoint(
+  item: RssItem,
+): { lat: number; lng: number } | null {
+  const p = item.georssPoint?.trim();
+  if (!p) return null;
+  const parts = p.split(/\s+/);
+  if (parts.length < 2) return null;
+  const lat = parseFloat(parts[0]);
+  const lng = parseFloat(parts[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
 
 function itemTimestamp(item: RssItem): Date {
   const raw =
@@ -139,6 +161,8 @@ export async function syncRealTimeNews() {
       if (!id) return Promise.resolve(null);
 
       const timestamp = ts.getTime() > 0 ? ts : new Date();
+      const coords =
+        source === "USGS Earthquakes" ? parseUsgsGeorssPoint(item) : null;
 
       return processIntelRaw({
         id: String(id),
@@ -146,6 +170,9 @@ export async function syncRealTimeNews() {
         source,
         timestamp,
         sourceUrl: item.link?.trim() || null,
+        headline: item.title?.trim() || null,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
       });
     });
 

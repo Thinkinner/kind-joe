@@ -779,11 +779,11 @@ function DossierPanel({
                     : "border-white/5 text-gray-400",
                 )}
               >
-                Situational Summary
+                Source text
               </div>
               <p
                 className={cn(
-                  "text-[13px] font-medium leading-relaxed md:text-[13px]",
+                  "whitespace-pre-wrap text-[13px] font-medium leading-relaxed md:text-[13px]",
                   isLight ? "text-slate-700" : "text-gray-300",
                 )}
               >

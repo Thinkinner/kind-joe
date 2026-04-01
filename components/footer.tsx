@@ -11,7 +11,6 @@ import {
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import KindJoeModalForm from "./modals/kindjoe-capture-modal";
-import { AI_SUMMARY_DISCLAIMER } from "@/lib/signals/ai-summary-disclaimer";
 import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 export function Footer() {

@@ -32,7 +32,7 @@ export async function getHistory(): Promise<Signal[]> {
   }));
 }
 
-// 2. SLOW: Trigger the RSS + Gemini AI Sync
+// 2. SLOW: Trigger USGS Atom sync (verbatim ingest)
 export async function triggerSync() {
   await syncRealTimeNews();
 }
