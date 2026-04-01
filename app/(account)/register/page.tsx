@@ -15,12 +15,21 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function ReaderRegisterPage() {
+export default async function ReaderRegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   await redirectIfAuthedFromReaderAuthPages();
+  const sp = await searchParams;
+  const nextPath =
+    typeof sp.next === "string" && sp.next.startsWith("/") && !sp.next.startsWith("//")
+      ? sp.next
+      : "/";
   return (
     <AuthSplitLayout mode="join" imageSide="right" priorityImage>
       <div className="flex flex-col gap-5 sm:gap-6">
-        <ReaderRegisterForm />
+        <ReaderRegisterForm nextPath={nextPath} />
         <AuthPageFooter>
           <p className={authFooterLeadClass}>
             Already have an account?{" "}

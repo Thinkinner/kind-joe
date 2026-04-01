@@ -4,8 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { SignOutButton } from "@/components/account/reader-auth-forms";
 
 type ListedSession = {
@@ -39,18 +37,10 @@ function formatWhen(iso: string): string {
   }
 }
 
-export function ReaderAccountPanel({
-  initialName,
-  email,
-}: {
-  initialName: string;
-  email: string;
-}) {
-  const [name, setName] = useState(initialName);
+export function ReaderAccountPanel() {
   const [sessions, setSessions] = useState<ListedSession[]>([]);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [savingName, setSavingName] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -83,31 +73,6 @@ export function ReaderAccountPanel({
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
-
-  async function onSaveName(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (trimmed.length < 1) {
-      toast.error("Enter a display name.");
-      return;
-    }
-    if (trimmed.length > 120) {
-      toast.error("Name is too long.");
-      return;
-    }
-    setSavingName(true);
-    try {
-      const { error } = await authClient.updateUser({ name: trimmed });
-      if (error) {
-        toast.error("Could not update your name.");
-        return;
-      }
-      toast.success("Name updated.");
-      setName(trimmed);
-    } finally {
-      setSavingName(false);
-    }
-  }
 
   async function revokeOne(token: string) {
     setRevoking(token);
@@ -188,29 +153,6 @@ export function ReaderAccountPanel({
 
   return (
     <div className="space-y-8">
-      <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Signed in as
-        </p>
-        <p className="mt-1 font-semibold text-slate-900">{email}</p>
-      </div>
-
-      <form onSubmit={onSaveName} className="space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor="account-name">Display name</Label>
-          <Input
-            id="account-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-            autoComplete="name"
-          />
-        </div>
-        <Button type="submit" size="sm" disabled={savingName}>
-          {savingName ? "Saving…" : "Save name"}
-        </Button>
-      </form>
-
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Signed-in devices</h2>
         {loadingSessions ? (

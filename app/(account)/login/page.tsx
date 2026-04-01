@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function ReaderLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; reason?: string }>;
+  searchParams: Promise<{ reset?: string; reason?: string; next?: string }>;
 }) {
   await redirectIfAuthedFromReaderAuthPages();
   return (
@@ -44,14 +44,23 @@ export default async function ReaderLoginPage({
 async function ReaderLoginPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; reason?: string }>;
+  searchParams: Promise<{ reset?: string; reason?: string; next?: string }>;
 }) {
   const sp = await searchParams;
+  const nextPath =
+    typeof sp.next === "string" && sp.next.startsWith("/") && !sp.next.startsWith("//")
+      ? sp.next
+      : "/";
   return (
     <div className="flex flex-col gap-4">
       {sp.reset === "success" && (
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-50 p-4 text-sm font-medium leading-relaxed text-emerald-800 shadow-sm">
           Your password was updated. You can sign in below.
+        </div>
+      )}
+      {sp.reason === "session" && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-50 p-4 text-sm font-medium leading-relaxed text-blue-900 shadow-sm">
+          Your session expired or could not be verified. Please sign in again.
         </div>
       )}
       {sp.reason === "staff_only" && (
@@ -60,7 +69,7 @@ async function ReaderLoginPageInner({
           use the sign-in portal your organization shared with you.
         </div>
       )}
-      <ReaderLoginForm />
+      <ReaderLoginForm nextPath={nextPath} />
     </div>
   );
 }

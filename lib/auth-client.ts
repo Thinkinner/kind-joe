@@ -1,6 +1,9 @@
 "use client";
 
-import { twoFactorClient } from "better-auth/client/plugins";
+import {
+  inferAdditionalFields,
+  twoFactorClient,
+} from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { takeAuthTurnstileTokenForRequest } from "@/lib/auth/turnstile-request";
 
@@ -16,7 +19,16 @@ function clientBaseURL(): string {
 
 export const authClient = createAuthClient({
   baseURL: clientBaseURL(),
-  plugins: [twoFactorClient()],
+  plugins: [
+    inferAdditionalFields({
+      user: {
+        accountType: { type: "string", required: false },
+        staffRole: { type: "string", required: false },
+        username: { type: "string", required: false },
+      },
+    }),
+    twoFactorClient(),
+  ],
   fetchOptions: {
     onRequest(context) {
       const t = takeAuthTurnstileTokenForRequest();

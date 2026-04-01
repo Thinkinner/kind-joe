@@ -47,11 +47,19 @@ function attachTurnstile(
   return true;
 }
 
+function safeNextPath(nextPath: string | undefined): string {
+  if (!nextPath) return "/";
+  if (!nextPath.startsWith("/")) return "/";
+  if (nextPath.startsWith("//")) return "/";
+  return nextPath;
+}
+
 function finishReaderSignIn(
   user: unknown,
   setError: (s: string | null) => void,
   _setPending: (b: boolean) => void,
   _turnstileRef: RefObject<TurnstileInstance | null>,
+  nextPath: string | undefined,
 ): void {
   if (getAccountType(user) === "staff") {
     void authClient.signOut();
@@ -62,10 +70,10 @@ function finishReaderSignIn(
     return;
   }
   stashNavSessionHint(user);
-  window.location.assign("/");
+  window.location.assign(safeNextPath(nextPath));
 }
 
-export function ReaderLoginForm() {
+export function ReaderLoginForm({ nextPath = "/" }: { nextPath?: string }) {
   const turnstileRef = useRef<TurnstileInstance | null>(null);
   const turnstile2faRef = useRef<TurnstileInstance | null>(null);
   const [step, setStep] = useState<"credentials" | "totp">("credentials");
@@ -110,7 +118,7 @@ export function ReaderLoginForm() {
         turnstileRef.current?.reset();
         return;
       }
-      finishReaderSignIn(u, setError, setPending, turnstileRef);
+      finishReaderSignIn(u, setError, setPending, turnstileRef, nextPath);
     } catch {
       setError("Something went wrong. Please try again.");
       turnstileRef.current?.reset();
@@ -149,7 +157,7 @@ export function ReaderLoginForm() {
         setPending(false);
         return;
       }
-      finishReaderSignIn(u, setError, setPending, turnstile2faRef);
+      finishReaderSignIn(u, setError, setPending, turnstile2faRef, nextPath);
     } catch {
       setError("Something went wrong. Please try again.");
       turnstile2faRef.current?.reset();
@@ -270,7 +278,7 @@ export function ReaderLoginForm() {
   );
 }
 
-export function ReaderRegisterForm() {
+export function ReaderRegisterForm({ nextPath = "/" }: { nextPath?: string }) {
   const turnstileRef = useRef<TurnstileInstance | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -345,7 +353,7 @@ export function ReaderRegisterForm() {
         return;
       }
       stashNavSessionHint(u);
-      window.location.assign("/");
+      window.location.assign(safeNextPath(nextPath));
     } catch {
       setError("Something went wrong. Please try again.");
       turnstileRef.current?.reset();

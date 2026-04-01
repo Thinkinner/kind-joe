@@ -17,6 +17,7 @@ import {
   doublePrecision,
   uuid,
 } from "drizzle-orm/pg-core";
+import { user as authUser } from "./auth-schema";
 
 export const blockType = pgEnum("block_type", [
   "heading",
@@ -340,3 +341,77 @@ export const signals = pgTable("signals", {
     mode: "date",
   }).defaultNow(),
 });
+
+export const predictionMarketStatusEnum = pgEnum("prediction_market_status", [
+  "open",
+  "locked",
+  "resolved",
+]);
+
+export const predictionMarkets = pgTable(
+  "prediction_markets",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 160 }).notNull(),
+    title: varchar("title", { length: 240 }).notNull(),
+    description: text("description"),
+    status: predictionMarketStatusEnum("status").notNull().default("open"),
+    opensAt: timestamp("opens_at", { withTimezone: true }).defaultNow().notNull(),
+    locksAt: timestamp("locks_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    slugUnique: uniqueIndex("prediction_markets_slug_unique").on(t.slug),
+    statusIdx: index("prediction_markets_status_idx").on(t.status),
+    opensAtIdx: index("prediction_markets_opens_at_idx").on(t.opensAt),
+    locksAtIdx: index("prediction_markets_locks_at_idx").on(t.locksAt),
+  }),
+);
+
+export const predictionOptions = pgTable(
+  "prediction_options",
+  {
+    id: serial("id").primaryKey(),
+    marketId: integer("market_id")
+      .notNull()
+      .references(() => predictionMarkets.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 180 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    marketIdx: index("prediction_options_market_id_idx").on(t.marketId),
+    marketSortUnique: uniqueIndex("prediction_options_market_sort_unique").on(
+      t.marketId,
+      t.sortOrder,
+    ),
+  }),
+);
+
+export const predictionVotes = pgTable(
+  "prediction_votes",
+  {
+    id: serial("id").primaryKey(),
+    marketId: integer("market_id")
+      .notNull()
+      .references(() => predictionMarkets.id, { onDelete: "cascade" }),
+    optionId: integer("option_id")
+      .notNull()
+      .references(() => predictionOptions.id, { onDelete: "cascade" }),
+    voterId: text("voter_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    marketIdx: index("prediction_votes_market_id_idx").on(t.marketId),
+    optionIdx: index("prediction_votes_option_id_idx").on(t.optionId),
+    voterIdx: index("prediction_votes_voter_id_idx").on(t.voterId),
+    oneVotePerMarket: uniqueIndex("prediction_votes_market_voter_unique").on(
+      t.marketId,
+      t.voterId,
+    ),
+  }),
+);

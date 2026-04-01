@@ -11,6 +11,7 @@ function sessionUserForNav(user: unknown) {
     email: String(o.email ?? ""),
     name: String(o.name ?? ""),
     image: (o.image as string | null | undefined) ?? null,
+    username: (o.username as string | null | undefined) ?? null,
     accountType: (o.accountType ?? o.account_type) as string | null | undefined,
     staffRole: (o.staffRole ?? o.staff_role) as string | null | undefined,
   };

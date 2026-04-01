@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search } from "lucide-react";
+import { Menu, X, Search, LogIn, Shield, Settings } from "lucide-react";
 // Kind Joe Watch live pill — re-enable with Eye import and hook below.
 // import {
 //   formatSignalsViewerCount,
@@ -19,17 +19,27 @@ import {
   peekNavSessionHint,
 } from "@/lib/auth/nav-session-hint";
 
-const navAuthBtnClass =
-  "inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 px-3.5 text-sm font-medium text-zinc-300 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-white lg:h-9 lg:rounded-lg lg:px-3";
+const navProfileBtnClass =
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-black/40 text-zinc-400 transition-colors hover:border-red-500/35 hover:bg-black/60 hover:text-white lg:h-9 lg:w-9 lg:rounded-lg";
 
 export type NavbarSessionUser = {
   id: string;
   email: string;
   name: string;
   image?: string | null;
+  username?: string | null;
   accountType?: string | null;
   staffRole?: string | null;
 };
+
+/** Session `user` from the client includes custom fields at runtime; Better Auth types omit `username`. */
+function usernameFromSessionUser(
+  u: NavbarSessionUser | object | undefined | null,
+): string | null {
+  if (!u || typeof u !== "object") return null;
+  const raw = (u as { username?: unknown }).username;
+  return typeof raw === "string" && raw.length > 0 ? raw : null;
+}
 
 type NavbarProps = {
   /** From RSC `getServerSession()` so the bar matches cookies on first paint. */
@@ -58,6 +68,11 @@ export default function Navbar({
   const authedUser =
     sessionData?.user ?? serverUser ?? hintUser ?? undefined;
   const accountKind = getAccountType(authedUser);
+  const profileHref = accountKind === "staff" ? "/admin" : "/account/profile";
+  const profileLabel =
+    accountKind === "staff" ? "Admin dashboard" : "Profile";
+  const handle = usernameFromSessionUser(authedUser ?? null);
+  const profileTitle = handle ? `${profileLabel} (@${handle})` : profileLabel;
   const authLoading =
     (!navReady && !serverUser) ||
     (sessionPending &&
@@ -75,16 +90,23 @@ export default function Navbar({
         : null,
     );
     setNavReady(true);
-    void (async () => {
-      await refetch();
-      clearNavSessionHint();
-    })();
+    void refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const sid = sessionData?.user?.id;
+    const hasSessionUser = typeof sid === "string" && sid.length > 0;
+    const hasServerUser = Boolean(serverUser?.id && serverUser.id.length > 0);
+    if (!hasSessionUser && !hasServerUser) return;
+    clearNavSessionHint();
+    setHintUser(null);
+  }, [serverUser?.id, sessionData?.user?.id]);
 
   const links = [
     { name: "Home", href: "/" },
     { name: "Featured", href: "/news", title: "KJ Featured Articles" },
+    { name: "News Predictions", href: "/predictions" },
     { name: "Ventura County", href: "/ventura-county" },
     // { name: "Signals", href: "/kindjoe-signals" },
   ] as const;
@@ -187,23 +209,85 @@ export default function Navbar({
               </Link>
               */}
 
-              {/* {authLoading ? (
+              {authLoading ? (
                 <span
-                  className="inline-block h-10 w-[5.25rem] animate-pulse rounded-xl bg-white/[0.06] lg:h-9 lg:w-[5.5rem] lg:rounded-lg"
+                  className="inline-block h-10 w-10 shrink-0 animate-pulse rounded-xl bg-white/[0.06] lg:h-9 lg:w-9 lg:rounded-lg"
                   aria-hidden
                 />
               ) : authedUser ? (
-                <Link
-                  href={accountKind === "staff" ? "/admin" : "/account"}
-                  className={navAuthBtnClass}
-                >
-                  {accountKind === "staff" ? "Admin" : "Account"}
-                </Link>
+                accountKind === "staff" ? (
+                  <Link
+                    href={profileHref}
+                    className={navProfileBtnClass}
+                    title={profileTitle}
+                    aria-label={profileTitle}
+                  >
+                    <Shield
+                      className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                  </Link>
+                ) : typeof authedUser.image === "string" &&
+                  authedUser.image.length > 0 ? (
+                  <span className="flex items-center gap-2">
+                    <Link
+                      href={profileHref}
+                      className={navProfileBtnClass}
+                      title={profileTitle}
+                      aria-label={profileTitle}
+                    >
+                      {
+                        // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
+                        <img
+                          src={authedUser.image}
+                          alt=""
+                          className="h-[1.35rem] w-[1.35rem] rounded-full object-cover ring-1 ring-white/10 lg:h-5 lg:w-5"
+                          referrerPolicy="no-referrer"
+                        />
+                      }
+                    </Link>
+                    <Link
+                      href={profileHref}
+                      className={navProfileBtnClass}
+                      title={profileTitle}
+                      aria-label={profileTitle}
+                    >
+                      <Settings
+                        className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </Link>
+                  </span>
+                ) : (
+                  <Link
+                    href={profileHref}
+                    className={navProfileBtnClass}
+                    title={profileTitle}
+                    aria-label={profileTitle}
+                  >
+                    <Settings
+                      className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                  </Link>
+                )
               ) : (
-                <Link href="/login" className={navAuthBtnClass}>
-                  Sign in
+                <Link
+                  href="/login"
+                  className={navProfileBtnClass}
+                  title="Sign in"
+                  aria-label="Sign in"
+                >
+                  <LogIn
+                    className="h-[18px] w-[18px] lg:h-[17px] lg:w-[17px]"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                 </Link>
-              )} */}
+              )}
 
               <button
                 type="button"
@@ -295,6 +379,7 @@ export default function Navbar({
                 {[
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
+                  { name: "News Predictions", href: "/predictions" },
                   { name: "Ventura County", href: "/ventura-county" },
                   // { name: "Kind Joe Watch", href: "/kindjoe-watch" },
                 ].map((item) => {
@@ -316,11 +401,31 @@ export default function Navbar({
                 })}
                 {!authLoading && authedUser ? (
                   <Link
-                    href={accountKind === "staff" ? "/admin" : "/account"}
+                    href={profileHref}
                     onClick={() => setOpen(false)}
-                    className="flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
+                    className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/[0.07]"
                   >
-                    {accountKind === "staff" ? "Admin dashboard" : "My account"}
+                    {typeof authedUser.image === "string" &&
+                    authedUser.image.length > 0 ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- OAuth avatars use varied hosts
+                      <img
+                        src={authedUser.image}
+                        alt=""
+                        className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/10"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : accountKind === "staff" ? (
+                      <Shield
+                        className="h-6 w-6 shrink-0 text-zinc-400"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Settings
+                        className="h-6 w-6 shrink-0 text-zinc-400"
+                        aria-hidden
+                      />
+                    )}
+                    <span>{profileLabel}</span>
                   </Link>
                 ) : !authLoading ? (
                   <Link

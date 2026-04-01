@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getStaffRole, isStaffAccount } from "@/lib/auth/account-type";
+import { logAuthEvent } from "@/lib/auth/log";
 import {
   type AppPermission,
   roleHasPermission,
@@ -12,16 +13,33 @@ export type AuthAppUser = {
   email: string;
   name: string;
   image?: string | null;
+  username?: string | null;
   accountType?: string | null;
   staffRole?: string | null;
 };
+
+function normalizeNextPath(nextPath: string | undefined): string {
+  if (!nextPath) return "/";
+  if (!nextPath.startsWith("/")) return "/";
+  if (nextPath.startsWith("//")) return "/";
+  return nextPath;
+}
+
+function readerLoginRedirectPath(loginPath: string, nextPath: string): string {
+  const base = loginPath.startsWith("/") ? loginPath : "/login";
+  const qp = new URLSearchParams();
+  qp.set("reason", "session");
+  qp.set("next", normalizeNextPath(nextPath));
+  return `${base}?${qp.toString()}`;
+}
 
 export async function getServerSession() {
   const headerList = await headers();
   const cookieStore = await cookies();
   const reqHeaders = new Headers();
   headerList.forEach((value, key) => {
-    reqHeaders.append(key, value);
+    if (key.toLowerCase() === "cookie") return;
+    reqHeaders.set(key, value);
   });
   const all = cookieStore.getAll();
   if (all.length > 0) {
@@ -29,8 +47,20 @@ export async function getServerSession() {
       "cookie",
       all.map((c) => `${c.name}=${c.value}`).join("; "),
     );
+  } else {
+    const incomingCookie = headerList.get("cookie");
+    if (incomingCookie?.trim()) {
+      reqHeaders.set("cookie", incomingCookie);
+    }
   }
-  return auth.api.getSession({ headers: reqHeaders });
+  try {
+    return await auth.api.getSession({ headers: reqHeaders });
+  } catch (err) {
+    logAuthEvent("error", "auth_get_server_session_failed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
 }
 
 /** Reader login/register: skip when already signed in. */
@@ -62,10 +92,20 @@ export async function requireStaffPermission(
   return { session, user };
 }
 
-export async function requireReaderSession(loginPath = "/login") {
+export async function requireReaderSession(
+  loginPath = "/login",
+  nextPath = "/",
+) {
   const session = await getServerSession();
   if (!session?.user) {
-    redirect(loginPath);
+    const headerList = await headers();
+    const cookieStore = await cookies();
+    logAuthEvent("warn", "reader_session_missing", {
+      host: headerList.get("host") ?? "",
+      hasCookies: cookieStore.getAll().length > 0,
+      nextPath: normalizeNextPath(nextPath),
+    });
+    redirect(readerLoginRedirectPath(loginPath, nextPath));
   }
   const user = session.user as AuthAppUser;
   if (isStaffAccount(user)) {

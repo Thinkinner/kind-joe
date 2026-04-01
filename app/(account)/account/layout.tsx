@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { AccountSubnav } from "@/components/account/account-subnav";
 import { requireReaderSession } from "@/lib/auth/server";
 
 export default async function ReaderAccountLayout({
@@ -11,10 +12,13 @@ export default async function ReaderAccountLayout({
   } catch {
     /* older Next without connection() */
   }
-  await requireReaderSession();
+  await requireReaderSession("/login", "/account");
   return (
     <div className="min-h-dvh px-4 py-8 sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-md">{children}</div>
+      <div className="mx-auto w-full max-w-lg">
+        <AccountSubnav />
+        {children}
+      </div>
     </div>
   );
 }
