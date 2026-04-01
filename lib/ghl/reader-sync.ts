@@ -1,6 +1,6 @@
 /**
- * GoHighLevel — sync new reader accounts (create contact only if email not found).
- * Uses the same API as newsletter / Signals routes (v1).
+ * GoHighLevel — sync reader accounts (create contact, or merge tags if email exists).
+ * Uses v1 REST API (same as newsletter / Signals routes).
  */
 
 const GHL_BASE = "https://rest.gohighlevel.com/v1";
@@ -10,6 +10,7 @@ const DEFAULT_TAG = "Kind Joe Reader";
 
 type GhlContact = {
   id: string;
+  tags?: string[];
 };
 
 function splitDisplayName(name: string): { firstName: string; lastName: string } {
@@ -38,13 +39,23 @@ async function findContactByEmail(
   return data.contacts?.[0] ?? null;
 }
 
+function buildReaderTags(extraTags: string[] | undefined): string[] {
+  const readerTag =
+    process.env.GOHIGHLEVEL_READER_TAG?.trim() || DEFAULT_TAG;
+  return [...new Set([readerTag, ...(extraTags ?? [])].filter(Boolean))];
+}
+
 /**
- * If GHL has no contact for this email, creates one with tag + source.
- * No-op when GOHIGHLEVEL_API_KEY is unset. Errors are logged, not thrown to callers.
+ * Ensures this email exists in GHL as a contact with reader + optional origin tags.
+ * - New email: POST contact with tags.
+ * - Existing: PUT to merge tags (and refresh first/last name from signup).
+ * No-op when GOHIGHLEVEL_API_KEY is unset. Errors are logged, not thrown.
  */
 export async function ensureReaderContactInGhl(input: {
   email: string;
   name: string;
+  /** Extra GHL tags e.g. `kindjoe-watch` from signup funnel cookie. */
+  extraTags?: string[];
 }): Promise<void> {
   const apiKey = process.env.GOHIGHLEVEL_API_KEY?.trim();
   if (!apiKey) return;
@@ -52,21 +63,46 @@ export async function ensureReaderContactInGhl(input: {
   const email = input.email.trim();
   if (!email) return;
 
-  const tag =
-    process.env.GOHIGHLEVEL_READER_TAG?.trim() || DEFAULT_TAG;
+  const tagsToApply = buildReaderTags(input.extraTags);
+  const { firstName, lastName } = splitDisplayName(input.name);
 
   try {
     const existing = await findContactByEmail(apiKey, email);
-    if (existing) return;
 
-    const { firstName, lastName } = splitDisplayName(input.name);
+    if (existing) {
+      const prevTags = Array.isArray(existing.tags) ? existing.tags : [];
+      const merged = [...new Set([...prevTags, ...tagsToApply])];
+      const tagsUnchanged =
+        merged.length === prevTags.length &&
+        merged.every((t) => prevTags.includes(t));
+      if (tagsUnchanged) return;
+
+      const res = await fetch(`${GHL_BASE}/contacts/${existing.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName,
+          ...(lastName ? { lastName } : {}),
+          tags: merged,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("[ghl reader-sync] merge tags failed:", res.status, err);
+      }
+      return;
+    }
 
     const payload = {
       email,
       firstName,
       ...(lastName ? { lastName } : {}),
       source: READER_SOURCE,
-      tags: [tag],
+      tags: tagsToApply,
     };
 
     const res = await fetch(`${GHL_BASE}/contacts/`, {
@@ -80,9 +116,32 @@ export async function ensureReaderContactInGhl(input: {
 
     if (!res.ok) {
       const err = await res.text();
-      // Race or duplicate: re-check and treat as success if contact now exists
       const again = await findContactByEmail(apiKey, email);
-      if (again) return;
+      if (again) {
+        const prevTags = Array.isArray(again.tags) ? again.tags : [];
+        const merged = [...new Set([...prevTags, ...tagsToApply])];
+        const put = await fetch(`${GHL_BASE}/contacts/${again.id}`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firstName,
+            ...(lastName ? { lastName } : {}),
+            tags: merged,
+          }),
+        });
+        if (!put.ok) {
+          const putErr = await put.text();
+          console.error(
+            "[ghl reader-sync] merge after create race failed:",
+            put.status,
+            putErr,
+          );
+        }
+        return;
+      }
       console.error("[ghl reader-sync] create failed:", res.status, err);
     }
   } catch (e) {

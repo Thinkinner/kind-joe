@@ -7,6 +7,12 @@ import {
 
 const GHL_BASE = "https://rest.gohighlevel.com/v1";
 const SIGNALS_TAG = "KindJoe Signals";
+/** Funnel tag for GHL segmentation (matches reader signup cookie `kindjoe-watch`). */
+const KINDJOE_WATCH_TAG = "kindjoe-watch";
+
+function signalsLeadTags(): string[] {
+  return [SIGNALS_TAG, KINDJOE_WATCH_TAG];
+}
 
 type GhlContact = {
   id: string;
@@ -39,7 +45,7 @@ async function upsertSignalsLeadToGhl(
 
   if (existing) {
     const prevTags = Array.isArray(existing.tags) ? existing.tags : [];
-    const tags = [...new Set([...prevTags, SIGNALS_TAG])];
+    const tags = [...new Set([...prevTags, ...signalsLeadTags()])];
     const res = await fetch(`${GHL_BASE}/contacts/${existing.id}`, {
       method: "PUT",
       headers: {
@@ -66,7 +72,7 @@ async function upsertSignalsLeadToGhl(
     firstName,
     lastName,
     source: "KindJoe Signals",
-    tags: [SIGNALS_TAG],
+    tags: signalsLeadTags(),
   };
 
   const res = await fetch(`${GHL_BASE}/contacts/`, {
@@ -84,7 +90,7 @@ async function upsertSignalsLeadToGhl(
     const again = await findContactByEmail(apiKey, email);
     if (again) {
       const prevTags = Array.isArray(again.tags) ? again.tags : [];
-      const tags = [...new Set([...prevTags, SIGNALS_TAG])];
+      const tags = [...new Set([...prevTags, ...signalsLeadTags()])];
       const put = await fetch(`${GHL_BASE}/contacts/${again.id}`, {
         method: "PUT",
         headers: {

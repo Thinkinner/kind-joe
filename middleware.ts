@@ -1,5 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import {
+  GHL_ORIGIN_KINDJOE_WATCH,
+  GHL_SIGNUP_ORIGIN_COOKIE,
+} from "@/lib/ghl/signup-origin";
 
 function hostNoPort(host: string | null): string {
   if (!host) return "";
@@ -46,7 +50,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`${path}${search}`, adminSiteBase));
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  if (path === "/kindjoe-watch" || path.startsWith("/kindjoe-watch/")) {
+    res.cookies.set(GHL_SIGNUP_ORIGIN_COOKIE, GHL_ORIGIN_KINDJOE_WATCH, {
+      path: "/",
+      maxAge: 60 * 60 * 24,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+    });
+  }
+  return res;
 }
 
 export const config = {

@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getCurrentAuthContext } from "@better-auth/core/context";
 import { APIError } from "@better-auth/core/error";
 import { betterAuth } from "better-auth";
@@ -14,6 +15,10 @@ import {
   authVerifyEmailText,
   sendAuthEmail,
 } from "@/lib/email/resend";
+import {
+  GHL_SIGNUP_ORIGIN_ALLOWED,
+  GHL_SIGNUP_ORIGIN_COOKIE,
+} from "@/lib/ghl/signup-origin";
 import { ensureReaderContactInGhl } from "@/lib/ghl/reader-sync";
 import { logAuthEvent } from "@/lib/auth/log";
 import { isUsernameTakenByOtherUser } from "@/lib/auth/username-availability";
@@ -310,9 +315,23 @@ export const auth = betterAuth({
           };
           const accountType = u.accountType ?? u.account_type ?? "reader";
           if (accountType === "staff") return;
+
+          let extraTags: string[] | undefined;
+          try {
+            const jar = await cookies();
+            const raw = jar.get(GHL_SIGNUP_ORIGIN_COOKIE)?.value?.trim();
+            if (raw) jar.delete(GHL_SIGNUP_ORIGIN_COOKIE);
+            if (raw && GHL_SIGNUP_ORIGIN_ALLOWED.has(raw)) {
+              extraTags = [raw];
+            }
+          } catch {
+            /* not in a Next.js request context */
+          }
+
           void ensureReaderContactInGhl({
             email: u.email,
             name: u.name ?? "",
+            extraTags,
           });
         },
       },
