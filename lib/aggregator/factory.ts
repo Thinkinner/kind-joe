@@ -1,3 +1,4 @@
+/** Signal ingest: DB + Pusher only; no Google GenAI (see `verbatim-signal.ts`). */
 import { db } from "@/db";
 import { signals } from "@/db/schema";
 import { buildVerbatimSignalFields } from "./verbatim-signal";

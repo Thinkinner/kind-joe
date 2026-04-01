@@ -782,7 +782,7 @@ function DossierPanel({
                     : "border-white/5 text-gray-400",
                 )}
               >
-                Source text
+                Post
               </div>
               <p
                 className={cn(

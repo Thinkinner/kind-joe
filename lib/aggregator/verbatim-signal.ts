@@ -1,3 +1,7 @@
+/**
+ * Verbatim signal metadata for ingest: tags, category, impact, and geo are **rule-based only**
+ * (source slug, defaults, USGS magnitude/coords). No Gemini / Google GenAI.
+ */
 import { getLocationFromText } from "./geocoder";
 import {
   isXOrTwitterStoryHref,
