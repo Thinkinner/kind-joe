@@ -13,9 +13,6 @@ import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
 import { getStocksFromFinnhub } from "@/lib/stocks";
 import { NavbarWithSession } from "@/components/navbar-with-session";
 import { Footer } from "@/components/footer";
-import { PredictionsTeaser } from "@/components/predictions/predictions-teaser";
-import { listPredictionMarkets } from "@/lib/predictions/queries";
-
 export const revalidate = 300;
 
 export default async function NewsPage() {
@@ -53,10 +50,6 @@ export default async function NewsPage() {
     : undefined;
 
   const stocks = await getStocksFromFinnhub();
-  const trendingPredictions = await listPredictionMarkets({
-    limit: 3,
-    status: "open",
-  });
 
   return (
     <>
@@ -75,7 +68,6 @@ export default async function NewsPage() {
             </div>
             <RssStocksTicker stocks={stocks} />
           </div>
-          <PredictionsTeaser markets={trendingPredictions} />
           <hr />
           <div className="flex flex-col gap-8 flex-grow md:grid md:grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr] md:gap-x-0 md:gap-y-0 w-full">
             {/* Left column */}
