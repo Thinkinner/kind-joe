@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, LogIn, Shield, Settings, Eye } from "lucide-react";
+import { Menu, X, Search, LogIn, Shield, Settings } from "lucide-react";
+/* SIGNALS / Kind Joe Watch — uncomment live nav pill
+import { Eye } from "lucide-react";
 import {
   formatSignalsViewerCount,
   useSignalsLiveViewers,
 } from "@/hooks/use-signals-live-viewers";
+*/
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
@@ -51,8 +54,10 @@ export default function Navbar({
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
+  /* SIGNALS — uncomment with imports above
   const signalsViewers = useSignalsLiveViewers();
   const signalsWatchHref = "/kindjoe-watch";
+  */
   const { data: sessionData, isPending: sessionPending, refetch } =
     authClient.useSession();
 
@@ -123,13 +128,12 @@ export default function Navbar({
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  /** Shared LIVE pill look (no display utilities — avoid conflicting with `hidden` / `lg:inline-flex`). */
+  /* SIGNALS — uncomment with hook + imports above (Kind Joe Watch nav pills)
   const livePillSurfaceClass =
     "items-center rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 active:opacity-95";
 
   const livePillDesktopClass = `${livePillSurfaceClass} hidden min-w-0 max-w-full shrink-0 gap-2 px-2.5 py-1.5 sm:gap-2.5 sm:px-3 sm:py-1.5 lg:inline-flex`;
 
-  /** Mobile nav: compact height — minimal vertical footprint */
   const livePillMobileClass =
     "inline-flex h-7 max-w-full shrink-0 items-center gap-1 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/20 px-2.5 leading-none shadow-[0_0_8px_rgba(220,38,38,0.07)] ring-1 ring-red-500/10 transition-colors hover:border-red-500/50 hover:from-red-950/65 hover:to-red-950/28 active:opacity-95 sm:gap-1.5 sm:px-3";
 
@@ -176,6 +180,7 @@ export default function Navbar({
       </span>
     </>
   );
+  */
 
   return (
     <>
@@ -223,6 +228,7 @@ export default function Navbar({
             </div>
 
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              {/* SIGNALS — desktop LIVE pill
               <Link
                 href={signalsWatchHref}
                 className={livePillDesktopClass}
@@ -230,6 +236,7 @@ export default function Navbar({
               >
                 {livePillInner}
               </Link>
+              */}
 
               <div className="hidden shrink-0 items-center gap-1 sm:gap-1.5 lg:flex">
                 {authLoading ? (
@@ -345,7 +352,7 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* Mobile only: compact LIVE row */}
+          {/* SIGNALS — mobile LIVE row under nav
           <div className="border-t border-white/[0.05] lg:hidden">
             <div className="flex justify-center px-3 pb-0.5 pt-1.5 sm:px-5 sm:pt-2">
               <Link
@@ -357,6 +364,7 @@ export default function Navbar({
               </Link>
             </div>
           </div>
+          */}
         </nav>
       </header>
 
