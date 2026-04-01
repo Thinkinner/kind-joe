@@ -12,6 +12,7 @@ import {
   Lock,
   ExternalLink,
 } from "lucide-react";
+import { signalUsesSingleBodyBlock } from "@/lib/signals/signal-body-display";
 import {
   isXOrTwitterStoryHref,
   resolveSignalSourceUrl,
@@ -168,23 +169,36 @@ function PrioritySpotlightCard({
         </div>
       </div>
 
-      <h3
-        className={cn(
-          "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
-          isLight ? "text-slate-900" : "text-white",
-        )}
-      >
-        {signal.headline}
-      </h3>
+      {signalUsesSingleBodyBlock(signal) ? (
+        <p
+          className={cn(
+            "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[11px] font-medium leading-relaxed",
+            isLight ? "text-red-950/90" : "text-red-100/90",
+          )}
+        >
+          {signal.summary}
+        </p>
+      ) : (
+        <>
+          <h3
+            className={cn(
+              "mb-2 text-[13px] font-bold uppercase italic leading-tight tracking-tighter",
+              isLight ? "text-slate-900" : "text-white",
+            )}
+          >
+            {signal.headline}
+          </h3>
 
-      <p
-        className={cn(
-          "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[10px] leading-relaxed",
-          isLight ? "text-red-950/85" : "text-red-200/80",
-        )}
-      >
-        {signal.summary}
-      </p>
+          <p
+            className={cn(
+              "mb-3 line-clamp-5 whitespace-pre-wrap break-words text-[10px] leading-relaxed",
+              isLight ? "text-red-950/85" : "text-red-200/80",
+            )}
+          >
+            {signal.summary}
+          </p>
+        </>
+      )}
 
       <div
         className={cn(
@@ -470,28 +484,44 @@ export default function Feed({
                       </div>
                     </div>
 
-                    <h3
-                      className={cn(
-                        "mb-2 text-[12px] font-bold uppercase leading-snug tracking-tight transition-colors",
-                        isLight
-                          ? "text-slate-950 group-hover:text-slate-950"
-                          : "text-gray-200 group-hover:text-white",
-                      )}
-                    >
-                      {signal.headline}
-                    </h3>
+                    {signalUsesSingleBodyBlock(signal) ? (
+                      <p
+                        className={cn(
+                          "mb-3 text-[11px] font-medium leading-relaxed whitespace-pre-wrap break-words",
+                          isSelected
+                            ? "max-h-56 overflow-y-auto pr-1"
+                            : "line-clamp-2",
+                          isLight ? "text-slate-800" : "text-gray-300",
+                        )}
+                      >
+                        {signal.summary}
+                      </p>
+                    ) : (
+                      <>
+                        <h3
+                          className={cn(
+                            "mb-2 text-[12px] font-bold uppercase leading-snug tracking-tight transition-colors",
+                            isLight
+                              ? "text-slate-950 group-hover:text-slate-950"
+                              : "text-gray-200 group-hover:text-white",
+                          )}
+                        >
+                          {signal.headline}
+                        </h3>
 
-                    <p
-                      className={cn(
-                        "mb-3 text-[10px] font-medium leading-relaxed whitespace-pre-wrap break-words",
-                        isSelected
-                          ? "max-h-56 overflow-y-auto pr-1"
-                          : "line-clamp-2",
-                        isLight ? "text-slate-700" : "text-gray-500",
-                      )}
-                    >
-                      {signal.summary}
-                    </p>
+                        <p
+                          className={cn(
+                            "mb-3 text-[10px] font-medium leading-relaxed whitespace-pre-wrap break-words",
+                            isSelected
+                              ? "max-h-56 overflow-y-auto pr-1"
+                              : "line-clamp-2",
+                            isLight ? "text-slate-700" : "text-gray-500",
+                          )}
+                        >
+                          {signal.summary}
+                        </p>
+                      </>
+                    )}
 
                     <div
                       className={cn(

@@ -1,7 +1,22 @@
 import { getLocationFromText } from "./geocoder";
+import {
+  isXOrTwitterStoryHref,
+  resolveSignalSourceUrl,
+} from "@/lib/signals/signal-source-url";
 import type { Category, GeographicScope, Source } from "./types";
 
 const HEADLINE_MAX = 140;
+
+/** X / Twitter posts: store body exactly as received — no shortened headline, trim, or geo-from-text. */
+function isNativeXPostIngest(
+  source: Source,
+  sourceUrl?: string | null,
+): boolean {
+  if (source === "X") return true;
+  if (source !== "Discord") return false;
+  const href = resolveSignalSourceUrl(source, sourceUrl);
+  return href != null && isXOrTwitterStoryHref(href);
+}
 
 function defaultCategory(source: Source): Category {
   if (source === "USGS Earthquakes") return "Disasters & Emergencies";
@@ -49,6 +64,8 @@ function headlineFromText(text: string, override?: string | null): string {
 export function buildVerbatimSignalFields(params: {
   text: string;
   source: Source;
+  /** Canonical post URL when known (used to detect X/Twitter for exact-body ingest). */
+  sourceUrl?: string | null;
   headline?: string | null;
   lat?: number | null;
   lng?: number | null;
@@ -65,8 +82,35 @@ export function buildVerbatimSignalFields(params: {
   impactScore: number;
   tags: string[];
 } {
-  const { text, source, headline: headlineOverride, lat: latIn, lng: lngIn } =
-    params;
+  const {
+    text,
+    source,
+    sourceUrl = null,
+    headline: headlineOverride,
+    lat: latIn,
+    lng: lngIn,
+  } = params;
+
+  const exactX = isNativeXPostIngest(source, sourceUrl);
+
+  if (exactX) {
+    const body = text;
+    const stored = body.length > 0 ? body : "(no text)";
+    return {
+      headline: stored,
+      summary: stored,
+      category: "Viral / Social",
+      lat: 0,
+      lng: 0,
+      city: "Unknown",
+      country: "Global",
+      geographicScope: "global",
+      adminArea: "",
+      impactScore: 50,
+      tags: sourceTags(source),
+    };
+  }
+
   const summary = text.trim();
   const headline = headlineFromText(summary || "(no text)", headlineOverride);
   const bodyForSummary = summary || headline;

@@ -76,6 +76,7 @@ export async function processIntelRaw(params: {
     const fields = buildVerbatimSignalFields({
       text,
       source,
+      sourceUrl,
       headline,
       lat,
       lng,

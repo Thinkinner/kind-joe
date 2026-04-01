@@ -14,6 +14,7 @@ import type { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBl
 import Globe from "react-globe.gl";
 import { Signal } from "@/lib/aggregator/types";
 import { X, Target, MapPin, Activity, Hash, ExternalLink } from "lucide-react";
+import { signalUsesSingleBodyBlock } from "@/lib/signals/signal-body-display";
 import {
   isXOrTwitterStoryHref,
   resolveSignalSourceUrl,
@@ -687,15 +688,17 @@ function DossierPanel({
               </button>
             </div>
 
-            <h2
-              className={cn(
-                "mb-6 border-l-2 pl-4 text-xl font-bold italic leading-[1.2] tracking-tight md:mb-6 md:text-xl",
-                isLight ? "text-slate-900" : "text-white",
-              )}
-              style={{ borderLeftColor: activeColor }}
-            >
-              {selectedSignal.headline}
-            </h2>
+            {!signalUsesSingleBodyBlock(selectedSignal) ? (
+              <h2
+                className={cn(
+                  "mb-6 border-l-2 pl-4 text-xl font-bold italic leading-[1.2] tracking-tight md:mb-6 md:text-xl",
+                  isLight ? "text-slate-900" : "text-white",
+                )}
+                style={{ borderLeftColor: activeColor }}
+              >
+                {selectedSignal.headline}
+              </h2>
+            ) : null}
 
             <div className="flex flex-wrap gap-2.5 md:gap-2.5 mb-8 md:mb-8">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-[#00BFFF]/20 bg-[#00BFFF]/5">
