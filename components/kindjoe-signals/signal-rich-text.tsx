@@ -21,6 +21,66 @@ export function markdownToPlainPreview(raw: string): string {
   return markdownToPlainText(raw);
 }
 
+function markdownToLinkAwarePreview(raw: string): string {
+  return raw
+    .replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, " $2 ")
+    .replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/g, "$1 $2");
+}
+
+function buildCompactNodes(text: string, isLight: boolean): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0;
+  let k = 0;
+  const re = /https?:\/\/[^\s)]+/gi;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      out.push(
+        <span key={`ct-${k++}`} className="whitespace-pre-wrap break-words">
+          {text.slice(last, m.index)}
+        </span>,
+      );
+    }
+    const href = m[0];
+    out.push(
+      <a
+        key={`ca-${k++}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "break-all font-semibold underline decoration-current/35 underline-offset-[3px] transition-colors",
+          isLight ? "text-sky-700 hover:text-sky-900" : "text-sky-300 hover:text-sky-100",
+        )}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {href}
+      </a>,
+    );
+    last = m.index + href.length;
+  }
+
+  if (last < text.length) {
+    out.push(
+      <span key={`ct-${k++}`} className="whitespace-pre-wrap break-words">
+        {text.slice(last)}
+      </span>,
+    );
+  }
+
+  if (out.length === 0) {
+    out.push(
+      <span key="ct-final" className="whitespace-pre-wrap break-words">
+        {text}
+      </span>,
+    );
+  }
+
+  return out;
+}
+
 function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
@@ -123,10 +183,9 @@ export function SignalRichText({
 
   const body = useMemo(() => {
     if (compact) {
+      const preview = markdownToLinkAwarePreview(normalized);
       return (
-        <span className="whitespace-pre-wrap break-words">
-          {markdownToPlainPreview(normalized)}
-        </span>
+        <>{buildCompactNodes(markdownToPlainPreview(preview), isLight)}</>
       );
     }
     const nodes = buildRichNodes(normalized, isLight);

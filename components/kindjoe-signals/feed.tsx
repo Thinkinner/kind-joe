@@ -38,6 +38,22 @@ import {
   impactTierTag,
 } from "@/lib/signals/impact-tier";
 
+function signalNavigationHref(signal: Signal): string | null {
+  return resolveSignalSourceUrl(signal.source, signal.sourceUrl);
+}
+
+function openSignalSourceOrSelect(
+  signal: Signal,
+  onSignalClick: (s: Signal) => void,
+) {
+  const href = signalNavigationHref(signal);
+  if (href) {
+    window.location.assign(href);
+    return;
+  }
+  onSignalClick(signal);
+}
+
 function SignalSourceLink({
   signal,
   isLight,
@@ -168,12 +184,13 @@ function PrioritySpotlightCard({
   /** e.g. `hidden md:block` (desktop only) or `md:hidden` (mobile, inside scroll). */
   visibilityClass: string;
 }) {
+  const href = signalNavigationHref(signal);
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: "auto", opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      onClick={() => onSignalClick(signal)}
+      onClick={() => openSignalSourceOrSelect(signal, onSignalClick)}
       className={cn(
         "group relative shrink-0 cursor-pointer overflow-hidden border-b p-4 transition-all",
         visibilityClass,
@@ -241,6 +258,21 @@ function PrioritySpotlightCard({
           </div>
         </>
       )}
+      {href ? (
+        <div
+          className={cn(
+            "mb-3 inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold",
+            isLight
+              ? "border-red-200 bg-red-100/80 text-red-900"
+              : "border-red-400/30 bg-red-500/10 text-red-200",
+          )}
+        >
+          <ExternalLink size={11} className="shrink-0" />
+          <span className="truncate">
+            Link in post: {signalOutboundLinkLabel(href, signal.source, 70)}
+          </span>
+        </div>
+      ) : null}
       <SignalMediaPreview signal={signal} isSelected={true} isLight={isLight} />
 
       <div
@@ -467,6 +499,7 @@ export default function Feed({
                 const isSelected = selectedSignal?.id === signal.id;
                 const timeDiff = now - signal.timestamp;
                 const tier = getImpactSeverity(signal.impactScore);
+                const href = signalNavigationHref(signal);
 
                 const timeLabel =
                   timeDiff < 60000 || signal.timestamp > now
@@ -481,7 +514,7 @@ export default function Feed({
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={() => onSignalClick(signal)}
+                    onClick={() => openSignalSourceOrSelect(signal, onSignalClick)}
                     className={cn(
                       "group cursor-pointer rounded-sm border border-l-2 p-4 transition-all duration-300",
                       impactTierBorderLeftClass(tier),
@@ -580,6 +613,22 @@ export default function Feed({
                         </div>
                       </>
                     )}
+                    {href ? (
+                      <div
+                        className={cn(
+                          "mb-3 inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold",
+                          isLight
+                            ? "border-sky-200 bg-sky-50 text-sky-800"
+                            : "border-sky-400/25 bg-sky-500/10 text-sky-200",
+                        )}
+                      >
+                        <ExternalLink size={11} className="shrink-0" />
+                        <span className="truncate">
+                          Link in post:{" "}
+                          {signalOutboundLinkLabel(href, signal.source, 64)}
+                        </span>
+                      </div>
+                    ) : null}
                     <SignalMediaPreview
                       signal={signal}
                       isSelected={isSelected}
