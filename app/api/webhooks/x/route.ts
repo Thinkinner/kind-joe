@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { processIntelRaw } from "@/lib/aggregator/factory";
+import {
+  createIncomingEventRecord,
+  fanoutSignalCreatedEvent,
+} from "@/lib/webhooks/outgoing-webhooks";
 
 export const maxDuration = 120;
 
@@ -19,6 +23,16 @@ const directXPayloadSchema = z.object({
   sourceVerified: z.boolean().optional().nullable(),
   timestamp: z.union([z.string(), z.number()]).optional(),
   createdAt: z.union([z.string(), z.number()]).optional(),
+  meta: z
+    .object({
+      messageId: z.string().optional(),
+      guildId: z.string().optional(),
+      channelId: z.string().optional(),
+      channelName: z.string().optional(),
+      receivedAt: z.string().optional(),
+    })
+    .partial()
+    .optional(),
   author: z
     .object({
       name: z.string().optional().nullable(),
@@ -138,7 +152,59 @@ async function ingestDirectPayload(raw: unknown) {
     },
   });
 
-  return { ok: true as const, status: 200, body: { ok: true, processed: 1, mode: "direct" } };
+  const normalizedPayload = {
+    id: data.id,
+    text,
+    source: "X" as const,
+    url: sourceUrl,
+    twitterUrl: sourceUrl,
+    sourceUrl,
+    timestamp:
+      timestamp?.toISOString() ??
+      new Date().toISOString(),
+    createdAt:
+      timestamp?.toISOString() ??
+      new Date().toISOString(),
+    enriched: {
+      canonicalSourceUrl: asHttpUrl(data.enriched?.canonicalSourceUrl) ?? sourceUrl,
+      sourceDisplayName,
+      sourceHandle,
+      sourceIconKey: "x",
+      sourceAvatarUrl,
+      sourceVerified,
+      trustTier: data.enriched?.trustTier ?? undefined,
+      trustScore: data.enriched?.trustScore ?? undefined,
+      mediaUrls:
+        data.enriched?.mediaUrls
+          ?.map((u) => asHttpUrl(u))
+          .filter((u): u is string => Boolean(u)) ?? [],
+    },
+  };
+
+  const incomingEventId = await createIncomingEventRecord({
+    externalEventId: data.id,
+    source: "X",
+    text,
+    sourceUrl,
+    sourceDisplayName,
+    sourceHandle,
+    sourceAvatarUrl: sourceAvatarUrl ?? null,
+    sourceVerified,
+    payload: raw as Record<string, unknown>,
+    meta: (data.meta as Record<string, unknown> | undefined) ?? null,
+  });
+
+  const fanout = await fanoutSignalCreatedEvent({
+    payload: normalizedPayload as Record<string, unknown>,
+    meta: (data.meta as Record<string, unknown> | undefined) ?? {},
+    incomingEventId,
+  });
+
+  return {
+    ok: true as const,
+    status: 200,
+    body: { ok: true, processed: 1, mode: "direct", fanout },
+  };
 }
 
 export async function POST(req: Request) {

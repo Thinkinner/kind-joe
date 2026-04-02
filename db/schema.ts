@@ -356,6 +356,89 @@ export const signals = pgTable("signals", {
   }).defaultNow(),
 });
 
+export const incomingEvents = pgTable(
+  "incoming_events",
+  {
+    id: serial("id").primaryKey(),
+    externalEventId: text("external_event_id"),
+    source: text("source").notNull().default("X"),
+    text: text("text").notNull(),
+    sourceUrl: text("source_url"),
+    sourceDisplayName: text("source_display_name"),
+    sourceHandle: text("source_handle"),
+    sourceAvatarUrl: text("source_avatar_url"),
+    sourceVerified: boolean("source_verified").notNull().default(false),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    extEventIdx: index("incoming_events_external_event_id_idx").on(t.externalEventId),
+    sourceIdx: index("incoming_events_source_idx").on(t.source),
+    receivedIdx: index("incoming_events_received_at_idx").on(t.receivedAt),
+  }),
+);
+
+export const outgoingWebhooks = pgTable(
+  "outgoing_webhooks",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    url: text("url").notNull(),
+    authorizationToken: text("authorization_token"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    urlUnique: uniqueIndex("outgoing_webhooks_url_unique").on(t.url),
+    enabledIdx: index("outgoing_webhooks_enabled_idx").on(t.enabled),
+  }),
+);
+
+export const outgoingWebhookDeliveries = pgTable(
+  "outgoing_webhook_deliveries",
+  {
+    id: serial("id").primaryKey(),
+    webhookId: integer("webhook_id")
+      .notNull()
+      .references(() => outgoingWebhooks.id, { onDelete: "cascade" }),
+    incomingEventId: integer("incoming_event_id").references(
+      () => incomingEvents.id,
+      { onDelete: "set null" },
+    ),
+    attempt: integer("attempt").notNull().default(1),
+    status: varchar("status", { length: 24 }).notNull(),
+    statusCode: integer("status_code"),
+    responseBody: text("response_body"),
+    error: text("error"),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    webhookIdx: index("outgoing_webhook_deliveries_webhook_id_idx").on(t.webhookId),
+    incomingEventIdx: index("outgoing_webhook_deliveries_incoming_event_id_idx").on(
+      t.incomingEventId,
+    ),
+    deliveredAtIdx: index("outgoing_webhook_deliveries_delivered_at_idx").on(
+      t.deliveredAt,
+    ),
+  }),
+);
+
 export const predictionMarketStatusEnum = pgEnum("prediction_market_status", [
   "open",
   "locked",

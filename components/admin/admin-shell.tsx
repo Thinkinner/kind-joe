@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShieldCheck, Sparkles, ArrowUpRight } from "lucide-react";
+import {
+  Home,
+  ShieldCheck,
+  Sparkles,
+  ArrowUpRight,
+  Webhook,
+} from "lucide-react";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -11,6 +17,7 @@ type AdminShellProps = {
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: Home },
   { href: "/admin/predictions", label: "News Predictions", icon: Sparkles },
+  { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ] as const;
 

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:worker": "tsx scripts/discord-listener-worker.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -61,6 +62,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "discord.js": "^14.26.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "embla-carousel-react": "^8.6.0",
