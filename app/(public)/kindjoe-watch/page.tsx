@@ -47,6 +47,7 @@ const SOURCE_SET = new Set<Source>([
   "Apple Newsroom",
   "USGS Earthquakes",
 ]);
+const FEED_SOURCE_WHITELIST = new Set<Source>(["X"]);
 const CATEGORY_SET = new Set<Category>([
   "Geopolitics",
   "Conflicts & Wars",
@@ -66,7 +67,7 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
       : "global";
 
   const source: Source =
-    raw.source !== undefined && SOURCE_SET.has(raw.source) ? raw.source : "RSS";
+    raw.source !== undefined && SOURCE_SET.has(raw.source) ? raw.source : "X";
 
   const category: Category =
     raw.category !== undefined && CATEGORY_SET.has(raw.category)
@@ -353,6 +354,12 @@ export default function Home() {
     const tagNeedle =
       selectedTag === "All" ? null : selectedTag.toLowerCase();
     return signals.filter((s) => {
+      if (!FEED_SOURCE_WHITELIST.has(s.source)) return false;
+      const hasText =
+        (s.summary && s.summary.trim() && s.summary.trim() !== "(no text)") ||
+        (s.headline && s.headline.trim() && s.headline.trim() !== "(no text)");
+      if (!hasText) return false;
+
       const categoryMatch =
         selectedCategory === "All" || s.category === selectedCategory;
       const countryMatch =

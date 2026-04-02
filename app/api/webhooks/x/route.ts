@@ -8,13 +8,30 @@ const trustTierSchema = z.enum(["low", "medium", "high"]);
 
 const directXPayloadSchema = z.object({
   id: z.string().min(1).max(2048),
-  text: z.string().min(1).max(200_000),
+  text: z.string().max(200_000),
   source: z.string().optional(),
   url: z.string().optional().nullable(),
   twitterUrl: z.string().optional().nullable(),
   sourceUrl: z.string().optional().nullable(),
+  sourceDisplayName: z.string().optional().nullable(),
+  sourceHandle: z.string().optional().nullable(),
+  sourceAvatarUrl: z.string().optional().nullable(),
+  sourceVerified: z.boolean().optional().nullable(),
   timestamp: z.union([z.string(), z.number()]).optional(),
   createdAt: z.union([z.string(), z.number()]).optional(),
+  author: z
+    .object({
+      name: z.string().optional().nullable(),
+      displayName: z.string().optional().nullable(),
+      username: z.string().optional().nullable(),
+      handle: z.string().optional().nullable(),
+      profileImageUrl: z.string().optional().nullable(),
+      avatarUrl: z.string().optional().nullable(),
+      verified: z.boolean().optional().nullable(),
+      isVerified: z.boolean().optional().nullable(),
+    })
+    .partial()
+    .optional(),
   enriched: z
     .object({
       canonicalSourceUrl: z.string().optional().nullable(),
@@ -56,6 +73,14 @@ async function ingestDirectPayload(raw: unknown) {
   if (!parsed.success) return { ok: false as const, status: 400, body: { error: "Invalid X payload", details: parsed.error.flatten() } };
 
   const data = parsed.data;
+  const text = data.text.trim();
+  if (!text) {
+    return {
+      ok: false as const,
+      status: 400,
+      body: { error: "text is required" },
+    };
+  }
   const sourceUrl =
     asHttpUrl(data.sourceUrl) ??
     asHttpUrl(data.twitterUrl) ??
@@ -68,19 +93,42 @@ async function ingestDirectPayload(raw: unknown) {
     asDate(data.createdAt) ??
     undefined;
 
+  const sourceDisplayName =
+    data.enriched?.sourceDisplayName?.trim() ||
+    data.author?.displayName?.trim() ||
+    data.author?.name?.trim() ||
+    data.sourceDisplayName?.trim() ||
+    null;
+  const sourceHandle =
+    asHandle(data.enriched?.sourceHandle) ??
+    asHandle(data.author?.handle) ??
+    asHandle(data.author?.username) ??
+    asHandle(data.sourceHandle) ??
+    null;
+  const sourceAvatarUrl =
+    asHttpUrl(data.enriched?.sourceAvatarUrl) ??
+    asHttpUrl(data.author?.profileImageUrl) ??
+    asHttpUrl(data.author?.avatarUrl) ??
+    asHttpUrl(data.sourceAvatarUrl);
+  const sourceVerified =
+    data.enriched?.sourceVerified === true ||
+    data.author?.verified === true ||
+    data.author?.isVerified === true ||
+    data.sourceVerified === true;
+
   await processIntelRaw({
     id: data.id,
-    text: data.text,
+    text,
     source: "X",
     sourceUrl,
     timestamp,
     enriched: {
       canonicalSourceUrl: asHttpUrl(data.enriched?.canonicalSourceUrl) ?? sourceUrl,
-      sourceDisplayName: data.enriched?.sourceDisplayName ?? null,
-      sourceHandle: asHandle(data.enriched?.sourceHandle) ?? null,
-      sourceIconKey: data.enriched?.sourceIconKey ?? "x",
-      sourceAvatarUrl: asHttpUrl(data.enriched?.sourceAvatarUrl),
-      sourceVerified: Boolean(data.enriched?.sourceVerified),
+      sourceDisplayName,
+      sourceHandle,
+      sourceIconKey: "x",
+      sourceAvatarUrl,
+      sourceVerified,
       trustTier: data.enriched?.trustTier ?? undefined,
       trustScore: data.enriched?.trustScore ?? undefined,
       mediaUrls:
