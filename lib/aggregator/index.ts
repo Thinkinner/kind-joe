@@ -20,8 +20,7 @@ const MAX_ITEMS_TO_PROCESS = 12;
 
 /**
  * Minimum newest items to reserve from each feed before global merge.
- * Cron only polls USGS here; Google News + Apple Newsroom use `kindjoe-signal-worker`
- * → POST /api/webhooks/rss-intel.
+ * Cron only polls USGS here.
  */
 const MIN_CANDIDATES_PER_FEED = 2;
 
@@ -149,7 +148,7 @@ async function fetchFeedCandidates(spec: FeedSpec): Promise<Candidate[]> {
 }
 
 /**
- * 1. SYNC REAL TIME NEWS (USGS only here; Google/Apple via RSS worker webhook.)
+ * 1. SYNC REAL TIME NEWS (USGS only here.)
  */
 export async function syncRealTimeNews() {
   try {
