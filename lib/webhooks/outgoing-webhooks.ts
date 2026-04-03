@@ -22,22 +22,26 @@ export type IncomingEventRecordInput = {
 };
 
 export async function createIncomingEventRecord(input: IncomingEventRecordInput) {
-  const rows = await db
-    .insert(incomingEvents)
-    .values({
-      externalEventId: input.externalEventId ?? null,
-      source: input.source,
-      text: input.text,
-      sourceUrl: input.sourceUrl ?? null,
-      sourceDisplayName: input.sourceDisplayName ?? null,
-      sourceHandle: input.sourceHandle ?? null,
-      sourceAvatarUrl: input.sourceAvatarUrl ?? null,
-      sourceVerified: input.sourceVerified === true,
-      payload: input.payload,
-      meta: input.meta ?? null,
-    })
-    .returning({ id: incomingEvents.id });
-  return rows[0]?.id ?? null;
+  try {
+    const rows = await db
+      .insert(incomingEvents)
+      .values({
+        externalEventId: input.externalEventId ?? null,
+        source: input.source,
+        text: input.text,
+        sourceUrl: input.sourceUrl ?? null,
+        sourceDisplayName: input.sourceDisplayName ?? null,
+        sourceHandle: input.sourceHandle ?? null,
+        sourceAvatarUrl: input.sourceAvatarUrl ?? null,
+        sourceVerified: input.sourceVerified === true,
+        payload: input.payload,
+        meta: input.meta ?? null,
+      })
+      .returning({ id: incomingEvents.id });
+    return rows[0]?.id ?? null;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function listEnabledOutgoingWebhooks() {

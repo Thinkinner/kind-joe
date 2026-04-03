@@ -33,6 +33,7 @@ export function middleware(request: NextRequest) {
       path.startsWith("/admin") ||
       path.startsWith("/api/auth") ||
       path.startsWith("/api/admin") ||
+      path.startsWith("/api/webhooks") ||
       path.startsWith("/_next") ||
       path.startsWith("/favicon") ||
       path === "/icon.svg" ||
