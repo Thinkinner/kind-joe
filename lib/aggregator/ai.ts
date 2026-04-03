@@ -16,7 +16,7 @@ const signalSchema: Schema = {
     category: {
       type: Type.STRING,
       description:
-        "MUST BE: 'Geopolitics', 'Conflicts & Wars', 'Economy & Markets', 'Business', 'Tech & Science', 'Disasters & Emergencies', 'Viral / Social', or 'Ignore'.",
+        "MUST BE: 'World', 'Military', 'Finance', 'Environment', 'Energy', 'Tech', 'Health', 'Society', or 'Ignore'.",
     },
     city: {
       type: Type.STRING,
@@ -106,11 +106,11 @@ export const analyzeSignalWithAI = async (
 
     3. SPECIALIZED MONITORING: [ICE / BORDER / DOMESTIC]
        - You are highly attuned to US Border activity, ICE operations, and immigration developments.
-       - These are always categorized under "Geopolitics" due to their policy impact.
+       - These are always categorized under "Military" or "World" based on strategic impact.
 
     3b. BUSINESS VS ECONOMY & MARKETS
-       - Use "Economy & Markets" for macro and system-level finance: central banks, rates, inflation, sovereign debt, broad indices, trade policy framed as macro, financial stability.
-       - Use "Business" for company- and industry-centric stories: M&A, earnings, executive moves, product launches, corporate restructuring, labor disputes at a specific firm, sector news where the primary lens is companies (not macro policy alone).
+       - Use "Finance" for macro and system-level finance: central banks, rates, inflation, sovereign debt, broad indices, trade policy framed as macro, financial stability.
+       - Use "Tech" for company- and industry-centric stories in the technology sector; use "World" when policy/geopolitics is primary.
 
     4. TAGGING PROTOCOL (up to 20 tags, lowercase, no # character in strings):
        - Aim for rich coverage so users can filter in the UI: geography stack (country, region/state, city or metro if local), 2–6 core and sub-topics, notable entities or org types if relevant, sector/industry, mechanism (policy, markets, military, legal, etc.), and status (ongoing, resolved, alert).
@@ -155,7 +155,7 @@ export const analyzeSignalWithAI = async (
       result.tags = normalized;
 
       // Final Noise Filter
-      if (result.impactScore < 8 && result.category === "Viral / Social") {
+      if (result.impactScore < 8 && result.category === "Society") {
         result.category = "Ignore";
       }
 

@@ -10,13 +10,8 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Signal, SignalTrustTier } from "@/lib/aggregator/types";
-
-export function trustTierLabel(tier: SignalTrustTier | null | undefined): string {
-  if (tier === "high") return "HIGH REP";
-  if (tier === "low") return "LOW";
-  return "MED";
-}
+import type { Signal } from "@/lib/aggregator/types";
+import { getImpactSeverity, impactTierBadgeClass } from "@/lib/signals/impact-tier";
 
 function sourceGlyph(
   iconKey: string | null | undefined,
@@ -40,8 +35,13 @@ export function SignalSourceIdentity({
   compact?: boolean;
 }) {
   const displayName = signal.sourceDisplayName?.trim() || signal.source;
-  const trustLabel = trustTierLabel(signal.trustTier);
   const handle = signal.sourceHandle?.trim();
+  const categoryLabel = signal.category?.trim() || "World";
+  const impactLabel =
+    typeof signal.impactScore === "number" && Number.isFinite(signal.impactScore)
+      ? Math.max(0, Math.min(100, Math.round(signal.impactScore)))
+      : 0;
+  const impactTier = getImpactSeverity(impactLabel);
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -86,24 +86,26 @@ export function SignalSourceIdentity({
               aria-hidden
             />
           ) : null}
-          <span
-            className={cn(
-              "shrink-0 rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em]",
-              trustLabel === "HIGH REP"
-                ? isLight
-                  ? "border-sky-300 bg-sky-100 text-sky-800"
-                  : "border-sky-400/50 bg-sky-500/10 text-sky-300"
-                : trustLabel === "LOW"
-                  ? isLight
-                    ? "border-slate-300 bg-slate-100 text-slate-600"
-                    : "border-white/10 bg-white/[0.03] text-slate-400"
-                  : isLight
-                    ? "border-amber-300 bg-amber-100 text-amber-800"
-                    : "border-amber-400/50 bg-amber-500/10 text-amber-300",
-            )}
-          >
-            {trustLabel}
-          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <span
+              className={cn(
+                "rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em]",
+                isLight
+                  ? "border-slate-300 bg-slate-100 text-slate-700"
+                  : "border-white/15 bg-white/[0.05] text-slate-200",
+              )}
+            >
+              {categoryLabel}
+            </span>
+            <span
+              className={cn(
+                "rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em]",
+                impactTierBadgeClass(impactTier, isLight),
+              )}
+            >
+              {impactLabel}
+            </span>
+          </div>
         </div>
         {!compact && handle ? (
           <div

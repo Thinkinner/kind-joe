@@ -2,7 +2,7 @@
 import { db } from "@/db";
 import { signals } from "@/db/schema";
 import { buildVerbatimSignalFields } from "./verbatim-signal";
-import type { Source } from "./types";
+import type { Category, Source } from "./types";
 import { eq } from "drizzle-orm";
 import Pusher from "pusher";
 import {
@@ -24,6 +24,7 @@ const pusher = new Pusher({
 
 /** Pusher per-event payload limit is ~10KB; keep headroom for other JSON fields. */
 const PUSHER_SUMMARY_MAX_CHARS = 7000;
+const HTTP_URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
 
 function pusherNewSignalPayload(newSignal: {
   summary: string | null;
@@ -42,6 +43,19 @@ function pusherNewSignalPayload(newSignal: {
   };
 }
 
+function dedupePlainTextUrls(raw: string): string {
+  const seen = new Set<string>();
+  const deduped = raw.replace(HTTP_URL_RE, (url) => {
+    const trimmed = url.replace(/[),.;!?]+$/g, "");
+    const canonical = canonicalizeSignalUrl(trimmed) ?? trimmed;
+    const key = canonical.toLowerCase();
+    if (seen.has(key)) return "";
+    seen.add(key);
+    return canonical;
+  });
+  return deduped.replace(/\s{2,}/g, " ").trim();
+}
+
 export async function processIntelRaw(params: {
   id: string;
   text: string;
@@ -54,6 +68,15 @@ export async function processIntelRaw(params: {
   /** Epicenter / pin when known (e.g. USGS Atom georss:point). */
   lat?: number | null;
   lng?: number | null;
+  enrichmentOverrides?: {
+    lat?: number | null;
+    lng?: number | null;
+    impactScore?: number | null;
+    category?: Category | null;
+    enrichmentProvider?: string | null;
+    enrichmentModel?: string | null;
+    enrichmentConfidence?: number | null;
+  };
   /** Optional worker-enriched source identity + media metadata. */
   enriched?: {
     canonicalSourceUrl?: string | null;
@@ -75,6 +98,7 @@ export async function processIntelRaw(params: {
     headline = null,
     lat = null,
     lng = null,
+    enrichmentOverrides,
     enriched,
   } = params;
   const timestamp = params.timestamp ?? new Date();
@@ -85,16 +109,6 @@ export async function processIntelRaw(params: {
       `📥 [FACTORY] Ingesting from ${source}: ${text.slice(0, 50)}...`,
     );
 
-    const already = await db
-      .select({ id: signals.id })
-      .from(signals)
-      .where(eq(signals.id, id))
-      .limit(1);
-    if (already.length > 0) {
-      console.log(`⏩ [FACTORY] Skip existing id: ${id.slice(0, 48)}…`);
-      return null;
-    }
-
     const fields = buildVerbatimSignalFields({
       text,
       source,
@@ -103,12 +117,175 @@ export async function processIntelRaw(params: {
       lat,
       lng,
     });
+    const normalizedSummary = dedupePlainTextUrls(
+      normalizeSignalBodyText(fields.summary),
+    );
+    const normalizedHeadline = dedupePlainTextUrls(
+      markdownToPlainText(fields.headline).slice(0, 512),
+    );
+
+    const hasOverride = <K extends keyof NonNullable<typeof enrichmentOverrides>>(
+      key: K,
+    ) =>
+      Boolean(
+        enrichmentOverrides &&
+          Object.prototype.hasOwnProperty.call(enrichmentOverrides, key),
+      );
+
+    const resolvedLat = hasOverride("lat")
+      ? (enrichmentOverrides?.lat ?? null)
+      : fields.lat;
+    const resolvedLng = hasOverride("lng")
+      ? (enrichmentOverrides?.lng ?? null)
+      : fields.lng;
+    const resolvedImpactScore = hasOverride("impactScore")
+      ? (enrichmentOverrides?.impactScore ?? null)
+      : fields.impactScore;
+    const providerTrim =
+      typeof enrichmentOverrides?.enrichmentProvider === "string"
+        ? enrichmentOverrides.enrichmentProvider.trim()
+        : "";
+    /** TweetShift / partial webhooks often send 50 with no provider; that locks rows before Gemini arrives. */
+    const placeholderImpact50 =
+      resolvedImpactScore === 50 && providerTrim.length === 0;
+    const persistenceImpactScore = placeholderImpact50
+      ? null
+      : resolvedImpactScore;
+
+    const resolvedCategory = hasOverride("category")
+      ? (enrichmentOverrides?.category ?? null)
+      : fields.category;
+    const incomingHasGeo =
+      typeof resolvedLat === "number" &&
+      typeof resolvedLng === "number" &&
+      (resolvedLat !== 0 || resolvedLng !== 0);
+
+    const already = await db
+      .select({
+        id: signals.id,
+        category: signals.category,
+        lat: signals.lat,
+        lng: signals.lng,
+        city: signals.city,
+        country: signals.country,
+        geographicScope: signals.geographicScope,
+        adminArea: signals.adminArea,
+        impactScore: signals.impactScore,
+        enrichmentProvider: signals.enrichmentProvider,
+        enrichmentModel: signals.enrichmentModel,
+        enrichmentConfidence: signals.enrichmentConfidence,
+        timestamp: signals.timestamp,
+      })
+      .from(signals)
+      .where(eq(signals.id, id))
+      .limit(1);
+    if (already.length > 0) {
+      const existing = already[0];
+
+      const updates: Partial<typeof signals.$inferInsert> = {};
+      updates.summary = normalizedSummary;
+      if (hasOverride("lat") && resolvedLat !== null) {
+        updates.lat = resolvedLat;
+      }
+      if (hasOverride("lng") && resolvedLng !== null) {
+        updates.lng = resolvedLng;
+      }
+      if ((hasOverride("lat") || hasOverride("lng")) && incomingHasGeo) {
+        updates.city = fields.city;
+        updates.country = fields.country;
+        updates.geographicScope = fields.geographicScope;
+        updates.adminArea = fields.adminArea || null;
+      }
+
+      // Webhooks pass full override objects; null must mean "omit" — never wipe a good row.
+      if (hasOverride("impactScore") && persistenceImpactScore !== null) {
+        updates.impactScore = persistenceImpactScore;
+      }
+
+      if (hasOverride("category") && resolvedCategory !== null) {
+        updates.category = resolvedCategory;
+      }
+
+      if (
+        hasOverride("enrichmentProvider") &&
+        enrichmentOverrides?.enrichmentProvider != null
+      ) {
+        updates.enrichmentProvider = enrichmentOverrides.enrichmentProvider;
+      }
+      if (
+        hasOverride("enrichmentModel") &&
+        enrichmentOverrides?.enrichmentModel != null
+      ) {
+        updates.enrichmentModel = enrichmentOverrides.enrichmentModel;
+      }
+      if (
+        hasOverride("enrichmentConfidence") &&
+        enrichmentOverrides?.enrichmentConfidence != null
+      ) {
+        updates.enrichmentConfidence = enrichmentOverrides.enrichmentConfidence;
+      }
+
+      const canonicalSourceUrl =
+        canonicalizeSignalUrl(enriched?.canonicalSourceUrl) ??
+        canonicalizeSignalUrl(sourceUrl);
+      if (canonicalSourceUrl) {
+        updates.canonicalSourceUrl = canonicalSourceUrl;
+      }
+      if (enriched?.sourceDisplayName?.trim()) {
+        updates.sourceDisplayName = enriched.sourceDisplayName.trim();
+      }
+      if (enriched?.sourceHandle?.trim()) {
+        updates.sourceHandle = enriched.sourceHandle.trim();
+      }
+      if (enriched?.sourceIconKey?.trim()) {
+        updates.sourceIconKey = enriched.sourceIconKey.trim();
+      }
+      if (enriched?.sourceAvatarUrl) {
+        updates.sourceAvatarUrl = canonicalizeSignalUrl(enriched.sourceAvatarUrl);
+      }
+      if (typeof enriched?.sourceVerified === "boolean") {
+        updates.sourceVerified = enriched.sourceVerified;
+      }
+      if (enriched?.trustTier) {
+        updates.trustTier = enriched.trustTier;
+      }
+      if (typeof enriched?.trustScore === "number") {
+        updates.trustScore = Math.max(0, Math.min(100, Math.round(enriched.trustScore)));
+      }
+      if (Array.isArray(enriched?.mediaUrls) && enriched.mediaUrls.length > 0) {
+        updates.mediaUrls = enriched.mediaUrls
+          .map((u) => canonicalizeSignalUrl(u) ?? null)
+          .filter((u): u is string => typeof u === "string")
+          .slice(0, 6);
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const upgraded = await db
+          .update(signals)
+          .set(updates)
+          .where(eq(signals.id, id))
+          .returning();
+        if (upgraded.length > 0) {
+          console.log(`♻️ [FACTORY] Upgraded existing id with enrichment: ${id.slice(0, 48)}…`);
+          await pusher.trigger(
+            "aether-live",
+            "new-signal",
+            pusherNewSignalPayload({
+              ...upgraded[0],
+              timestamp: upgraded[0].timestamp ?? existing.timestamp ?? new Date(),
+            }),
+          );
+          return upgraded[0];
+        }
+      }
+
+      console.log(`⏩ [FACTORY] Skip existing id: ${id.slice(0, 48)}…`);
+      return null;
+    }
 
     const canonicalSourceUrl =
       canonicalizeSignalUrl(enriched?.canonicalSourceUrl) ??
       canonicalizeSignalUrl(sourceUrl);
-    const normalizedSummary = normalizeSignalBodyText(fields.summary);
-    const normalizedHeadline = markdownToPlainText(fields.headline).slice(0, 512);
     const identity = deriveSignalIdentity(source, canonicalSourceUrl);
     const trust = deriveTrustMetadata(source);
     const mediaUrls =
@@ -138,14 +315,29 @@ export async function processIntelRaw(params: {
           ? Math.max(0, Math.min(100, Math.round(enriched.trustScore)))
           : trust.trustScore,
       mediaUrls,
-      category: fields.category,
-      lat: fields.lat,
-      lng: fields.lng,
+      category: resolvedCategory,
+      lat: resolvedLat,
+      lng: resolvedLng,
+      enrichmentProvider:
+        hasOverride("enrichmentProvider")
+          ? (enrichmentOverrides?.enrichmentProvider ?? null)
+          : null,
+      enrichmentModel:
+        hasOverride("enrichmentModel")
+          ? (enrichmentOverrides?.enrichmentModel ?? null)
+          : null,
+      enrichmentConfidence:
+        hasOverride("enrichmentConfidence")
+          ? (enrichmentOverrides?.enrichmentConfidence ?? null)
+          : null,
       city: fields.city,
       country: fields.country,
       geographicScope: fields.geographicScope,
       adminArea: fields.adminArea || null,
-      impactScore: fields.impactScore,
+      impactScore:
+        persistenceImpactScore !== null
+          ? persistenceImpactScore
+          : fields.impactScore,
       tags: fields.tags,
       timestamp: timestamp > now ? now : timestamp,
     };

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 // This tells Next.js not to cache this route
 export const dynamic = "force-dynamic";
-/** Match vercel.json; USGS Atom ingest (up to 12 items per run). */
+/** Cron hook; RSS ingest is disabled when no feeds are configured. */
 export const maxDuration = 120;
 
 export async function GET(request: Request) {
@@ -15,9 +15,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("🕒 Cron Job Started: Syncing Real-Time News...");
-    
-    // 2. Run the Aggregator (USGS Atom -> verbatim fields -> DB -> Pusher)
+    console.log("🕒 Cron: RSS sync (no feeds configured)");
     const newSignals = await syncRealTimeNews();
 
     return NextResponse.json({ 

@@ -1,8 +1,9 @@
 "use server";
 
-import { getSignalsFromDB, syncRealTimeNews } from "@/lib/aggregator";
+import { getSignalsFromDB } from "@/lib/aggregator";
 import { Signal, type GeographicScope } from "@/lib/aggregator/types";
 import { getServerSession } from "@/lib/auth/server";
+import { effectiveImpactScore } from "@/lib/signals/impact-tier";
 
 function normalizeScope(raw: string | null | undefined): GeographicScope {
   const v = (raw ?? "global").toLowerCase().trim();
@@ -17,38 +18,31 @@ export async function checkSignalsAccess(): Promise<boolean> {
   return Boolean(session?.user);
 }
 
-/**
- * 1. GET HISTORY (Fast)
- * Reads recent signals from Drizzle (see SIGNALS_HISTORY_LIMIT).
- */
 export async function getHistory(): Promise<Signal[]> {
   const rawData = await getSignalsFromDB();
-  const now = Date.now(); // Server's current UTC time in milliseconds
+  const now = Date.now();
 
-  return rawData.map((s) => {
-    // 1. Convert DB Date object to Unix Number
+  const out = rawData.map((s) => {
     let timeValue = s.timestamp ? s.timestamp.getTime() : now;
-
-    // 2. FUTURE-PROOF: If the database time is somehow ahead of the server, cap it at 'now'
     if (timeValue > now) {
       timeValue = now;
     }
 
-    return {
+    const row: Signal = {
       id: s.id,
       headline: s.headline,
       summary: s.summary ?? "",
       source: s.source as Signal["source"],
       sourceUrl: s.sourceUrl?.trim() || undefined,
-      category: s.category as Signal["category"],
-      lat: s.lat,
-      lng: s.lng,
+      category: (s.category as Signal["category"]) ?? "World",
+      lat: typeof s.lat === "number" ? s.lat : null,
+      lng: typeof s.lng === "number" ? s.lng : null,
       city: s.city ?? "Unknown",
       country: s.country ?? "Unknown",
       geographicScope: normalizeScope(s.geographicScope),
       adminArea: s.adminArea?.trim() ?? "",
       impactScore: s.impactScore ?? 0,
-      timestamp: timeValue, // Sending purely universal number to frontend
+      timestamp: timeValue,
       tags: (s.tags as string[]) ?? [],
       canonicalSourceUrl: s.canonicalSourceUrl?.trim() || undefined,
       sourceDisplayName: s.sourceDisplayName?.trim() || undefined,
@@ -59,18 +53,16 @@ export async function getHistory(): Promise<Signal[]> {
       trustTier: (s.trustTier as Signal["trustTier"]) ?? undefined,
       trustScore: s.trustScore ?? undefined,
       mediaUrls: (s.mediaUrls as string[]) ?? [],
+      enrichmentProvider: s.enrichmentProvider?.trim() || undefined,
+      enrichmentModel: s.enrichmentModel?.trim() || undefined,
+      enrichmentConfidence: s.enrichmentConfidence ?? undefined,
+    };
+    return {
+      ...row,
+      impactScore: effectiveImpactScore(row),
     };
   });
+
+  return out;
 }
 
-/**
- * 2. RUN SYNC (Slow)
- * Triggers the background process.
- */
-export async function triggerSync() {
-  try {
-    await syncRealTimeNews();
-  } catch (error) {
-    console.error("Sync trigger failed:", error);
-  }
-}

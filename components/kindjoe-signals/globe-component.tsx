@@ -6,7 +6,6 @@ import {
   getImpactSeverity,
   impactTierBadgeClass,
   impactTierHex,
-  impactTierLabel,
   impactTierScoreTextClass,
 } from "@/lib/signals/impact-tier";
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -80,7 +79,7 @@ function signalPointTooltip(
   const sub = isLight ? "#64748b" : "#9ca3af";
   return `<div style="font-family:ui-sans-serif,system-ui,ui-monospace,monospace;font-size:12px;max-width:280px;background:${panelBg};padding:10px 12px;border:${border};border-radius:8px;line-height:1.45;box-shadow:${shadow}">
     <div style="font-weight:600;color:${headlineColor};margin-bottom:6px">${escapeHtml(d.headline.slice(0, 160))}${d.headline.length > 160 ? "…" : ""}</div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:${tierColor}">IMPACT · ${impactTierLabel(getImpactSeverity(d.impactScore)).toUpperCase()} (${d.impactScore})</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:${tierColor}">IMPACT · ${d.impactScore}</div>
     <div style="margin-top:6px;font-size:10px;color:${sub}">${escapeHtml(d.city)} · ${escapeHtml(d.country)}</div>
   </div>`;
 }
@@ -183,6 +182,19 @@ type CountryGlobeLabel = {
   popEst: number;
 };
 
+function hasValidCoords(signal: Signal | null | undefined): signal is Signal & {
+  lat: number;
+  lng: number;
+} {
+  return (
+    !!signal &&
+    typeof signal.lat === "number" &&
+    Number.isFinite(signal.lat) &&
+    typeof signal.lng === "number" &&
+    Number.isFinite(signal.lng)
+  );
+}
+
 export default function GlobeComponent(props: GlobeComponentProps) {
   const {
     signals,
@@ -212,14 +224,16 @@ export default function GlobeComponent(props: GlobeComponentProps) {
    */
   const ringsData = useMemo(() => {
     if (!signals.length) return [];
-    const sorted = [...signals].sort((a, b) => b.impactScore - a.impactScore);
+    const geoSignals = signals.filter(hasValidCoords);
+    if (!geoSignals.length) return [];
+    const sorted = [...geoSignals].sort((a, b) => b.impactScore - a.impactScore);
 
     let pick =
       sorted.length <= GLOBE_SIGNAL_DISPLAY_LIMIT
         ? sorted
         : sorted.slice(0, GLOBE_SIGNAL_DISPLAY_LIMIT);
     const ids = new Set(pick.map((s) => s.id));
-    if (selectedSignal && !ids.has(selectedSignal.id)) {
+    if (hasValidCoords(selectedSignal) && !ids.has(selectedSignal.id)) {
       pick = [...pick.slice(0, -1), selectedSignal].sort(
         (a, b) => b.impactScore - a.impactScore,
       );
@@ -255,15 +269,16 @@ export default function GlobeComponent(props: GlobeComponentProps) {
       if (typeof name !== "string" || !name) continue;
       const centroid = geoFeatureCentroid(feat as { geometry?: { type: string; coordinates: unknown } });
       if (!centroid) continue;
-      const rep = signalByAdmin.get(name) ?? null;
+      const repCandidate = signalByAdmin.get(name) ?? null;
+      const rep = hasValidCoords(repCandidate) ? repCandidate : null;
       const hasSignal = !!rep;
       const pop = Number(feat.properties?.POP_EST ?? 0);
       if (!hasSignal && pop > 0 && pop < minPop) continue;
 
       out.push({
         id: `country-${name}`,
-        lat: rep?.lat ?? centroid.lat,
-        lng: rep?.lng ?? centroid.lng,
+        lat: rep ? rep.lat : centroid.lat,
+        lng: rep ? rep.lng : centroid.lng,
         labelName: name.toUpperCase(),
         hasSignal,
         representativeSignal: rep,
@@ -381,7 +396,7 @@ export default function GlobeComponent(props: GlobeComponentProps) {
 
   // 🔭 Zoom to Local or Global scale based on news type
   useEffect(() => {
-    if (selectedSignal && globeRef.current) {
+    if (hasValidCoords(selectedSignal) && globeRef.current) {
       // If impact is low, it's likely local news, so we zoom in closer (altitude 0.8)
       const zoomAltitude = selectedSignal.impactScore < 40 ? 0.8 : 1.6;
       globeRef.current.pointOfView(
@@ -427,7 +442,9 @@ export default function GlobeComponent(props: GlobeComponentProps) {
             className="text-[10px] font-bold tracking-widest md:text-xs"
             style={{ color: activeColor }}
           >
-            {formatLatLng(selectedSignal.lat, selectedSignal.lng)}
+            {hasValidCoords(selectedSignal)
+              ? formatLatLng(selectedSignal.lat, selectedSignal.lng)
+              : "COORDS_UNAVAILABLE"}
           </span>
           <span
             className={cn(
@@ -754,8 +771,7 @@ function DossierPanel({
                         ),
                   )}
                 >
-                  {impactTierLabel(getImpactSeverity(selectedSignal.impactScore))} ·{" "}
-                  {selectedSignal.impactScore}
+                  IMPACT {selectedSignal.impactScore}
                 </span>
               </div>
               {sourceHref && sourceLinkLabel ? (

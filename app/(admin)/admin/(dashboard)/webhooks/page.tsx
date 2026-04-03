@@ -1,4 +1,4 @@
-import { OutgoingWebhooksAdminPanel } from "@/components/admin/outgoing-webhooks-admin-panel";
+import { OutgoingWebhooksAdminPanel } from "@/components/domains/admin/outgoing-webhooks-admin-panel";
 
 export default function AdminWebhooksPage() {
   return (

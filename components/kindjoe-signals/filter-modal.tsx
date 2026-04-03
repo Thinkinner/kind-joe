@@ -19,13 +19,14 @@ import FilterDiscoveryStrip, {
 import {
   X,
   Globe,
-  TrendingUp,
-  Briefcase,
-  Cpu,
-  Flame,
-  MapPin,
-  Target,
+  Shield,
+  DollarSign,
+  Leaf,
   Zap,
+  Cpu,
+  HeartPulse,
+  Users,
+  MapPin,
   Layers,
   Hash,
   Search,
@@ -38,13 +39,14 @@ const CATEGORY_ICONS: Record<
   ComponentType<{ size?: number; className?: string }>
 > =
   {
-    Geopolitics: Globe,
-    "Conflicts & Wars": Flame,
-    "Economy & Markets": TrendingUp,
-    Business: Briefcase,
-    "Tech & Science": Cpu,
-    "Disasters & Emergencies": Zap,
-    "Viral / Social": Target,
+    World: Globe,
+    Military: Shield,
+    Finance: DollarSign,
+    Environment: Leaf,
+    Energy: Zap,
+    Tech: Cpu,
+    Health: HeartPulse,
+    Society: Users,
   };
 
 export type FilterModalTab = "scale" | "region" | "topic" | "tags";
@@ -474,8 +476,8 @@ export default function FilterModal({
                   isLight ? "text-slate-600" : "text-gray-500",
                 )}
               >
-                Broad categories — same as keyboard shortcuts 1–5 for some
-                topics.
+                Broad categories across world, military, finance, energy, tech,
+                health, and society.
               </p>
               {!listFilter && (
                 <FilterButton

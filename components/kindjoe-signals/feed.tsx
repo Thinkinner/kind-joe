@@ -16,7 +16,6 @@ import { signalUsesSingleBodyBlock } from "@/lib/signals/signal-body-display";
 import {
   isXOrTwitterStoryHref,
   resolveSignalSourceUrl,
-  signalOutboundLinkLabel,
 } from "@/lib/signals/signal-source-url";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
@@ -28,14 +27,11 @@ import { SignalSourceIdentity } from "@/components/kindjoe-signals/signal-source
 import {
   getImpactSeverity,
   impactTierAccentTextClass,
-  impactTierBadgeClass,
   impactTierBarSegmentClass,
   impactTierBorderLeftClass,
   impactTierFreshTimeClass,
-  impactTierLabel,
   impactTierScoreTextClass,
   impactTierSelectedCardClass,
-  impactTierTag,
 } from "@/lib/signals/impact-tier";
 
 function signalNavigationHref(signal: Signal): string | null {
@@ -48,93 +44,132 @@ function openSignalSourceOrSelect(
 ) {
   const href = signalNavigationHref(signal);
   if (href) {
-    window.location.assign(href);
+    window.open(href, "_blank", "noopener,noreferrer");
     return;
   }
   onSignalClick(signal);
 }
 
-function SignalSourceLink({
-  signal,
+type ArticlePreview = {
+  url: string;
+  title: string;
+  host: string;
+};
+
+const ARTICLE_MD_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gi;
+const ARTICLE_URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i;
+const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v)(\?|$)/i;
+
+function isMediaLikeUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (IMAGE_EXT_RE.test(lower) || VIDEO_EXT_RE.test(lower)) return true;
+  return (
+    lower.includes("video.twimg.com/") ||
+    lower.includes("pbs.twimg.com/media/") ||
+    lower.includes("pbs.twimg.com/amplify_video_thumb/")
+  );
+}
+
+function isVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return VIDEO_EXT_RE.test(lower) || lower.includes("video.twimg.com/");
+}
+
+function isImageUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    IMAGE_EXT_RE.test(lower) ||
+    lower.includes("pbs.twimg.com/media/") ||
+    lower.includes("pbs.twimg.com/amplify_video_thumb/")
+  );
+}
+
+function buildArticlePreview(signal: Signal): ArticlePreview | null {
+  const body = `${signal.headline}\n${signal.summary}`;
+
+  for (const match of body.matchAll(ARTICLE_MD_LINK_RE)) {
+    const label = (match[1] ?? "").trim();
+    const url = (match[2] ?? "").trim();
+    if (!url || isXOrTwitterStoryHref(url) || isMediaLikeUrl(url)) continue;
+    try {
+      const parsed = new URL(url);
+      return {
+        url,
+        title: label || parsed.hostname.replace(/^www\./, ""),
+        host: parsed.hostname.replace(/^www\./, ""),
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  for (const match of body.matchAll(ARTICLE_URL_RE)) {
+    const url = (match[0] ?? "").replace(/[),.;!?]+$/g, "").trim();
+    if (!url || isXOrTwitterStoryHref(url) || isMediaLikeUrl(url)) continue;
+    try {
+      const parsed = new URL(url);
+      return {
+        url,
+        title: parsed.hostname.replace(/^www\./, ""),
+        host: parsed.hostname.replace(/^www\./, ""),
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function ArticleMetadataPreview({
+  article,
   isLight,
-  variant,
 }: {
-  signal: Signal;
+  article: ArticlePreview | null;
   isLight: boolean;
-  variant: "spotlight" | "row";
 }) {
-  const href = resolveSignalSourceUrl(signal.source, signal.sourceUrl);
-  if (!href) return null;
-
-  const label = signalOutboundLinkLabel(
-    href,
-    signal.source,
-    variant === "spotlight" ? 52 : 48,
-  );
-  const isX = isXOrTwitterStoryHref(href);
-
-  const shellClass = cn(
-    "inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5",
-    variant === "spotlight"
-      ? "max-w-[min(100%,13rem)]"
-      : "max-w-[12rem] sm:max-w-[16rem]",
-    variant === "spotlight"
-      ? isLight
-        ? "border-red-200/90 bg-red-50/90 text-red-900"
-        : "border-red-500/35 bg-red-950/50 text-red-200/95"
-      : isLight
-        ? "border-slate-300 bg-white text-slate-800"
-        : "border-white/15 bg-white/[0.04] text-gray-400",
-    variant === "spotlight"
-      ? isLight
-        ? "cursor-pointer transition-colors hover:border-red-400 hover:bg-red-100"
-        : "cursor-pointer transition-colors hover:border-red-400/50 hover:bg-red-500/15"
-      : isLight
-        ? "cursor-pointer transition-colors hover:border-[#00BFFF] hover:bg-sky-50 hover:text-slate-900"
-        : "cursor-pointer transition-colors hover:border-[#00BFFF]/40 hover:bg-[#00BFFF]/10 hover:text-white",
-  );
-
-  const textClass = cn(
-    "pointer-events-none min-w-0 truncate text-[8px] leading-tight",
-    isX
-      ? cn(
-          "font-black uppercase tracking-wider underline-offset-2 group-hover:underline",
-          variant === "spotlight"
-            ? isLight
-              ? "text-red-950/90"
-              : "text-red-100/95"
-            : isLight
-              ? "text-slate-800"
-              : "text-gray-200",
-        )
-      : cn(
-          "font-sans text-[9px] font-bold tabular-nums tracking-tight underline-offset-2 group-hover:underline",
-          variant === "spotlight"
-            ? isLight
-              ? "text-red-950/90"
-              : "text-red-100/95"
-            : isLight
-              ? "text-slate-800"
-              : "text-gray-200",
-        ),
-  );
-
+  if (!article) return null;
   return (
     <a
-      href={href}
+      href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={cn(
-        shellClass,
-        "group relative z-20 cursor-pointer pointer-events-auto select-text",
-      )}
-      title={href}
-      aria-label={`Open source: ${href}`}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        "mb-3 block rounded border px-2.5 py-2 transition-colors",
+        isLight
+          ? "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100"
+          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]",
+      )}
+      title={article.url}
     >
-      <ExternalLink className="pointer-events-none h-3 w-3 shrink-0 opacity-90" strokeWidth={2.5} />
-      <span className={textClass}>{label}</span>
+      <div
+        className={cn(
+          "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-widest",
+          isLight ? "text-slate-600" : "text-gray-400",
+        )}
+      >
+        <ExternalLink size={10} />
+        Article
+      </div>
+      <div
+        className={cn(
+          "mt-1 text-[11px] font-semibold leading-snug",
+          isLight ? "text-slate-900" : "text-gray-100",
+        )}
+      >
+        {article.title}
+      </div>
+      <div
+        className={cn(
+          "mt-1 text-[10px]",
+          isLight ? "text-slate-600" : "text-gray-400",
+        )}
+      >
+        {article.host}
+      </div>
     </a>
   );
 }
@@ -148,8 +183,14 @@ function SignalMediaPreview({
   isSelected: boolean;
   isLight: boolean;
 }) {
-  const src = signal.mediaUrls?.[0];
-  if (!src) return null;
+  const media = Array.isArray(signal.mediaUrls)
+    ? signal.mediaUrls.filter((u): u is string => typeof u === "string" && u.length > 0)
+    : [];
+  const videoSrc = media.find((u) => isVideoUrl(u)) ?? null;
+  const imageSrc = media.find((u) => isImageUrl(u)) ?? null;
+  const fallbackSrc = media[0] ?? null;
+  const src = imageSrc ?? fallbackSrc;
+  if (!videoSrc && !src) return null;
   return (
     <div
       className={cn(
@@ -157,17 +198,31 @@ function SignalMediaPreview({
         isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black/20",
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- remote social media URLs */}
-      <img
-        src={src}
-        alt=""
-        className={cn(
-          "w-full object-cover",
-          isSelected ? "max-h-72" : "h-36",
-        )}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
+      {videoSrc ? (
+        <video
+          src={videoSrc}
+          poster={imageSrc ?? undefined}
+          className={cn(
+            "w-full object-cover",
+            isSelected ? "max-h-72" : "h-36",
+          )}
+          controls
+          playsInline
+          preload="metadata"
+        />
+      ) : src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- remote social media URLs
+        <img
+          src={src}
+          alt=""
+          className={cn(
+            "w-full object-cover",
+            isSelected ? "max-h-72" : "h-36",
+          )}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+        />
+      ) : null}
     </div>
   );
 }
@@ -184,7 +239,7 @@ function PrioritySpotlightCard({
   /** e.g. `hidden md:block` (desktop only) or `md:hidden` (mobile, inside scroll). */
   visibilityClass: string;
 }) {
-  const href = signalNavigationHref(signal);
+  const article = buildArticlePreview(signal);
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -207,11 +262,6 @@ function PrioritySpotlightCard({
           Priority Asset
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <SignalSourceLink
-            signal={signal}
-            isLight={isLight}
-            variant="spotlight"
-          />
           <div
             className={cn(
               "flex items-center gap-1 text-[8px] font-bold",
@@ -229,14 +279,27 @@ function PrioritySpotlightCard({
       </div>
 
       {signalUsesSingleBodyBlock(signal) ? (
-        <div
-          className={cn(
-            "mb-3 max-h-72 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
-            isLight ? "text-red-950/90" : "text-red-100/90",
-          )}
-        >
-          <SignalRichText text={signal.summary} isLight={isLight} />
-        </div>
+        <>
+          {article ? (
+            <h3
+              className={cn(
+                "mb-2 font-sans text-[13px] font-semibold normal-case not-italic leading-snug tracking-tight",
+                isLight ? "text-slate-900" : "text-white",
+              )}
+            >
+              {signalHeadlinePlain(signal.headline)}
+            </h3>
+          ) : null}
+          <ArticleMetadataPreview article={article} isLight={isLight} />
+          <div
+            className={cn(
+              "mb-3 max-h-72 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
+              isLight ? "text-red-950/90" : "text-red-100/90",
+            )}
+          >
+            <SignalRichText text={signal.summary} isLight={isLight} />
+          </div>
+        </>
       ) : (
         <>
           <h3
@@ -247,6 +310,7 @@ function PrioritySpotlightCard({
           >
             {signalHeadlinePlain(signal.headline)}
           </h3>
+          <ArticleMetadataPreview article={article} isLight={isLight} />
 
           <div
             className={cn(
@@ -258,21 +322,6 @@ function PrioritySpotlightCard({
           </div>
         </>
       )}
-      {href ? (
-        <div
-          className={cn(
-            "mb-3 inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold",
-            isLight
-              ? "border-red-200 bg-red-100/80 text-red-900"
-              : "border-red-400/30 bg-red-500/10 text-red-200",
-          )}
-        >
-          <ExternalLink size={11} className="shrink-0" />
-          <span className="truncate">
-            Link in post: {signalOutboundLinkLabel(href, signal.source, 70)}
-          </span>
-        </div>
-      ) : null}
       <SignalMediaPreview signal={signal} isSelected={true} isLight={isLight} />
 
       <div
@@ -291,7 +340,7 @@ function PrioritySpotlightCard({
                 : "border-red-500/35 bg-red-950/50 text-red-200",
             )}
           >
-            {impactTierLabel(getImpactSeverity(signal.impactScore))}
+            IMPACT {signal.impactScore}
           </span>
           <span className="flex gap-1">
             <span className="animate-ping text-red-500">●</span> HOT
@@ -499,7 +548,7 @@ export default function Feed({
                 const isSelected = selectedSignal?.id === signal.id;
                 const timeDiff = now - signal.timestamp;
                 const tier = getImpactSeverity(signal.impactScore);
-                const href = signalNavigationHref(signal);
+                const article = buildArticlePreview(signal);
 
                 const timeLabel =
                   timeDiff < 60000 || signal.timestamp > now
@@ -546,11 +595,6 @@ export default function Feed({
                         {timeLabel}
                       </span>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <SignalSourceLink
-                          signal={signal}
-                          isLight={isLight}
-                          variant="row"
-                        />
                         {isSelected && (
                           <div
                             className={cn(
@@ -568,21 +612,34 @@ export default function Feed({
                     </div>
 
                     {signalUsesSingleBodyBlock(signal) ? (
-                      <div
-                        className={cn(
-                          "mb-3 text-[12px] font-normal leading-relaxed",
-                          isSelected
-                            ? "max-h-72 overflow-y-auto pr-1"
-                            : "line-clamp-2 overflow-hidden",
-                          isLight ? "text-slate-800" : "text-gray-300",
-                        )}
-                      >
-                        <SignalRichText
-                          text={signal.summary}
-                          isLight={isLight}
-                          compact={!isSelected}
-                        />
-                      </div>
+                      <>
+                        {article ? (
+                          <h3
+                            className={cn(
+                              "mb-2 font-sans text-[12px] font-semibold normal-case leading-snug tracking-tight transition-colors",
+                              isLight
+                                ? "text-slate-950 group-hover:text-slate-950"
+                                : "text-gray-200 group-hover:text-white",
+                            )}
+                          >
+                            {signalHeadlinePlain(signal.headline)}
+                          </h3>
+                        ) : null}
+                        <ArticleMetadataPreview article={article} isLight={isLight} />
+                        <div
+                          className={cn(
+                            "mb-3 text-[12px] font-normal leading-relaxed",
+                            "max-h-72 overflow-y-auto pr-1",
+                            isLight ? "text-slate-800" : "text-gray-300",
+                          )}
+                        >
+                          <SignalRichText
+                            text={signal.summary}
+                            isLight={isLight}
+                            compact={false}
+                          />
+                        </div>
+                      </>
                     ) : (
                       <>
                         <h3
@@ -595,40 +652,23 @@ export default function Feed({
                         >
                           {signalHeadlinePlain(signal.headline)}
                         </h3>
+                        <ArticleMetadataPreview article={article} isLight={isLight} />
 
                         <div
                           className={cn(
                             "mb-3 text-[12px] font-normal leading-relaxed",
-                            isSelected
-                              ? "max-h-72 overflow-y-auto pr-1"
-                              : "line-clamp-2 overflow-hidden",
+                            "max-h-72 overflow-y-auto pr-1",
                             isLight ? "text-slate-700" : "text-gray-400",
                           )}
                         >
                           <SignalRichText
                             text={signal.summary}
                             isLight={isLight}
-                            compact={!isSelected}
+                            compact={false}
                           />
                         </div>
                       </>
                     )}
-                    {href ? (
-                      <div
-                        className={cn(
-                          "mb-3 inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-1 text-[10px] font-semibold",
-                          isLight
-                            ? "border-sky-200 bg-sky-50 text-sky-800"
-                            : "border-sky-400/25 bg-sky-500/10 text-sky-200",
-                        )}
-                      >
-                        <ExternalLink size={11} className="shrink-0" />
-                        <span className="truncate">
-                          Link in post:{" "}
-                          {signalOutboundLinkLabel(href, signal.source, 64)}
-                        </span>
-                      </div>
-                    ) : null}
                     <SignalMediaPreview
                       signal={signal}
                       isSelected={isSelected}
@@ -641,14 +681,16 @@ export default function Feed({
                         isLight ? "border-slate-300" : "border-white/5",
                       )}
                     >
-                      <span
-                        className={cn(
-                          "font-black uppercase",
-                          isLight ? "text-slate-800" : "text-gray-600",
-                        )}
-                      >
-                        {signal.category}
-                      </span>
+        <span
+          className={cn(
+            "rounded border px-1.5 py-px text-[7px] font-black uppercase tracking-[0.16em]",
+            isLight
+              ? "border-slate-300 bg-slate-100 text-slate-700"
+              : "border-white/12 bg-white/[0.04] text-slate-300",
+          )}
+        >
+          {signal.category}
+        </span>
                       <div className="flex items-center gap-2">
                         <div className="flex gap-0.5">
                           {[1, 2, 3, 4, 5].map((i) => (
@@ -665,14 +707,6 @@ export default function Feed({
                             />
                           ))}
                         </div>
-                        <span
-                          className={cn(
-                            "rounded border px-1.5 py-px text-[7px] font-black tracking-wider",
-                            impactTierBadgeClass(tier, isLight),
-                          )}
-                        >
-                          {impactTierTag(tier)}
-                        </span>
                         <span
                           className={cn(
                             "font-bold tabular-nums",

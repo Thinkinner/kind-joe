@@ -31,6 +31,38 @@ const DISCORD_ALLOWED_CHANNEL_IDS = new Set(
 const HTTP_URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
 const X_STATUS_RE =
   /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,15})\/status\/(\d+)/i;
+const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gi;
+const TRACKING_PARAMS = new Set([
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "fbclid",
+  "gclid",
+  "igshid",
+  "mc_cid",
+  "mc_eid",
+]);
+
+function normalizeTextForUrlSearch(text: string): string {
+  return text.replace(/[\u200B-\u200D\uFEFF\u2060\u00AD\u200E\u200F]/g, "");
+}
+
+function isXHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host === "x.com" ||
+      host.endsWith(".x.com") ||
+      host === "twitter.com" ||
+      host.endsWith(".twitter.com")
+    );
+  } catch {
+    return false;
+  }
+}
 
 function shortLog(text: string, max = 220): string {
   if (text.length <= max) return text;
@@ -38,14 +70,18 @@ function shortLog(text: string, max = 220): string {
 }
 
 function parseUrlsFromText(text: string): string[] {
-  const urls = text.match(HTTP_URL_RE) ?? [];
+  const urls = normalizeTextForUrlSearch(text).match(HTTP_URL_RE) ?? [];
   return urls.map((u) => u.replace(/[),.;!?]+$/g, ""));
 }
 
 function canonicalizeUrl(raw: string): string | null {
   try {
-    const u = new URL(raw);
+    const cleaned = normalizeTextForUrlSearch(raw.trim());
+    const u = new URL(cleaned);
     if (!/^https?:$/i.test(u.protocol)) return null;
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key.toLowerCase())) u.searchParams.delete(key);
+    }
     u.hash = "";
     return u.toString();
   } catch {
@@ -100,8 +136,40 @@ function embedChunks(embed: APIEmbed): string[] {
 function cleanBodyText(text: string): string {
   return text
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(MARKDOWN_LINK_RE, (_full, label: string, href: string) => {
+      const cleanedLabel = label.trim();
+      return cleanedLabel ? `${cleanedLabel} ${href}` : href;
+    })
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeBodyTextUrls(
+  bodyText: string,
+  expandedByOriginal: Map<string, string>,
+): string {
+  const seen = new Set<string>();
+  const replaced = bodyText.replace(HTTP_URL_RE, (raw) => {
+    const trimmed = raw.replace(/[),.;!?]+$/g, "");
+    const canon = canonicalizeUrl(trimmed);
+    if (!canon) return raw;
+    const expanded = expandedByOriginal.get(canon) ?? canon;
+    const expandedCanon = canonicalizeUrl(expanded) ?? expanded;
+    const key = expandedCanon.toLowerCase();
+    if (seen.has(key)) return "";
+    seen.add(key);
+    return expandedCanon;
+  });
+  return replaced.replace(/\s{2,}/g, " ").trim();
+}
+
+function canonicalUrlSetFromText(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of parseUrlsFromText(text)) {
+    const canon = canonicalizeUrl(raw);
+    if (canon) out.add(canon.toLowerCase());
+  }
+  return out;
 }
 
 async function buildNormalizedPayload(message: Message) {
@@ -125,6 +193,14 @@ async function buildNormalizedPayload(message: Message) {
   const expanded = await Promise.all(
     [...candidateUrls].slice(0, 8).map((u) => maybeExpandUrl(u)),
   );
+  const expandedByOriginal = new Map<string, string>();
+  [...candidateUrls].slice(0, 8).forEach((original, i) => {
+    const expandedUrl = expanded[i];
+    const expandedCanon = canonicalizeUrl(expandedUrl);
+    if (expandedCanon) {
+      expandedByOriginal.set(original, expandedCanon);
+    }
+  });
   for (const e of expanded) {
     const canon = canonicalizeUrl(e);
     if (canon) candidateUrls.add(canon);
@@ -157,19 +233,30 @@ async function buildNormalizedPayload(message: Message) {
     : `@${message.author.username.replace(/^@+/, "")}`;
 
   const bodyText = cleanBodyText(
-    chunks
-      .filter((c) => !/^https?:\/\//i.test(c.trim()))
-      .join(" "),
+    chunks.filter((c) => !/^https?:\/\//i.test(c.trim())).join(" "),
   );
+  const normalizedBodyText = normalizeBodyTextUrls(bodyText, expandedByOriginal);
+  const preferredArticleUrl =
+    [...candidateUrls].find((u) => !isXHost(u) && /^https?:\/\//i.test(u)) ?? null;
+  const textUrlKeys = canonicalUrlSetFromText(normalizedBodyText);
+  const preferredKey = preferredArticleUrl?.toLowerCase() ?? null;
+  const hasArticleInText =
+    preferredKey != null && textUrlKeys.has(preferredKey);
 
-  const text =
-    bodyText ||
+  const text = (
+    normalizedBodyText ||
     sourceUrl ||
-    "Signal received from Discord";
+    "Signal received from Discord"
+  ).trim();
+
+  const finalText =
+    preferredArticleUrl && !hasArticleInText
+      ? `${text} ${preferredArticleUrl}`.trim()
+      : text;
 
   return {
     id: tweetId ? `x-${tweetId}` : `discord-${message.id}`,
-    text,
+    text: finalText,
     source: "X",
     url: sourceUrl,
     twitterUrl: sourceUrl,

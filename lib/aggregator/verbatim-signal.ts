@@ -27,9 +27,9 @@ function isNativeXPostIngest(
 }
 
 function defaultCategory(source: Source): Category {
-  if (source === "USGS Earthquakes") return "Disasters & Emergencies";
-  if (source === "Google News" || source === "Apple Newsroom") return "Business";
-  return "Geopolitics";
+  if (source === "USGS Earthquakes") return "Environment";
+  if (source === "Google News" || source === "Apple Newsroom") return "Finance";
+  return "World";
 }
 
 function sourceTags(source: Source): string[] {
@@ -107,14 +107,14 @@ export function buildVerbatimSignalFields(params: {
     return {
       headline: stored,
       summary: stored,
-      category: "Viral / Social",
+      category: "Society",
       lat: 0,
       lng: 0,
       city: "Unknown",
       country: "Global",
       geographicScope: "global",
       adminArea: "",
-      impactScore: 50,
+      impactScore: 0,
       tags: sourceTags(source),
     };
   }
@@ -155,7 +155,7 @@ export function buildVerbatimSignalFields(params: {
   }
 
   const impactScore =
-    source === "USGS Earthquakes" ? usgsImpactScore(bodyForSummary) : 50;
+    source === "USGS Earthquakes" ? usgsImpactScore(bodyForSummary) : 0;
 
   return {
     headline,

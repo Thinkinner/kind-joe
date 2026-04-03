@@ -10,13 +10,14 @@ const SOURCES: Source[] = [
   'USGS Earthquakes',
 ];
 export const CATEGORIES: Category[] = [
-  'Geopolitics',
-  'Conflicts & Wars',
-  'Economy & Markets',
-  'Business',
-  'Tech & Science',
-  'Disasters & Emergencies',
-  'Viral / Social',
+  "World",
+  "Military",
+  "Finance",
+  "Environment",
+  "Energy",
+  "Tech",
+  "Health",
+  "Society",
 ];
 
 const LOCATIONS = [

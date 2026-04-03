@@ -14,12 +14,12 @@ import {
   authVerifyEmailHtml,
   authVerifyEmailText,
   sendAuthEmail,
-} from "@/lib/email/resend";
+} from "@/lib/integrations/email/resend";
 import {
   GHL_SIGNUP_ORIGIN_ALLOWED,
   GHL_SIGNUP_ORIGIN_COOKIE,
-} from "@/lib/ghl/signup-origin";
-import { ensureReaderContactInGhl } from "@/lib/ghl/reader-sync";
+} from "@/lib/integrations/ghl/signup-origin";
+import { ensureReaderContactInGhl } from "@/lib/integrations/ghl/reader-sync";
 import { logAuthEvent } from "@/lib/auth/log";
 import { isUsernameTakenByOtherUser } from "@/lib/auth/username-availability";
 import {

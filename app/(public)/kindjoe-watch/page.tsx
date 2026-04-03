@@ -11,7 +11,7 @@ import {
 import dynamic from "next/dynamic";
 import Pusher from "pusher-js";
 import TopBar from "@/components/kindjoe-signals/top-bar";
-import Feed from "@/components/kindjoe-signals/feed";
+import Feed from "@/components/domains/signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
 import FilterModal from "@/components/kindjoe-signals/filter-modal";
 import SignalsAccessGate from "@/components/kindjoe-signals/signals-access-gate";
@@ -24,9 +24,8 @@ import {
 } from "@/lib/aggregator/types";
 import {
   getHistory,
-  triggerSync,
   checkSignalsAccess,
-} from "@/lib/actions/news-signal";
+} from "@/lib/domains/signals/actions/news-signal";
 import { authClient } from "@/lib/auth-client";
 import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,6 +36,7 @@ import {
   MobileIntelSheet,
   MOBILE_INTEL_SHEET_MIN_VISIBLE_PX,
 } from "@/components/kindjoe-signals/mobile-intel-sheet";
+import { effectiveImpactScore } from "@/lib/signals/impact-tier";
 
 const SOURCE_SET = new Set<Source>([
   "X",
@@ -49,14 +49,26 @@ const SOURCE_SET = new Set<Source>([
 ]);
 const FEED_SOURCE_WHITELIST = new Set<Source>(["X"]);
 const CATEGORY_SET = new Set<Category>([
-  "Geopolitics",
-  "Conflicts & Wars",
-  "Economy & Markets",
-  "Business",
-  "Tech & Science",
-  "Disasters & Emergencies",
-  "Viral / Social",
+  "World",
+  "Military",
+  "Finance",
+  "Environment",
+  "Energy",
+  "Tech",
+  "Health",
+  "Society",
 ]);
+
+function parseInboundImpactScore(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value.trim());
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
+  }
+  return 0;
+}
 
 /** Coerces live Pusher payloads into a full Signal (missing geo fields + legacy events). */
 function normalizePusherSignal(raw: PusherSignalPayload): Signal {
@@ -69,32 +81,102 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
   const source: Source =
     raw.source !== undefined && SOURCE_SET.has(raw.source) ? raw.source : "X";
 
+  const rawRec = raw as Record<string, unknown>;
+  const nestedRaw = rawRec.enriched;
+  const nested =
+    nestedRaw != null &&
+    typeof nestedRaw === "object" &&
+    !Array.isArray(nestedRaw)
+      ? (nestedRaw as Record<string, unknown>)
+      : null;
+
+  const nestedCategory =
+    nested && typeof nested.category === "string" ? nested.category : undefined;
   const category: Category =
     raw.category !== undefined && CATEGORY_SET.has(raw.category)
       ? raw.category
-      : "Geopolitics";
+      : nestedCategory !== undefined && CATEGORY_SET.has(nestedCategory as Category)
+        ? (nestedCategory as Category)
+        : "World";
 
-  const rawRec = raw as Record<string, unknown>;
   const sourceUrlRaw = raw.sourceUrl ?? rawRec.source_url;
   const sourceUrl =
     typeof sourceUrlRaw === "string" && sourceUrlRaw.trim()
       ? sourceUrlRaw.trim()
       : undefined;
 
-  return {
+  const enrichmentProvider =
+    (typeof rawRec.enrichmentProvider === "string"
+      ? rawRec.enrichmentProvider
+      : typeof rawRec.enrichment_provider === "string"
+        ? rawRec.enrichment_provider
+        : undefined) ??
+    (nested && typeof nested.enrichmentProvider === "string"
+      ? nested.enrichmentProvider
+      : undefined);
+
+  const enrichmentModel =
+    (typeof rawRec.enrichmentModel === "string"
+      ? rawRec.enrichmentModel
+      : typeof rawRec.enrichment_model === "string"
+        ? rawRec.enrichment_model
+        : undefined) ??
+    (nested && typeof nested.enrichmentModel === "string"
+      ? nested.enrichmentModel
+      : undefined);
+
+  const enrichmentConfidenceRaw =
+    rawRec.enrichmentConfidence ?? rawRec.enrichment_confidence;
+  const nestedConf =
+    nested?.enrichmentConfidence ?? nested?.enrichment_confidence;
+  const enrichmentConfidenceParsed =
+    typeof enrichmentConfidenceRaw === "number"
+      ? enrichmentConfidenceRaw
+      : typeof enrichmentConfidenceRaw === "string" &&
+          enrichmentConfidenceRaw.trim()
+        ? Number(enrichmentConfidenceRaw.trim())
+        : typeof nestedConf === "number"
+          ? nestedConf
+          : typeof nestedConf === "string" && String(nestedConf).trim()
+            ? Number(String(nestedConf).trim())
+            : undefined;
+  const enrichmentConfidence =
+    typeof enrichmentConfidenceParsed === "number" &&
+    Number.isFinite(enrichmentConfidenceParsed)
+      ? enrichmentConfidenceParsed
+      : undefined;
+
+  const impactParsed = parseInboundImpactScore(
+    raw.impactScore ??
+      rawRec.impact_score ??
+      nested?.impactScore ??
+      nested?.impact_score,
+  );
+
+  const base: Signal = {
     id: raw.id,
     headline: raw.headline,
     summary: raw.summary ?? "",
     source,
     sourceUrl,
     category,
-    lat: raw.lat,
-    lng: raw.lng,
+    lat:
+      typeof raw.lat === "number"
+        ? raw.lat
+        : typeof nested?.lat === "number"
+          ? nested.lat
+          : null,
+    lng:
+      typeof raw.lng === "number"
+        ? raw.lng
+        : typeof nested?.lng === "number"
+          ? nested.lng
+          : null,
     city: raw.city ?? "Unknown",
     country: raw.country ?? "Unknown",
     geographicScope: scope,
     adminArea: raw.adminArea ?? "",
-    impactScore: raw.impactScore,
+    impactScore: impactParsed,
     timestamp: raw.timestamp,
     tags: raw.tags ?? [],
     canonicalSourceUrl:
@@ -130,6 +212,14 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
     mediaUrls: Array.isArray(rawRec.mediaUrls)
       ? (rawRec.mediaUrls.filter((v) => typeof v === "string") as string[])
       : undefined,
+    enrichmentProvider,
+    enrichmentModel,
+    enrichmentConfidence,
+  };
+
+  return {
+    ...base,
+    impactScore: effectiveImpactScore(base),
   };
 }
 
@@ -243,7 +333,6 @@ export default function Home() {
       try {
         const history = await getHistory();
         setSignals(history);
-        await triggerSync();
       } catch (err) {
         console.error("Init Error:", err);
       }
@@ -327,13 +416,13 @@ export default function Home() {
         if (e.key === "1") {
           setSelectedCategory("All");
         } else if (e.key === "2") {
-          setSelectedCategory("Geopolitics");
+          setSelectedCategory("World");
         } else if (e.key === "3") {
-          setSelectedCategory("Conflicts & Wars");
+          setSelectedCategory("Military");
         } else if (e.key === "4") {
-          setSelectedCategory("Economy & Markets");
+          setSelectedCategory("Finance");
         } else if (e.key === "5") {
-          setSelectedCategory("Business");
+          setSelectedCategory("Tech");
         } else if (
           e.key === "/" ||
           (e.metaKey && e.key.toLowerCase() === "k") ||

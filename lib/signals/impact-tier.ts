@@ -1,4 +1,28 @@
+import type { Signal } from "@/lib/aggregator/types";
+
 export type ImpactSeverity = "low" | "medium" | "high" | "critical";
+
+/**
+ * Rows already stored as impact 50 with no enrichment metadata are the TweetShift placeholder pattern
+ * (see factory placeholderImpact50). Show 0 in UI until a real enriched score is persisted.
+ */
+export function effectiveImpactScore(
+  signal: Pick<Signal, "impactScore" | "enrichmentProvider" | "source">,
+): number {
+  const raw = signal.impactScore;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return 0;
+  const n = Math.max(0, Math.min(100, Math.round(raw)));
+  if (n !== 50) return n;
+  if (signal.enrichmentProvider?.trim()) return n;
+  if (
+    signal.source === "X" ||
+    signal.source === "Telegram" ||
+    signal.source === "Discord"
+  ) {
+    return 0;
+  }
+  return n;
+}
 
 /** Aligns with globe / dossier: critical 85+, high 60+, medium 40+, low below. */
 export function getImpactSeverity(score: number): ImpactSeverity {

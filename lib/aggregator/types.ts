@@ -7,13 +7,14 @@ export type Source =
   | "Apple Newsroom"
   | "USGS Earthquakes";
 export type Category =
-  | "Geopolitics"
-  | "Conflicts & Wars"
-  | "Economy & Markets"
-  | "Business"
-  | "Tech & Science"
-  | "Disasters & Emergencies"
-  | "Viral / Social";
+  | "World"
+  | "Military"
+  | "Finance"
+  | "Environment"
+  | "Energy"
+  | "Tech"
+  | "Health"
+  | "Society";
 
 /** How “big” the story is geographically — drives local-area news and filters. */
 export type GeographicScope = "local" | "regional" | "national" | "global";
@@ -34,8 +35,8 @@ export interface Signal {
   /** Permalink to the story or feed item; omitted for legacy / webhook-only signals. */
   sourceUrl?: string | null;
   category: Category;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   city: string;
   country: string;
   /** local = city/neighborhood; regional = state/province/metro; national = whole country; global = cross-border. */
@@ -58,6 +59,9 @@ export interface Signal {
   trustScore?: number | null;
   /** Extracted media URLs from summary/body markdown. */
   mediaUrls?: string[] | null;
+  enrichmentProvider?: string | null;
+  enrichmentModel?: string | null;
+  enrichmentConfidence?: number | null;
 }
 
 /**

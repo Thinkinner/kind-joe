@@ -1,4 +1,5 @@
 import type { Signal } from "@/lib/aggregator/types";
+import { effectiveImpactScore } from "@/lib/signals/impact-tier";
 
 const TWO_MINUTES = 2 * 60 * 1000;
 
@@ -12,7 +13,7 @@ export function resolveSpotlightSignal(
   const hotSignals = signals.filter((s) => nowMs - s.timestamp < TWO_MINUTES);
   if (hotSignals.length === 0) return null;
   const highest = hotSignals.reduce((prev, current) =>
-    prev.impactScore > current.impactScore ? prev : current,
+    effectiveImpactScore(prev) > effectiveImpactScore(current) ? prev : current,
   );
-  return highest.impactScore >= 60 ? highest : null;
+  return effectiveImpactScore(highest) >= 60 ? highest : null;
 }

@@ -30,14 +30,8 @@ type FeedSpec = {
   maxCandidates: number;
 };
 
-/** If the worker uses `INCLUDE_USGS=1`, remove this entry (or disable cron) to avoid duplicate USGS. */
-const FEED_SPECS: FeedSpec[] = [
-  {
-    url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom",
-    source: "USGS Earthquakes",
-    maxCandidates: 12,
-  },
-];
+/** RSS Atom feeds polled by {@link syncRealTimeNews}. Empty — earthquake/USGS ingest disabled. */
+const FEED_SPECS: FeedSpec[] = [];
 
 function cacheBustUrl(url: string): string {
   const sep = url.includes("?") ? "&" : "?";
@@ -147,11 +141,10 @@ async function fetchFeedCandidates(spec: FeedSpec): Promise<Candidate[]> {
   }));
 }
 
-/**
- * 1. SYNC REAL TIME NEWS (USGS only here.)
- */
+/** Poll configured RSS feeds (none by default). */
 export async function syncRealTimeNews() {
   try {
+    if (FEED_SPECS.length === 0) return [];
     const batches = await Promise.all(FEED_SPECS.map(fetchFeedCandidates));
     const top = selectCandidatesForProcessing(batches);
 
