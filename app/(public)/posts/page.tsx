@@ -1,9 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
-/* SIGNALS / Kind Joe Watch — uncomment live pill in posts header
 import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
-*/
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
@@ -104,11 +102,9 @@ export default async function LikeShop() {
               thekindjoe
             </span>
           </div>
-          {/* SIGNALS — restore import + block:
           <div className="flex h-10 items-center">
             <CompactLiveWatchPill variant="light" />
           </div>
-          */}
         </div>
       </header>
 
