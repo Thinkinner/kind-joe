@@ -47,11 +47,11 @@ export default function TopBar() {
           />
         </Link>
 
-        {/* Center: LIVE audience — hidden on small screens (site navbar shows LIVE below); lg+ inline with logo */}
-        <div className="hidden min-w-0 flex-1 justify-center lg:flex">
+        {/* Center: LIVE audience (visible on all breakpoints; kindjoe-watch has no duplicate nav pill on phone) */}
+        <div className="flex min-w-0 flex-1 justify-center">
           <div
             className={cn(
-              "inline-flex max-w-full items-center gap-2.5 rounded-full border px-3 py-1.5 pl-3 pr-4 sm:gap-3 sm:px-5 sm:py-2",
+              "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-1 pl-2 pr-2.5 sm:gap-3 sm:px-5 sm:py-2 sm:pl-3 sm:pr-4",
               isLight
                 ? "border-red-200/90 bg-gradient-to-b from-red-50 to-red-100/90 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_4px_14px_rgba(220,38,38,0.12)]"
                 : "border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/25 shadow-[0_0_24px_rgba(220,38,38,0.15)]",
@@ -84,14 +84,14 @@ export default function TopBar() {
             </span>
             <Eye
               className={cn(
-                "hidden h-[18px] w-[18px] shrink-0 sm:block sm:h-5 sm:w-5",
+                "h-[15px] w-[15px] shrink-0 sm:h-5 sm:w-5",
                 isLight ? "text-red-600" : "text-red-400",
               )}
               aria-hidden
             />
             <span
               className={cn(
-                "truncate font-mono text-base font-bold tabular-nums sm:text-lg md:text-xl",
+                "truncate font-mono text-sm font-bold tabular-nums sm:text-lg md:text-xl",
                 isLight ? "text-red-950" : "text-white",
               )}
             >
@@ -99,7 +99,7 @@ export default function TopBar() {
             </span>
             <span
               className={cn(
-                "shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-xs",
+                "shrink-0 text-[8px] font-semibold uppercase tracking-[0.08em] sm:text-xs sm:tracking-[0.12em]",
                 isLight ? "text-red-800/85" : "text-red-200/90",
               )}
             >
