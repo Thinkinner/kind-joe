@@ -37,6 +37,7 @@ import {
   MOBILE_INTEL_SHEET_MIN_VISIBLE_PX,
 } from "@/components/kindjoe-signals/mobile-intel-sheet";
 import { effectiveImpactScore } from "@/lib/signals/impact-tier";
+import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
 
 const SOURCE_SET = new Set<Source>([
   "X",
@@ -113,6 +114,9 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
         : undefined) ??
     (nested && typeof nested.enrichmentProvider === "string"
       ? nested.enrichmentProvider
+      : undefined) ??
+    (nested && typeof nested.enrichment_provider === "string"
+      ? nested.enrichment_provider
       : undefined);
 
   const enrichmentModel =
@@ -123,6 +127,9 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
         : undefined) ??
     (nested && typeof nested.enrichmentModel === "string"
       ? nested.enrichmentModel
+      : undefined) ??
+    (nested && typeof nested.enrichment_model === "string"
+      ? nested.enrichment_model
       : undefined);
 
   const enrichmentConfidenceRaw =
@@ -146,12 +153,38 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
       ? enrichmentConfidenceParsed
       : undefined;
 
+  const wrappedPayload =
+    rawRec.payload != null &&
+    typeof rawRec.payload === "object" &&
+    !Array.isArray(rawRec.payload)
+      ? (rawRec.payload as Record<string, unknown>)
+      : null;
+
   const impactParsed = parseInboundImpactScore(
     raw.impactScore ??
       rawRec.impact_score ??
       nested?.impactScore ??
-      nested?.impact_score,
+      nested?.impact_score ??
+      wrappedPayload?.impactScore ??
+      wrappedPayload?.impact_score,
   );
+
+  let lat: number | null =
+    typeof raw.lat === "number"
+      ? raw.lat
+      : typeof nested?.lat === "number"
+        ? nested.lat
+        : null;
+  let lng: number | null =
+    typeof raw.lng === "number"
+      ? raw.lng
+      : typeof nested?.lng === "number"
+        ? nested.lng
+        : null;
+  if (!hasPlausibleLatLng(lat, lng)) {
+    lat = null;
+    lng = null;
+  }
 
   const base: Signal = {
     id: raw.id,
@@ -160,18 +193,8 @@ function normalizePusherSignal(raw: PusherSignalPayload): Signal {
     source,
     sourceUrl,
     category,
-    lat:
-      typeof raw.lat === "number"
-        ? raw.lat
-        : typeof nested?.lat === "number"
-          ? nested.lat
-          : null,
-    lng:
-      typeof raw.lng === "number"
-        ? raw.lng
-        : typeof nested?.lng === "number"
-          ? nested.lng
-          : null,
+    lat,
+    lng,
     city: raw.city ?? "Unknown",
     country: raw.country ?? "Unknown",
     geographicScope: scope,

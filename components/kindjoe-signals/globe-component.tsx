@@ -1,5 +1,6 @@
 "use client";
 
+import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
 import { feedAccentHex, feedMarkerRgba } from "@/lib/signals/feed-marker-colors";
 import { GLOBE_SIGNAL_DISPLAY_LIMIT } from "@/lib/signals/globe-signal-display-limit";
 import {
@@ -189,9 +190,8 @@ function hasValidCoords(signal: Signal | null | undefined): signal is Signal & {
   return (
     !!signal &&
     typeof signal.lat === "number" &&
-    Number.isFinite(signal.lat) &&
     typeof signal.lng === "number" &&
-    Number.isFinite(signal.lng)
+    hasPlausibleLatLng(signal.lat, signal.lng)
   );
 }
 
@@ -619,6 +619,11 @@ function DossierPanel({
     : null;
   const sourceLinkIsX = sourceHref ? isXOrTwitterStoryHref(sourceHref) : false;
 
+  const [dossierMediaHidden, setDossierMediaHidden] = useState(false);
+  useEffect(() => {
+    setDossierMediaHidden(false);
+  }, [selectedSignal.id]);
+
   const sourceLinkShell = cn(
     "flex min-w-0 max-w-full items-center gap-2 rounded-sm border px-3 py-1.5",
     isLight
@@ -824,7 +829,7 @@ function DossierPanel({
                 />
               </div>
 
-              {selectedSignal.mediaUrls?.[0] ? (
+              {selectedSignal.mediaUrls?.[0] && !dossierMediaHidden ? (
                 <div
                   className={cn(
                     "overflow-hidden rounded-md border",
@@ -838,6 +843,7 @@ function DossierPanel({
                     className="max-h-96 w-full object-cover"
                     loading="lazy"
                     referrerPolicy="no-referrer"
+                    onError={() => setDossierMediaHidden(true)}
                   />
                 </div>
               ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   markdownToPlainText,
@@ -16,6 +16,57 @@ function isImageUrl(url: string): boolean {
   );
 }
 
+/** Normalize URLs so article card + body can dedupe the same link. */
+export function normalizeUrlForLinkDedupe(href: string): string | null {
+  try {
+    const cleaned = href.trim().replace(/[),.;!?]+$/g, "");
+    const u = new URL(cleaned);
+    u.hash = "";
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+    return `${u.protocol}//${host}${path}${u.search}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * After `normalizeSignalBodyText`: drop article-style links from the string so feed cards
+ * show prose + `SignalMediaPreview` only (no URL line, no link chrome).
+ */
+export function stripHttpUrlsFromNormalizedBody(normalized: string): string {
+  let t = normalized;
+  t = t.replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/gi, (_, alt: string) =>
+    (alt ?? "").trim(),
+  );
+  t = t.replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/gi, "$1");
+  t = t.replace(/https?:\/\/[^\s<>"')\]]+/gi, "");
+  t = t.replace(/[ \t]+\n/g, "\n");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  t = t.replace(/[ \t]{2,}/g, " ");
+  return t
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trim();
+}
+
+function buildSuppressedSet(urls: string[] | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!urls?.length) return set;
+  for (const u of urls) {
+    const n = normalizeUrlForLinkDedupe(u);
+    if (n) set.add(n);
+  }
+  return set;
+}
+
+function isHrefSuppressed(href: string, suppressed: Set<string>): boolean {
+  const key = normalizeUrlForLinkDedupe(href);
+  return key != null && suppressed.has(key);
+}
+
 /** Collapsed list rows: readable plain text, no raw markdown. */
 export function markdownToPlainPreview(raw: string): string {
   return markdownToPlainText(raw);
@@ -27,7 +78,35 @@ function markdownToLinkAwarePreview(raw: string): string {
     .replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/g, "$1 $2");
 }
 
-function buildCompactNodes(text: string, isLight: boolean): ReactNode[] {
+function RichTextImage({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+}) {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- remote signal media URLs (Twitter/CDN), not in next.config images
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setVisible(false)}
+    />
+  );
+}
+
+function buildCompactNodes(
+  text: string,
+  isLight: boolean,
+  suppressed: Set<string>,
+): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let k = 0;
@@ -43,22 +122,36 @@ function buildCompactNodes(text: string, isLight: boolean): ReactNode[] {
       );
     }
     const href = m[0];
-    out.push(
-      <a
-        key={`ca-${k++}`}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          "break-all font-semibold underline decoration-current/35 underline-offset-[3px] transition-colors",
-          isLight ? "text-sky-700 hover:text-sky-900" : "text-sky-300 hover:text-sky-100",
-        )}
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        {href}
-      </a>,
-    );
+    if (isHrefSuppressed(href, suppressed)) {
+      out.push(
+        <span
+          key={`cs-${k++}`}
+          className={cn(
+            "break-all font-medium",
+            isLight ? "text-slate-600" : "text-gray-500",
+          )}
+        >
+          {href}
+        </span>,
+      );
+    } else {
+      out.push(
+        <a
+          key={`ca-${k++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "break-all font-semibold underline decoration-current/35 underline-offset-[3px] transition-colors",
+            isLight ? "text-sky-700 hover:text-sky-900" : "text-sky-300 hover:text-sky-100",
+          )}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {href}
+        </a>,
+      );
+    }
     last = m.index + href.length;
   }
 
@@ -81,7 +174,11 @@ function buildCompactNodes(text: string, isLight: boolean): ReactNode[] {
   return out;
 }
 
-function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
+function buildRichNodes(
+  text: string,
+  isLight: boolean,
+  suppressed: Set<string>,
+): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
@@ -101,8 +198,7 @@ function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
       const alt = m[1] ?? "";
       const src = m[2]!;
       out.push(
-        // eslint-disable-next-line @next/next/no-img-element -- remote signal media URLs (Twitter/CDN), not in next.config images
-        <img
+        <RichTextImage
           key={`i-${k++}`}
           src={src}
           alt={alt.trim() || "Signal image"}
@@ -110,8 +206,6 @@ function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
             "max-h-56 w-full rounded-md border object-cover",
             isLight ? "border-slate-200" : "border-white/10",
           )}
-          loading="lazy"
-          referrerPolicy="no-referrer"
         />,
       );
     } else {
@@ -119,8 +213,7 @@ function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
       const href = m[4]!;
       if (isImageUrl(href)) {
         out.push(
-          // eslint-disable-next-line @next/next/no-img-element -- remote signal media URLs
-          <img
+          <RichTextImage
             key={`i-${k++}`}
             src={href}
             alt={label.trim() || "Signal image"}
@@ -128,9 +221,19 @@ function buildRichNodes(text: string, isLight: boolean): ReactNode[] {
               "max-h-56 w-full rounded-md border object-cover",
               isLight ? "border-slate-200" : "border-white/10",
             )}
-            loading="lazy"
-            referrerPolicy="no-referrer"
           />,
+        );
+      } else if (isHrefSuppressed(href, suppressed)) {
+        out.push(
+          <span
+            key={`s-${k++}`}
+            className={cn(
+              "break-words font-medium",
+              isLight ? "text-slate-700" : "text-gray-400",
+            )}
+          >
+            {label.trim() || href}
+          </span>,
         );
       } else {
         out.push(
@@ -171,6 +274,13 @@ type SignalRichTextProps = {
   /** When true, strip markdown for line-clamped previews (no embedded images). */
   compact?: boolean;
   className?: string;
+  /** Href strings (e.g. article card URL) whose links are shown once elsewhere — body shows plain text instead. */
+  suppressLinkHrefs?: string[];
+  /**
+   * Feed-style: remove bare `https://…` tokens and reduce `[text](url)` to `text` only
+   * (no clickable links or raw URLs in the body).
+   */
+  omitHttpUrls?: boolean;
 };
 
 export function SignalRichText({
@@ -178,24 +288,35 @@ export function SignalRichText({
   isLight,
   compact = false,
   className,
+  suppressLinkHrefs,
+  omitHttpUrls = false,
 }: SignalRichTextProps) {
-  const normalized = useMemo(() => normalizeSignalBodyText(text), [text]);
+  const normalized = useMemo(() => {
+    const base = normalizeSignalBodyText(text);
+    return omitHttpUrls ? stripHttpUrlsFromNormalizedBody(base) : base;
+  }, [text, omitHttpUrls]);
+  const suppressed = useMemo(
+    () => buildSuppressedSet(suppressLinkHrefs),
+    [suppressLinkHrefs],
+  );
 
   const body = useMemo(() => {
     if (compact) {
       const preview = markdownToLinkAwarePreview(normalized);
       return (
-        <>{buildCompactNodes(markdownToPlainPreview(preview), isLight)}</>
+        <>
+          {buildCompactNodes(markdownToPlainPreview(preview), isLight, suppressed)}
+        </>
       );
     }
-    const nodes = buildRichNodes(normalized, isLight);
+    const nodes = buildRichNodes(normalized, isLight, suppressed);
     if (nodes.length === 0) {
       return (
         <span className="whitespace-pre-wrap break-words">{normalized}</span>
       );
     }
     return <>{nodes}</>;
-  }, [compact, normalized, isLight]);
+  }, [compact, normalized, isLight, suppressed]);
 
   return (
     <div
@@ -213,4 +334,11 @@ export function SignalRichText({
 /** Headlines: strip accidental markdown, keep one line feel. */
 export function signalHeadlinePlain(raw: string): string {
   return markdownToPlainPreview(raw).replace(/\s+/g, " ").trim();
+}
+
+/** Feed headline row: plain text, no raw URLs (matches `omitHttpUrls` body). */
+export function signalFeedHeadlinePlain(raw: string): string {
+  const n = normalizeSignalBodyText(raw);
+  const stripped = stripHttpUrlsFromNormalizedBody(n);
+  return markdownToPlainPreview(stripped).replace(/\s+/g, " ").trim();
 }

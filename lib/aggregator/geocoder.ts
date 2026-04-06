@@ -6,11 +6,16 @@ const CITY_MAP: Record<string, { lat: number; lng: number; country: string }> = 
   // Add more or use an AI API here later
 };
 
-export function getLocationFromText(text: string) {
+export function getLocationFromText(text: string): {
+  city: string;
+  lat: number | null;
+  lng: number | null;
+  country: string;
+} {
   for (const city in CITY_MAP) {
     if (text.toLowerCase().includes(city.toLowerCase())) {
       return { city, ...CITY_MAP[city] };
     }
   }
-  return { city: "Unknown", lat: 0, lng: 0, country: "Global" };
+  return { city: "Unknown", lat: null, lng: null, country: "Global" };
 }

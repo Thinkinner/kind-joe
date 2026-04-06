@@ -13,6 +13,8 @@ import {
   markdownToPlainText,
   normalizeSignalBodyText,
 } from "@/lib/signals/signal-enrichment";
+import { agentDebugIngest } from "@/lib/debug/agent-e68134-log";
+import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
@@ -152,13 +154,30 @@ export async function processIntelRaw(params: {
       ? null
       : resolvedImpactScore;
 
+    // #region agent log
+    agentDebugIngest({
+      runId: "verify-file",
+      hypothesisId: "H2-H3",
+      location: "factory.ts:persistenceImpact",
+      message: "factory impact resolution",
+      data: {
+        id: id.slice(0, 48),
+        resolvedImpactScore,
+        providerTrimLen: providerTrim.length,
+        placeholderImpact50,
+        persistenceImpactScore,
+        hasOverrideImpact: hasOverride("impactScore"),
+      },
+    });
+    // #endregion
+
     const resolvedCategory = hasOverride("category")
       ? (enrichmentOverrides?.category ?? null)
       : fields.category;
     const incomingHasGeo =
       typeof resolvedLat === "number" &&
       typeof resolvedLng === "number" &&
-      (resolvedLat !== 0 || resolvedLng !== 0);
+      hasPlausibleLatLng(resolvedLat, resolvedLng);
 
     const already = await db
       .select({
@@ -259,6 +278,22 @@ export async function processIntelRaw(params: {
           .slice(0, 6);
       }
 
+      // #region agent log
+      agentDebugIngest({
+        runId: "verify-file",
+        hypothesisId: "H3-H4",
+        location: "factory.ts:existingRowUpdates",
+        message: "existing id update payload",
+        data: {
+          id: id.slice(0, 48),
+          updateKeys: Object.keys(updates),
+          updateImpact: updates.impactScore ?? null,
+          updateProvider: updates.enrichmentProvider ?? null,
+          updatesCount: Object.keys(updates).length,
+        },
+      });
+      // #endregion
+
       if (Object.keys(updates).length > 0) {
         const upgraded = await db
           .update(signals)
@@ -267,6 +302,19 @@ export async function processIntelRaw(params: {
           .returning();
         if (upgraded.length > 0) {
           console.log(`♻️ [FACTORY] Upgraded existing id with enrichment: ${id.slice(0, 48)}…`);
+          // #region agent log
+          agentDebugIngest({
+            runId: "verify-file",
+            hypothesisId: "H4",
+            location: "factory.ts:afterDbUpgrade",
+            message: "row after upgrade returning",
+            data: {
+              id: id.slice(0, 48),
+              dbImpact: upgraded[0].impactScore ?? null,
+              dbProvider: upgraded[0].enrichmentProvider ?? null,
+            },
+          });
+          // #endregion
           await pusher.trigger(
             "aether-live",
             "new-signal",

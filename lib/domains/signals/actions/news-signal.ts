@@ -3,7 +3,70 @@
 import { getSignalsFromDB } from "@/lib/aggregator";
 import { Signal, type GeographicScope } from "@/lib/aggregator/types";
 import { getServerSession } from "@/lib/auth/server";
+import {
+  isDisplayCategory,
+  type IncomingWebhookPayloadOverlay,
+} from "@/lib/signals/inbound-payload-impact";
 import { effectiveImpactScore } from "@/lib/signals/impact-tier";
+import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
+import { getLatestIncomingPayloadOverlaysBySignalIds } from "@/lib/webhooks/incoming-payload-impact";
+
+function applyIncomingOverlay(
+  row: Signal,
+  overlay: IncomingWebhookPayloadOverlay | undefined,
+): Signal {
+  if (!overlay) return row;
+  const next: Signal = { ...row };
+
+  if (overlay.impactScore != null) {
+    next.impactScore = overlay.impactScore;
+  }
+  if (hasPlausibleLatLng(overlay.lat, overlay.lng)) {
+    next.lat = overlay.lat;
+    next.lng = overlay.lng;
+  }
+  if (isDisplayCategory(overlay.category)) {
+    next.category = overlay.category;
+  }
+  if (overlay.mediaUrls && overlay.mediaUrls.length > 0) {
+    next.mediaUrls = overlay.mediaUrls;
+  }
+  if (overlay.sourceDisplayName) {
+    next.sourceDisplayName = overlay.sourceDisplayName;
+  }
+  if (overlay.sourceHandle) {
+    next.sourceHandle = overlay.sourceHandle;
+  }
+  if (overlay.sourceAvatarUrl) {
+    next.sourceAvatarUrl = overlay.sourceAvatarUrl;
+  }
+  if (overlay.sourceIconKey) {
+    next.sourceIconKey = overlay.sourceIconKey;
+  }
+  if (overlay.sourceVerified !== null) {
+    next.sourceVerified = overlay.sourceVerified;
+  }
+  if (overlay.trustTier) {
+    next.trustTier = overlay.trustTier;
+  }
+  if (overlay.trustScore != null) {
+    next.trustScore = overlay.trustScore;
+  }
+  if (overlay.canonicalSourceUrl) {
+    next.canonicalSourceUrl = overlay.canonicalSourceUrl;
+  }
+  if (overlay.enrichmentProvider) {
+    next.enrichmentProvider = overlay.enrichmentProvider;
+  }
+  if (overlay.enrichmentModel) {
+    next.enrichmentModel = overlay.enrichmentModel;
+  }
+  if (overlay.enrichmentConfidence != null) {
+    next.enrichmentConfidence = overlay.enrichmentConfidence;
+  }
+
+  return next;
+}
 
 function normalizeScope(raw: string | null | undefined): GeographicScope {
   const v = (raw ?? "global").toLowerCase().trim();
@@ -20,6 +83,9 @@ export async function checkSignalsAccess(): Promise<boolean> {
 
 export async function getHistory(): Promise<Signal[]> {
   const rawData = await getSignalsFromDB();
+  const overlayById = await getLatestIncomingPayloadOverlaysBySignalIds(
+    rawData.map((s) => s.id),
+  );
   const now = Date.now();
 
   const out = rawData.map((s) => {
@@ -35,8 +101,18 @@ export async function getHistory(): Promise<Signal[]> {
       source: s.source as Signal["source"],
       sourceUrl: s.sourceUrl?.trim() || undefined,
       category: (s.category as Signal["category"]) ?? "World",
-      lat: typeof s.lat === "number" ? s.lat : null,
-      lng: typeof s.lng === "number" ? s.lng : null,
+      lat:
+        typeof s.lat === "number" &&
+        typeof s.lng === "number" &&
+        hasPlausibleLatLng(s.lat, s.lng)
+          ? s.lat
+          : null,
+      lng:
+        typeof s.lat === "number" &&
+        typeof s.lng === "number" &&
+        hasPlausibleLatLng(s.lat, s.lng)
+          ? s.lng
+          : null,
       city: s.city ?? "Unknown",
       country: s.country ?? "Unknown",
       geographicScope: normalizeScope(s.geographicScope),
@@ -57,9 +133,10 @@ export async function getHistory(): Promise<Signal[]> {
       enrichmentModel: s.enrichmentModel?.trim() || undefined,
       enrichmentConfidence: s.enrichmentConfidence ?? undefined,
     };
+    const merged = applyIncomingOverlay(row, overlayById.get(s.id));
     return {
-      ...row,
-      impactScore: effectiveImpactScore(row),
+      ...merged,
+      impactScore: effectiveImpactScore(merged),
     };
   });
 

@@ -12,6 +12,7 @@ import {
   normalizeSignalBodyText,
 } from "@/lib/signals/signal-enrichment";
 import type { Category, GeographicScope, Source } from "./types";
+import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
 
 const HEADLINE_MAX = 140;
 
@@ -81,8 +82,8 @@ export function buildVerbatimSignalFields(params: {
   headline: string;
   summary: string;
   category: Category;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   city: string;
   country: string;
   geographicScope: GeographicScope;
@@ -108,8 +109,8 @@ export function buildVerbatimSignalFields(params: {
       headline: stored,
       summary: stored,
       category: "Society",
-      lat: 0,
-      lng: 0,
+      lat: null,
+      lng: null,
       city: "Unknown",
       country: "Global",
       geographicScope: "global",
@@ -126,19 +127,21 @@ export function buildVerbatimSignalFields(params: {
   const category = defaultCategory(source);
   const tags = sourceTags(source);
 
-  let lat: number;
-  let lng: number;
+  let lat: number | null;
+  let lng: number | null;
   let city: string;
   let country: string;
   let geographicScope: GeographicScope;
   const adminArea = "";
 
-  if (
+  const explicitGeo =
     latIn != null &&
     lngIn != null &&
     Number.isFinite(latIn) &&
-    Number.isFinite(lngIn)
-  ) {
+    Number.isFinite(lngIn) &&
+    !(latIn === 0 && lngIn === 0);
+
+  if (explicitGeo) {
     lat = latIn;
     lng = lngIn;
     city = "Unknown";
@@ -150,8 +153,7 @@ export function buildVerbatimSignalFields(params: {
     lng = geo.lng;
     city = geo.city;
     country = geo.country;
-    geographicScope =
-      lat !== 0 || lng !== 0 ? "local" : "global";
+    geographicScope = hasPlausibleLatLng(lat, lng) ? "local" : "global";
   }
 
   const impactScore =

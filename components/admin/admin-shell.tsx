@@ -8,6 +8,7 @@ import {
   Sparkles,
   ArrowUpRight,
   Webhook,
+  Database,
 } from "lucide-react";
 
 type AdminShellProps = {
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: Home },
   { href: "/admin/predictions", label: "News Predictions", icon: Sparkles },
   { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/admin/ingest-data", label: "Ingest data", icon: Database },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ] as const;
 

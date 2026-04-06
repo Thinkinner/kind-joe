@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { Signal } from "@/lib/aggregator/types";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
@@ -10,18 +10,18 @@ import {
   Target,
   Clock,
   Lock,
-  ExternalLink,
 } from "lucide-react";
-import { signalUsesSingleBodyBlock } from "@/lib/signals/signal-body-display";
 import {
-  isXOrTwitterStoryHref,
-  resolveSignalSourceUrl,
-} from "@/lib/signals/signal-source-url";
+  signalUsesSingleBodyBlock,
+} from "@/lib/signals/signal-body-display";
+import { markdownToPlainText, normalizeSignalBodyText } from "@/lib/signals/signal-enrichment";
+import { resolveSignalSourceUrl } from "@/lib/signals/signal-source-url";
 import { cn } from "@/lib/utils";
 import { useSignalsColorMode } from "@/components/kindjoe-signals/signals-color-mode";
 import {
   SignalRichText,
-  signalHeadlinePlain,
+  signalFeedHeadlinePlain,
+  stripHttpUrlsFromNormalizedBody,
 } from "@/components/kindjoe-signals/signal-rich-text";
 import { SignalSourceIdentity } from "@/components/kindjoe-signals/signal-source-identity";
 import {
@@ -38,6 +38,31 @@ function signalNavigationHref(signal: Signal): string | null {
   return resolveSignalSourceUrl(signal.source, signal.sourceUrl);
 }
 
+/** Plain text for comparing headline vs summary (URLs stripped, like feed body). */
+function feedPlainComparable(raw: string): string {
+  const n = normalizeSignalBodyText(raw);
+  const stripped = stripHttpUrlsFromNormalizedBody(n);
+  return markdownToPlainText(stripped).replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * One visible body block: same string, or summary continues where a truncated headline left off.
+ * Avoids bold title + faint duplicate paragraph (common for wire/article ingests).
+ */
+function signalFeedUsesOneBodyBlock(
+  signal: Pick<Signal, "headline" | "summary">,
+): boolean {
+  if (signalUsesSingleBodyBlock(signal)) return true;
+  const hRaw = feedPlainComparable(signal.headline);
+  const sRaw = feedPlainComparable(signal.summary);
+  if (!hRaw && !sRaw) return true;
+  if (hRaw === sRaw) return true;
+  if (hRaw.length > 0 && sRaw.startsWith(hRaw)) return true;
+  const hTrim = hRaw.replace(/[\u2026.…]+$/u, "").trimEnd();
+  if (hTrim.length >= 16 && sRaw.startsWith(hTrim)) return true;
+  return false;
+}
+
 function openSignalSourceOrSelect(
   signal: Signal,
   onSignalClick: (s: Signal) => void,
@@ -50,30 +75,28 @@ function openSignalSourceOrSelect(
   onSignalClick(signal);
 }
 
-type ArticlePreview = {
-  url: string;
-  title: string;
-  host: string;
-};
-
-const ARTICLE_MD_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gi;
-const ARTICLE_URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
 const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i;
 const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v)(\?|$)/i;
-
-function isMediaLikeUrl(url: string): boolean {
-  const lower = url.toLowerCase();
-  if (IMAGE_EXT_RE.test(lower) || VIDEO_EXT_RE.test(lower)) return true;
-  return (
-    lower.includes("video.twimg.com/") ||
-    lower.includes("pbs.twimg.com/media/") ||
-    lower.includes("pbs.twimg.com/amplify_video_thumb/")
-  );
-}
 
 function isVideoUrl(url: string): boolean {
   const lower = url.toLowerCase();
   return VIDEO_EXT_RE.test(lower) || lower.includes("video.twimg.com/");
+}
+
+/** Twitter/HLS-style URLs usually fail in a plain HTML5 video element. */
+const NATIVE_VIDEO_EXT_RE = /\.(mp4|webm|ogg)(\?|$)/i;
+
+function isLikelyNativePlayableVideoUrl(url: string): boolean {
+  return NATIVE_VIDEO_EXT_RE.test(url.toLowerCase());
+}
+
+function twitterImageSortKey(url: string): number {
+  const u = url.toLowerCase();
+  if (u.includes("pbs.twimg.com/media")) return 4;
+  if (u.includes("amplify_video_thumb")) return 3;
+  if (u.includes("twimg.com/media")) return 2;
+  if (isImageUrl(u)) return 1;
+  return 0;
 }
 
 function isImageUrl(url: string): boolean {
@@ -85,93 +108,8 @@ function isImageUrl(url: string): boolean {
   );
 }
 
-function buildArticlePreview(signal: Signal): ArticlePreview | null {
-  const body = `${signal.headline}\n${signal.summary}`;
-
-  for (const match of body.matchAll(ARTICLE_MD_LINK_RE)) {
-    const label = (match[1] ?? "").trim();
-    const url = (match[2] ?? "").trim();
-    if (!url || isXOrTwitterStoryHref(url) || isMediaLikeUrl(url)) continue;
-    try {
-      const parsed = new URL(url);
-      return {
-        url,
-        title: label || parsed.hostname.replace(/^www\./, ""),
-        host: parsed.hostname.replace(/^www\./, ""),
-      };
-    } catch {
-      continue;
-    }
-  }
-
-  for (const match of body.matchAll(ARTICLE_URL_RE)) {
-    const url = (match[0] ?? "").replace(/[),.;!?]+$/g, "").trim();
-    if (!url || isXOrTwitterStoryHref(url) || isMediaLikeUrl(url)) continue;
-    try {
-      const parsed = new URL(url);
-      return {
-        url,
-        title: parsed.hostname.replace(/^www\./, ""),
-        host: parsed.hostname.replace(/^www\./, ""),
-      };
-    } catch {
-      continue;
-    }
-  }
-
-  return null;
-}
-
-function ArticleMetadataPreview({
-  article,
-  isLight,
-}: {
-  article: ArticlePreview | null;
-  isLight: boolean;
-}) {
-  if (!article) return null;
-  return (
-    <a
-      href={article.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      className={cn(
-        "mb-3 block rounded border px-2.5 py-2 transition-colors",
-        isLight
-          ? "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100"
-          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]",
-      )}
-      title={article.url}
-    >
-      <div
-        className={cn(
-          "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-widest",
-          isLight ? "text-slate-600" : "text-gray-400",
-        )}
-      >
-        <ExternalLink size={10} />
-        Article
-      </div>
-      <div
-        className={cn(
-          "mt-1 text-[11px] font-semibold leading-snug",
-          isLight ? "text-slate-900" : "text-gray-100",
-        )}
-      >
-        {article.title}
-      </div>
-      <div
-        className={cn(
-          "mt-1 text-[10px]",
-          isLight ? "text-slate-600" : "text-gray-400",
-        )}
-      >
-        {article.host}
-      </div>
-    </a>
-  );
+function markVideoHasRenderableFrame(video: HTMLVideoElement): boolean {
+  return video.videoWidth > 0 && video.videoHeight > 0;
 }
 
 function SignalMediaPreview({
@@ -183,46 +121,118 @@ function SignalMediaPreview({
   isSelected: boolean;
   isLight: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+    setVideoFailed(false);
+    setVideoReady(false);
+  }, [signal.id]);
+
   const media = Array.isArray(signal.mediaUrls)
     ? signal.mediaUrls.filter((u): u is string => typeof u === "string" && u.length > 0)
     : [];
-  const videoSrc = media.find((u) => isVideoUrl(u)) ?? null;
-  const imageSrc = media.find((u) => isImageUrl(u)) ?? null;
-  const fallbackSrc = media[0] ?? null;
-  const src = imageSrc ?? fallbackSrc;
-  if (!videoSrc && !src) return null;
-  return (
-    <div
-      className={cn(
-        "mb-3 overflow-hidden rounded-md border",
-        isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black/20",
-      )}
-    >
-      {videoSrc ? (
+
+  const sorted =
+    media.length > 0
+      ? [...media].sort((a, b) => twitterImageSortKey(b) - twitterImageSortKey(a))
+      : [];
+  const imageSrc =
+    sorted.length > 0
+      ? (sorted.find(
+          (u) => isImageUrl(u) && !isLikelyNativePlayableVideoUrl(u),
+        ) ?? null)
+      : null;
+
+  const videoLike = media.filter(isVideoUrl);
+  const nativeVideoSrc =
+    videoLike.find((u) => isLikelyNativePlayableVideoUrl(u)) ?? null;
+
+  useEffect(() => {
+    if (!nativeVideoSrc || videoReady || videoFailed) return;
+    const t = setTimeout(() => setVideoFailed(true), 8000);
+    return () => clearTimeout(t);
+  }, [nativeVideoSrc, signal.id, videoReady, videoFailed]);
+
+  if (media.length === 0) return null;
+
+  const wrapClass = cn(
+    "mb-3 overflow-hidden rounded-md border",
+    isLight ? "border-slate-300 bg-slate-100" : "border-white/10 bg-black/20",
+  );
+  const frameClass = cn(
+    "w-full object-cover",
+    isSelected ? "max-h-72" : "h-36",
+  );
+
+  const onVideoMaybeOk = (e: SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    if (markVideoHasRenderableFrame(v)) {
+      setVideoReady(true);
+    }
+  };
+
+  const showVideoPlayer = Boolean(nativeVideoSrc && !videoFailed);
+  const showImageOnly =
+    Boolean(imageSrc && !imageFailed) &&
+    (!nativeVideoSrc || videoFailed);
+
+  if (showVideoPlayer) {
+    // No poster: hide the player chrome until we know the stream decodes (avoids empty grey box).
+    const probeOnly = !videoReady && !imageSrc;
+    return (
+      <div
+        className={cn(
+          wrapClass,
+          probeOnly &&
+            "mb-0 max-h-0 min-h-0 overflow-hidden border-0 bg-transparent p-0 opacity-0",
+        )}
+        aria-hidden={probeOnly}
+      >
         <video
-          src={videoSrc}
+          src={nativeVideoSrc!}
           poster={imageSrc ?? undefined}
           className={cn(
-            "w-full object-cover",
-            isSelected ? "max-h-72" : "h-36",
+            frameClass,
+            probeOnly && "pointer-events-none max-h-0 min-h-0",
           )}
-          controls
+          controls={videoReady}
           playsInline
-          preload="metadata"
+          preload="auto"
+          onError={() => setVideoFailed(true)}
+          onLoadedMetadata={onVideoMaybeOk}
+          onLoadedData={onVideoMaybeOk}
+          onCanPlay={onVideoMaybeOk}
         />
-      ) : src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote social media URLs
-        <img
-          src={src}
-          alt=""
-          className={cn(
-            "w-full object-cover",
-            isSelected ? "max-h-72" : "h-36",
-          )}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
-      ) : null}
+      </div>
+    );
+  }
+
+  const onlyNonPlayableVideo =
+    videoLike.length > 0 &&
+    videoLike.every((u) => !isLikelyNativePlayableVideoUrl(u));
+
+  if (onlyNonPlayableVideo && !showImageOnly) {
+    return null;
+  }
+
+  if (!showImageOnly) {
+    return null;
+  }
+
+  return (
+    <div className={wrapClass}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- remote social media URLs */}
+      <img
+        src={imageSrc!}
+        alt=""
+        className={frameClass}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setImageFailed(true)}
+      />
     </div>
   );
 }
@@ -239,7 +249,6 @@ function PrioritySpotlightCard({
   /** e.g. `hidden md:block` (desktop only) or `md:hidden` (mobile, inside scroll). */
   visibilityClass: string;
 }) {
-  const article = buildArticlePreview(signal);
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -278,28 +287,19 @@ function PrioritySpotlightCard({
         <SignalSourceIdentity signal={signal} isLight={isLight} compact />
       </div>
 
-      {signalUsesSingleBodyBlock(signal) ? (
-        <>
-          {article ? (
-            <h3
-              className={cn(
-                "mb-2 font-sans text-[13px] font-semibold normal-case not-italic leading-snug tracking-tight",
-                isLight ? "text-slate-900" : "text-white",
-              )}
-            >
-              {signalHeadlinePlain(signal.headline)}
-            </h3>
-          ) : null}
-          <ArticleMetadataPreview article={article} isLight={isLight} />
-          <div
-            className={cn(
-              "mb-3 max-h-72 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
-              isLight ? "text-red-950/90" : "text-red-100/90",
-            )}
-          >
-            <SignalRichText text={signal.summary} isLight={isLight} />
-          </div>
-        </>
+      {signalFeedUsesOneBodyBlock(signal) ? (
+        <div
+          className={cn(
+            "mb-3 max-h-72 overflow-y-auto pr-1 text-[12px] font-normal leading-relaxed",
+            isLight ? "text-red-950/90" : "text-red-100/90",
+          )}
+        >
+          <SignalRichText
+            text={signal.summary}
+            isLight={isLight}
+            omitHttpUrls
+          />
+        </div>
       ) : (
         <>
           <h3
@@ -308,9 +308,8 @@ function PrioritySpotlightCard({
               isLight ? "text-slate-900" : "text-white",
             )}
           >
-            {signalHeadlinePlain(signal.headline)}
+            {signalFeedHeadlinePlain(signal.headline)}
           </h3>
-          <ArticleMetadataPreview article={article} isLight={isLight} />
 
           <div
             className={cn(
@@ -318,7 +317,11 @@ function PrioritySpotlightCard({
               isLight ? "text-red-950/85" : "text-red-200/85",
             )}
           >
-            <SignalRichText text={signal.summary} isLight={isLight} />
+            <SignalRichText
+              text={signal.summary}
+              isLight={isLight}
+              omitHttpUrls
+            />
           </div>
         </>
       )}
@@ -548,8 +551,6 @@ export default function Feed({
                 const isSelected = selectedSignal?.id === signal.id;
                 const timeDiff = now - signal.timestamp;
                 const tier = getImpactSeverity(signal.impactScore);
-                const article = buildArticlePreview(signal);
-
                 const timeLabel =
                   timeDiff < 60000 || signal.timestamp > now
                     ? "just now"
@@ -611,35 +612,21 @@ export default function Feed({
                       </div>
                     </div>
 
-                    {signalUsesSingleBodyBlock(signal) ? (
-                      <>
-                        {article ? (
-                          <h3
-                            className={cn(
-                              "mb-2 font-sans text-[12px] font-semibold normal-case leading-snug tracking-tight transition-colors",
-                              isLight
-                                ? "text-slate-950 group-hover:text-slate-950"
-                                : "text-gray-200 group-hover:text-white",
-                            )}
-                          >
-                            {signalHeadlinePlain(signal.headline)}
-                          </h3>
-                        ) : null}
-                        <ArticleMetadataPreview article={article} isLight={isLight} />
-                        <div
-                          className={cn(
-                            "mb-3 text-[12px] font-normal leading-relaxed",
-                            "max-h-72 overflow-y-auto pr-1",
-                            isLight ? "text-slate-800" : "text-gray-300",
-                          )}
-                        >
-                          <SignalRichText
-                            text={signal.summary}
-                            isLight={isLight}
-                            compact={false}
-                          />
-                        </div>
-                      </>
+                    {signalFeedUsesOneBodyBlock(signal) ? (
+                      <div
+                        className={cn(
+                          "mb-3 text-[12px] font-normal leading-relaxed",
+                          "max-h-72 overflow-y-auto pr-1",
+                          isLight ? "text-slate-800" : "text-gray-300",
+                        )}
+                      >
+                        <SignalRichText
+                          text={signal.summary}
+                          isLight={isLight}
+                          compact={false}
+                          omitHttpUrls
+                        />
+                      </div>
                     ) : (
                       <>
                         <h3
@@ -650,9 +637,8 @@ export default function Feed({
                               : "text-gray-200 group-hover:text-white",
                           )}
                         >
-                          {signalHeadlinePlain(signal.headline)}
+                          {signalFeedHeadlinePlain(signal.headline)}
                         </h3>
-                        <ArticleMetadataPreview article={article} isLight={isLight} />
 
                         <div
                           className={cn(
@@ -665,6 +651,7 @@ export default function Feed({
                             text={signal.summary}
                             isLight={isLight}
                             compact={false}
+                            omitHttpUrls
                           />
                         </div>
                       </>

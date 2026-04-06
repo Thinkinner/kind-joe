@@ -10,6 +10,7 @@ import {
   createIncomingEventRecord,
   fanoutSignalCreatedEvent,
 } from "@/lib/domains/webhooks";
+import { agentDebugIngest } from "@/lib/debug/agent-e68134-log";
 
 export const maxDuration = 120;
 
@@ -27,71 +28,88 @@ const ENRICHMENT_CATEGORIES = [
   "Society",
 ] as const;
 
-const directXPayloadSchema = z.object({
-  id: z.string().min(1).max(2048),
-  text: z.string().max(200_000),
-  source: z.string().optional(),
-  url: z.string().optional().nullable(),
-  twitterUrl: z.string().optional().nullable(),
-  sourceUrl: z.string().optional().nullable(),
-  sourceDisplayName: z.string().optional().nullable(),
-  sourceHandle: z.string().optional().nullable(),
-  sourceAvatarUrl: z.string().optional().nullable(),
-  sourceVerified: z.boolean().optional().nullable(),
-  lat: z.union([z.number(), z.string()]).optional().nullable(),
-  lng: z.union([z.number(), z.string()]).optional().nullable(),
-  impactScore: z.union([z.number(), z.string()]).optional().nullable(),
-  category: z.string().optional().nullable(),
-  enrichmentProvider: z.string().optional().nullable(),
-  enrichmentModel: z.string().optional().nullable(),
-  enrichmentConfidence: z.union([z.number(), z.string()]).optional().nullable(),
-  timestamp: z.union([z.string(), z.number()]).optional(),
-  createdAt: z.union([z.string(), z.number()]).optional(),
-  meta: z
-    .object({
-      messageId: z.string().optional(),
-      guildId: z.string().optional(),
-      channelId: z.string().optional(),
-      channelName: z.string().optional(),
-      receivedAt: z.string().optional(),
-    })
-    .partial()
-    .optional(),
-  author: z
-    .object({
-      name: z.string().optional().nullable(),
-      displayName: z.string().optional().nullable(),
-      username: z.string().optional().nullable(),
-      handle: z.string().optional().nullable(),
-      profileImageUrl: z.string().optional().nullable(),
-      avatarUrl: z.string().optional().nullable(),
-      verified: z.boolean().optional().nullable(),
-      isVerified: z.boolean().optional().nullable(),
-    })
-    .partial()
-    .optional(),
-  enriched: z
-    .object({
-      canonicalSourceUrl: z.string().optional().nullable(),
-      sourceDisplayName: z.string().optional().nullable(),
-      sourceHandle: z.string().optional().nullable(),
-      sourceIconKey: z.string().optional().nullable(),
-      sourceAvatarUrl: z.string().optional().nullable(),
-      sourceVerified: z.boolean().optional().nullable(),
-      trustTier: trustTierSchema.optional().nullable(),
-      trustScore: z.number().optional().nullable(),
-      mediaUrls: z.array(z.string()).optional().nullable(),
-      lat: z.union([z.number(), z.string()]).optional().nullable(),
-      lng: z.union([z.number(), z.string()]).optional().nullable(),
-      impactScore: z.union([z.number(), z.string()]).optional().nullable(),
-      category: z.string().optional().nullable(),
-      enrichmentConfidence: z.union([z.number(), z.string()]).optional().nullable(),
-      enrichmentProvider: z.string().optional().nullable(),
-      enrichmentModel: z.string().optional().nullable(),
-    })
-    .partial()
-    .optional(),
-});
+const enrichedObjectSchema = z
+  .object({
+    canonicalSourceUrl: z.string().optional().nullable(),
+    sourceDisplayName: z.string().optional().nullable(),
+    sourceHandle: z.string().optional().nullable(),
+    sourceIconKey: z.string().optional().nullable(),
+    sourceAvatarUrl: z.string().optional().nullable(),
+    sourceVerified: z.boolean().optional().nullable(),
+    trustTier: trustTierSchema.optional().nullable(),
+    trustScore: z.number().optional().nullable(),
+    mediaUrls: z.array(z.string()).optional().nullable(),
+    lat: z.union([z.number(), z.string()]).optional().nullable(),
+    lng: z.union([z.number(), z.string()]).optional().nullable(),
+    impactScore: z.union([z.number(), z.string()]).optional().nullable(),
+    category: z.string().optional().nullable(),
+    enrichmentConfidence: z.union([z.number(), z.string()]).optional().nullable(),
+    enrichmentProvider: z.string().optional().nullable(),
+    enrichmentModel: z.string().optional().nullable(),
+  })
+  .partial()
+  .passthrough();
+
+const directXPayloadSchema = z
+  .object({
+    id: z.string().min(1).max(2048),
+    text: z.string().max(200_000),
+    source: z.string().optional(),
+    url: z.string().optional().nullable(),
+    twitterUrl: z.string().optional().nullable(),
+    sourceUrl: z.string().optional().nullable(),
+    sourceDisplayName: z.string().optional().nullable(),
+    sourceHandle: z.string().optional().nullable(),
+    sourceAvatarUrl: z.string().optional().nullable(),
+    sourceVerified: z.boolean().optional().nullable(),
+    lat: z.union([z.number(), z.string()]).optional().nullable(),
+    lng: z.union([z.number(), z.string()]).optional().nullable(),
+    impactScore: z.union([z.number(), z.string()]).optional().nullable(),
+    category: z.string().optional().nullable(),
+    enrichmentProvider: z.string().optional().nullable(),
+    enrichmentModel: z.string().optional().nullable(),
+    enrichmentConfidence: z.union([z.number(), z.string()]).optional().nullable(),
+    timestamp: z.union([z.string(), z.number()]).optional(),
+    createdAt: z.union([z.string(), z.number()]).optional(),
+    meta: z
+      .object({
+        messageId: z.string().optional(),
+        guildId: z.string().optional(),
+        channelId: z.string().optional(),
+        channelName: z.string().optional(),
+        receivedAt: z.string().optional(),
+      })
+      .partial()
+      .optional(),
+    author: z
+      .object({
+        name: z.string().optional().nullable(),
+        displayName: z.string().optional().nullable(),
+        username: z.string().optional().nullable(),
+        handle: z.string().optional().nullable(),
+        profileImageUrl: z.string().optional().nullable(),
+        avatarUrl: z.string().optional().nullable(),
+        verified: z.boolean().optional().nullable(),
+        isVerified: z.boolean().optional().nullable(),
+      })
+      .partial()
+      .optional(),
+    enriched: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const t = val.trim();
+        if (!t) return undefined;
+        try {
+          const p = JSON.parse(t) as unknown;
+          if (p !== null && typeof p === "object" && !Array.isArray(p)) return p;
+        } catch {
+          /* invalid JSON string */
+        }
+        return val;
+      }
+      return val;
+    }, enrichedObjectSchema.optional()),
+  })
+  .passthrough();
 
 function asHttpUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -133,6 +151,12 @@ function trimStr(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const t = value.trim();
   return t.length > 0 ? t : null;
+}
+
+function asLooseRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 function asCategory(value: unknown): (typeof ENRICHMENT_CATEGORIES)[number] | null {
@@ -179,6 +203,9 @@ async function ingestDirectPayload(raw: unknown) {
   }
 
   const data = parsed.data;
+  const rootLoose = data as Record<string, unknown>;
+  const enrichedLoose =
+    asLooseRecord(data.enriched) ?? asLooseRecord(rootLoose.enrichment);
   const text = normalizeInboundText(data.text.trim());
   if (!text) {
     return {
@@ -228,24 +255,55 @@ async function ingestDirectPayload(raw: unknown) {
       ? asFiniteNumber(data.lng)
       : asFiniteNumber(data.enriched?.lng);
   const impactScore =
-    data.impactScore !== undefined
-      ? asImpactScore(data.impactScore)
-      : asImpactScore(data.enriched?.impactScore);
+    asImpactScore(data.impactScore) ??
+    asImpactScore(rootLoose.impact_score) ??
+    asImpactScore(data.enriched?.impactScore) ??
+    asImpactScore(enrichedLoose?.impact_score);
   const category =
-    data.category !== undefined
-      ? asCategory(data.category)
-      : asCategory(data.enriched?.category);
+    asCategory(data.category) ??
+    asCategory(data.enriched?.category) ??
+    asCategory(enrichedLoose?.category);
   const enrichmentProvider =
-    trimStr(data.enrichmentProvider) ?? trimStr(data.enriched?.enrichmentProvider);
+    trimStr(data.enrichmentProvider) ??
+    trimStr(rootLoose.enrichment_provider) ??
+    trimStr(data.enriched?.enrichmentProvider) ??
+    trimStr(enrichedLoose?.enrichment_provider);
   /** Do not persist neutral 50 without provider — see factory placeholderImpact50. */
   const impactForPersistence =
     impactScore === 50 && enrichmentProvider == null ? null : impactScore;
   const enrichmentModel =
-    trimStr(data.enrichmentModel) ?? trimStr(data.enriched?.enrichmentModel);
+    trimStr(data.enrichmentModel) ??
+    trimStr(rootLoose.enrichment_model) ??
+    trimStr(data.enriched?.enrichmentModel) ??
+    trimStr(enrichedLoose?.enrichment_model);
   const enrichmentConfidence =
-    data.enrichmentConfidence !== undefined
-      ? asFiniteNumber(data.enrichmentConfidence)
-      : asFiniteNumber(data.enriched?.enrichmentConfidence);
+    asFiniteNumber(data.enrichmentConfidence) ??
+    asFiniteNumber(rootLoose.enrichment_confidence) ??
+    asFiniteNumber(data.enriched?.enrichmentConfidence) ??
+    asFiniteNumber(enrichedLoose?.enrichment_confidence);
+
+  // #region agent log
+  agentDebugIngest({
+    runId: "verify-file",
+    hypothesisId: "H1-H2",
+    location: "x/handler.ts:afterParse",
+    message: "webhook parsed enrichment for processIntelRaw",
+    data: {
+      id: data.id.slice(0, 48),
+      impactScore,
+      impactForPersistence,
+      enrichmentProvider,
+      enrichmentModel,
+      category,
+      rawTopImpact: data.impactScore,
+      rawNestedImpact: data.enriched?.impactScore,
+      rawNestedSnakeImpact: enrichedLoose?.impact_score,
+      rawTopSnakeProvider: rootLoose.enrichment_provider,
+      rawNestedSnakeProvider: enrichedLoose?.enrichment_provider,
+      usedRootEnrichmentKey: data.enriched == null && rootLoose.enrichment != null,
+    },
+  });
+  // #endregion
 
   await processIntelRaw({
     id: data.id,
@@ -299,6 +357,21 @@ async function ingestDirectPayload(raw: unknown) {
   if (Object.keys(forcedSignalUpdates).length > 0) {
     await db.update(signals).set(forcedSignalUpdates).where(eq(signals.id, data.id));
   }
+
+  // #region agent log
+  agentDebugIngest({
+    runId: "verify-file",
+    hypothesisId: "H5",
+    location: "x/handler.ts:afterForcedUpdate",
+    message: "forcedSignalUpdates applied",
+    data: {
+      id: data.id.slice(0, 48),
+      forcedKeys: Object.keys(forcedSignalUpdates),
+      forcedImpact: forcedSignalUpdates.impactScore ?? null,
+      forcedProvider: forcedSignalUpdates.enrichmentProvider ?? null,
+    },
+  });
+  // #endregion
 
   const normalizedPayload = {
     id: data.id,
