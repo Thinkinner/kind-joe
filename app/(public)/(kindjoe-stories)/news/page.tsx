@@ -1,5 +1,6 @@
 // app/page.tsx
 import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stories-carousel";
+import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
@@ -26,9 +27,12 @@ export default async function HomePage() {
         <hr className="my-6 border-slate-200" />
 
         {/* Title above both columns */}
-        <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins] mb-6">
-          Latest Kindjoe Articles
-        </h1>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
+            Latest Kindjoe Articles
+          </h1>
+          <BreakingLiveNewsCta variant="inline" />
+        </div>
 
         {/* Flex Row Wrapper */}
         <div className="flex flex-col lg:flex-row gap-8 items-start">

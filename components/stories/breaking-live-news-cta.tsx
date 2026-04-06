@@ -9,7 +9,7 @@ type BreakingLiveNewsCtaProps = {
 };
 
 /** Set true when Kind Joe Watch is public again (see middleware + navbar). */
-const KINDJOE_WATCH_CTA_ENABLED = false;
+const KINDJOE_WATCH_CTA_ENABLED = true;
 
 export default function BreakingLiveNewsCta({
   className,
