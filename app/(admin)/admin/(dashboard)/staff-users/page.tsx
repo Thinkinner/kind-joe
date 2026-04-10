@@ -40,9 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Copy,
   Globe2,
-  Info,
   Mail,
   Loader2,
   MoreHorizontal,
@@ -423,7 +421,6 @@ export default function StaffUsersPage() {
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     return src.slice(0, 2).toUpperCase();
   };
-  const bootstrapCommand = "npm run auth:promote-staff -- you@site.com superadmin";
 
   return (
     <div className="space-y-8">
@@ -756,31 +753,6 @@ export default function StaffUsersPage() {
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 text-sm text-slate-600">
-        <div className="flex flex-wrap items-center gap-2">
-          <Info className="h-3.5 w-3.5 text-slate-500" />
-          <code className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
-            {bootstrapCommand}
-          </code>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-md"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(bootstrapCommand);
-                toast.success("Command copied");
-              } catch {
-                toast.error("Could not copy command");
-              }
-            }}
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-        </div>
       </div>
 
       <Dialog
