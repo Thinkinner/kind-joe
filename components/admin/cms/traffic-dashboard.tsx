@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getArticleTrafficDetails } from "@/lib/actions/admin-traffic";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 export type ArticleTrafficRow = {
   id: string;
   title: string;
+  category: string | null;
+  coverImageUrl: string | null;
   publishedAt: Date | null;
   totalViews: number;
 };
@@ -19,6 +23,10 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
   const [selected, setSelected] = useState<ArticleTrafficRow | null>(null);
   const [details, setDetails] = useState<TrafficDetail[]>([]);
   const [loading, setLoading] = useState(false);
+  const maxViews = useMemo(
+    () => Math.max(...articles.map((article) => article.totalViews), 0),
+    [articles],
+  );
 
   const open = async (article: ArticleTrafficRow) => {
     setSelected(article);
@@ -35,16 +43,16 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
 
   return (
     <div className="w-full">
-      <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+      <h2 className="mb-4 text-lg font-medium tracking-tight text-neutral-900">
         Article traffic
       </h2>
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-neutral-100 bg-neutral-50">
-              <th className="p-3 font-medium text-neutral-600">Title</th>
-              <th className="p-3 font-medium text-neutral-600">Published</th>
-              <th className="p-3 text-right font-medium text-neutral-600">
+            <tr className="border-b border-slate-100 bg-slate-50/60">
+              <th className="p-3 font-medium tracking-tight text-neutral-600">Title</th>
+              <th className="p-3 font-medium tracking-tight text-neutral-600">Published</th>
+              <th className="p-3 text-right font-medium tracking-tight text-neutral-600">
                 Views
               </th>
             </tr>
@@ -53,17 +61,52 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
             {articles.map((a) => (
               <tr
                 key={a.id}
-                className="cursor-pointer border-b border-neutral-100 hover:bg-orange-50/50"
+                className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/30"
                 onClick={() => open(a)}
               >
-                <td className="p-3 font-medium text-neutral-900">{a.title}</td>
-                <td className="p-3 text-neutral-600">
+                <td className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
+                      {a.coverImageUrl ? (
+                        <img
+                          src={a.coverImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium tracking-tight text-slate-400">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium tracking-tight text-neutral-900">
+                        {a.title}
+                      </p>
+                      <Badge
+                        variant="secondary"
+                        className="mt-1 rounded-md border-0 bg-slate-100 text-[11px] font-normal tracking-tight text-slate-600"
+                      >
+                        {a.category ?? "General"}
+                      </Badge>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-3 font-normal tracking-tight text-neutral-600">
                   {a.publishedAt
                     ? new Date(a.publishedAt).toLocaleDateString()
                     : "—"}
                 </td>
-                <td className="p-3 text-right tabular-nums text-neutral-800">
-                  {a.totalViews.toLocaleString()}
+                <td className="p-3 text-right">
+                  <div className="ml-auto w-28 space-y-1.5">
+                    <p className="tabular-nums font-normal tracking-tight text-neutral-800">
+                      {a.totalViews.toLocaleString()}
+                    </p>
+                    <Progress
+                      value={maxViews === 0 ? 0 : (a.totalViews / maxViews) * 100}
+                      className="h-1.5 bg-indigo-100/70"
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

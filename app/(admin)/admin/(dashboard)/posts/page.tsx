@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink, Loader2, Pin, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type Post = {
   id: number;
@@ -29,37 +30,64 @@ type Post = {
   isActive: boolean | null;
 };
 
+type FeedType = "kindjoe" | "ventura";
+const INITIAL_VISIBLE = 8;
+const LOAD_MORE_STEP = 4;
+
 export default function AdminPostsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [loading, setLoading] = useState(true);
+  const [feedType, setFeedType] = useState<FeedType>("kindjoe");
   const [open, setOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [destinationUrl, setDestinationUrl] = useState("");
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const apiBase =
+    feedType === "ventura" ? "/api/admin/ventura-posts" : "/api/admin/posts";
+  const feedLabel = feedType === "ventura" ? "Ventura posts" : "Posts";
+  const addButtonLabel =
+    feedType === "ventura" ? "Add Ventura post" : "Add post";
+  const singularPostLabel = feedType === "ventura" ? "Ventura post" : "post";
+
+  useEffect(() => {
+    const queryFeed = searchParams.get("feed");
+    setFeedType(queryFeed === "ventura" ? "ventura" : "kindjoe");
+    setVisibleCount(INITIAL_VISIBLE);
+  }, [searchParams]);
+
   const load = async () => {
-    const res = await fetch("/api/admin/posts", { cache: "no-store" });
+    const res = await fetch(apiBase, { cache: "no-store" });
     if (!res.ok) throw new Error("load");
     setPosts(await res.json());
   };
 
   useEffect(() => {
+    setLoading(true);
     load()
-      .catch(() => toast.error("Could not load posts"))
+      .catch(() =>
+        toast.error(
+          `Could not load ${feedType === "ventura" ? "ventura posts" : "posts"}`,
+        ),
+      )
       .finally(() => setLoading(false));
-  }, []);
+  }, [feedType]);
 
   const create = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/posts", {
+      const res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl, destinationUrl, caption }),
       });
       if (!res.ok) throw new Error("create");
-      toast.success("Post created");
+      toast.success(`${singularPostLabel} created`);
       setOpen(false);
       setImageUrl("");
       setDestinationUrl("");
@@ -74,7 +102,7 @@ export default function AdminPostsPage() {
 
   const togglePin = async (p: Post) => {
     try {
-      const res = await fetch(`/api/admin/posts/${p.id}`, {
+      const res = await fetch(`${apiBase}/${p.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPinned: !p.isPinned }),
@@ -87,9 +115,9 @@ export default function AdminPostsPage() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Delete this post?")) return;
+    if (!confirm(`Delete this ${singularPostLabel}?`)) return;
     try {
-      const res = await fetch(`/api/admin/posts/${id}`, { method: "DELETE" });
+      const res = await fetch(`${apiBase}/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("del");
       setPosts((prev) => prev.filter((x) => x.id !== id));
       toast.success("Deleted");
@@ -100,47 +128,67 @@ export default function AdminPostsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-4 w-80 max-w-full" />
-          </div>
-          <Skeleton className="h-10 w-28" />
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, idx) => (
-            <div key={idx} className="space-y-2">
-              <Skeleton className="aspect-[4/5] w-full rounded-xl" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          ))}
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm text-neutral-600">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading {feedType === "ventura" ? "ventura posts" : "posts"}...
         </div>
       </div>
     );
   }
+
+  const visiblePosts = posts.slice(0, visibleCount);
+  const remainingCount = Math.max(0, posts.length - visibleCount);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-            Posts
+            {feedLabel}
           </h1>
           <p className="mt-1 text-sm text-neutral-600">
-            Link-in-bio style tiles (image + outbound URL).
+            Link-in-bio style tiles (image + outbound URL). Manage both feeds in one place.
           </p>
+          <div className="mt-3 inline-flex rounded-lg border border-neutral-200 bg-neutral-50 p-1">
+            {[
+              { key: "kindjoe", label: "KindJoe posts" },
+              { key: "ventura", label: "Ventura posts" },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => {
+                  const nextFeed = opt.key as FeedType;
+                  setFeedType(nextFeed);
+                  router.replace(`${pathname}?feed=${nextFeed}`, {
+                    scroll: false,
+                  });
+                }}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  feedType === opt.key
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-600 hover:text-neutral-900",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-1 h-4 w-4" />
-              Add post
+              {addButtonLabel}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>New post</DialogTitle>
+              <DialogTitle>
+                New {feedType === "ventura" ? "Ventura post" : "post"}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div>
@@ -198,7 +246,7 @@ export default function AdminPostsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {posts.map((p) => (
+        {visiblePosts.map((p) => (
           <div
             key={p.id}
             className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100"
@@ -246,6 +294,20 @@ export default function AdminPostsPage() {
           </div>
         ))}
       </div>
+
+      {remainingCount > 0 && (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setVisibleCount((prev) => prev + LOAD_MORE_STEP)
+            }
+          >
+            Load more ({Math.min(LOAD_MORE_STEP, remainingCount)})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

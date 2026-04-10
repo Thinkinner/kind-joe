@@ -323,6 +323,17 @@ export const posts = pgTable("posts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const venturaPosts = pgTable("ventura_posts", {
+  id: serial("id").primaryKey(),
+  imageUrl: text("image_url").notNull(),
+  destinationUrl: text("destination_url").notNull(),
+  caption: text("caption"),
+  isPinned: boolean("is_pinned").default(false),
+  order: integer("order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const clicks = pgTable("clicks", {
   id: serial("id").primaryKey(),
   postId: integer("post_id")

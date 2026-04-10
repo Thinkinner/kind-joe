@@ -1,11 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Filter,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 type Row = {
@@ -21,14 +43,47 @@ type Row = {
 };
 
 const PAGE_SIZE = 25;
+type StatusFilter = "all" | "published" | "draft" | "scheduled";
+
+function getStatusMeta(a: Row): {
+  label: "Published" | "Draft" | "Scheduled";
+  tone: string;
+  detail: string;
+} {
+  if (a.isDraft) {
+    return {
+      label: "Draft",
+      tone: "border-amber-200 bg-amber-50 text-amber-700",
+      detail: `Updated ${new Date(a.updatedAt).toLocaleString()}`,
+    };
+  }
+  if (a.publishAt) {
+    return {
+      label: "Scheduled",
+      tone: "border-sky-200 bg-sky-50 text-sky-700",
+      detail: `Publishes ${new Date(a.publishAt).toLocaleString()}`,
+    };
+  }
+  return {
+    label: "Published",
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    detail: a.publishedAt
+      ? new Date(a.publishedAt).toLocaleString()
+      : new Date(a.updatedAt).toLocaleString(),
+  };
+}
 
 export default function AdminArticlesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [qInput, setQInput] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(qInput.trim()), 300);
@@ -62,13 +117,23 @@ export default function AdminArticlesPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (hasLoadedRef.current) {
+        setSearching(true);
+      } else {
+        setInitialLoading(true);
+      }
       try {
         await fetchPage({ offset: 0, append: false });
+        if (!cancelled) {
+          hasLoadedRef.current = true;
+        }
       } catch {
         if (!cancelled) toast.error("Could not load articles");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setInitialLoading(false);
+          setSearching(false);
+        }
       }
     })();
     return () => {
@@ -77,6 +142,24 @@ export default function AdminArticlesPage() {
   }, [fetchPage]);
 
   const hasMore = rows.length < total;
+  const remaining = Math.max(0, total - rows.length);
+  const categoryOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(rows.map((r) => r.category?.trim()).filter(Boolean) as string[]),
+    ).sort((a, b) => a.localeCompare(b));
+    return unique;
+  }, [rows]);
+
+  const visibleRows = useMemo(() => {
+    return rows.filter((a) => {
+      const status = getStatusMeta(a).label.toLowerCase();
+      const statusMatches =
+        statusFilter === "all" ? true : status === statusFilter;
+      const categoryMatches =
+        categoryFilter === "all" ? true : (a.category ?? "General") === categoryFilter;
+      return statusMatches && categoryMatches;
+    });
+  }, [rows, statusFilter, categoryFilter]);
 
   const loadMore = async () => {
     if (!hasMore || loadingMore) return;
@@ -105,42 +188,13 @@ export default function AdminArticlesPage() {
     }
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-4 w-[28rem] max-w-full" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-10 w-28" />
-          </div>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm text-neutral-600">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading articles...
         </div>
-        <Skeleton className="h-4 w-36" />
-        <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-          <div className="hidden grid-cols-[minmax(0,1fr)_170px_140px] items-center gap-4 border-b border-neutral-200 bg-neutral-50 px-4 py-3 md:grid">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="ml-auto h-4 w-16" />
-          </div>
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 8 }).map((_, idx) => (
-              <div key={idx} className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_170px_140px] md:items-center md:gap-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-[85%]" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <Skeleton className="h-5 w-32" />
-                <div className="flex justify-start gap-2 md:justify-end">
-                  <Skeleton className="h-9 w-16" />
-                  <Skeleton className="h-9 w-9" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
     );
   }
@@ -149,113 +203,208 @@ export default function AdminArticlesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Articles
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 text-sm text-slate-600">
             Create, edit, and publish stories. Loads {PAGE_SIZE} at a time;
             search runs on the server.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Input
-            placeholder="Search title or excerpt…"
-            value={qInput}
-            onChange={(e) => setQInput(e.target.value)}
-            className="w-full min-w-[12rem] sm:w-64"
-          />
-          <Button asChild>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative w-full min-w-[14rem] sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search title or excerpt..."
+              value={qInput}
+              onChange={(e) => setQInput(e.target.value)}
+              className="w-full rounded-xl border-slate-200/60 bg-white pl-9 shadow-sm"
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="rounded-xl border border-slate-200/60 bg-white text-slate-700 hover:bg-slate-50"
+              >
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl">
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+              >
+                <DropdownMenuRadioItem value="all">All statuses</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="published">Published</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="draft">Draft</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="scheduled">Scheduled</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Category</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={categoryFilter}
+                onValueChange={setCategoryFilter}
+              >
+                <DropdownMenuRadioItem value="all">All categories</DropdownMenuRadioItem>
+                {categoryOptions.map((cat) => (
+                  <DropdownMenuRadioItem key={cat} value={cat}>
+                    {cat}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            asChild
+            className="rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-[0_10px_24px_-14px_rgb(225_29_72/0.8)] hover:from-rose-500 hover:to-rose-500"
+          >
             <Link href="/admin/articles/new">
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New article
             </Link>
           </Button>
         </div>
       </div>
 
-      <p className="text-xs text-neutral-500">
-        Showing {rows.length} of {total}
-        {debouncedQ ? ` matching “${debouncedQ}”` : ""}
-      </p>
-
-      <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-        <div className="hidden grid-cols-[minmax(0,1fr)_170px_140px] items-center gap-4 border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 md:grid">
+      <section className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_12px_32px_-20px_rgb(15_23_42/0.2)]">
+        <div className="hidden grid-cols-[minmax(0,1fr)_190px_90px] items-center gap-4 border-b border-slate-200/60 bg-slate-50/60 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
           <p>Title</p>
           <p>Status</p>
           <p className="text-right">Actions</p>
         </div>
 
-        <ul className="divide-y divide-neutral-100">
-          {rows.map((a) => (
+        <ul className="divide-y divide-slate-100">
+          {visibleRows.map((a) => {
+            const status = getStatusMeta(a);
+            return (
             <li
               key={a.id}
-              className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[minmax(0,1fr)_170px_140px] md:items-center md:gap-4"
+              className="group grid grid-cols-1 gap-3 px-6 py-4 transition-colors hover:bg-slate-50/50 md:grid-cols-[minmax(0,1fr)_190px_90px] md:items-center md:gap-4"
             >
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-semibold text-neutral-900">
-                  {a.title}
-                </p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {a.category ?? "General"}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
+                  {a.coverImageUrl ? (
+                    <img
+                      src={a.coverImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-400">
+                      No img
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-semibold text-slate-900">
+                    {a.title}
+                  </p>
+                  <Badge
+                    variant="secondary"
+                    className="mt-1 rounded-md border-0 bg-slate-100 text-[11px] text-slate-600"
+                  >
+                    {a.category ?? "General"}
+                  </Badge>
+                </div>
               </div>
 
-              <div className="text-xs text-neutral-600">
-                {a.isDraft
-                  ? "Draft"
-                  : a.publishedAt
-                    ? new Date(a.publishedAt).toLocaleString()
-                    : a.publishAt
-                      ? `Scheduled ${new Date(a.publishAt).toLocaleString()}`
-                      : "Published"}
-              </div>
-
-              <div className="flex shrink-0 justify-start gap-2 md:justify-end">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/admin/articles/${a.id}/edit`}>
-                    <Pencil className="mr-1 h-3.5 w-3.5" />
-                    Edit
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-700 hover:bg-red-50"
-                  onClick={() => remove(a.id)}
+              <div className="space-y-1 text-xs text-slate-500">
+                <Badge
+                  variant="outline"
+                  className={`w-fit rounded-md border ${status.tone}`}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                  {status.label === "Published" && <CheckCircle2 className="h-3 w-3" />}
+                  {status.label !== "Published" && <Clock3 className="h-3 w-3" />}
+                  {status.label}
+                </Badge>
+                <p className="text-[11px] text-slate-500">{status.detail}</p>
+              </div>
+
+              <div className="flex shrink-0 justify-start md:justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="rounded-lg text-slate-500 opacity-100 transition-opacity hover:bg-slate-100 hover:text-slate-700 md:opacity-40 md:group-hover:opacity-100"
+                      aria-label="Open article actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/admin/articles/${a.id}/edit`}>
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => remove(a.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </li>
-          ))}
+            );
+          })}
 
-          {rows.length === 0 && (
+          {visibleRows.length === 0 && (
             <li className="p-8 text-center text-sm text-neutral-500">
               No articles match.
             </li>
           )}
         </ul>
+
+        <Separator className="bg-slate-200/60" />
+
+        <div className="flex flex-col items-center justify-center px-6 py-10">
+          {hasMore ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore || searching}
+                className="my-8 w-full max-w-64 rounded-xl border-slate-200/70 bg-white text-slate-800 hover:bg-slate-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Show more articles
+                  </>
+                )}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                {remaining.toLocaleString()} articles remaining
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">You have reached the end of the list.</p>
+          )}
+        </div>
       </section>
 
-      {hasMore && (
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={loadMore}
-            disabled={loadingMore}
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading…
-              </>
-            ) : (
-              `Load more (${total - rows.length} remaining)`
-            )}
-          </Button>
-        </div>
-      )}
+      <p className="text-center text-xs text-muted-foreground">
+        Showing {visibleRows.length.toLocaleString()} of {total.toLocaleString()} articles
+        {debouncedQ ? ` matching "${debouncedQ}"` : ""}
+        {searching ? " · Updating..." : ""}
+      </p>
     </div>
   );
 }
