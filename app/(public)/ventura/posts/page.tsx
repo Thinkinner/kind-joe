@@ -13,22 +13,26 @@ type VenturaPostCard = {
 
 async function getVenturaPostsFromDb(): Promise<VenturaPostCard[]> {
   if (!process.env.DATABASE_URL) return [];
+  try {
+    const rows = await db
+      .select({
+        id: venturaPosts.id,
+        imageUrl: venturaPosts.imageUrl,
+        destinationUrl: venturaPosts.destinationUrl,
+      })
+      .from(venturaPosts)
+      .where(or(eq(venturaPosts.isActive, true), isNull(venturaPosts.isActive)))
+      .orderBy(
+        desc(venturaPosts.isPinned),
+        asc(venturaPosts.order),
+        desc(venturaPosts.id),
+      );
 
-  const rows = await db
-    .select({
-      id: venturaPosts.id,
-      imageUrl: venturaPosts.imageUrl,
-      destinationUrl: venturaPosts.destinationUrl,
-    })
-    .from(venturaPosts)
-    .where(or(eq(venturaPosts.isActive, true), isNull(venturaPosts.isActive)))
-    .orderBy(
-      desc(venturaPosts.isPinned),
-      asc(venturaPosts.order),
-      desc(venturaPosts.id),
-    );
-
-  return rows;
+    return rows;
+  } catch (error) {
+    console.error("ventura posts query failed:", error);
+    return [];
+  }
 }
 
 function cloudinaryFourByFive(imageUrl: string) {

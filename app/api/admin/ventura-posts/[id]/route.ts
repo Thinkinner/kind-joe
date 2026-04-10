@@ -9,6 +9,12 @@ import { resolveStaffApi } from "@/lib/auth/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function isMissingVenturaPostsTable(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes('relation "ventura_posts" does not exist');
+}
+
 const PatchSchema = z.object({
   imageUrl: z.string().url().optional(),
   destinationUrl: z.string().url().optional(),
@@ -48,14 +54,27 @@ export async function PATCH(
     Object.entries(parsed.data).filter(([, v]) => v !== undefined),
   ) as Partial<typeof venturaPosts.$inferInsert>;
 
-  const [row] = await db
-    .update(venturaPosts)
-    .set(patch)
-    .where(eq(venturaPosts.id, postId))
-    .returning();
+  try {
+    const [row] = await db
+      .update(venturaPosts)
+      .set(patch)
+      .where(eq(venturaPosts.id, postId))
+      .returning();
 
-  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(row);
+    if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(row);
+  } catch (error) {
+    if (isMissingVenturaPostsTable(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "ventura_posts table is missing. Run DB migrations to enable Ventura posts.",
+        },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function DELETE(
@@ -76,6 +95,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  await db.delete(venturaPosts).where(eq(venturaPosts.id, postId));
-  return NextResponse.json({ ok: true });
+  try {
+    await db.delete(venturaPosts).where(eq(venturaPosts.id, postId));
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (isMissingVenturaPostsTable(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "ventura_posts table is missing. Run DB migrations to enable Ventura posts.",
+        },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 }

@@ -9,6 +9,12 @@ import { resolveStaffApi } from "@/lib/auth/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function isMissingVenturaPostsTable(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes('relation "ventura_posts" does not exist');
+}
+
 const CreateSchema = z.object({
   imageUrl: z.string().url(),
   destinationUrl: z.string().url(),
@@ -27,17 +33,30 @@ export async function GET() {
     );
   }
 
-  const data = await db
-    .select()
-    .from(venturaPosts)
-    .orderBy(desc(venturaPosts.isPinned), desc(venturaPosts.createdAt));
+  try {
+    const data = await db
+      .select()
+      .from(venturaPosts)
+      .orderBy(desc(venturaPosts.isPinned), desc(venturaPosts.createdAt));
 
-  return NextResponse.json(
-    data.map((row) => ({
-      ...row,
-      clickCount: 0,
-    })),
-  );
+    return NextResponse.json(
+      data.map((row) => ({
+        ...row,
+        clickCount: 0,
+      })),
+    );
+  } catch (error) {
+    if (isMissingVenturaPostsTable(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "ventura_posts table is missing. Run DB migrations to enable Ventura posts.",
+        },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -57,17 +76,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const [row] = await db
-    .insert(venturaPosts)
-    .values({
-      imageUrl: parsed.data.imageUrl,
-      destinationUrl: parsed.data.destinationUrl,
-      caption: parsed.data.caption ?? null,
-      isPinned: parsed.data.isPinned ?? false,
-      order: parsed.data.order ?? 0,
-      isActive: parsed.data.isActive ?? true,
-    })
-    .returning();
+  try {
+    const [row] = await db
+      .insert(venturaPosts)
+      .values({
+        imageUrl: parsed.data.imageUrl,
+        destinationUrl: parsed.data.destinationUrl,
+        caption: parsed.data.caption ?? null,
+        isPinned: parsed.data.isPinned ?? false,
+        order: parsed.data.order ?? 0,
+        isActive: parsed.data.isActive ?? true,
+      })
+      .returning();
 
-  return NextResponse.json(row, { status: 201 });
+    return NextResponse.json(row, { status: 201 });
+  } catch (error) {
+    if (isMissingVenturaPostsTable(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "ventura_posts table is missing. Run DB migrations to enable Ventura posts.",
+        },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 }
