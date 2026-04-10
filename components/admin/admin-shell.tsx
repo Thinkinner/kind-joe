@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   FileText,
+  Wand2,
   BarChart2,
   ImageIcon,
   Mail,
@@ -39,6 +40,7 @@ type AdminShellProps = {
 const baseNav = [
   { href: "/admin", label: "Dashboard", icon: Home, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/articles", label: "Articles", icon: FileText, permission: PERMISSIONS.ADMIN_ARTICLES },
+  { href: "/admin/articles/ai-assistant", label: "Article assistant", icon: Wand2, permission: PERMISSIONS.ADMIN_ARTICLE_ASSISTANT },
   { href: "/admin/article-analytics", label: "Article analytics", icon: BarChart2, permission: PERMISSIONS.ADMIN_ANALYTICS },
   { href: "/admin/visitor-journeys", label: "Visitor journeys", icon: Route, permission: PERMISSIONS.ADMIN_VISITOR_JOURNEYS },
   { href: "/admin/posts", label: "Posts", icon: ImageIcon, permission: PERMISSIONS.ADMIN_POSTS },

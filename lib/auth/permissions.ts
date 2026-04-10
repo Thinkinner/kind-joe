@@ -4,6 +4,7 @@ import { isSuperAdminRole } from "@/lib/auth/staff-roles";
 export const PERMISSIONS = {
   ADMIN_DASHBOARD: "admin.dashboard",
   ADMIN_ARTICLES: "admin.articles",
+  ADMIN_ARTICLE_ASSISTANT: "admin.article_assistant",
   ADMIN_ANALYTICS: "admin.analytics",
   ADMIN_VISITOR_JOURNEYS: "admin.visitor_journeys",
   ADMIN_POSTS: "admin.posts",
@@ -32,6 +33,7 @@ export const ROLE_PERMISSIONS: Record<
   superadmin: [
     PERMISSIONS.ADMIN_DASHBOARD,
     PERMISSIONS.ADMIN_ARTICLES,
+    PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
     PERMISSIONS.ADMIN_ANALYTICS,
     PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
     PERMISSIONS.ADMIN_POSTS,

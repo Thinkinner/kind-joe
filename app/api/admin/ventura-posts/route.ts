@@ -32,7 +32,12 @@ export async function GET() {
     .from(venturaPosts)
     .orderBy(desc(venturaPosts.isPinned), desc(venturaPosts.createdAt));
 
-  return NextResponse.json(data);
+  return NextResponse.json(
+    data.map((row) => ({
+      ...row,
+      clickCount: 0,
+    })),
+  );
 }
 
 export async function POST(req: NextRequest) {

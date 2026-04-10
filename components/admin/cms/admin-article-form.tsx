@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/helpers/articles";
 import { toast } from "sonner";
@@ -25,7 +28,8 @@ export function AdminArticleForm({ articleId }: Props) {
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [category, setCategory] = useState("General");
-  const [tagsRaw, setTagsRaw] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [isDraft, setIsDraft] = useState(true);
   const [publishAt, setPublishAt] = useState("");
@@ -34,8 +38,6 @@ export function AdminArticleForm({ articleId }: Props) {
     content: [{ type: "paragraph" }],
   });
   const [contentHtml, setContentHtml] = useState("");
-  const [helperPaste, setHelperPaste] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -53,9 +55,7 @@ export function AdminArticleForm({ articleId }: Props) {
         setSlug(data.slug ?? "");
         setExcerpt(data.excerpt ?? "");
         setCategory(data.category ?? "General");
-        setTagsRaw(
-          Array.isArray(data.tags) ? data.tags.join(", ") : "",
-        );
+        setTags(Array.isArray(data.tags) ? data.tags : []);
         setCoverImageUrl(data.coverImageUrl ?? "");
         setIsDraft(!!data.isDraft);
         if (data.publishAt) {
@@ -82,11 +82,18 @@ export function AdminArticleForm({ articleId }: Props) {
     if (!articleId) setSlug(slugify(v));
   };
 
+  const addTag = (raw: string) => {
+    const next = raw.trim().toLowerCase();
+    if (!next) return;
+    if (tags.includes(next)) return;
+    setTags((prev) => [...prev, next]);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags((prev) => prev.filter((t) => t !== tagToRemove));
+  };
+
   const buildMeta = (opts: { publishNow?: boolean; schedule?: boolean }) => {
-    const tags = tagsRaw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
     const meta: Record<string, unknown> = {
       title,
       slug,
@@ -126,7 +133,7 @@ export function AdminArticleForm({ articleId }: Props) {
         });
         if (!res.ok) throw new Error(await res.text());
         toast.success("Saved");
-        router.push("/admin/articles");
+        router.refresh();
         return;
       }
       const res = await fetch("/api/admin/articles", {
@@ -151,64 +158,6 @@ export function AdminArticleForm({ articleId }: Props) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const runAssist = async () => {
-    setAiBusy(true);
-    try {
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          html: contentHtml,
-          blocks,
-          mode: "all",
-        }),
-      });
-      if (!res.ok) throw new Error("Assist failed");
-      const data = await res.json();
-      if (data.slug) setSlug(String(data.slug));
-      if (data.category) setCategory(String(data.category));
-      if (Array.isArray(data.tags) && data.tags.length) {
-        setTagsRaw(data.tags.join(", "));
-      }
-      if (data.excerpt) setExcerpt(String(data.excerpt));
-      if (data.title) setTitle(String(data.title));
-      if (data.draftHtml && editorRef.current) {
-        editorRef.current.commands.setContent(String(data.draftHtml));
-      }
-      toast.success("AI suggestions applied");
-    } catch {
-      toast.error("AI assist failed");
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  const runLayoutHelper = async () => {
-    if (!helperPaste.trim()) {
-      toast.message("Paste text with line breaks first");
-      return;
-    }
-    setAiBusy(true);
-    try {
-      const res = await fetch("/api/admin/ai/block-editor-helper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: helperPaste }),
-      });
-      if (!res.ok) throw new Error("Helper failed");
-      const data = await res.json();
-      if (data.html && editorRef.current) {
-        editorRef.current.chain().focus().setContent(String(data.html)).run();
-      }
-      toast.success("Layout applied");
-    } catch {
-      toast.error("Layout helper failed");
-    } finally {
-      setAiBusy(false);
     }
   };
 
@@ -252,179 +201,201 @@ export function AdminArticleForm({ articleId }: Props) {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => onTitle(e.target.value)}
-            placeholder="Headline"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="slug">Slug</Label>
-          <Input
-            id="slug"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="url-slug"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Input
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="excerpt">Excerpt</Label>
-          <Textarea
-            id="excerpt"
-            value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
-            rows={3}
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="tags">Tags (comma-separated)</Label>
-          <Input
-            id="tags"
-            value={tagsRaw}
-            onChange={(e) => setTagsRaw(e.target.value)}
-            placeholder="politics, california, …"
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label>Cover image</Label>
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              value={coverImageUrl}
-              onChange={(e) => setCoverImageUrl(e.target.value)}
-              placeholder="https://…"
-              className="max-w-xl"
-            />
-            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-orange-700">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onUploadCover}
-              />
-              <span className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 font-medium hover:bg-orange-100">
-                {uploading ? "Uploading…" : "Upload file"}
-              </span>
-            </label>
+    <div className="space-y-6">
+      <div className="sticky top-3 z-20 rounded-xl border border-slate-200/70 bg-white/95 px-4 py-3 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.24)] backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin/articles" className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Link>
+            </Button>
+            <h1 className="text-sm font-medium tracking-tight text-slate-900">
+              {articleId ? "Edit Article" : "New Article"}
+            </h1>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || !publishAt}
+              onClick={() => save({ schedule: true })}
+            >
+              Schedule
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => save({})}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save
+            </Button>
+            <Button
+              type="button"
+              disabled={saving}
+              onClick={() => save({ publishNow: true })}
+            >
+              Publish now
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
-        <Sparkles className="h-4 w-4 text-orange-600" />
-        <span className="text-sm font-medium text-neutral-800">
-          Article AI assist
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={aiBusy}
-          onClick={runAssist}
-        >
-          {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Fill metadata &amp; draft
-        </Button>
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8 xl:col-span-9">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => onTitle(e.target.value)}
+              placeholder="Untitled article"
+              className="h-auto border-none bg-transparent px-0 text-4xl font-bold tracking-tight placeholder:opacity-50 focus-visible:ring-0"
+            />
 
-      <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
-        <div className="flex items-center gap-2">
-          <Wand2 className="h-4 w-4 text-neutral-600" />
-          <span className="text-sm font-medium">Block editor helper</span>
+            <Textarea
+              id="excerpt"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              rows={4}
+              placeholder="Write a concise excerpt..."
+              className="rounded-xl border-slate-200/70 bg-white text-base leading-relaxed"
+            />
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium tracking-tight">Main editor</Label>
+              <AdminBlockEditor
+                initialDoc={blocks}
+                initialHtml={articleId ? contentHtml : undefined}
+                onChange={onEditorChange}
+                onEditorReady={(ed) => {
+                  editorRef.current = ed;
+                }}
+                className="rounded-xl border-slate-200/70"
+              />
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-neutral-600">
-          Paste plain text with line breaks. AI assigns headings vs paragraphs
-          without rewriting wording, then replaces the editor body.
-        </p>
-        <Textarea
-          value={helperPaste}
-          onChange={(e) => setHelperPaste(e.target.value)}
-          rows={5}
-          placeholder="Paste raw lines…"
-          className="bg-white"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={aiBusy}
-          onClick={runLayoutHelper}
-        >
-          Apply layout to editor
-        </Button>
-      </div>
 
-      <div className="space-y-2">
-        <Label>Body</Label>
-        <AdminBlockEditor
-          initialDoc={blocks}
-          initialHtml={articleId ? contentHtml : undefined}
-          onChange={onEditorChange}
-          onEditorReady={(ed) => {
-            editorRef.current = ed;
-          }}
-        />
-      </div>
+        <aside className="space-y-4 lg:col-span-4 xl:col-span-3">
+          <Card className="gap-0 p-5">
+            <div className="space-y-2">
+              <Label htmlFor="slug" className="text-xs tracking-tight text-muted-foreground">
+                Slug
+              </Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="url-slug"
+              />
+            </div>
+          </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex items-center gap-2">
-          <input
-            id="draft"
-            type="checkbox"
-            checked={isDraft}
-            onChange={(e) => setIsDraft(e.target.checked)}
-            className="h-4 w-4 rounded border-neutral-300"
-          />
-          <Label htmlFor="draft">Draft</Label>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="pub">Schedule (optional)</Label>
-          <Input
-            id="pub"
-            type="datetime-local"
-            value={publishAt}
-            onChange={(e) => setPublishAt(e.target.value)}
-          />
-        </div>
-      </div>
+          <Card className="gap-0 p-5">
+            <div className="space-y-2">
+              <Label htmlFor="category" className="text-xs tracking-tight text-muted-foreground">
+                Category
+              </Label>
+              <Input
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
+            </div>
+          </Card>
 
-      <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-6">
-        <Button
-          type="button"
-          disabled={saving}
-          onClick={() => save({})}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={saving}
-          onClick={() => save({ publishNow: true })}
-        >
-          Publish now
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={saving || !publishAt}
-          onClick={() => save({ schedule: true })}
-        >
-          Schedule
-        </Button>
+          <Card className="gap-0 p-5">
+            <div className="space-y-2">
+              <Label className="text-xs tracking-tight text-muted-foreground">Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                    title="Remove tag"
+                  >
+                    {tag} ×
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== ",") return;
+                  e.preventDefault();
+                  addTag(tagInput);
+                  setTagInput("");
+                }}
+                onBlur={() => {
+                  if (!tagInput.trim()) return;
+                  addTag(tagInput);
+                  setTagInput("");
+                }}
+                placeholder="Type tag and press Enter"
+              />
+            </div>
+          </Card>
+
+          <Card className="gap-0 p-5">
+            <div className="space-y-3">
+              <Label className="text-xs tracking-tight text-muted-foreground">
+                Cover image
+              </Label>
+              {coverImageUrl ? (
+                <img
+                  src={coverImageUrl}
+                  alt="Cover preview"
+                  className="aspect-[16/10] w-full rounded-lg border border-slate-200/60 object-cover"
+                />
+              ) : null}
+              <Input
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+                placeholder="https://..."
+              />
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-indigo-700">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onUploadCover}
+                />
+                <span className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-medium hover:bg-indigo-100">
+                  {uploading ? "Uploading..." : "Upload file"}
+                </span>
+              </label>
+            </div>
+          </Card>
+
+          <Card className="gap-0 p-5">
+            <div className="space-y-3">
+              <Label className="text-xs tracking-tight text-muted-foreground">
+                Publishing
+              </Label>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200/70 px-3 py-2">
+                <span className="text-sm text-slate-700">Draft mode</span>
+                <Switch checked={isDraft} onCheckedChange={setIsDraft} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="pub" className="text-xs tracking-tight text-muted-foreground">
+                  Schedule (optional)
+                </Label>
+                <Input
+                  id="pub"
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                />
+              </div>
+            </div>
+          </Card>
+        </aside>
       </div>
     </div>
   );

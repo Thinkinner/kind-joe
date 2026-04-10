@@ -4,7 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Loader2, Pin, Plus, Trash2 } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  Layout,
+  Loader2,
+  MousePointerClick,
+  Pencil,
+  Pin,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +40,7 @@ type Post = {
   isPinned: boolean | null;
   order: number | null;
   isActive: boolean | null;
+  clickCount?: number | null;
 };
 
 type FeedType = "kindjoe" | "ventura";
@@ -47,6 +60,8 @@ export default function AdminPostsPage() {
   const [destinationUrl, setDestinationUrl] = useState("");
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [search, setSearch] = useState("");
 
   const apiBase =
     feedType === "ventura" ? "/api/admin/ventura-posts" : "/api/admin/posts";
@@ -81,14 +96,22 @@ export default function AdminPostsPage() {
   const create = async () => {
     setSaving(true);
     try {
-      const res = await fetch(apiBase, {
-        method: "POST",
+      const endpoint = editingPost ? `${apiBase}/${editingPost.id}` : apiBase;
+      const res = await fetch(endpoint, {
+        method: editingPost ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, destinationUrl, caption }),
+        body: JSON.stringify({
+          imageUrl,
+          destinationUrl,
+          caption,
+        }),
       });
       if (!res.ok) throw new Error("create");
-      toast.success(`${singularPostLabel} created`);
+      toast.success(
+        editingPost ? `${singularPostLabel} updated` : `${singularPostLabel} created`,
+      );
       setOpen(false);
+      setEditingPost(null);
       setImageUrl("");
       setDestinationUrl("");
       setCaption("");
@@ -137,57 +160,79 @@ export default function AdminPostsPage() {
     );
   }
 
-  const visiblePosts = posts.slice(0, visibleCount);
-  const remainingCount = Math.max(0, posts.length - visibleCount);
+  const filteredPosts = posts.filter((p) => {
+    const haystack = `${p.caption ?? ""} ${p.destinationUrl}`.toLowerCase();
+    return haystack.includes(search.trim().toLowerCase());
+  });
+  const visiblePosts = filteredPosts.slice(0, visibleCount);
+  const remainingCount = Math.max(0, filteredPosts.length - visibleCount);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
             {feedLabel}
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Link-in-bio style tiles (image + outbound URL). Manage both feeds in one place.
+          <p className="mt-1 text-xs text-slate-400">
+            Link-in-bio tiles for social landing pages.
           </p>
-          <div className="mt-3 inline-flex rounded-lg border border-neutral-200 bg-neutral-50 p-1">
-            {[
-              { key: "kindjoe", label: "KindJoe posts" },
-              { key: "ventura", label: "Ventura posts" },
-            ].map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
+          <Tabs value={feedType} className="mt-3">
+            <TabsList className="h-10 rounded-full border border-slate-200/70 bg-slate-100/70 p-1">
+              <TabsTrigger
+                value="kindjoe"
+                className="rounded-full px-4 text-xs"
                 onClick={() => {
-                  const nextFeed = opt.key as FeedType;
+                  const nextFeed: FeedType = "kindjoe";
                   setFeedType(nextFeed);
-                  router.replace(`${pathname}?feed=${nextFeed}`, {
-                    scroll: false,
-                  });
+                  router.replace(`${pathname}?feed=${nextFeed}`, { scroll: false });
                 }}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                  feedType === opt.key
-                    ? "bg-white text-neutral-900 shadow-sm"
-                    : "text-neutral-600 hover:text-neutral-900",
-                )}
               >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+                KindJoe posts
+              </TabsTrigger>
+              <TabsTrigger
+                value="ventura"
+                className="rounded-full px-4 text-xs"
+                onClick={() => {
+                  const nextFeed: FeedType = "ventura";
+                  setFeedType(nextFeed);
+                  router.replace(`${pathname}?feed=${nextFeed}`, { scroll: false });
+                }}
+              >
+                Ventura posts
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+          <div className="relative w-full min-w-[14rem] sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search posts..."
+              className="rounded-xl border-slate-200/70 bg-white pl-9"
+            />
+          </div>
+          <Dialog
+            open={open}
+            onOpenChange={(next) => {
+              setOpen(next);
+              if (!next) setEditingPost(null);
+            }}
+          >
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-1 h-4 w-4" />
+            <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-4 w-4" />
               {addButtonLabel}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                New {feedType === "ventura" ? "Ventura post" : "post"}
+                {editingPost
+                  ? `Edit ${feedType === "ventura" ? "Ventura post" : "post"}`
+                  : `New ${feedType === "ventura" ? "Ventura post" : "post"}`}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
@@ -238,24 +283,26 @@ export default function AdminPostsPage() {
                 onClick={create}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save
+                {editingPost ? "Update" : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {visiblePosts.length > 0 ? (
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
         {visiblePosts.map((p) => (
           <div
             key={p.id}
-            className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100"
+            className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-slate-200/60 bg-neutral-100 transition-transform duration-200 hover:scale-[1.02]"
           >
             <Image
               src={p.imageUrl}
               alt=""
               fill
-              className="object-cover transition group-hover:scale-[1.02]"
+              className="object-cover"
               sizes="(max-width: 768px) 50vw, 25vw"
             />
             {p.isPinned && (
@@ -263,37 +310,112 @@ export default function AdminPostsPage() {
                 <Pin className="h-3.5 w-3.5" />
               </div>
             )}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 opacity-0 transition group-hover:opacity-100">
+            {!p.isActive && (
+              <div className="absolute left-2 bottom-2 rounded-md bg-amber-100/90 px-2 py-1 text-[11px] font-medium text-amber-700">
+                Scheduled
+              </div>
+            )}
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-black/45 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+              <MousePointerClick className="h-3 w-3" />
+              {new Intl.NumberFormat("en", {
+                notation: "compact",
+                maximumFractionDigits: 1,
+              }).format(p.clickCount ?? 0)}{" "}
+              clicks
+            </div>
+            <div className="absolute inset-0 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute right-2 top-2 flex gap-1">
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => {
+                    setEditingPost(p);
+                    setImageUrl(p.imageUrl);
+                    setDestinationUrl(p.destinationUrl);
+                    setCaption(p.caption ?? "");
+                    setOpen(true);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="destructive"
+                  className="rounded-full"
+                  onClick={() => remove(p.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="flex h-full items-center justify-center">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(p.destinationUrl);
+                      toast.success("Link copied");
+                    } catch {
+                      toast.error("Could not copy link");
+                    }
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy Link
+                </Button>
+              </div>
               <a
                 href={p.destinationUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full bg-white p-2 text-neutral-900"
+                className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-xs text-neutral-900"
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open
               </a>
               <Button
                 type="button"
-                size="sm"
+                size="icon-sm"
                 variant="secondary"
+                className="absolute bottom-2 right-2 rounded-full"
                 onClick={() => togglePin(p)}
               >
-                <Pin className="mr-1 h-3 w-3" />
-                {p.isPinned ? "Unpin" : "Pin"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={() => remove(p.id)}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                Delete
+                <Pin className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
         ))}
       </div>
+      ) : (
+        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-8 text-center">
+          <div className="mb-3 rounded-full bg-white p-3 shadow-sm">
+            <Layout className="h-6 w-6 text-slate-400" />
+          </div>
+          <h3 className="text-base font-medium tracking-tight text-slate-800">
+            No posts found
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Create your first post to start building your studio grid.
+          </p>
+          <Button
+            className="mt-4 rounded-xl"
+            onClick={() => {
+              setEditingPost(null);
+              setImageUrl("");
+              setDestinationUrl("");
+              setCaption("");
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Create your first post
+          </Button>
+        </div>
+      )}
 
       {remainingCount > 0 && (
         <div className="flex justify-center">

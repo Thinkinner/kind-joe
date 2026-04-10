@@ -17,7 +17,7 @@ type AssistMode =
   | "title";
 
 export async function POST(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +22,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Mail, Loader2, Pencil, UserPlus } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Info,
+  Mail,
+  Loader2,
+  MoreHorizontal,
+  Shield,
+  UserPlus,
+} from "lucide-react";
 import {
   formatStaffRolesForDisplay,
   STAFF_ROLE_PRECEDENCE,
@@ -63,6 +80,7 @@ const INVITE_ROLES = ["writer", "editor", "manager", "admin"] as const;
 const PERMISSION_LABELS: Record<AppPermission, string> = {
   [PERMISSIONS.ADMIN_DASHBOARD]: "Dashboard",
   [PERMISSIONS.ADMIN_ARTICLES]: "Articles",
+  [PERMISSIONS.ADMIN_ARTICLE_ASSISTANT]: "Article assistant",
   [PERMISSIONS.ADMIN_ANALYTICS]: "Article analytics",
   [PERMISSIONS.ADMIN_VISITOR_JOURNEYS]: "Visitor journeys",
   [PERMISSIONS.ADMIN_POSTS]: "Posts",
@@ -288,6 +306,22 @@ export default function StaffUsersPage() {
   const editableRoleOptions = viewerCanSeeSuperadmin
     ? [...STAFF_ROLE_PRECEDENCE]
     : STAFF_ROLE_PRECEDENCE.filter((r) => r !== "superadmin");
+  const roleBadgeClass = (role: string) => {
+    if (role === "superadmin") {
+      return "border-0 bg-indigo-900 text-white";
+    }
+    if (role === "admin") {
+      return "border-0 bg-indigo-100 text-indigo-700";
+    }
+    return "border-0 bg-slate-100 text-slate-700";
+  };
+  const initials = (name: string, email: string) => {
+    const src = name.trim() || email;
+    const parts = src.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return src.slice(0, 2).toUpperCase();
+  };
+  const bootstrapCommand = "npm run auth:promote-staff -- you@site.com superadmin";
 
   return (
     <div className="space-y-8">
@@ -301,20 +335,18 @@ export default function StaffUsersPage() {
         </p>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50/80 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-900">
-            Add team member safely
-          </h2>
-          <p className="mt-1 text-xs text-neutral-600">
-            Type email in one modal. Existing user = add role. Not found = send
-            invite.
-          </p>
-        </div>
+      <div className="rounded-xl border border-slate-200/70 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Add team member safely</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Manage your team&apos;s access levels and invite new collaborators.
+            </p>
+          </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button type="button">
-              <UserPlus className="mr-2 h-4 w-4" />
+            <Button type="button" size="sm" className="rounded-xl">
+              <UserPlus className="h-4 w-4" />
               Add member
             </Button>
           </DialogTrigger>
@@ -422,6 +454,7 @@ export default function StaffUsersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {invites.length > 0 && (
@@ -446,14 +479,15 @@ export default function StaffUsersPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/70 bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="bg-neutral-50 text-neutral-600">
+          <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="p-3 font-medium">Name</th>
               <th className="p-3 font-medium">Email</th>
-              <th className="p-3 font-medium">Account</th>
+              <th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Roles</th>
+              <th className="p-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -470,54 +504,83 @@ export default function StaffUsersPage() {
               const canOpenModal = r.canEditRoles && r.staffRoles != null;
 
               return (
-                <tr key={r.id} className="border-t border-neutral-100 align-top">
-                  <td className="p-3 font-medium text-neutral-900">{r.name}</td>
-                  <td className="p-3 text-neutral-600">{r.email}</td>
+                <tr
+                  key={r.id}
+                  className="border-t border-slate-100 align-top transition-colors hover:bg-slate-50/50"
+                >
                   <td className="p-3">
-                    {isStaff ? (
-                      <span className="text-neutral-800">Staff</span>
-                    ) : (
-                      <span className="text-neutral-500">User</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 border border-slate-200 bg-slate-100">
+                        <AvatarFallback className="bg-slate-100 text-xs font-medium text-slate-600">
+                          {initials(r.name, r.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-slate-900">{r.name}</span>
+                    </div>
+                  </td>
+                  <td className="p-3 text-slate-500">{r.email}</td>
+                  <td className="p-3">
+                    <span className="inline-flex items-center gap-1.5 text-slate-700">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
                   </td>
                   <td className="p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        {canOpenModal ? (
-                          <span className="text-neutral-900">{summary}</span>
-                        ) : (
-                          <div>
-                            <span className="text-neutral-900">
-                              {r.rolesDisplay}
-                            </span>
-                            {r.directoryMasked && (
-                              <span className="ml-2 text-xs text-amber-700">
-                                (label hidden from non-owners/non-superadmins)
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {canOpenModal && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0 gap-1"
-                          onClick={() => openEditModal(r)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </Button>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(displayRoles.length > 0 ? displayRoles : [r.rolesDisplay]).map(
+                        (role) => (
+                          <Badge
+                            key={`${r.id}-${role}`}
+                            className={roleBadgeClass(role.toLowerCase())}
+                          >
+                            {role}
+                          </Badge>
+                        ),
+                      )}
+                      {r.directoryMasked && (
+                        <Badge className="border-0 bg-amber-100 text-amber-700">
+                          Masked
+                        </Badge>
                       )}
                     </div>
+                  </td>
+                  <td className="p-3 text-right">
+                    {canOpenModal ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" className="rounded-full">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onClick={() => openEditModal(r)}>
+                            Edit Permissions
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.message("Transfer ownership flow coming soon")
+                            }
+                          >
+                            Transfer Ownership
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() =>
+                              toast.message("Remove from team flow coming soon")
+                            }
+                          >
+                            Remove from Team
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
                   </td>
                 </tr>
               );
             })}
             {staffRows.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-neutral-500">
+                <td colSpan={5} className="p-8 text-center text-neutral-500">
                   No staff users with roles yet.
                 </td>
               </tr>
@@ -526,12 +589,30 @@ export default function StaffUsersPage() {
         </table>
       </div>
 
-      <p className="text-xs text-neutral-500">
-        Bootstrap superadmin (CLI):{" "}
-        <code className="rounded bg-neutral-100 px-1">
-          npm run auth:promote-staff -- you@site.com superadmin
-        </code>
-      </p>
+      <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <Info className="h-3.5 w-3.5 text-slate-500" />
+          <code className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
+            {bootstrapCommand}
+          </code>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-md"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(bootstrapCommand);
+                toast.success("Command copied");
+              } catch {
+                toast.error("Could not copy command");
+              }
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
 
       <Dialog
         open={modalUser != null}

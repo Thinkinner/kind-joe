@@ -57,7 +57,7 @@ export function AdminBlockEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-neutral max-w-none min-h-[280px] focus:outline-none px-3 py-2",
+          "prose prose-neutral max-w-none min-h-[320px] leading-relaxed focus:outline-none px-3 py-2",
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -204,7 +204,9 @@ export function AdminBlockEditor({
           <Redo2 className="h-4 w-4" />
         </ToolbarBtn>
       </div>
-      <EditorContent editor={editor} />
+      <div className="mx-auto w-full max-w-3xl px-2 pb-4">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

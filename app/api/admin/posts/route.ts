@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { clicks, posts } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 
@@ -27,12 +27,28 @@ export async function GET() {
     );
   }
 
-  const data = await db
-    .select()
-    .from(posts)
-    .orderBy(desc(posts.isPinned), desc(posts.createdAt));
+  const [data, clickRows] = await Promise.all([
+    db.select().from(posts).orderBy(desc(posts.isPinned), desc(posts.createdAt)),
+    db
+      .select({
+        postId: clicks.postId,
+        count: sql<number>`CAST(COUNT(${clicks.id}) AS INT)`,
+      })
+      .from(clicks)
+      .groupBy(clicks.postId),
+  ]);
 
-  return NextResponse.json(data);
+  const clickMap = new Map<number, number>();
+  for (const row of clickRows) {
+    clickMap.set(row.postId ?? 0, row.count ?? 0);
+  }
+
+  return NextResponse.json(
+    data.map((row) => ({
+      ...row,
+      clickCount: clickMap.get(row.id) ?? 0,
+    })),
+  );
 }
 
 export async function POST(req: NextRequest) {

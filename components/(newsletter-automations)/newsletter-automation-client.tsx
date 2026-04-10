@@ -1,12 +1,19 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { PenTool, History, Settings, Zap, Loader2, Database } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  History,
+  Loader2,
+  Sparkles,
+  Wand2,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 import PersonalizationPanel from "@/components/(newsletter-automations)/personalization-panel";
 import HistoryView from "@/components/(newsletter-automations)/history-view";
-import SettingsView from "@/components/(newsletter-automations)/settings-view";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   GenerationStatus,
   type PersonalizationConfig,
@@ -26,11 +33,11 @@ import {
 } from "@/lib/(newsletter-automations)/constants";
 import { fetchAllFeeds } from "@/lib/(newsletter-automations)/rss-service";
 
-type AppView = "generator" | "history" | "settings";
+type AppView = "generator" | "history";
 
 export function NewsletterAutomationClient() {
   const router = useRouter();
-  const [currentView, setCurrentView] = useState<AppView>("generator");
+  const pathname = usePathname();
   const [ingestSummary, setIngestSummary] = useState<{
     count: number;
     freshHours: number;
@@ -114,43 +121,72 @@ export function NewsletterAutomationClient() {
   };
 
   const navItems = [
-    { id: "generator" as const, label: "Generator", icon: PenTool },
+    { id: "generator" as const, label: "Generator", icon: Sparkles },
     { id: "history" as const, label: "History", icon: History },
-    { id: "settings" as const, label: "Settings", icon: Settings },
   ];
+  const currentView: AppView = pathname.includes("/newsletter/history")
+    ? "history"
+    : "generator";
+  const isGenerating = genStatus !== GenerationStatus.IDLE;
+  const statusLabel =
+    genStatus === GenerationStatus.FETCHING_RSS
+      ? "Collecting sources..."
+      : genStatus === GenerationStatus.PROCESSING_AI
+        ? "Rendering with AI..."
+        : genStatus === GenerationStatus.UPLOADING_IMAGES
+          ? "Optimizing images..."
+          : "Ready";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-neutral-50 font-sans text-foreground">
       <nav
-        className="sticky top-0 z-20 flex shrink-0 flex-wrap items-stretch gap-0 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8"
+        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-slate-200/70 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8"
         aria-label="Newsletter views"
       >
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setCurrentView(item.id)}
-            className={cn(
-              "-mb-px flex items-center gap-2 border-b-2 px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4",
-              currentView === item.id
-                ? "border-orange-500 text-neutral-900"
-                : "border-transparent text-neutral-500 hover:text-neutral-800",
-            )}
-          >
-            <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-            {item.label}
-          </button>
-        ))}
+        <Tabs value={currentView} className="w-full">
+          <TabsList className="h-10 rounded-full border border-slate-200/70 bg-slate-100/70 p-1">
+            {navItems.map((item) => (
+              <TabsTrigger
+                key={item.id}
+                value={item.id}
+                onClick={() =>
+                  router.push(
+                    item.id === "generator"
+                      ? "/admin/newsletter"
+                      : "/admin/newsletter/history",
+                  )
+                }
+                className={cn(
+                  "rounded-full px-4 text-sm font-medium",
+                  currentView === item.id && item.id === "generator"
+                    ? "text-indigo-700"
+                    : "",
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    "h-4.5 w-4.5 shrink-0",
+                    item.id === "generator"
+                      ? "rounded-full bg-indigo-100 p-0.5 text-indigo-600"
+                      : "text-slate-500",
+                  )}
+                  aria-hidden
+                />
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </nav>
 
       <main className="min-h-0 w-full flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8">
         {currentView === "generator" && (
-          <div className="mx-auto max-w-3xl animate-in fade-in slide-in-from-bottom-4">
-            <div className="mb-6 border-l-[3px] border-orange-500 pl-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          <div className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-4 pb-28">
+            <div className="mb-6 rounded-xl border border-slate-200/70 bg-white px-4 py-3 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 Generator
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-neutral-900">
+              <h2 className="mt-1 text-3xl font-semibold tracking-tight text-neutral-900">
                 New edition
               </h2>
               <p className="mt-1.5 text-sm text-neutral-600">
@@ -161,16 +197,20 @@ export function NewsletterAutomationClient() {
             </div>
 
             {!ingestReady ? (
-              <p className="flex items-center gap-2 text-sm text-neutral-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking ingest pool…
-              </p>
+              <div className="mb-6 rounded-xl border border-indigo-200/60 bg-indigo-50/60 p-4">
+                <div className="flex items-center gap-2 text-sm text-indigo-700">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking ingest pool...
+                </div>
+                <div className="mt-3 overflow-hidden rounded-full bg-indigo-100/80">
+                  <div className="h-1.5 w-1/2 animate-pulse rounded-full bg-indigo-400" />
+                </div>
+              </div>
             ) : (
-              <div className="mb-8 flex gap-3 border border-neutral-200 bg-white py-3 pl-3 pr-4 text-sm text-neutral-700">
-                <Database
-                  className="mt-0.5 h-5 w-5 shrink-0 text-orange-600"
-                  aria-hidden
-                />
+              <div className="mb-8 flex gap-3 rounded-xl border border-slate-200/70 bg-white py-3 pl-3 pr-4 text-sm text-neutral-700 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.18)]">
+                <div className="mt-0.5 rounded-full bg-indigo-100 p-1.5">
+                  <Wand2 className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
+                </div>
                 <div>
                   <p className="font-medium text-neutral-900">
                     {ingestSummary?.count ?? 0} article
@@ -184,6 +224,12 @@ export function NewsletterAutomationClient() {
                     </strong>
                     . If this count is 0, <strong className="text-neutral-800">Start generation</strong> still runs and pulls the built-in RSS feeds instead.
                   </p>
+                  <div className="mt-3">
+                    <Progress
+                      value={Math.min(100, ((ingestSummary?.count ?? 0) / 30) * 100)}
+                      className="h-1.5 bg-indigo-100"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -192,29 +238,38 @@ export function NewsletterAutomationClient() {
               config={personalization}
               setConfig={setPersonalization}
             />
-            <div className="flex justify-center border-t border-neutral-200 bg-white/60 py-8">
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={
-                  genStatus !== GenerationStatus.IDLE || !ingestReady
-                }
-                className="flex items-center gap-3 border border-orange-700 bg-orange-600 px-10 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-orange-700 disabled:opacity-50"
-              >
-                {genStatus === GenerationStatus.IDLE ? (
-                  <Zap className="h-5 w-5" />
-                ) : (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                )}
-                {genStatus === GenerationStatus.IDLE
-                  ? "Start generation"
-                  : "Processing…"}
-              </button>
+            <div className="fixed bottom-4 left-1/2 z-20 w-[min(720px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200/70 bg-white/95 p-3 shadow-[0_20px_45px_-24px_rgb(15_23_42/0.35)] backdrop-blur">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-slate-500">
+                  {isGenerating ? statusLabel : "Ready to generate a new newsletter edition"}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !ingestReady}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_-18px_rgb(225_29_72/0.8)] transition hover:from-rose-500 hover:to-orange-500 disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  {isGenerating ? "Rendering..." : "Generate Newsletter"}
+                </button>
+              </div>
             </div>
+            {isGenerating && (
+              <div className="fixed bottom-24 right-6 z-20 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
+                </span>
+                Rendering...
+              </div>
+            )}
           </div>
         )}
         {currentView === "history" && <HistoryView />}
-        {currentView === "settings" && <SettingsView />}
       </main>
     </div>
   );

@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink, FileJson2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Code2,
+  ExternalLink,
+  Plus,
+  RotateCw,
+  Search,
+  CheckCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -20,6 +30,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   IncomingEventAdminRow,
   SignalAdminRow,
@@ -64,6 +76,25 @@ function clip(s: string, max: number) {
   return `${s.slice(0, max)}…`;
 }
 
+function syntaxHighlightJson(value: unknown) {
+  const json = JSON.stringify(value ?? {}, null, 2)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    (match) => {
+      let cls = "text-emerald-300";
+      if (/^".*":$/.test(match)) cls = "text-sky-300";
+      else if (/true|false/.test(match)) cls = "text-violet-300";
+      else if (/null/.test(match)) cls = "text-slate-400";
+      else if (/^-?\d/.test(match)) cls = "text-orange-300";
+      return `<span class="${cls}">${match}</span>`;
+    },
+  );
+}
+
 export function IngestSignalsAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [incomingEvents, setIncomingEvents] = useState<IncomingEventAdminRow[]>(
@@ -77,6 +108,10 @@ export function IngestSignalsAdminPanel() {
   const [detailEvent, setDetailEvent] = useState<IncomingEventAdminRow | null>(
     null,
   );
+  const [detailTab, setDetailTab] = useState<"payload" | "meta" | "raw">("payload");
+  const [copied, setCopied] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -99,6 +134,7 @@ export function IngestSignalsAdminPanel() {
       setSignals(Array.isArray(body.signals) ? body.signals : []);
       setIncomingCursor(body.nextCursors?.incoming ?? null);
       setSignalsCursor(body.nextCursors?.signals ?? null);
+      setLastUpdated(new Date());
     } finally {
       setLoading(false);
     }
@@ -130,6 +166,7 @@ export function IngestSignalsAdminPanel() {
       const next = Array.isArray(body.incomingEvents) ? body.incomingEvents : [];
       setIncomingEvents((prev) => [...prev, ...next]);
       setIncomingCursor(body.nextCursors?.incoming ?? null);
+      setLastUpdated(new Date());
     } finally {
       setLoadingMoreIncoming(false);
     }
@@ -157,10 +194,48 @@ export function IngestSignalsAdminPanel() {
       const next = Array.isArray(body.signals) ? body.signals : [];
       setSignals((prev) => [...prev, ...next]);
       setSignalsCursor(body.nextCursors?.signals ?? null);
+      setLastUpdated(new Date());
     } finally {
       setLoadingMoreSignals(false);
     }
   }
+
+  const relativeTime = (iso: string | Date) => {
+    const ts = typeof iso === "string" ? new Date(iso).getTime() : iso.getTime();
+    const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const mins = Math.floor(diffSec / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const filteredIncomingEvents = incomingEvents.filter((evt) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      String(evt.id).includes(q) ||
+      (evt.externalEventId ?? "").toLowerCase().includes(q) ||
+      evt.source.toLowerCase().includes(q) ||
+      evt.text.toLowerCase().includes(q)
+    );
+  });
+
+  useEffect(() => {
+    setDetailTab("payload");
+    setCopied(false);
+  }, [detailEvent?.id]);
+
+  const activeJsonObject =
+    detailTab === "payload"
+      ? detailEvent?.payload ?? {}
+      : detailTab === "meta"
+        ? detailEvent?.meta ?? {}
+        : detailEvent ?? {};
+
+  const activeJsonString = JSON.stringify(activeJsonObject, null, 2);
 
   return (
     <div className="space-y-10">
@@ -176,71 +251,107 @@ export function IngestSignalsAdminPanel() {
               <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">meta</code>.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            onClick={() => void loadInitial()}
-          >
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => void loadInitial()}
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+            <span className="text-xs text-slate-500">
+              Last updated: {lastUpdated ? relativeTime(lastUpdated) : "just now"}
+            </span>
+          </div>
+        </div>
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter events..."
+            className="border-slate-200/70 bg-white pl-9"
+          />
         </div>
 
         {loading ? (
           <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
             Loading…
           </div>
-        ) : incomingEvents.length === 0 ? (
+        ) : filteredIncomingEvents.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
             No incoming events yet.
           </div>
         ) : (
           <>
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14">ID</TableHead>
-                    <TableHead>External ID</TableHead>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>ID</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Received</TableHead>
-                    <TableHead>Text</TableHead>
+                    <TableHead className="w-[45%]">Text</TableHead>
                     <TableHead className="w-28">Signal</TableHead>
-                    <TableHead className="w-32">Payload</TableHead>
+                    <TableHead className="w-20">Payload</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {incomingEvents.map((evt) => (
-                    <TableRow key={evt.id}>
-                      <TableCell className="font-mono text-xs">{evt.id}</TableCell>
-                      <TableCell className="max-w-[140px] truncate font-mono text-xs">
-                        {evt.externalEventId ?? "—"}
+                  {filteredIncomingEvents.map((evt, idx) => (
+                    <TableRow
+                      key={evt.id}
+                      className="text-sm even:bg-slate-50/50 hover:bg-slate-50/80"
+                    >
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs text-slate-700">{evt.id}</p>
+                          <p className="max-w-[120px] truncate font-mono text-[11px] text-slate-400">
+                            {evt.externalEventId ?? "—"}
+                          </p>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-xs">{evt.source}</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge className="rounded-md border-0 bg-slate-900 text-white">
+                          {evt.source}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-slate-600">
-                        {new Date(evt.receivedAt).toLocaleString()}
+                        {relativeTime(evt.receivedAt)}
                       </TableCell>
-                      <TableCell className="max-w-md text-xs text-slate-800">
-                        {clip(evt.text, 160)}
+                      <TableCell className="max-w-md text-sm font-medium text-slate-700">
+                        <span className="line-clamp-1">{evt.text}</span>
                       </TableCell>
                       <TableCell>
                         {evt.hasMatchingSignal ? (
-                          <Badge className="text-[10px]">In signals</Badge>
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <Check className="h-3.5 w-3.5" />
+                          </span>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => toast.message("Signal mapping flow coming soon")}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Map
+                          </Button>
                         )}
                       </TableCell>
                       <TableCell>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
-                          className="h-8 gap-1 px-2 text-xs"
+                          size="icon-sm"
+                          className="h-7 w-7"
                           onClick={() => setDetailEvent(evt)}
+                          aria-label="View payload JSON"
                         >
-                          <FileJson2 className="h-3.5 w-3.5" />
-                          View
+                          <Code2 className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -292,10 +403,10 @@ export function IngestSignalsAdminPanel() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead className="max-w-[100px]">ID</TableHead>
                     <TableHead>Headline</TableHead>
                     <TableHead>Source</TableHead>
@@ -307,7 +418,7 @@ export function IngestSignalsAdminPanel() {
                 </TableHeader>
                 <TableBody>
                   {signals.map((s) => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} className="text-sm even:bg-slate-50/50 hover:bg-slate-50/80">
                       <TableCell className="max-w-[100px] truncate font-mono text-[11px]">
                         {clip(s.id, 24)}
                       </TableCell>
@@ -351,35 +462,80 @@ export function IngestSignalsAdminPanel() {
       </section>
 
       <Dialog open={detailEvent != null} onOpenChange={(o) => !o && setDetailEvent(null)}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-x-hidden overflow-y-auto p-0">
           <DialogHeader>
-            <DialogTitle>
-              Incoming event #{detailEvent?.id}{" "}
-              <span className="font-normal text-slate-500">
-                · {detailEvent?.source}
-              </span>
+            <DialogTitle className="border-b border-slate-200/70 px-6 py-5">
+              <div className="flex flex-wrap items-center gap-2 text-xl tracking-tight">
+                <span>Event details</span>
+                <Badge className="rounded-md border-0 bg-slate-900 text-white">
+                  {detailEvent?.source ?? "Unknown"}
+                </Badge>
+                <Badge variant="outline" className="rounded-md border-slate-300 font-mono">
+                  #{detailEvent?.id ?? "—"}
+                </Badge>
+              </div>
             </DialogTitle>
           </DialogHeader>
           {detailEvent ? (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6 pb-5 pt-1">
+              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as "payload" | "meta" | "raw")}>
+                <TabsList className="rounded-lg border border-slate-200/80 bg-slate-50 p-1">
+                  <TabsTrigger value="payload" className="rounded-md">
+                    Payload
+                  </TabsTrigger>
+                  <TabsTrigger value="meta" className="rounded-md">
+                    Meta
+                  </TabsTrigger>
+                  <TabsTrigger value="raw" className="rounded-md">
+                    Raw
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Payload
+                <p className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+                  {detailTab}
                 </p>
-                <pre className="max-h-[40vh] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-800">
-                  {JSON.stringify(detailEvent.payload, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Meta
-                </p>
-                <pre className="max-h-[30vh] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-800">
-                  {JSON.stringify(detailEvent.meta ?? {}, null, 2)}
-                </pre>
+                <div className="relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950 shadow-[0_0_0_1px_rgba(99,102,241,0.1),0_16px_30px_-22px_rgba(15,23,42,0.8)]">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-indigo-500/10 to-transparent" />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="absolute right-3 top-3 z-10 h-8 gap-1 rounded-md border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(activeJsonString);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1200);
+                      } catch {
+                        toast.error("Could not copy JSON");
+                      }
+                    }}
+                  >
+                    {copied ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                  <div className="max-h-[50vh] overflow-x-hidden overflow-y-auto p-6 pt-11">
+                    <pre
+                      className="m-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-sm leading-relaxed text-slate-100"
+                    >
+                      <code
+                        dangerouslySetInnerHTML={{
+                          __html: syntaxHighlightJson(activeJsonObject),
+                        }}
+                      />
+                    </pre>
+                  </div>
+                </div>
               </div>
             </div>
           ) : null}
+          <DialogFooter className="border-t border-slate-200/70 px-6 py-4">
+            <Button type="button" variant="outline" onClick={() => setDetailEvent(null)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

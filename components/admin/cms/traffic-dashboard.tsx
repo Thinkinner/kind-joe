@@ -4,29 +4,57 @@ import { useMemo, useState } from "react";
 import { getArticleTrafficDetails } from "@/lib/actions/admin-traffic";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type ArticleTrafficRow = {
   id: string;
   title: string;
   category: string | null;
   coverImageUrl: string | null;
-  publishedAt: Date | null;
+  publishedAt: string | null;
   totalViews: number;
 };
 
 type TrafficDetail = {
   source: string;
   views: number;
+  share: number;
 };
 
 export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }) {
   const [selected, setSelected] = useState<ArticleTrafficRow | null>(null);
   const [details, setDetails] = useState<TrafficDetail[]>([]);
   const [loading, setLoading] = useState(false);
+  const [topLimit, setTopLimit] = useState("20");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const maxViews = useMemo(
     () => Math.max(...articles.map((article) => article.totalViews), 0),
     [articles],
   );
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(articles.map((article) => article.category ?? "General")),
+      ).sort((a, b) => a.localeCompare(b)),
+    [articles],
+  );
+  const filteredArticles = useMemo(() => {
+    const sorted = [...articles].sort((a, b) => b.totalViews - a.totalViews);
+    const byCategory =
+      categoryFilter === "all"
+        ? sorted
+        : sorted.filter(
+            (article) => (article.category ?? "General") === categoryFilter,
+          );
+    if (topLimit === "all") return byCategory;
+    return byCategory.slice(0, Number(topLimit));
+  }, [articles, categoryFilter, topLimit]);
 
   const open = async (article: ArticleTrafficRow) => {
     setSelected(article);
@@ -43,9 +71,43 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
 
   return (
     <div className="w-full">
-      <h2 className="mb-4 text-lg font-medium tracking-tight text-neutral-900">
-        Article traffic
-      </h2>
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-lg font-medium tracking-tight text-neutral-900">
+            Article traffic
+          </h2>
+          <p className="text-xs font-normal tracking-tight text-muted-foreground">
+            Showing {filteredArticles.length.toLocaleString()} of{" "}
+            {articles.length.toLocaleString()} articles
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={topLimit} onValueChange={setTopLimit}>
+            <SelectTrigger className="w-36 rounded-xl border-slate-200/70 bg-white">
+              <SelectValue placeholder="Top rows" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">Top 10</SelectItem>
+              <SelectItem value="20">Top 20</SelectItem>
+              <SelectItem value="50">Top 50</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-44 rounded-xl border-slate-200/70 bg-white">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categoryOptions.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
@@ -58,7 +120,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
             </tr>
           </thead>
           <tbody>
-            {articles.map((a) => (
+            {filteredArticles.map((a) => (
               <tr
                 key={a.id}
                 className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/30"
@@ -110,10 +172,10 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
                 </td>
               </tr>
             ))}
-            {articles.length === 0 && (
+            {filteredArticles.length === 0 && (
               <tr>
                 <td colSpan={3} className="p-8 text-center text-neutral-500">
-                  No articles yet.
+                  No articles match the current filters.
                 </td>
               </tr>
             )}
@@ -146,8 +208,13 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
                     key={d.source}
                     className="flex justify-between gap-4 border-b border-neutral-100 py-2 last:border-0"
                   >
-                    <span className="text-neutral-700">{d.source}</span>
-                    <span className="tabular-nums font-medium">
+                    <div className="min-w-0">
+                      <p className="text-neutral-800">{d.source}</p>
+                      <p className="text-xs text-neutral-500">
+                        {d.share.toFixed(1)}% of article traffic
+                      </p>
+                    </div>
+                    <span className="tabular-nums font-medium text-neutral-900">
                       {d.views.toLocaleString()}
                     </span>
                   </li>

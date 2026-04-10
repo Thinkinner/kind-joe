@@ -10,7 +10,7 @@ function hostNoPort(host: string | null): string {
   return host.split(":")[0] ?? "";
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const adminHost = process.env.ADMIN_DASHBOARD_HOST?.split(":")[0];
   const mainSiteBase =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? null;
