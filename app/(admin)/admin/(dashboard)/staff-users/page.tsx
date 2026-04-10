@@ -48,6 +48,7 @@ import {
   PERMISSIONS,
   type AppPermission,
 } from "@/lib/auth/permissions";
+import { SuperAdminPageAccessPanel } from "@/components/admin/super-admin-page-access-panel";
 
 type Row = {
   id: string;
@@ -456,6 +457,8 @@ export default function StaffUsersPage() {
         </Dialog>
         </div>
       </div>
+
+      {viewerCanSeeSuperadmin && <SuperAdminPageAccessPanel />}
 
       {invites.length > 0 && (
         <div>
