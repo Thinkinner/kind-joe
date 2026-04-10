@@ -18,6 +18,65 @@ const BodySchema = z.object({
   token: z.string().min(16),
 });
 
+function parseToken(value: string | null | undefined): string | null {
+  const token = value?.trim();
+  if (!token || token.length < 16) return null;
+  return token;
+}
+
+export async function GET(req: NextRequest) {
+  const token = parseToken(req.nextUrl.searchParams.get("token"));
+  if (!token) {
+    return NextResponse.json({ error: "Invalid token." }, { status: 400 });
+  }
+
+  const tokenHash = hashInviteToken(token);
+  const [inv] = await db
+    .select({
+      id: staffInvitation.id,
+      email: staffInvitation.email,
+      staffRole: staffInvitation.staffRole,
+      expiresAt: staffInvitation.expiresAt,
+      acceptedAt: staffInvitation.acceptedAt,
+    })
+    .from(staffInvitation)
+    .where(eq(staffInvitation.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!inv) {
+    return NextResponse.json({ error: "Invalid or expired invitation." }, { status: 404 });
+  }
+
+  if (inv.acceptedAt) {
+    return NextResponse.json({ error: "This invitation was already used." }, { status: 410 });
+  }
+
+  if (inv.expiresAt < new Date()) {
+    return NextResponse.json({ error: "This invitation has expired." }, { status: 410 });
+  }
+
+  const [existingUser] = await db
+    .select({ id: authUser.id })
+    .from(authUser)
+    .where(eq(authUser.email, inv.email))
+    .limit(1);
+
+  const session = await getServerSession();
+  const sessionEmail = (session?.user as { email?: string } | undefined)?.email
+    ?.trim()
+    .toLowerCase();
+
+  return NextResponse.json({
+    ok: true,
+    email: inv.email,
+    staffRole: inv.staffRole,
+    hasAccount: Boolean(existingUser),
+    signedIn: Boolean(session?.user),
+    sessionEmailMatchesInvite:
+      Boolean(sessionEmail) && sessionEmail === inv.email.toLowerCase(),
+  });
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession();
   if (!session?.user) {
