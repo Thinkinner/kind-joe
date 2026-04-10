@@ -98,6 +98,23 @@ export function authDeleteAccountText(url: string) {
   return `Confirm Kind Joe account deletion by opening this link (expires in 24 hours):\n\n${url}\n\nIf you did not request this, ignore this email.`;
 }
 
+export function staffInviteEmailHtml(
+  roleLabel: string,
+  acceptUrl: string,
+) {
+  const safeUrl = escapeHtml(acceptUrl);
+  const safeRole = escapeHtml(roleLabel);
+  return `
+<p>You’ve been invited to join the Kind Joe team as <strong>${safeRole}</strong>.</p>
+<p><a href="${safeUrl}">Accept invitation</a></p>
+<p style="color:#64748b;font-size:14px;">This link expires in 7 days. Sign in with this email address (or create an account using it), then open the link again to finish.</p>
+`.trim();
+}
+
+export function staffInviteEmailText(roleLabel: string, acceptUrl: string) {
+  return `You've been invited to join Kind Joe as ${roleLabel}.\n\nAccept (expires in 7 days):\n${acceptUrl}\n\nUse this email to sign in or register, then open the link to finish.`;
+}
+
 /**
  * Sends transactional mail via Resend. Better Auth recommends not awaiting
  * these handlers on the request path; use {@link queueAuthEmail} from `lib/auth.ts`.

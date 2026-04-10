@@ -12,7 +12,9 @@ export default function AdminLoginPage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Admin sign in</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Staff accounts only. Reader accounts use the main site sign-in.
+          Staff accounts only here. Staff can also use the main site sign-in (
+          <code className="rounded bg-slate-100 px-1 text-xs">/login</code>
+          )—same session works for admin.
         </p>
       </div>
       <StaffLoginForm />

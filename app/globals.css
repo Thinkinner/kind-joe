@@ -213,8 +213,11 @@
 .ticker-animate {
   display: inline-flex;
   width: max-content;
+  max-width: none;
   animation: kj-ticker 30s linear infinite;
   will-change: transform;
+  /* Keep transformed ticker from widening the scrollable layout box */
+  backface-visibility: hidden;
 }
 
 /* Pause on hover so the user can read */
@@ -244,4 +247,28 @@
     rgba(0, 0, 255, 0.06)
   );
   background-size: 100% 2px, 3px 100%;
+}
+
+/* Admin-wide scrollbar policy: no dark tracks, subtle thumb, and only when needed. */
+.admin-root {
+  color-scheme: light;
+}
+
+.admin-root :where([class*="overflow-y-auto"], [class*="overflow-auto"], [class*="overflow-scroll"]) {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(163 163 163 / 0.75) transparent;
+}
+
+.admin-root :where([class*="overflow-y-auto"], [class*="overflow-auto"], [class*="overflow-scroll"])::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-root :where([class*="overflow-y-auto"], [class*="overflow-auto"], [class*="overflow-scroll"])::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-root :where([class*="overflow-y-auto"], [class*="overflow-auto"], [class*="overflow-scroll"])::-webkit-scrollbar-thumb {
+  background: rgb(163 163 163 / 0.75);
+  border-radius: 9999px;
 }

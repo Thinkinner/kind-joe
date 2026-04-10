@@ -7,7 +7,33 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { ApiStory, StoryCard } from "@/types/article";
+
+function storyGridColsClass(chunkSize: number) {
+  return chunkSize === 1
+    ? "grid-cols-1"
+    : chunkSize === 2
+      ? "grid-cols-2"
+      : "grid-cols-3";
+}
+
+function StoryCardSkeleton() {
+  return (
+    <div
+      className="relative h-64 w-full overflow-hidden rounded-2xl shadow-lg md:h-80"
+      aria-hidden
+    >
+      <Skeleton className="absolute inset-0 h-full w-full rounded-2xl bg-white/10" />
+      <div className="absolute inset-x-0 bottom-0 bg-black/80 p-4 backdrop-blur-xl">
+        <div className="mb-2 h-1 w-6 rounded-sm bg-red-600/60" />
+        <Skeleton className="mb-2 h-4 w-[92%] rounded-md bg-white/15" />
+        <Skeleton className="h-3 w-28 rounded-md bg-white/10" />
+      </div>
+    </div>
+  );
+}
 
 export function FeaturedStoriesCarouselHero() {
   const [stories, setStories] = useState<StoryCard[]>([]);
@@ -103,7 +129,7 @@ export function FeaturedStoriesCarouselHero() {
   }
 
   return (
-    <div className="relative w-full px-6 md:px-10 py-8 overflow-hidden">
+    <div className="relative w-full min-w-0 max-w-full overflow-x-clip overflow-hidden px-6 py-8 md:px-10">
       {/* 
         🎥 VIDEO BACKGROUND
       */}
@@ -129,12 +155,19 @@ export function FeaturedStoriesCarouselHero() {
         </h2>
 
         {loading && (
-          <p className="text-sm text-red-100/80 animate-pulse">
-            Loading featured stories…
-          </p>
+          <div
+            className={cn(
+              "grid gap-4",
+              storyGridColsClass(chunkSize),
+            )}
+          >
+            {Array.from({ length: chunkSize }).map((_, i) => (
+              <StoryCardSkeleton key={i} />
+            ))}
+          </div>
         )}
 
-        {!loading && (
+        {!loading && grouped.length > 0 && (
           <>
             <Carousel className="w-full" setApi={setApi} opts={{ loop: true }}>
               <CarouselContent className="-ml-2 md:-ml-4">
@@ -145,13 +178,10 @@ export function FeaturedStoriesCarouselHero() {
                       This allows the children to detect when the PARENT grid is hovered 
                     */}
                     <div
-                      className={`grid gap-4 group/list ${
-                        chunkSize === 1
-                          ? "grid-cols-1"
-                          : chunkSize === 2
-                          ? "grid-cols-2"
-                          : "grid-cols-3"
-                      }`}
+                      className={cn(
+                        "grid gap-4 group/list",
+                        storyGridColsClass(chunkSize),
+                      )}
                     >
                       {group.map((story) => (
                         <a

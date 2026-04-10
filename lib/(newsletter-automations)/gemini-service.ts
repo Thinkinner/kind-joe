@@ -1,0 +1,494 @@
+"use server";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
+import {
+  NewsletterData,
+  RawRssItem,
+  PersonalizationConfig,
+  NewsletterStory,
+} from "@/lib/(newsletter-automations)/types";
+import { SYSTEM_INSTRUCTION } from "@/lib/(newsletter-automations)/constants";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { resolveStaffApi } from "@/lib/auth/server";
+
+const NEWSLETTER_MODEL =
+  process.env.GEMINI_NEWSLETTER_MODEL ?? "gemini-3-flash-preview";
+
+async function assertNewsletterStaff() {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  if (!staff.ok) throw new Error("Unauthorized");
+}
+
+const getClient = () => {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_API_KEY not found in environment variables");
+  return new GoogleGenAI({ apiKey });
+};
+
+async function retry<T>(
+  fn: () => Promise<T>,
+  retries = 2,
+  delay = 2500,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries > 0 && (error.status === 429 || error.status >= 500)) {
+      console.warn(`Gemini busy/glitching. Retrying... (${retries} left)`);
+      await new Promise((res) => setTimeout(res, delay));
+      return retry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
+/**
+ * IMPROVED JSON CLEANER: Handles Markdown blocks (```json ... ```)
+ */
+const cleanJson = (text: string): string => {
+  if (!text) return "{}";
+
+  // 1. First, strip out common markdown code fences characters
+  let cleaned = text.replace(/```json/g, "").replace(/```/g, "");
+
+  // 2. Now locate the outer JSON brackets
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+
+  // 3. Validate indices to ensure we have a potential object
+  if (start === -1 || end === -1 || start >= end) return cleaned.trim();
+
+  // 4. Return just the JSON part
+  return cleaned.substring(start, end + 1).trim();
+};
+
+const emailSubjectSuggestSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    subject: {
+      type: Type.STRING,
+      description:
+        "Inbox email subject: max 6 words preferred, 10 hard cap; hook from Story 1 only",
+    },
+  },
+  required: ["subject"],
+};
+
+const newsletterSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: {
+      type: Type.STRING,
+      description:
+        "Email subject line: ≤6 words when possible (10 max). MUST reflect Story 1 (first in stories) — hook, stakes, shock, value. No 'Daily Brief', dates, or generic digest labels.",
+    },
+    intro: { type: Type.STRING },
+    stories: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          slotName: { type: Type.STRING },
+          category: { type: Type.STRING },
+          headline: { type: Type.STRING },
+          summary: {
+            type: Type.STRING,
+            description: "Intro + 3 bullets starting with •",
+          },
+          imageUrl: { type: Type.STRING },
+          sourceUrl: { type: Type.STRING },
+          sourceName: { type: Type.STRING },
+        },
+        required: [
+          "slotName",
+          "category",
+          "headline",
+          "summary",
+          "sourceUrl",
+          "sourceName",
+        ],
+      },
+    },
+    signOff: { type: Type.STRING },
+  },
+  required: ["title", "intro", "stories", "signOff"],
+};
+
+/**
+ * COMPACT ARTICLE SCHEMA
+ */
+const articleSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    slug: { type: Type.STRING },
+    title: { type: Type.STRING },
+    excerpt: { type: Type.STRING },
+    contentHtml: { type: Type.STRING, description: "Full HTML article body" },
+    seoTitle: { type: Type.STRING },
+    seoDescription: { type: Type.STRING },
+    seoKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+    readingMinutes: { type: Type.INTEGER },
+  },
+  required: [
+    "slug",
+    "title",
+    "excerpt",
+    "contentHtml",
+    "seoTitle",
+    "seoDescription",
+    "seoKeywords",
+    "readingMinutes",
+  ],
+};
+
+const singleStorySchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    slotName: { type: Type.STRING },
+    category: { type: Type.STRING },
+    headline: { type: Type.STRING },
+    summary: { type: Type.STRING },
+    imageUrl: { type: Type.STRING },
+    sourceUrl: { type: Type.STRING },
+    sourceName: { type: Type.STRING },
+  },
+  required: [
+    "slotName",
+    "category",
+    "headline",
+    "summary",
+    "sourceUrl",
+    "sourceName",
+    "imageUrl",
+  ],
+};
+
+type GenAIClient = ReturnType<typeof getClient>;
+
+async function generateEmailSubjectFromLeadStory(
+  ai: GenAIClient,
+  leadStory: NewsletterStory,
+): Promise<string> {
+  return retry(async () => {
+    const response = await ai.models.generateContent({
+      model: NEWSLETTER_MODEL,
+      contents: `Create ONLY the inbox email subject line for this LEAD story (Story 1 in a newsletter).
+
+Headline: ${leadStory.headline}
+Category: ${leadStory.category || "News"}
+Summary: ${(leadStory.summary || "").slice(0, 1200)}
+
+Rules (follow strictly):
+- Base the hook ONLY on this story’s stakes, conflict, or surprise—not a generic digest title.
+- ≤6 words preferred; never more than 10 words.
+- Punchy: curiosity, shock, value, power, money, or urgency. Credible; do not invent facts.
+- No emoji. No "Daily Brief", "Newsletter", "Recap", month/day/year dates, or ALL CAPS.
+- Output JSON only.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: emailSubjectSuggestSchema,
+        temperature: 0.35,
+        maxOutputTokens: 128,
+      },
+    });
+    const cleanedText = cleanJson(response.text || "{}");
+    const parsed = JSON.parse(cleanedText) as { subject?: string };
+    const s = (parsed.subject || "").trim();
+    if (!s) throw new Error("Empty subject");
+    return s;
+  });
+}
+
+/**
+ * Suggest inbox email subject from Story 1 (lead): short, hooky, Story-1–anchored.
+ */
+export const suggestNewsletterEmailSubject = async (
+  leadStory: NewsletterStory | null | undefined,
+): Promise<string> => {
+  await assertNewsletterStaff();
+  if (!leadStory?.headline?.trim()) {
+    throw new Error("Add Story 1 with a headline first.");
+  }
+  const ai = getClient();
+  return generateEmailSubjectFromLeadStory(ai, leadStory);
+};
+
+/**
+ * GENERATE FULL NEWSLETTER (Initial Draft)
+ */
+export const generateNewsletter = async (
+  rawItems: RawRssItem[],
+  config: PersonalizationConfig,
+): Promise<NewsletterData> => {
+  await assertNewsletterStaff();
+  const ai = getClient();
+
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  // 1. CRITICAL: Sort ALL items by pubDate descending (Newest first)
+  const sortedItems = [...rawItems].sort((a, b) => {
+    const dateA = new Date(a.pubDate).getTime();
+    const dateB = new Date(b.pubDate).getTime();
+    // Fallback to 0 if date parsing fails, but generally puts newest first
+    return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+  });
+
+  // 2. Filter for the last 24 hours
+  let latestItems = sortedItems.filter((item) => {
+    const itemDate = new Date(item.pubDate);
+    return itemDate >= twentyFourHoursAgo;
+  });
+
+  // 3. SAFE FALLBACK: If under 10 items, fall back to 48 hours instead of infinity
+  if (latestItems.length < 10) {
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    latestItems = sortedItems.filter((item) => {
+      const itemDate = new Date(item.pubDate);
+      return itemDate >= fortyEightHoursAgo;
+    });
+  }
+
+  console.log(
+    `Filtering complete. Total items: ${rawItems.length}. Items from last 24-48h: ${latestItems.length}`,
+  );
+
+  // Because it's sorted, slice(0, 75) guarantees the absolute newest 75 articles
+  const selectionPool = latestItems.slice(0, 75);
+
+  const inputData = selectionPool.map((item) => ({
+    title: item.title,
+    snippet: item.contentSnippet,
+    source: item.sourceName,
+    url: item.link,
+    imageUrl: item.imageUrl,
+    date: item.pubDate,
+  }));
+
+  // 4. Give the AI the exact current time so it knows what "Today" means
+  const currentDateString = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+
+  const personaHints = [
+    config.contentStrategy?.trim() &&
+      `Editor content strategy:\n${config.contentStrategy.trim()}`,
+    config.writingStyle?.trim() &&
+      `Voice / writing style:\n${config.writingStyle.trim()}`,
+    config.exampleContent?.trim() &&
+      `Example newsletter (match tone & structure where helpful):\n${config.exampleContent.trim().slice(0, 6000)}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  try {
+    return await retry(async () => {
+      const response = await ai.models.generateContent({
+        model: NEWSLETTER_MODEL,
+        contents: `Today is ${currentDateString}.
+${personaHints ? `\n${personaHints}\n` : ""}
+Build the newsletter from these articles. Discard older dates if a newer/trending story exists: ${JSON.stringify(inputData)}
+
+REMINDER — JSON field "title": This is the email inbox subject line. It MUST be derived from Story 1 (the first story you put in "stories") — short hook, ≤6 words when possible, never more than 10 words. Spicy, high-stakes, curiosity-driving. Not a newsletter name or date.`,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          // 5. CRITICAL: Give it Google Search so it knows what is ACTUALLY trending globally today
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: newsletterSchema,
+          temperature: 0.3,
+        },
+      });
+
+      const cleanedText = cleanJson(response.text || "{}");
+      let data;
+      try {
+        data = JSON.parse(cleanedText) as NewsletterData;
+      } catch (e) {
+        console.error(
+          "Newsletter JSON Parse Error. Raw text:\n",
+          response.text,
+        );
+        throw new Error("AI generated malformed newsletter data. Try again.");
+      }
+
+      data.date = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "America/Los_Angeles",
+      });
+
+      if (data.stories?.[0] && (!data.title || !data.title.trim())) {
+        try {
+          data.title = await generateEmailSubjectFromLeadStory(
+            ai,
+            data.stories[0],
+          );
+        } catch {
+          /* leave title empty; user can use Suggest from Story 1 */
+        }
+      }
+
+      return data;
+    });
+  } catch (error) {
+    console.error("Gemini Newsletter Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * GENERATE FULL ARTICLE CONTENT
+ */
+export const generateFullArticleContent = async (story: NewsletterStory) => {
+  await assertNewsletterStaff();
+  const ai = getClient();
+
+  // SIMPLIFIED PROMPT: Removed complex <br/> requirements to reduce JSON errors.
+  // We let the frontend handle spacing between paragraphs.
+  const prompt = `Research and write a 300-400 word news article for: ${story.headline}.
+  Context: ${story.summary}
+  Use ONLY <p> tags for 'contentHtml'. Do not add extra line breaks like <br>.
+  Just return a series of paragraphs.
+  Each <p> must contain EXACTLY 2 sentences only.
+  Repeat this format until the total article reaches ~300-400 words.`;
+
+  return retry(async () => {
+    const response = await ai.models.generateContent({
+      model: NEWSLETTER_MODEL,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: articleSchema,
+        temperature: 0.4,
+        maxOutputTokens: 8192,
+      },
+    });
+
+    const cleanedText = cleanJson(response.text || "{}");
+    let parsed;
+
+    try {
+      parsed = JSON.parse(cleanedText);
+    } catch (e) {
+      // CRITICAL LOGGING: This will show up in your terminal if it fails again.
+      console.error(
+        "Article JSON Parse Error.\n--- RAW TEXT START ---\n",
+        response.text,
+        "\n--- RAW TEXT END ---",
+      );
+      throw new Error(
+        "The AI generated malformed data. Please click 'Generate' again.",
+      );
+    }
+
+    const sources =
+      response.candidates?.[0]?.groundingMetadata?.searchEntryPoint
+        ?.renderedContent;
+
+    return { ...parsed, content: parsed.contentHtml, sources };
+  });
+};
+
+/**
+ * REGENERATE SINGLE STORY CARD
+ */
+export const regenerateSingleStory = async (
+  currentStory: NewsletterStory,
+  instruction: string,
+  sourcePool?: RawRssItem[],
+): Promise<NewsletterStory> => {
+  await assertNewsletterStaff();
+  const ai = getClient();
+  return retry(async () => {
+    const response = await ai.models.generateContent({
+      model: NEWSLETTER_MODEL,
+      contents: `Task: ${instruction}. Context: ${JSON.stringify(
+        currentStory,
+      )}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: singleStorySchema,
+        temperature: 0.4,
+      },
+    });
+
+    const cleanedText = cleanJson(response.text || "{}");
+    try {
+      return JSON.parse(cleanedText);
+    } catch (e) {
+      console.error("Regen JSON Parse Error. Raw text:\n", response.text);
+      throw new Error("AI generated malformed data. Please try again.");
+    }
+  });
+};
+
+export const generateStoryFromSelectedArticle = async (
+  selectedItem: RawRssItem,
+  targetSlotName: string,
+): Promise<NewsletterStory> => {
+  await assertNewsletterStaff();
+  const ai = getClient();
+
+  return retry(async () => {
+    const prompt = `
+      You are an expert news editor writing in a clean, fast, and uncensored "news-wire" style. 
+      I have manually selected a specific article to replace the story in the slot: "${targetSlotName}".
+      
+      ARTICLE DETAILS:
+      Title: ${selectedItem.title}
+      Source: ${selectedItem.sourceName}
+      URL: ${selectedItem.link}
+      Content Snippet: ${selectedItem.contentSnippet || selectedItem.content}
+
+      TASK:
+      Write exactly ONE story formatted perfectly for the newsletter slot "${targetSlotName}".
+      
+      STRICT FORMATTING RULES for the 'summary' field (CRITICAL):
+      1. INTRO: Write EXACTLY 1 to 2 short sentences total. Combine the Who/What/Where into a tight, punchy intro. Do NOT write a long paragraph.
+      2. BULLETS: Follow the intro with EXACTLY 3 bullet points starting with "• ". Each bullet must be a single, short sentence detailing a key fact.
+
+      EXAMPLE OF EXACT EXPECTED LENGTH AND TONE FOR 'summary':
+      The Senate Homeland Security Committee narrowly approved Sen. Markwayne Mullin to lead the Department of Homeland Security.
+
+      • The nomination advanced despite a public clash between Mullin and Committee Chair Rand Paul.
+      • Democrats provided the necessary votes to move the nomination to the full Senate floor.
+      • The move comes as the department remains unfunded, causing operational breakdowns at borders and airports.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: NEWSLETTER_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: singleStorySchema,
+        temperature: 0.2,
+      },
+    });
+
+    const cleanedText = cleanJson(response.text || "{}");
+    try {
+      const parsedStory = JSON.parse(cleanedText) as NewsletterStory;
+
+      // Force the source data to match the selected article exactly so AI doesn't hallucinate it
+      return {
+        ...parsedStory,
+        slotName: targetSlotName,
+        sourceUrl: selectedItem.link,
+        sourceName: selectedItem.sourceName,
+        imageUrl: parsedStory.imageUrl || selectedItem.imageUrl || "",
+      };
+    } catch (e) {
+      console.error(
+        "Single Story Regen JSON Parse Error. Raw text:\n",
+        response.text,
+      );
+      throw new Error("AI generated malformed data. Please try again.");
+    }
+  });
+};

@@ -22,7 +22,7 @@ export function RssStocksTicker({ stocks }: { stocks: StockItem[] }) {
   const looped = [...stocks, ...stocks];
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="relative w-full min-w-0 max-w-full overflow-x-clip">
       <div className="ticker-animate">
         {looped.map((s, index) => (
           <div

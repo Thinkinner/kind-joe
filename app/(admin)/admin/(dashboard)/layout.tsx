@@ -6,6 +6,10 @@ export default async function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireStaffPermission(PERMISSIONS.ADMIN_DASHBOARD);
+  await requireStaffPermission(
+    PERMISSIONS.ADMIN_DASHBOARD,
+    "/admin/login",
+    "not_found",
+  );
   return children;
 }

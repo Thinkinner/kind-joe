@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
 import { getCurrentAuthContext } from "@better-auth/core/context";
 import { APIError } from "@better-auth/core/error";
 import { betterAuth } from "better-auth";
@@ -308,13 +309,21 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           const u = user as {
+            id: string;
             email: string;
             name: string;
             accountType?: string;
             account_type?: string;
           };
-          const accountType = u.accountType ?? u.account_type ?? "reader";
-          if (accountType === "staff") return;
+          /** New accounts are always end-users until promoted (invite / CLI). */
+          await db
+            .update(authSchema.user)
+            .set({
+              accountType: "reader",
+              staffRole: "",
+              staffRoles: [],
+            })
+            .where(eq(authSchema.user.id, u.id));
 
           let extraTags: string[] | undefined;
           try {

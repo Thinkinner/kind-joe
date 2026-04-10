@@ -4,9 +4,12 @@ import { db } from "@/db"; // 👈 change this path to where your drizzle instan
 import { articles, users } from "@/db/schema"; // 👈 adjust path
 import { and, desc, eq, isNull } from "drizzle-orm";
 
+const MAX_PUBLIC = 50;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = Number(searchParams.get("limit") ?? "20");
+  const raw = Number(searchParams.get("limit") ?? "20");
+  const limit = Math.min(Math.max(Number.isFinite(raw) ? raw : 20, 1), MAX_PUBLIC);
 
   const rows = await db
     .select({

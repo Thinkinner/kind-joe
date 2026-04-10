@@ -1,0 +1,1184 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Loader2,
+  UploadCloud,
+  AlertTriangle,
+  RefreshCw,
+  CheckCircle,
+  Save,
+  Send,
+  Eye,
+  Edit3,
+  Copy,
+  ExternalLink, // <-- Add this
+  Link as LinkIcon, // <-- Add this
+  GripVertical, // <-- Add this
+  Trash2, // <-- Add this
+  Plus, // <-- Add this
+  Sparkles,
+} from "lucide-react";
+
+// --- SERVICES & TYPES ---
+import { uploadBase64ImageToCloudinary } from "@/lib/(newsletter-automations)/cloudinary-service";
+import BlockEditor from "@/components/(newsletter-automations)/newsletter-block-editor";
+import {
+  NewsletterDraft,
+  NewsletterData,
+  NewsletterStory,
+  DbArticle,
+  WebhookPayload,
+} from "@/lib/(newsletter-automations)/types";
+import NewsletterPreview from "./newsletter-preview";
+import {
+  saveDraft,
+  getSettings,
+  publishNewsletterToArticles,
+} from "@/lib/(newsletter-automations)/storage-services";
+import { sendToWebhook } from "@/lib/(newsletter-automations)/web-hook-services";
+import {
+  generateFullArticleContent,
+  regenerateSingleStory,
+  suggestNewsletterEmailSubject,
+} from "@/lib/(newsletter-automations)/gemini-service";
+import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
+import { generateEmailHtml } from "@/lib/(newsletter-automations)/email-template-service";
+import ArticleSelectionModal from "./article-selection-modal";
+
+/** Keep manual lead text when set; otherwise auto-fill from story summaries. */
+function introAfterStoriesChange(
+  prevIntro: string | undefined,
+  newStories: NewsletterStory[],
+): string {
+  if ((prevIntro || "").trim().length > 0) return prevIntro ?? "";
+  return deriveNewsletterLeadFromStories(newStories) || "";
+}
+
+const createSlug = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove non-word chars
+    .replace(/[\s_-]+/g, "-") // Replace spaces with dashes
+    .replace(/^-+|-+$/g, ""); // Trim start/end dashes
+};
+
+/** Overview edit fields: neutral surface (theme `input` is blue-tinted). */
+const OVERVIEW_FIELD_CLASS =
+  "border border-neutral-200 bg-white text-sm text-neutral-900 outline-none transition-colors focus:border-orange-500 focus:ring-1 focus:ring-orange-500/25 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-orange-500";
+
+const OVERVIEW_TEXTAREA_SCROLLBAR =
+  "scrollbar-thin scrollbar-track-neutral-100 scrollbar-thumb-neutral-300 dark:scrollbar-track-neutral-800 dark:scrollbar-thumb-neutral-600 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-track]:bg-neutral-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600";
+
+interface ReviewEditorProps {
+  draft: NewsletterDraft;
+  onBack: () => void;
+  onUpdate: () => void;
+}
+
+type TabMode = "overview" | number;
+
+const ReviewEditor: React.FC<ReviewEditorProps> = ({
+  draft,
+  onBack,
+  onUpdate,
+}) => {
+  // --- STATE ---
+  // Initialize with defaults to prevent uncontrolled input errors
+  const [data, setData] = useState<NewsletterData>(() => {
+    const d = draft.data || {
+      title: "",
+      intro: "",
+      stories: [],
+      signOff: "",
+    };
+    const intro =
+      (d.intro || "").trim() ||
+      deriveNewsletterLeadFromStories(d.stories) ||
+      "";
+    return { ...d, intro };
+  });
+  const [articles, setArticles] = useState<DbArticle[]>(draft.articles || []);
+  const [activeTab, setActiveTab] = useState<TabMode>("overview");
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [suggestingSubject, setSuggestingSubject] = useState(false);
+
+  const handleSuggestEmailSubject = async () => {
+    try {
+      setSuggestingSubject(true);
+      setErrorMsg("");
+      const subject = await suggestNewsletterEmailSubject(data.stories[0]);
+      setData((prev) => ({ ...prev, title: subject }));
+      setSuccessMsg("Subject line updated from Story 1.");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch (e: unknown) {
+      setErrorMsg(
+        e instanceof Error ? e.message : "Could not suggest subject line.",
+      );
+    } finally {
+      setSuggestingSubject(false);
+    }
+  };
+
+  useEffect(() => {
+    // Wait 1.5 seconds after the user stops typing/changing things before saving
+    const timer = setTimeout(async () => {
+      setIsAutoSaving(true);
+
+      const updatedDraft: NewsletterDraft = {
+        ...draft,
+        data: data,
+        articles: articles,
+      };
+
+      try {
+        await saveDraft(updatedDraft);
+
+        // Format the time (e.g., "10:45 AM")
+        const now = new Date();
+        setLastSavedTime(
+          now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        );
+      } catch (err) {
+        console.error("Auto-save failed:", err);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }, 1500);
+
+    // Cleanup the timer if the user types again before 1.5 seconds is up
+    return () => clearTimeout(timer);
+  }, [data, articles, draft]); // Listen for ANY changes to your data
+
+  const handleDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    index: number,
+  ) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Necessary to allow dropping
+  };
+
+  const handleDrop = (
+    e: React.DragEvent<HTMLDivElement>,
+    dropIndex: number,
+  ) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    // 1. Reorder Stories
+    const newStories = [...data.stories];
+    const [draggedStory] = newStories.splice(draggedIndex, 1);
+    newStories.splice(dropIndex, 0, draggedStory);
+
+    // 2. Reorder Articles (CRITICAL so the generated HTML follows the story)
+    const newArticles = [...articles];
+    const [draggedArticle] = newArticles.splice(draggedIndex, 1);
+    newArticles.splice(dropIndex, 0, draggedArticle);
+
+    setData({
+      ...data,
+      stories: newStories,
+      intro: introAfterStoriesChange(data.intro, newStories),
+    });
+    setArticles(newArticles);
+    setDraggedIndex(null);
+  };
+
+  const handleAddStory = () => {
+    const newIndex = data.stories.length + 1;
+    const newStory: NewsletterStory = {
+      slotName: `Slot ${newIndex}`,
+      headline: "",
+      summary: "",
+      imageUrl: "",
+      sourceUrl: "",
+      sourceName: "Custom Addition",
+      category: "General",
+    };
+
+    const nextStories = [...data.stories, newStory];
+    setData({
+      ...data,
+      stories: nextStories,
+      intro: introAfterStoriesChange(data.intro, nextStories),
+    });
+    // Append a placeholder for the article so the indices match perfectly
+    setArticles([...articles, undefined as any]);
+  };
+
+  const handleDeleteStory = (index: number) => {
+    if (window.confirm("Are you sure you want to delete this story?")) {
+      const newStories = [...data.stories];
+      newStories.splice(index, 1);
+
+      const newArticles = [...articles];
+      newArticles.splice(index, 1);
+
+      setData({
+        ...data,
+        stories: newStories,
+        intro: introAfterStoriesChange(data.intro, newStories),
+      });
+      setArticles(newArticles);
+
+      // Safety reset if they delete the tab they are currently viewing
+      if (activeTab === index) setActiveTab("overview");
+    }
+  };
+
+  // Maps story index to uploading state for manual image uploads
+  const [isUploadingMap, setIsUploadingMap] = useState<Record<number, boolean>>(
+    {},
+  );
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Regeneration State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
+
+  // --- VALIDATION ---
+
+  const openReplacementModal = (index: number) => {
+    setReplaceIndex(index);
+    setIsModalOpen(true);
+  };
+
+  const handleStoryReplaced = (newStory: NewsletterStory) => {
+    if (replaceIndex === null) return;
+
+    // Update the story
+    const newStories = [...data.stories];
+    newStories[replaceIndex] = newStory;
+    setData({
+      ...data,
+      stories: newStories,
+      intro: introAfterStoriesChange(data.intro, newStories),
+    });
+
+    // Clear out the previously generated HTML/Article for this slot so it is forced to regenerate
+    if (articles[replaceIndex]) {
+      const updatedArticles = [...articles];
+      updatedArticles[replaceIndex] = {
+        ...updatedArticles[replaceIndex],
+        title: newStory.headline,
+        contentHtml: "", // Wipe HTML so the "Generate" button appears again
+        content: null,
+        coverImageUrl: newStory.imageUrl || null,
+      };
+      setArticles(updatedArticles);
+    }
+
+    setIsModalOpen(false);
+    setReplaceIndex(null);
+    setSuccessMsg("Story replaced successfully!");
+    setTimeout(() => setSuccessMsg(""), 2500);
+  };
+
+  const handleCopyHtml = async () => {
+    try {
+      // 1. Create a temporary copy of stories with CLEAN slugs
+      // This forces the link to match what the Database creates
+      const cleanStories = data.stories.map((story) => ({
+        ...story,
+        slug: createSlug(story.headline || ""), // Force clean slug
+      }));
+
+      const cleanData = {
+        ...data,
+        stories: cleanStories,
+        intro:
+          (data.intro || "").trim() ||
+          deriveNewsletterLeadFromStories(cleanStories) ||
+          "",
+      };
+
+      // 2. Generate HTML using the clean data
+      const html = generateEmailHtml(cleanData);
+
+      await navigator.clipboard.writeText(html);
+      setSuccessMsg("Email HTML (with clean links) copied!");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch (err) {
+      setErrorMsg("Failed to copy HTML to clipboard");
+    }
+  };
+
+  const hasMissingImages = data.stories.some(
+    (story) => !story.imageUrl || story.imageUrl.trim() === "",
+  );
+
+  // 2. Check if draft is fully ready to publish
+  const isDraftComplete =
+    articles.length === data.stories.length &&
+    articles.every(
+      (art) =>
+        art &&
+        art.title &&
+        art.title.trim() !== "" &&
+        art.contentHtml &&
+        art.contentHtml.trim().length > 50,
+    );
+
+  // --- HELPERS ---
+
+  const updateStory = (
+    index: number,
+    field: keyof NewsletterStory,
+    value: string,
+  ) => {
+    const newStories = [...data.stories];
+    newStories[index] = { ...newStories[index], [field]: value };
+    setData({
+      ...data,
+      stories: newStories,
+      intro: introAfterStoriesChange(data.intro, newStories),
+    });
+  };
+
+  const updateArticle = (index: number, field: keyof DbArticle, value: any) => {
+    const newArticles = [...articles];
+    newArticles[index] = { ...newArticles[index], [field]: value };
+    setArticles(newArticles);
+  };
+
+  // --- ACTIONS ---
+
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMsg("Please select an image file.");
+      return;
+    }
+
+    setIsUploadingMap((prev) => ({ ...prev, [index]: true }));
+    setErrorMsg("");
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+
+      reader.onloadend = async () => {
+        const base64data = reader.result as string;
+        try {
+          const settings = await getSettings();
+          const newUrl = await uploadBase64ImageToCloudinary(
+            base64data,
+            settings,
+          );
+          updateStory(index, "imageUrl", newUrl);
+          setSuccessMsg("Image uploaded to Cloudinary!");
+          setTimeout(() => setSuccessMsg(""), 2000);
+        } catch (uploadErr: any) {
+          console.error(uploadErr);
+          setErrorMsg("Upload failed: " + uploadErr.message);
+        } finally {
+          setIsUploadingMap((prev) => ({ ...prev, [index]: false }));
+          if (fileInputRefs.current[index]) {
+            fileInputRefs.current[index]!.value = "";
+          }
+        }
+      };
+    } catch (err) {
+      console.error("File reading error", err);
+      setErrorMsg("Failed to process file.");
+      setIsUploadingMap((prev) => ({ ...prev, [index]: false }));
+    }
+  };
+
+  const handleSaveDraft = () => {
+    const payloadData = { ...data, intro: (data.intro || "").trim() };
+    setData(payloadData);
+    const updatedDraft: NewsletterDraft = {
+      ...draft,
+      data: payloadData,
+      articles: articles,
+    };
+    saveDraft(updatedDraft);
+    setSuccessMsg("Draft saved locally.");
+    setTimeout(() => setSuccessMsg(""), 2000);
+  };
+
+  // Batch Generation (Skips already generated ones)
+  const handleGenerateArticles = async () => {
+    if (hasMissingImages) {
+      setErrorMsg("Each story needs an image URL before generating articles.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setLoadingText("Initializing writer...");
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const settings = await getSettings();
+      if (!settings.authorId)
+        throw new Error("Please set Author ID in settings.");
+
+      let currentArticles = [...articles];
+      let currentStories = [...data.stories];
+
+      for (let i = 0; i < data.stories.length; i++) {
+        // Skip if content already exists
+        if (currentArticles[i]?.contentHtml) continue;
+
+        const story = data.stories[i];
+        setLoadingText(
+          `Writing article ${i + 1}/${data.stories.length}: ${story.headline}...`,
+        );
+
+        // Rate limit pause
+        if (i > 0) await new Promise((res) => setTimeout(res, 2000));
+
+        try {
+          const content = await generateFullArticleContent(story);
+          const uniqueSlug = createSlug(content.title);
+
+          const newArt: DbArticle = {
+            id: crypto.randomUUID(),
+            slug: uniqueSlug,
+            title: content.title,
+            excerpt: content.excerpt,
+            content: content.content, // JSON
+            contentHtml: content.contentHtml, // HTML
+            coverImageUrl: story.imageUrl || null,
+            category: story.category || "General",
+            authorId: settings.authorId,
+            readingMinutes: content.readingMinutes || 3,
+            isDraft: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            seo: {
+              title: content.seoTitle,
+              description: content.seoDescription,
+              keywords: content.seoKeywords,
+            },
+            publishedAt: null,
+            publishAt: null,
+            publishedBy: null,
+            deletedAt: null,
+          };
+
+          currentArticles[i] = newArt;
+          currentStories[i] = { ...story, slug: uniqueSlug };
+
+          setArticles([...currentArticles]);
+          setData((prev) => ({
+            ...prev,
+            stories: [...currentStories],
+            intro: introAfterStoriesChange(prev.intro, currentStories),
+          }));
+
+          // Save progress
+          await saveDraft({
+            ...draft,
+            data: {
+              ...data,
+              stories: currentStories,
+              intro: introAfterStoriesChange(data.intro, currentStories),
+            },
+            articles: currentArticles,
+          });
+        } catch (artError: any) {
+          console.error(`Failed at article ${i + 1}:`, artError);
+          setErrorMsg(
+            `Failed at article ${i + 1}. Click generate again to resume.`,
+          );
+          break;
+        }
+      }
+
+      if (currentArticles.every((a) => a?.contentHtml)) {
+        setSuccessMsg("All articles generated!");
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
+  };
+
+  // Single Article Regeneration
+  const handleRegenerateSingleArticle = async (index: number) => {
+    setIsProcessing(true);
+    setLoadingText("Regenerating article...");
+    setErrorMsg("");
+
+    try {
+      const story = data.stories[index];
+      const settings = await getSettings();
+
+      const content = await generateFullArticleContent(story);
+      const uniqueSlug = createSlug(content.title);
+      const newArt: DbArticle = {
+        // Preserve ID if it existed, or new one
+        id: articles[index]?.id || crypto.randomUUID(),
+        slug: uniqueSlug,
+        title: content.title,
+        excerpt: content.excerpt,
+        content: content.content,
+        contentHtml: content.contentHtml,
+        coverImageUrl: story.imageUrl || null,
+        category: story.category || "General",
+        authorId: settings.authorId || "default",
+        readingMinutes: content.readingMinutes || 3,
+        isDraft: true,
+        createdAt: articles[index]?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        seo: {
+          title: content.seoTitle,
+          description: content.seoDescription,
+          keywords: content.seoKeywords,
+        },
+        publishedAt: null,
+        publishAt: null,
+        publishedBy: null,
+        deletedAt: null,
+      };
+
+      const newArticles = [...articles];
+      newArticles[index] = newArt;
+      setArticles(newArticles);
+
+      const newStories = [...data.stories];
+      newStories[index] = { ...story, slug: uniqueSlug };
+      setData((prev) => ({
+        ...prev,
+        stories: newStories,
+        intro: introAfterStoriesChange(prev.intro, newStories),
+      }));
+
+      await saveDraft({
+        ...draft,
+        data: {
+          ...data,
+          stories: newStories,
+          intro: introAfterStoriesChange(data.intro, newStories),
+        },
+        articles: newArticles,
+      });
+
+      setSuccessMsg("Article regenerated successfully!");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch (err: any) {
+      setErrorMsg("Regeneration failed: " + err.message);
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
+  };
+
+  const handleApproveAndSend = async () => {
+    if (!isDraftComplete) {
+      setErrorMsg("All articles must be generated before publishing.");
+      return;
+    }
+
+    const confirmPublish = window.confirm(
+      "This will publish articles to the DB and trigger the webhook. Continue?",
+    );
+    if (!confirmPublish) return;
+
+    setIsProcessing(true);
+    setLoadingText("Publishing & Syncing...");
+    setErrorMsg("");
+
+    try {
+      const settings = await getSettings();
+      if (!settings.webhookUrl)
+        throw new Error("Webhook URL missing in settings.");
+
+      // 1. Save final state
+      await saveDraft({ ...draft, data, articles });
+
+      // 2. Publish to DB
+      const dbResult = await publishNewsletterToArticles(draft.id);
+      if (!dbResult.success) {
+        throw new Error(
+          "error" in dbResult && dbResult.error
+            ? String(dbResult.error)
+            : "DB Publish failed.",
+        );
+      }
+
+      // 3. Prepare Payload
+      const emailHtml = generateEmailHtml(data);
+      const flatArticles: Record<string, any> = {};
+      articles.forEach((art, idx) => {
+        flatArticles[`article_${idx + 1}`] = art;
+      });
+      const flatStories: Record<string, any> = {};
+      data.stories.forEach((story, idx) => {
+        const n = idx + 1;
+        flatStories[`story_${n}_headline`] = story.headline;
+        flatStories[`story_${n}_summary`] = story.summary;
+        flatStories[`story_${n}_imageUrl`] = story.imageUrl;
+        flatStories[`story_${n}_sourceUrl`] = story.sourceUrl;
+        flatStories[`story_${n}_sourceName`] = story.sourceName;
+        flatStories[`story_${n}_slug`] = story.slug;
+      });
+
+      const payload: WebhookPayload = {
+        newsletter: { subject: data.title, html: emailHtml, data: data },
+        articles: articles,
+        ...flatArticles,
+        ...flatStories,
+        newsletter_title: data.title,
+        newsletter_html: emailHtml,
+      };
+
+      // 4. Send Webhook
+      await sendToWebhook(settings.webhookUrl, payload);
+
+      setSuccessMsg("Published Successfully!");
+      setTimeout(() => onUpdate(), 1500);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Publishing failed.");
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
+  };
+
+  // --- RENDER ---
+
+  const tabSelectValue =
+    activeTab === "overview" ? "overview" : String(activeTab);
+
+  const storyNeedsArticle = (idx: number) =>
+    !articles[idx] ||
+    !articles[idx].contentHtml ||
+    articles[idx].contentHtml.length < 50;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col animate-fade-in bg-background text-foreground">
+      {/* HEADER — single column: back + status, section picker (all sizes), actions */}
+      <div className="shrink-0 border-b border-border bg-background">
+        <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-muted-foreground hover:text-foreground shrink-0 text-sm transition-colors"
+          >
+            &larr; Back
+          </button>
+          <div
+            className="min-w-0 text-right text-xs text-muted-foreground"
+            title="Autosave"
+          >
+            {isAutoSaving ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                Saving…
+              </span>
+            ) : lastSavedTime ? (
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                Saved {lastSavedTime}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <Save className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                Draft
+              </span>
+            )}
+          </div>
+        </div>
+
+        {(errorMsg || successMsg) && (
+          <div className="space-y-2 border-t border-border px-3 py-2 sm:px-4">
+            {errorMsg && (
+              <div className="flex items-start gap-2 border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="min-w-0 break-words">{errorMsg}</span>
+              </div>
+            )}
+            {successMsg && (
+              <div className="flex items-center gap-2 border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                {successMsg}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section: one control for all breakpoints (no cramped tab strip) */}
+        <div className="border-t border-border bg-muted/25 px-3 py-3 sm:px-4">
+          <label
+            htmlFor="review-section"
+            className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+          >
+            Jump to
+          </label>
+          <select
+            id="review-section"
+            value={tabSelectValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              setActiveTab(v === "overview" ? "overview" : parseInt(v, 10));
+            }}
+            className="min-h-12 w-full border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 shadow-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-100 sm:min-h-10 sm:text-sm"
+          >
+            <option value="overview">Overview — preview &amp; edit</option>
+            {data.stories.map((story, idx) => {
+              const flag = storyNeedsArticle(idx) ? " (!) " : " ";
+              return (
+                <option key={idx} value={String(idx)}>
+                  Story {idx + 1}
+                  {flag}— {story.headline || "Untitled"}
+                </option>
+              );
+            })}
+          </select>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            (!) = story still needs generated article text.
+          </p>
+        </div>
+
+        {/* Actions: flex-wrap so any button count lays out cleanly */}
+        <div className="flex flex-wrap gap-2 border-t border-border bg-background px-3 py-3 sm:px-4">
+          {activeTab === "overview" && !isProcessing && (
+            <button
+              type="button"
+              onClick={handleCopyHtml}
+              title="Copy newsletter HTML"
+              className="inline-flex min-h-11 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-2 border border-border bg-white px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-neutral-50 sm:basis-auto sm:flex-initial dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            >
+              <Copy className="h-4 w-4 shrink-0" />
+              Copy HTML
+            </button>
+          )}
+          {activeTab === "overview" && (
+            <button
+              type="button"
+              onClick={() => setEditMode(!editMode)}
+              title={editMode ? "Preview" : "Edit fields"}
+              className="inline-flex min-h-11 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-2 border border-border bg-white px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-neutral-50 sm:basis-auto sm:flex-initial dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            >
+              {editMode ? (
+                <Eye className="h-4 w-4 shrink-0" />
+              ) : (
+                <Edit3 className="h-4 w-4 shrink-0" />
+              )}
+              {editMode ? "Preview" : "Edit overview"}
+            </button>
+          )}
+          {!isDraftComplete && (
+            <button
+              type="button"
+              onClick={handleGenerateArticles}
+              disabled={isProcessing || hasMissingImages}
+              title="Generate full articles"
+              className="inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border border-orange-700 bg-orange-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:basis-auto sm:flex-initial"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 shrink-0" />
+              )}
+              Generate articles
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleApproveAndSend}
+            disabled={!isDraftComplete || isProcessing}
+            title={
+              !isDraftComplete
+                ? "Generate all articles first"
+                : "Publish"
+            }
+            className={`inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border px-4 text-sm font-semibold shadow-sm transition-colors sm:basis-auto sm:flex-initial ${
+              isDraftComplete
+                ? "border-emerald-800 bg-emerald-600 text-white hover:bg-emerald-500"
+                : "cursor-not-allowed border-border bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+            }`}
+          >
+            <Send className="h-4 w-4 shrink-0" />
+            Approve &amp; publish
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
+        {activeTab === "overview" ? (
+          <div className="flex h-full min-h-0 flex-col lg:flex-row">
+            {/* EDIT OVERVIEW SIDEBAR */}
+            {editMode ? (
+              <div className="w-full overflow-y-auto border-r border-border bg-background p-4 pb-20 scrollbar-thin sm:p-6 lg:w-1/2">
+                <div className="flex flex-col gap-6">
+                  {/* NEWSLETTER TITLE — inbox email subject */}
+                  <div className="p-4  border border-border bg-card shadow-sm">
+                    <label className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                      Newsletter title (email subject)
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Short hook from Story 1 — aim for ≤6 words. This is what
+                      subscribers see in their inbox.
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                      <input
+                        className={`min-w-0 flex-1 p-3 ${OVERVIEW_FIELD_CLASS}`}
+                        value={data.title || ""}
+                        onChange={(e) =>
+                          setData({ ...data, title: e.target.value })
+                        }
+                        placeholder="e.g. Vance’s Flight Into Iran Chaos"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSuggestEmailSubject}
+                        disabled={
+                          suggestingSubject ||
+                          !data.stories[0]?.headline?.trim()
+                        }
+                        title="Generate a hooky subject from Story 1 headline & summary"
+                        className="inline-flex shrink-0 items-center justify-center gap-2 border border-orange-600 bg-orange-50 px-3 py-2.5 text-sm font-semibold text-orange-950 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-100 dark:hover:bg-orange-950/80"
+                      >
+                        {suggestingSubject ? (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 shrink-0" />
+                        )}
+                        From Story 1
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* DAILY BRIEF LEAD — italic callout under header in preview & email */}
+                  <div className="border border-border bg-card p-4 shadow-sm">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+                      Daily brief lead
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Optional. Leave empty to auto-fill from the first sentences
+                      of your story summaries.
+                    </p>
+                    <textarea
+                      className={`mt-2 min-h-[100px] w-full resize-y p-3 leading-relaxed ${OVERVIEW_FIELD_CLASS} ${OVERVIEW_TEXTAREA_SCROLLBAR}`}
+                      value={data.intro || ""}
+                      onChange={(e) =>
+                        setData({ ...data, intro: e.target.value })
+                      }
+                      placeholder="One or two sentences for the blue callout under DAILY BRIEF…"
+                    />
+                  </div>
+
+                  {/* STORIES LIST */}
+                  {data.stories.map((story, idx) => {
+                    return (
+                      <div
+                        key={idx}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        className={`p-5  border shadow-sm transition-all duration-200 ${
+                          draggedIndex === idx
+                            ? "border-primary opacity-40 scale-[0.98]"
+                            : "border-border bg-card hover:border-border/80"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-5">
+                          {/* DRAG HANDLE */}
+                          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider cursor-grab active:cursor-grabbing p-1.5 -ml-1.5 hover:bg-muted  transition-colors">
+                            <GripVertical className="h-4 w-4" />
+                            Story {idx + 1}
+                          </div>
+
+                          {/* BUTTONS CONTAINER */}
+                          <div className="flex items-center gap-2">
+                            {story.sourceUrl && (
+                              <a
+                                href={story.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1.5  border border-primary/20 transition-colors"
+                                title="Read Original Article"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                <span className="hidden sm:inline">Source</span>
+                              </a>
+                            )}
+
+                            <button
+                              onClick={() => openReplacementModal(idx)}
+                              className="text-xs flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground px-2.5 py-1.5  border border-border transition-colors"
+                              title="Select a different article from RSS feeds"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              <span className="hidden sm:inline">Replace</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteStory(idx)}
+                              className="text-xs flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 text-destructive px-2.5 py-1.5  border border-destructive/20 transition-colors"
+                              title="Delete this story"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* HEADLINE */}
+                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                          Headline
+                        </label>
+                        <input
+                          className={`mb-4 w-full p-2.5 ${OVERVIEW_FIELD_CLASS}`}
+                          value={story.headline || ""}
+                          onChange={(e) =>
+                            updateStory(idx, "headline", e.target.value)
+                          }
+                        />
+
+                        {/* IMAGE URL */}
+                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                          Image URL
+                        </label>
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            className={`flex-1 p-2.5 ${OVERVIEW_FIELD_CLASS}`}
+                            value={story.imageUrl || ""}
+                            onChange={(e) =>
+                              updateStory(idx, "imageUrl", e.target.value)
+                            }
+                          />
+                          <input
+                            type="file"
+                            className="hidden"
+                            ref={(el) => {
+                              fileInputRefs.current[idx] = el;
+                            }}
+                            onChange={(e) => handleFileUpload(e, idx)}
+                            accept="image/*"
+                          />
+                          <button
+                            onClick={() => fileInputRefs.current[idx]?.click()}
+                            disabled={isUploadingMap[idx]}
+                            className="p-2.5 bg-secondary hover:bg-secondary/80  border border-border text-secondary-foreground transition-colors flex items-center justify-center min-w-[44px]"
+                          >
+                            {isUploadingMap[idx] ? (
+                              <Loader2 className="animate-spin h-4 w-4" />
+                            ) : (
+                              <UploadCloud className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* SUMMARY */}
+                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                          Summary
+                        </label>
+                        <textarea
+                          className={`h-32 w-full resize-y p-3 leading-relaxed ${OVERVIEW_FIELD_CLASS} ${OVERVIEW_TEXTAREA_SCROLLBAR}`}
+                          value={story.summary || ""}
+                          onChange={(e) =>
+                            updateStory(idx, "summary", e.target.value)
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* ADD NEW STORY BUTTON */}
+                  <button
+                    onClick={handleAddStory}
+                    className="w-full py-5 border-2 border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary hover:bg-muted/50  flex items-center justify-center gap-2 font-bold transition-all mt-2"
+                  >
+                    <Plus className="h-5 w-5" /> Add New Story Slot
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // PREVIEW OVERVIEW
+              <div className="w-full h-full overflow-y-auto p-4 lg:p-12 bg-muted/30">
+                <div className="mx-auto max-w-2xl">
+                  <NewsletterPreview data={data} />
+                </div>
+              </div>
+            )}
+
+            {/* PREVIEW SIDEBAR */}
+            {editMode && (
+              <div className="hidden w-1/2 overflow-y-auto border-l border-border bg-muted/30 p-4 sm:p-8 lg:block">
+                <div className="mx-auto max-w-[600px] origin-top scale-90">
+                  <NewsletterPreview data={data} />
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* --- ARTICLE EDITOR TAB --- */
+          <div className="flex h-full min-h-0 flex-col lg:flex-row">
+            {/* LEFT: EDITOR */}
+            <div className="flex w-full flex-col overflow-y-auto border-r border-border bg-background p-4 sm:p-6 lg:w-1/2">
+              <div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Article editor
+                </h2>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleRegenerateSingleArticle(activeTab as number)
+                  }
+                  disabled={isProcessing}
+                  className="inline-flex w-full items-center justify-center gap-2 border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary transition-colors hover:bg-primary/20 sm:w-auto"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 shrink-0 ${isProcessing ? "animate-spin" : ""}`}
+                  />
+                  <span className="sm:hidden">Regenerate</span>
+                  <span className="hidden sm:inline">Regenerate this article</span>
+                </button>
+              </div>
+
+              {articles[activeTab as number] ? (
+                <>
+                  <input
+                    className="mb-4 w-full border-b border-border bg-transparent pb-2 text-xl font-bold text-foreground focus:border-primary focus:outline-none sm:mb-6 sm:text-2xl"
+                    value={articles[activeTab as number].title || ""}
+                    onChange={(e) => {
+                      const newTitle = e.target.value;
+                      const newSlug = createSlug(newTitle);
+
+                      updateArticle(activeTab as number, "title", newTitle);
+                      updateArticle(activeTab as number, "slug", newSlug);
+
+                      const newStories = [...data.stories];
+                      newStories[activeTab as number] = {
+                        ...newStories[activeTab as number],
+                        slug: newSlug,
+                      };
+                      setData({
+                        ...data,
+                        stories: newStories,
+                        intro: introAfterStoriesChange(data.intro, newStories),
+                      });
+                    }}
+                    placeholder="Article Title..."
+                  />
+                  <div className="flex-1 min-h-[500px]">
+                    <BlockEditor
+                      className="h-full"
+                      value={
+                        articles[activeTab as number]
+                          .content as import("@/components/(newsletter-automations)/newsletter-block-editor").BlockEditorProps["value"]
+                      }
+                      onChange={(json, html) => {
+                        const newArticles = [...articles];
+                        newArticles[activeTab as number] = {
+                          ...newArticles[activeTab as number],
+                          content: json,
+                          contentHtml: html,
+                        };
+                        setArticles(newArticles);
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-border  text-muted-foreground p-8 text-center">
+                  <p className="mb-4">
+                    This article content has not been generated yet.
+                  </p>
+                  <button
+                    onClick={() =>
+                      handleRegenerateSingleArticle(activeTab as number)
+                    }
+                    className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground  font-bold flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" /> Generate Now
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT: PREVIEW */}
+            <div className="w-full overflow-y-auto bg-card p-4 text-foreground sm:p-8 lg:w-1/2 lg:p-12">
+              <div className="prose prose-lg prose-invert mx-auto max-w-2xl">
+                {articles[activeTab as number]?.contentHtml ? (
+                  <>
+                    {articles[activeTab as number].coverImageUrl && (
+                      <img
+                        src={articles[activeTab as number].coverImageUrl!}
+                        alt="Cover"
+                        className="mb-8 h-64 w-full object-cover"
+                      />
+                    )}
+                    <h1 className="mb-4 text-2xl font-black leading-tight sm:mb-6 sm:text-4xl">
+                      {articles[activeTab as number].title}
+                    </h1>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: articles[activeTab as number].contentHtml,
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground italic">
+                    Article preview will appear here...
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* GLOBAL LOADING OVERLAY */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex w-full max-w-sm flex-col items-center border border-border bg-card p-8 text-center">
+            <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+            <h3 className="text-foreground font-bold text-lg mb-2">
+              Processing...
+            </h3>
+            <p className="text-muted-foreground text-sm">{loadingText}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ARTICLE SELECTION MODAL */}
+      <ArticleSelectionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        sourcePool={draft.sourcePool}
+        currentStories={data.stories}
+        targetSlotName={
+          replaceIndex !== null ? data.stories[replaceIndex].slotName : ""
+        }
+        onStoryGenerated={handleStoryReplaced}
+      />
+    </div>
+  );
+};
+
+export default ReviewEditor;

@@ -1,11 +1,14 @@
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { getStaffRole, isStaffAccount } from "@/lib/auth/account-type";
+import { db } from "@/db";
+import { user as authUser } from "@/db/auth-schema";
+import { isStaffAccount } from "@/lib/auth/account-type";
 import { logAuthEvent } from "@/lib/auth/log";
 import {
   type AppPermission,
-  roleHasPermission,
+  userHasPermission,
 } from "@/lib/auth/permissions";
 
 export type AuthAppUser = {
@@ -16,6 +19,8 @@ export type AuthAppUser = {
   username?: string | null;
   accountType?: string | null;
   staffRole?: string | null;
+  staffRoles?: string[] | null;
+  adminPageAccess?: string[] | null;
 };
 
 function normalizeNextPath(nextPath: string | undefined): string {
@@ -31,6 +36,31 @@ function readerLoginRedirectPath(loginPath: string, nextPath: string): string {
   qp.set("reason", "session");
   qp.set("next", normalizeNextPath(nextPath));
   return `${base}?${qp.toString()}`;
+}
+
+async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
+  if (!user?.id) return user;
+  const [row] = await db
+    .select({
+      accountType: authUser.accountType,
+      staffRole: authUser.staffRole,
+      staffRoles: authUser.staffRoles,
+      adminPageAccess: authUser.adminPageAccess,
+    })
+    .from(authUser)
+    .where(eq(authUser.id, user.id))
+    .limit(1);
+  if (!row) return user;
+  return {
+    ...user,
+    accountType: row.accountType ?? user.accountType,
+    staffRole: row.staffRole ?? user.staffRole,
+    staffRoles: row.staffRoles ?? user.staffRoles,
+    adminPageAccess:
+      row.adminPageAccess === undefined
+        ? (user.adminPageAccess ?? null)
+        : row.adminPageAccess,
+  };
 }
 
 export async function getServerSession() {
@@ -77,19 +107,24 @@ export async function redirectIfAuthedFromReaderAuthPages() {
 export async function requireStaffPermission(
   permission: AppPermission,
   loginPath = "/admin/login",
+  onForbidden: "redirect" | "not_found" = "redirect",
 ) {
   const session = await getServerSession();
   if (!session?.user) {
     redirect(loginPath);
   }
   const user = session.user as AuthAppUser;
-  if (!isStaffAccount(user)) {
+  const hydratedUser = await hydrateAuthUserFromDb(user);
+  if (!isStaffAccount(hydratedUser)) {
     redirect("/login?reason=staff_only");
   }
-  if (!roleHasPermission(getStaffRole(user), permission)) {
+  if (!userHasPermission(hydratedUser, permission)) {
+    if (onForbidden === "not_found") {
+      notFound();
+    }
     redirect("/admin?error=forbidden");
   }
-  return { session, user };
+  return { session, user: hydratedUser };
 }
 
 export async function requireReaderSession(
@@ -123,11 +158,12 @@ export async function resolveStaffApi(permission: AppPermission) {
     return { ok: false as const, reason: "unauthenticated" as StaffApiDenial };
   }
   const user = session.user as AuthAppUser;
-  if (!isStaffAccount(user)) {
+  const hydratedUser = await hydrateAuthUserFromDb(user);
+  if (!isStaffAccount(hydratedUser)) {
     return { ok: false as const, reason: "forbidden" as StaffApiDenial };
   }
-  if (!roleHasPermission(getStaffRole(user), permission)) {
+  if (!userHasPermission(hydratedUser, permission)) {
     return { ok: false as const, reason: "forbidden" as StaffApiDenial };
   }
-  return { ok: true as const, session, user };
+  return { ok: true as const, session, user: hydratedUser };
 }

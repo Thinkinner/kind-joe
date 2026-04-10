@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/google-analytics";
+import VisitorJourneyTracker from "@/components/visitor-journey-tracker";
 
 import CookieConsent from "@/components/modals/cookie-consent";
 import { cookies } from "next/headers";
@@ -117,7 +118,8 @@ export default async function RootLayout({
         className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
       >
         <GoogleAnalytics />
-        <main className="min-h-dvh">{children}</main>
+        <VisitorJourneyTracker />
+        <main className="min-h-dvh min-w-0 overflow-x-hidden">{children}</main>
         <Toaster position="top-center" richColors closeButton />
       <CookieConsent />
         <Analytics />

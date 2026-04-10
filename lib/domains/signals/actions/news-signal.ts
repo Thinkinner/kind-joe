@@ -2,7 +2,6 @@
 
 import { getSignalsFromDB } from "@/lib/aggregator";
 import { Signal, type GeographicScope } from "@/lib/aggregator/types";
-import { getServerSession } from "@/lib/auth/server";
 import {
   isDisplayCategory,
   type IncomingWebhookPayloadOverlay,
@@ -76,9 +75,9 @@ function normalizeScope(raw: string | null | undefined): GeographicScope {
   return "global";
 }
 
+/** Kind Joe Watch is public; no session required. Admin routes stay staff-only separately. */
 export async function checkSignalsAccess(): Promise<boolean> {
-  const session = await getServerSession();
-  return Boolean(session?.user);
+  return true;
 }
 
 export async function getHistory(): Promise<Signal[]> {

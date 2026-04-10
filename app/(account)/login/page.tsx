@@ -65,8 +65,8 @@ async function ReaderLoginPageInner({
       )}
       {sp.reason === "staff_only" && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-50 p-4 text-sm font-medium leading-relaxed text-amber-900 shadow-sm">
-          This email is not used for reader sign-in. If you have a team account,
-          use the sign-in portal your organization shared with you.
+          That page is for staff. You are signed in with a reader account. Sign in here with a
+          staff email if you have one, or ask an admin to grant access.
         </div>
       )}
       <ReaderLoginForm nextPath={nextPath} />

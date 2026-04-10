@@ -104,6 +104,27 @@ export const articlePageviews = pgTable(
   }),
 );
 
+export const visitorJourneyEvents = pgTable(
+  "visitor_journey_events",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: varchar("session_id", { length: 128 }).notNull(),
+    visitorId: varchar("visitor_id", { length: 128 }),
+    path: text("path").notNull(),
+    query: text("query"),
+    referrer: text("referrer"),
+    userAgent: text("user_agent"),
+    viewedAt: timestamp("viewed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    sessionIdx: index("visitor_journey_session_idx").on(t.sessionId),
+    visitorIdx: index("visitor_journey_visitor_idx").on(t.visitorId),
+    viewedAtIdx: index("visitor_journey_viewed_at_idx").on(t.viewedAt),
+  }),
+);
+
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 80 }).notNull().unique(),

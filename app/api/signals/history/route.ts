@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/server";
 import { getHistory } from "@/lib/domains/signals/actions/news-signal";
 
+/** Public read — matches Kind Joe Watch (no auth). Do not expose secrets in signal payloads server-side. */
 export async function GET() {
-  const session = await getServerSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
   const items = await getHistory();
   return NextResponse.json(items);
 }

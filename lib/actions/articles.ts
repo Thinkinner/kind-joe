@@ -24,7 +24,11 @@ import {
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
 
+const MAX_LIST_PAGE = 50;
+
 export async function getArticlesAction(limit: number, offset: number) {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const safeOffset = Math.max(offset, 0);
   try {
     const results = await db
       .select({
@@ -52,8 +56,8 @@ export async function getArticlesAction(limit: number, offset: number) {
       .leftJoin(users, eq(articles.authorId, users.id)) // 👈 Join the users table
       .where(and(eq(articles.isDraft, false), isNull(articles.deletedAt)))
       .orderBy(desc(articles.publishedAt))
-      .limit(limit)
-      .offset(offset);
+      .limit(safeLimit)
+      .offset(safeOffset);
 
     // Map the results to match ArticleSummary strictly
     return results.map((a) => ({
@@ -200,6 +204,8 @@ export async function getVenturaArticlesAction(
   limit: number,
   offset: number,
 ): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const safeOffset = Math.max(offset, 0);
   try {
     const results = await db
       .select({
@@ -264,8 +270,8 @@ export async function getVenturaArticlesAction(
         ),
       )
       .orderBy(desc(articles.publishedAt))
-      .limit(limit)
-      .offset(offset);
+      .limit(safeLimit)
+      .offset(safeOffset);
 
     return results.map((a) => ({
       ...a,

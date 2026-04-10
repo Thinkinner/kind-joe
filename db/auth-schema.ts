@@ -1,6 +1,13 @@
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  jsonb,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -16,9 +23,42 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   accountType: text("account_type").default("reader"),
+  /** Legacy single slug; kept in sync with first match in `staff_roles`. */
   staffRole: text("staff_role").default(""),
+  /** Multiple roles (e.g. writer + editor). */
+  staffRoles: jsonb("staff_roles")
+    .$type<string[]>()
+    .notNull()
+    .$defaultFn(() => []),
+  /** Optional explicit admin-page permission allowlist set by superadmin. */
+  adminPageAccess: jsonb("admin_page_access").$type<string[]>(),
+  /**
+   * When set, non-owners browsing the staff directory see this label instead of real roles.
+   * Real account owners (DB `owner` in `staff_roles`) always see true roles for everyone.
+   */
+  directoryRoleMask: text("directory_role_mask"),
   twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
+
+/** Pending email invites to join staff (writer / editor / manager / admin). */
+export const staffInvitation = pgTable(
+  "staff_invitation",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    staffRole: text("staff_role").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [index("staff_invitation_email_idx").on(t.email)],
+);
 
 export const twoFactor = pgTable(
   "two_factor",

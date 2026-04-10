@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Footer } from "@/components/footer";
-import { NavbarWithSession } from "@/components/navbar-with-session";
 import { PredictionMarketsBoard } from "@/components/predictions/prediction-markets-board";
 import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import { listPredictionMarkets } from "@/lib/predictions/queries";
@@ -22,7 +20,6 @@ export default async function PredictionsPage() {
 
   return (
     <>
-      <NavbarWithSession />
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
         <section className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-500">
@@ -53,7 +50,6 @@ export default async function PredictionsPage() {
 
         <PredictionMarketsBoard initialMarkets={markets} nextPath="/predictions" />
       </main>
-      <Footer />
     </>
   );
 }

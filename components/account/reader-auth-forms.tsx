@@ -54,23 +54,25 @@ function safeNextPath(nextPath: string | undefined): string {
   return nextPath;
 }
 
+/** Staff and readers share one session; staff default landing after /login is admin. */
+function postLoginRedirectPath(user: unknown, nextPath: string | undefined): string {
+  const next = safeNextPath(nextPath);
+  if (getAccountType(user) === "staff") {
+    if (!nextPath?.trim() || next === "/") return "/admin";
+    return next;
+  }
+  return next;
+}
+
 function finishReaderSignIn(
   user: unknown,
-  setError: (s: string | null) => void,
+  _setError: (s: string | null) => void,
   _setPending: (b: boolean) => void,
   _turnstileRef: RefObject<TurnstileInstance | null>,
   nextPath: string | undefined,
 ): void {
-  if (getAccountType(user) === "staff") {
-    void authClient.signOut();
-    setError(
-      "This email is for team sign-in. Please use the sign-in portal your organization shared with you.",
-    );
-    _setPending(false);
-    return;
-  }
   stashNavSessionHint(user);
-  window.location.assign(safeNextPath(nextPath));
+  window.location.assign(postLoginRedirectPath(user, nextPath));
 }
 
 export function ReaderLoginForm({ nextPath = "/" }: { nextPath?: string }) {
@@ -348,7 +350,9 @@ export function ReaderRegisterForm({ nextPath = "/" }: { nextPath?: string }) {
       const u = sessionRes.data?.user ?? u0;
       if (getAccountType(u) === "staff") {
         await authClient.signOut();
-        setError("This email is reserved for team accounts.");
+        setError(
+          "This email is already a staff account. Sign in at /admin/login instead of creating a reader account.",
+        );
         setPending(false);
         return;
       }

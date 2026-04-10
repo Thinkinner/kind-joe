@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState, useTransition } from "react";
 import { VenturaArticleCard } from "@/components/cards/ventura-article-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { getVenturaArticlesAction } from "@/lib/actions/articles";
 import { ArticleSummary } from "@/types/article";
@@ -41,11 +42,34 @@ export default function VenturaCountyPage() {
 
   if (loadingInitial) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <Loader2 className="animate-spin text-orange-600 mb-4" size={40} />
-        <p className="text-orange-900 font-bold tracking-tight animate-pulse uppercase text-xs">
-          Loading Ventura County News...
-        </p>
+      <div className="min-h-screen bg-gray-50/50">
+        <main className="mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-8 flex flex-col gap-4 border-b border-orange-100 pb-6 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-72 max-w-full" />
+              <Skeleton className="h-4 w-80 max-w-full" />
+            </div>
+            <Skeleton className="h-8 w-32 rounded-full" />
+          </div>
+
+          <div className="flex flex-col items-start gap-10 lg:flex-row">
+            <div className="flex-1 w-full">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-10 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 9 }).map((_, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <Skeleton className="aspect-[16/10] w-full rounded-xl" />
+                    <Skeleton className="h-5 w-[90%]" />
+                    <Skeleton className="h-4 w-[70%]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <aside className="w-full shrink-0 lg:w-[350px] xl:w-[400px]">
+              <Skeleton className="h-72 w-full rounded-2xl" />
+            </aside>
+          </div>
+        </main>
       </div>
     );
   }

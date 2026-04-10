@@ -58,7 +58,8 @@ export default async function KindjoeTopStoriesPage() {
         publishedFilter(now)
       )
     )
-    .orderBy(desc(articles.publishedAt));
+    .orderBy(desc(articles.publishedAt))
+    .limit(48);
 
   return (
     <main className="mx-auto max-w-5xl p-6">
@@ -67,7 +68,8 @@ export default async function KindjoeTopStoriesPage() {
           Kindjoe Top Stories
         </h1>
         <p className="text-sm text-gray-600">
-          Curated articles tagged with <code>{FEATURED_TAG_SLUG}</code>.
+          Curated articles tagged with <code>{FEATURED_TAG_SLUG}</code> (up to
+          48 most recent).
         </p>
       </header>
 

@@ -14,7 +14,6 @@ import TopBar from "@/components/kindjoe-signals/top-bar";
 import Feed from "@/components/domains/signals/feed";
 import BottomBar from "@/components/kindjoe-signals/bottom-bar";
 import FilterModal from "@/components/kindjoe-signals/filter-modal";
-import SignalsAccessGate from "@/components/kindjoe-signals/signals-access-gate";
 import {
   Signal,
   Category,
@@ -22,11 +21,7 @@ import {
   type GeographicScope,
   type PusherSignalPayload,
 } from "@/lib/aggregator/types";
-import {
-  getHistory,
-  checkSignalsAccess,
-} from "@/lib/domains/signals/actions/news-signal";
-import { authClient } from "@/lib/auth-client";
+import { getHistory } from "@/lib/domains/signals/actions/news-signal";
 import { SIGNALS_HISTORY_LIMIT } from "@/lib/signals/signals-history-limit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSpotlightSignal } from "@/hooks/use-spotlight-signal";
@@ -36,6 +31,7 @@ import {
   MobileIntelSheet,
   MOBILE_INTEL_SHEET_MIN_VISIBLE_PX,
 } from "@/components/kindjoe-signals/mobile-intel-sheet";
+import { KindJoeWatchAccountNudge } from "@/components/kindjoe-signals/kindjoe-watch-account-nudge";
 import { effectiveImpactScore } from "@/lib/signals/impact-tier";
 import { hasPlausibleLatLng } from "@/lib/signals/plausible-coords";
 
@@ -279,8 +275,6 @@ const GlobeComponent = dynamic(
 );
 
 export default function Home() {
-  const [signalsAccessChecked, setSignalsAccessChecked] = useState(false);
-  const [hasSignalsAccess, setHasSignalsAccess] = useState(false);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | "All">(
     "All",
@@ -300,8 +294,6 @@ export default function Home() {
     "scale" | "region" | "topic" | "tags"
   >("topic");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-
   // useEffect(() => {
   //   // Only run this on the client
   //   const initBeams = async () => {
@@ -320,36 +312,6 @@ export default function Home() {
 
   //   initBeams();
   // }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const ok = await checkSignalsAccess();
-        if (!cancelled) {
-          setHasSignalsAccess(ok);
-        }
-      } catch {
-        if (!cancelled) {
-          setHasSignalsAccess(false);
-        }
-      } finally {
-        if (!cancelled) {
-          setSignalsAccessChecked(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const { data: session, isPending: sessionPending } = authClient.useSession();
-
-  useEffect(() => {
-    if (sessionPending) return;
-    setHasSignalsAccess(Boolean(session?.user));
-  }, [sessionPending, session?.user]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -533,7 +495,8 @@ export default function Home() {
 
   const isMobile = useIsMobile();
 
-  const sidebarFeedUnlocked = signalsAccessChecked && hasSignalsAccess;
+  /** Full feed is public; admin remains staff-only at /admin. */
+  const sidebarFeedUnlocked = true;
 
   /** True global HOT: highest impact in the 2m window across all signals, not the filtered subset. */
   const spotlightSignal = useSpotlightSignal(signals, sidebarFeedUnlocked);
@@ -607,8 +570,7 @@ export default function Home() {
               totalUnfilteredCount={signals.length}
               onClearFilters={presetAll}
               sidebarAccessUnlocked={sidebarFeedUnlocked}
-              accessCheckPending={!signalsAccessChecked}
-              onOpenUnlockModal={() => setAuthModalOpen(true)}
+              accessCheckPending={false}
             />
           </MobileIntelSheet>
         ) : (
@@ -624,8 +586,7 @@ export default function Home() {
             totalUnfilteredCount={signals.length}
             onClearFilters={presetAll}
             sidebarAccessUnlocked={sidebarFeedUnlocked}
-            accessCheckPending={!signalsAccessChecked}
-            onOpenUnlockModal={() => setAuthModalOpen(true)}
+            accessCheckPending={false}
           />
         )}
       </div>
@@ -653,6 +614,8 @@ export default function Home() {
         searchInputRef={searchInputRef}
       />
 
+      <KindJoeWatchAccountNudge />
+
       {isFilterModalOpen && (
         <FilterModal
           isOpen={isFilterModalOpen}
@@ -672,10 +635,6 @@ export default function Home() {
         />
       )}
 
-      <SignalsAccessGate
-        open={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-      />
     </div>
   );
 }
