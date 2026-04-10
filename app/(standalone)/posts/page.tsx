@@ -1,14 +1,13 @@
 import Image from "next/image";
-import Link from "next/link";
 import { headers } from "next/headers";
 import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
+import { StandalonePostsGrid } from "@/components/posts/standalone-posts-grid";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
-/** Server `fetch` must use an absolute URL; empty env was producing `/posts` and throwing. */
 async function resolvePostsApiUrl(): Promise<string | null> {
   const raw = (process.env.NEXT_PUBLIC_ADMIN_API || "").trim();
   if (!raw) return null;
@@ -52,10 +51,6 @@ async function getPostsFromDb(): Promise<PostCard[]> {
   return rows;
 }
 
-/**
- * 1) If `NEXT_PUBLIC_ADMIN_API` is set, try that JSON endpoint (separate admin app).
- * 2) Otherwise, or if fetch fails / returns a non-array, load from this app’s `posts` table.
- */
 async function getPosts(): Promise<PostCard[]> {
   const apiUrl = await resolvePostsApiUrl();
   if (apiUrl) {
@@ -68,22 +63,13 @@ async function getPosts(): Promise<PostCard[]> {
         }
       }
     } catch {
-      /* fall through to DB */
+      // fallback to local DB
     }
   }
-
   return getPostsFromDb();
 }
 
-function cloudinaryFourByFive(imageUrl: string) {
-  if (!imageUrl.includes("/upload/")) return imageUrl;
-  return imageUrl.replace(
-    "/upload/",
-    "/upload/ar_4:5,c_fill,g_auto,w_800/",
-  );
-}
-
-export default async function LikeShop() {
+export default async function StandalonePostsPage() {
   const allPosts = await getPosts();
 
   return (
@@ -108,37 +94,7 @@ export default async function LikeShop() {
         </div>
       </header>
 
-      <div className="grid grid-cols-3">
-        {allPosts.map((post) => {
-          const optimizedImage = cloudinaryFourByFive(post.imageUrl);
-
-          return (
-            <Link
-              key={post.id}
-              href={post.destinationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              // CHANGED: aspect-square -> aspect-[4/5]
-              className="aspect-[4/5] relative group overflow-hidden bg-gray-50 border border-gray-100"
-            >
-              <Image
-                src={optimizedImage}
-                fill
-                alt=""
-                className="object-cover group-hover:scale-105 transition duration-700 ease-in-out"
-                sizes="(max-width: 768px) 33vw, 400px"
-              />
-
-              {/* NYT Style Hover */}
-              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="bg-white/90 px-3 py-1.5 text-[10px] font-bold shadow-sm uppercase tracking-tighter">
-                  Read Story
-                </span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+      <StandalonePostsGrid allPosts={allPosts} />
     </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Shield } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,7 +39,9 @@ const PERMISSION_LABELS: Partial<Record<AppPermission, string>> = {
 };
 
 export function SuperAdminPageAccessPanel() {
-  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [savingForUserId, setSavingForUserId] = useState<string | null>(null);
   const [rows, setRows] = useState<StaffAccessRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, AppPermission[]>>({});
@@ -62,16 +64,19 @@ export function SuperAdminPageAccessPanel() {
   };
 
   useEffect(() => {
+    if (!isOpen || hasLoaded) return;
     (async () => {
+      setLoading(true);
       try {
         await load();
+        setHasLoaded(true);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Load failed");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [isOpen, hasLoaded]);
 
   const targetRows = useMemo(
     () =>
@@ -129,34 +134,44 @@ export function SuperAdminPageAccessPanel() {
     }
   };
 
-  if (loading) {
-    return (
-      <Card className="border-slate-200/70 p-5">
+  return (
+    <Card className="space-y-5 border-slate-200/70 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700">
+            <Shield className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              Admin & Owner Page Access
+            </h2>
+            <p className="text-xs text-slate-600">
+              Superadmin can disable specific admin pages for owner/admin
+              accounts.
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsOpen((prev) => !prev)}
+        >
+          {isOpen ? (
+            <ChevronDown className="mr-1 h-4 w-4" />
+          ) : (
+            <ChevronRight className="mr-1 h-4 w-4" />
+          )}
+          {isOpen ? "Hide Access" : "Show Access"}
+        </Button>
+      </div>
+
+      {!isOpen ? null : loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading page access controls...
         </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="space-y-5 border-slate-200/70 p-5">
-      <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700">
-          <Shield className="h-4 w-4" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            Admin & Owner Page Access
-          </h2>
-          <p className="text-xs text-slate-600">
-            Superadmin can disable specific admin pages for owner/admin accounts.
-          </p>
-        </div>
-      </div>
-
-      {targetRows.length === 0 ? (
+      ) : targetRows.length === 0 ? (
         <p className="text-sm text-slate-500">No owner/admin accounts available.</p>
       ) : (
         <div className="space-y-4">
