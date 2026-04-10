@@ -118,7 +118,7 @@ export default async function VenturaArticleBySlug(props: {
                 <div className="flex items-center gap-3">
                   <div className="relative h-12 w-12 flex-shrink-0">
                     <img
-                      src="https://storage.googleapis.com/msgsndr/VPl4AjuzzxeZqlljHIdI/media/691ccd8896e2873808164bed.png"
+                      src="/brand/ventura-profile.jpg"
                       alt="Joe Knows Ventura"
                       className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm border"
                     />

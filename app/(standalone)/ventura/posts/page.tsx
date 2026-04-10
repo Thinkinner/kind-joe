@@ -49,14 +49,14 @@ export default async function VenturaPostsPage() {
         <div className="mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2.5 sm:gap-x-5 sm:gap-y-3">
           <div className="flex h-10 shrink-0 items-center gap-2.5">
             <Image
-              src="/brand/horizontal-logo.svg"
-              width={120}
-              height={28}
-              alt="Ventura posts"
-              className="h-auto w-[120px]"
+              src="/brand/ventura-profile.jpg"
+              width={40}
+              height={40}
+              alt="Joe Knows Ventura"
+              className="h-10 w-10 rounded-full object-cover"
             />
             <span className="text-sm font-semibold leading-none tracking-tight text-neutral-900 sm:text-base">
-              ventura
+              Joe Knows Ventura
             </span>
           </div>
           <div className="flex h-10 items-center">
