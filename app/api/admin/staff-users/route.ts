@@ -42,6 +42,10 @@ const PatchSchema = z
     { message: "Provide staffRoles, directoryRoleMask and/or adminPageAccess." },
   );
 
+const DeleteSchema = z.object({
+  userId: z.string().min(1),
+});
+
 export async function GET() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
   if (!staff.ok) {
@@ -286,4 +290,90 @@ export async function PATCH(req: NextRequest) {
   }
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest) {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
+  if (!staff.ok) {
+    return NextResponse.json(
+      { error: staff.reason },
+      { status: staff.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const caller = staff.user;
+  const callerRoles = getStaffRoles(caller);
+  const callerSuperAdmin = hasSuperAdminRole(callerRoles);
+  const callerOwner = callerRoles.includes("owner");
+  const callerAdmin = callerRoles.includes("admin");
+
+  const parsed = DeleteSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  if (!callerSuperAdmin && !callerOwner && !callerAdmin) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const { userId } = parsed.data;
+  if (userId === caller.id) {
+    return NextResponse.json(
+      { error: "You cannot remove yourself." },
+      { status: 400 },
+    );
+  }
+
+  const [targetRow] = await db
+    .select({
+      id: authUser.id,
+      staffRole: authUser.staffRole,
+      staffRoles: authUser.staffRoles,
+      accountType: authUser.accountType,
+    })
+    .from(authUser)
+    .where(eq(authUser.id, userId))
+    .limit(1);
+
+  if (!targetRow) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+
+  const targetRoles = parseStaffRolesFromDb(targetRow);
+  const targetHasSuperAdmin = hasSuperAdminRole(targetRoles);
+
+  if (!callerSuperAdmin && targetHasSuperAdmin) {
+    return NextResponse.json(
+      { error: "Only superadmin can remove a superadmin member." },
+      { status: 403 },
+    );
+  }
+
+  const [updated] = await db
+    .update(authUser)
+    .set({
+      accountType: "reader",
+      staffRole: null,
+      staffRoles: [],
+      adminPageAccess: null,
+      directoryRoleMask: null,
+    })
+    .where(eq(authUser.id, userId))
+    .returning({
+      id: authUser.id,
+      email: authUser.email,
+    });
+
+  if (!updated) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    id: updated.id,
+    email: updated.email,
+  });
 }

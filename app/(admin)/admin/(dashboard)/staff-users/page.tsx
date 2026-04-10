@@ -28,15 +28,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  CheckCircle2,
   Copy,
+  Globe2,
   Info,
   Mail,
   Loader2,
   MoreHorizontal,
-  Shield,
   UserPlus,
 } from "lucide-react";
 import {
@@ -48,7 +57,6 @@ import {
   PERMISSIONS,
   type AppPermission,
 } from "@/lib/auth/permissions";
-import { SuperAdminPageAccessPanel } from "@/components/admin/super-admin-page-access-panel";
 
 type Row = {
   id: string;
@@ -93,6 +101,9 @@ const PERMISSION_LABELS: Record<AppPermission, string> = {
   [PERMISSIONS.ADMIN_USERS]: "Staff & roles",
 };
 
+const ACCESS_PRESET_OPTIONS = ["admin", "editor", "viewer"] as const;
+type AccessPreset = (typeof ACCESS_PRESET_OPTIONS)[number];
+
 export default function StaffUsersPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
@@ -102,12 +113,17 @@ export default function StaffUsersPage() {
   const [lookupRole, setLookupRole] =
     useState<(typeof INVITE_ROLES)[number]>("writer");
   const [submittingLookup, setSubmittingLookup] = useState(false);
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [globalAccessOpen, setGlobalAccessOpen] = useState(false);
 
   const [modalUser, setModalUser] = useState<Row | null>(null);
   const [draftRoles, setDraftRoles] = useState<string[]>([]);
   const [draftPageAccess, setDraftPageAccess] = useState<AppPermission[]>([]);
   const [draftMask, setDraftMask] = useState("");
   const [savingModal, setSavingModal] = useState(false);
+  const [pendingRemoveUser, setPendingRemoveUser] = useState<Row | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
 
   const load = async () => {
     const [usersRes, invRes] = await Promise.all([
@@ -157,6 +173,27 @@ export default function StaffUsersPage() {
       }
       return prev.filter((x) => x !== role);
     });
+  };
+
+  const applyAccessPreset = (preset: AccessPreset) => {
+    let next: AppPermission[];
+    if (preset === "admin") {
+      next = ALL_ADMIN_PERMISSIONS.filter(
+        (perm) => perm !== PERMISSIONS.ADMIN_SUPERADMIN,
+      );
+    } else if (preset === "editor") {
+      next = [
+        PERMISSIONS.ADMIN_DASHBOARD,
+        PERMISSIONS.ADMIN_ARTICLES,
+        PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
+        PERMISSIONS.ADMIN_ANALYTICS,
+        PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
+        PERMISSIONS.ADMIN_POSTS,
+      ];
+    } else {
+      next = [PERMISSIONS.ADMIN_DASHBOARD, PERMISSIONS.ADMIN_VISITOR_JOURNEYS];
+    }
+    setDraftPageAccess(next);
   };
 
   const saveModal = async () => {
@@ -266,6 +303,58 @@ export default function StaffUsersPage() {
     }
   };
 
+  const resendInvitation = async (invite: PendingInvite) => {
+    setResendingInviteId(invite.id);
+    try {
+      const res = await fetch("/api/admin/staff-invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: invite.email,
+          staffRole: invite.staffRole,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Could not resend invite",
+        );
+      }
+      toast.success(`Invitation resent to ${invite.email}.`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not resend invite");
+    } finally {
+      setResendingInviteId(null);
+    }
+  };
+
+  const removeMember = async () => {
+    if (!pendingRemoveUser) return;
+    setRemovingMember(true);
+    try {
+      const res = await fetch("/api/admin/staff-users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: pendingRemoveUser.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Could not remove member",
+        );
+      }
+      setRows((prev) => prev.filter((row) => row.id !== pendingRemoveUser.id));
+      setPendingRemoveUser(null);
+      setModalUser(null);
+      toast.success("Member removed from team.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove member");
+    } finally {
+      setRemovingMember(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -304,17 +393,29 @@ export default function StaffUsersPage() {
   const viewerCanSeeSuperadmin = Boolean(
     viewerSelfRow?.staffRoles?.includes("superadmin"),
   );
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const visibleStaffRows = staffRows.filter((row) => {
+    if (!normalizedSearch) return true;
+    return (
+      row.name.toLowerCase().includes(normalizedSearch) ||
+      row.email.toLowerCase().includes(normalizedSearch)
+    );
+  });
+  const ownerAdminRows = staffRows.filter((row) => {
+    const roles = row.staffRoles ?? [];
+    return (roles.includes("owner") || roles.includes("admin")) && row.canEditRoles;
+  });
   const editableRoleOptions = viewerCanSeeSuperadmin
     ? [...STAFF_ROLE_PRECEDENCE]
     : STAFF_ROLE_PRECEDENCE.filter((r) => r !== "superadmin");
   const roleBadgeClass = (role: string) => {
     if (role === "superadmin") {
-      return "border-0 bg-indigo-900 text-white";
+      return "rounded-full border border-indigo-900/20 bg-indigo-900/90 px-2.5 py-0.5 text-xs font-medium text-white";
     }
     if (role === "admin") {
-      return "border-0 bg-indigo-100 text-indigo-700";
+      return "rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700";
     }
-    return "border-0 bg-slate-100 text-slate-700";
+    return "rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700";
   };
   const initials = (name: string, email: string) => {
     const src = name.trim() || email;
@@ -339,148 +440,217 @@ export default function StaffUsersPage() {
       <div className="rounded-xl border border-slate-200/70 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Add team member safely</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Team management</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Manage your team&apos;s access levels and invite new collaborators.
+              Manage invites and control member permissions from one place.
             </p>
           </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" size="sm" className="rounded-xl">
-              <UserPlus className="h-4 w-4" />
-              Add member
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add team member</DialogTitle>
-              <DialogDescription>
-                Enter an email. If it already exists, we add a role. If not, we
-                send an invitation.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-1">
-              <div>
-                <label className="sr-only" htmlFor="lookup-email">
-                  Email
-                </label>
-                <Input
-                  id="lookup-email"
-                  type="email"
-                  placeholder="colleague@company.com"
-                  value={lookupEmail}
-                  onChange={(e) => setLookupEmail(e.target.value)}
-                  className="bg-white"
-                />
-              </div>
-              <Select
-                value={lookupRole}
-                onValueChange={(v) =>
-                  setLookupRole(v as (typeof INVITE_ROLES)[number])
-                }
-              >
-                <SelectTrigger className="w-full bg-white sm:w-[170px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVITE_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {exactStaffMatch ? (
-                <p className="text-xs text-amber-700">
-                  This email is already staff.
-                </p>
-              ) : exactExistingMatch ? (
-                <p className="text-xs text-emerald-700">
-                  Found existing user: {exactExistingMatch.name} (
-                  {exactExistingMatch.email})
-                </p>
-              ) : (
-                normalizedLookupEmail && (
-                  <p className="text-xs text-neutral-600">
-                    No exact existing user found. This will send an invitation.
-                  </p>
-                )
-              )}
-              {lookupMatches.length > 0 && !exactExistingMatch && (
-                <div className="rounded-lg border border-neutral-200 bg-white">
-                  {lookupMatches.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      className="flex w-full items-center justify-between border-b border-neutral-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-neutral-50"
-                      onClick={() => setLookupEmail(u.email)}
-                    >
-                      <span className="font-medium text-neutral-900">
-                        {u.name}
-                      </span>
-                      <span className="text-neutral-600">{u.email}</span>
-                    </button>
-                  ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" size="sm" className="rounded-xl">
+                  <UserPlus className="h-4 w-4" />
+                  Add Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add team member</DialogTitle>
+                  <DialogDescription>
+                    Enter an email. If it already exists, we add a role. If not, we
+                    send an invitation.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-1">
+                  <div>
+                    <label className="sr-only" htmlFor="lookup-email">
+                      Email
+                    </label>
+                    <Input
+                      id="lookup-email"
+                      type="email"
+                      placeholder="colleague@company.com"
+                      value={lookupEmail}
+                      onChange={(e) => setLookupEmail(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                  <Select
+                    value={lookupRole}
+                    onValueChange={(v) =>
+                      setLookupRole(v as (typeof INVITE_ROLES)[number])
+                    }
+                  >
+                    <SelectTrigger className="w-full bg-white sm:w-[170px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INVITE_ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {exactStaffMatch ? (
+                    <p className="text-xs text-amber-700">
+                      This email is already staff.
+                    </p>
+                  ) : exactExistingMatch ? (
+                    <p className="text-xs text-emerald-700">
+                      Found existing user: {exactExistingMatch.name} (
+                      {exactExistingMatch.email})
+                    </p>
+                  ) : (
+                    normalizedLookupEmail && (
+                      <p className="text-xs text-neutral-600">
+                        No exact existing user found. This will send an invitation.
+                      </p>
+                    )
+                  )}
+                  {lookupMatches.length > 0 && !exactExistingMatch && (
+                    <div className="rounded-lg border border-neutral-200 bg-white">
+                      {lookupMatches.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          className="flex w-full items-center justify-between border-b border-neutral-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-neutral-50"
+                          onClick={() => setLookupEmail(u.email)}
+                        >
+                          <span className="font-medium text-neutral-900">
+                            {u.name}
+                          </span>
+                          <span className="text-neutral-600">{u.email}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddOpen(false)}
-                disabled={submittingLookup}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void handleLookupSubmit()}
-                disabled={submittingLookup || !!exactStaffMatch}
-              >
-                {submittingLookup ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : exactExistingMatch ? (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add role
-                  </>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Send invite
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAddOpen(false)}
+                    disabled={submittingLookup}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void handleLookupSubmit()}
+                    disabled={submittingLookup || !!exactStaffMatch}
+                  >
+                    {submittingLookup ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : exactExistingMatch ? (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add role
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send invite
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            {viewerCanSeeSuperadmin ? (
+              <Dialog open={globalAccessOpen} onOpenChange={setGlobalAccessOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" size="sm" variant="outline" className="rounded-xl">
+                    <Globe2 className="h-4 w-4" />
+                    Global Access Settings
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Global Access Settings</DialogTitle>
+                    <DialogDescription>
+                      Pick an owner/admin member to edit their page access.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {ownerAdminRows.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      No owner/admin members available.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {ownerAdminRows.map((row) => (
+                        <div
+                          key={row.id}
+                          className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{row.name}</p>
+                            <p className="text-xs text-slate-600">{row.email}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              setGlobalAccessOpen(false);
+                              openEditModal(row);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {viewerCanSeeSuperadmin && <SuperAdminPageAccessPanel />}
-
       {invites.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-800">
-            Pending invitations
-          </h2>
-          <ul className="mt-2 divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white text-sm">
+        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
+          <h2 className="text-sm font-semibold text-amber-900">Pending invitations</h2>
+          <ul className="mt-2 space-y-2 text-sm">
             {invites.map((inv) => (
               <li
                 key={inv.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/70 bg-white px-3 py-2"
               >
-                <span className="font-medium text-neutral-900">{inv.email}</span>
-                <span className="text-neutral-600">
-                  {inv.staffRole} · expires{" "}
-                  {new Date(inv.expiresAt).toLocaleDateString()}
-                </span>
+                <div>
+                  <p className="font-medium text-neutral-900">{inv.email}</p>
+                  <p className="text-neutral-600">
+                    {inv.staffRole} · expires{" "}
+                    {new Date(inv.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void resendInvitation(inv)}
+                  disabled={resendingInviteId === inv.id}
+                >
+                  {resendingInviteId === inv.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Resend"
+                  )}
+                </Button>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <div className="flex items-center justify-between gap-3">
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search member by name or email"
+          className="max-w-sm bg-white"
+        />
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200/70 bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -494,16 +664,9 @@ export default function StaffUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {staffRows.map((r) => {
-              const isStaff = true;
+            {visibleStaffRows.map((r) => {
               const real = r.staffRoles ?? [];
               const displayRoles = formatStaffRolesForDisplay(real);
-              const summary =
-                displayRoles.length > 0
-                  ? displayRoles.join(", ")
-                  : isStaff
-                    ? "—"
-                    : "—";
               const canOpenModal = r.canEditRoles && r.staffRoles != null;
 
               return (
@@ -557,7 +720,7 @@ export default function StaffUsersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
                           <DropdownMenuItem onClick={() => openEditModal(r)}>
-                            Edit Permissions
+                            Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
@@ -568,9 +731,10 @@ export default function StaffUsersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="destructive"
-                            onClick={() =>
-                              toast.message("Remove from team flow coming soon")
-                            }
+                            onClick={() => {
+                              setPendingRemoveUser(r);
+                              setModalUser(null);
+                            }}
                           >
                             Remove from Team
                           </DropdownMenuItem>
@@ -581,10 +745,12 @@ export default function StaffUsersPage() {
                 </tr>
               );
             })}
-            {staffRows.length === 0 && (
+            {visibleStaffRows.length === 0 && (
               <tr>
                 <td colSpan={5} className="p-8 text-center text-neutral-500">
-                  No staff users with roles yet.
+                  {staffRows.length === 0
+                    ? "No staff users with roles yet."
+                    : "No members match your search."}
                 </td>
               </tr>
             )}
@@ -634,7 +800,7 @@ export default function StaffUsersPage() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>Edit roles</DialogTitle>
+            <DialogTitle>Edit Member Permissions</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-1 text-left">
                 <p>
@@ -702,6 +868,24 @@ export default function StaffUsersPage() {
                   Page access (superadmin only): controls which admin pages appear
                   in sidebar and are accessible for this user.
                 </p>
+                <div className="mb-3">
+                  <Select
+                    onValueChange={(value) => applyAccessPreset(value as AccessPreset)}
+                    disabled={savingModal}
+                  >
+                    <SelectTrigger className="w-full bg-white sm:w-[220px]">
+                      <SelectValue placeholder="Apply permission preset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCESS_PRESET_OPTIONS.map((preset) => (
+                        <SelectItem key={preset} value={preset}>
+                          {preset[0].toUpperCase()}
+                          {preset.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {ALL_ADMIN_PERMISSIONS.map((perm) => (
                     <label
@@ -730,7 +914,20 @@ export default function StaffUsersPage() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="w-full sm:justify-between">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!modalUser) return;
+                setPendingRemoveUser(modalUser);
+                setModalUser(null);
+              }}
+              disabled={savingModal || removingMember || modalUser?.isSelf}
+            >
+              Remove Member
+            </Button>
+            <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -742,17 +939,51 @@ export default function StaffUsersPage() {
             <Button
               type="button"
               onClick={() => void saveModal()}
-              disabled={savingModal}
+              disabled={savingModal || removingMember}
             >
               {savingModal ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Save"
+                "Save Changes"
               )}
             </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog
+        open={pendingRemoveUser != null}
+        onOpenChange={(open) => {
+          if (!open && !removingMember) setPendingRemoveUser(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this member? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removingMember}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void removeMember();
+              }}
+              disabled={removingMember}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {removingMember ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Remove Member"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
