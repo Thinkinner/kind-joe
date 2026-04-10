@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Copy,
   ExternalLink,
+  ImagePlus,
   Layout,
   Loader2,
   MousePointerClick,
@@ -60,8 +61,11 @@ export default function AdminPostsPage() {
   const [destinationUrl, setDestinationUrl] = useState("");
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [draggingImage, setDraggingImage] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [search, setSearch] = useState("");
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const apiBase =
     feedType === "ventura" ? "/api/admin/ventura-posts" : "/api/admin/posts";
@@ -120,6 +124,38 @@ export default function AdminPostsPage() {
       toast.error("Could not create post");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof err.error === "string" ? err.error : "Image upload failed",
+        );
+      }
+      const data = await res.json();
+      if (!data.url || typeof data.url !== "string") {
+        throw new Error("Image upload failed");
+      }
+      setImageUrl(data.url);
+      toast.success("Image uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Image upload failed");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -237,6 +273,58 @@ export default function AdminPostsPage() {
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div>
+                <Label htmlFor="img">Image</Label>
+                <input
+                  ref={imageFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    void uploadImageFile(file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageFileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!draggingImage) setDraggingImage(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setDraggingImage(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDraggingImage(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file) return;
+                    void uploadImageFile(file);
+                  }}
+                  className={cn(
+                    "mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-5 text-sm transition-colors",
+                    draggingImage
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
+                  )}
+                >
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading image...
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="h-4 w-4" />
+                      Drag & drop image, or click to browse
+                    </>
+                  )}
+                </button>
+              </div>
+              <div>
                 <Label htmlFor="img">Image URL</Label>
                 <Input
                   id="img"
@@ -278,7 +366,10 @@ export default function AdminPostsPage() {
             <DialogFooter>
               <Button
                 disabled={
-                  saving || !imageUrl.trim() || !destinationUrl.trim()
+                  saving ||
+                  uploadingImage ||
+                  !imageUrl.trim() ||
+                  !destinationUrl.trim()
                 }
                 onClick={create}
               >
