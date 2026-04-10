@@ -1,7 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { Clock3, Trophy, TrendingUp } from "lucide-react";
+import { Clock3, Instagram, Search, Trophy, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -26,6 +26,11 @@ type Props = {
   totalViews: number;
   avgReadTimeLabel: string;
   topCategory: string;
+  todaySourceStats: {
+    google: number;
+    facebook: number;
+    instagram: number;
+  };
 };
 
 export function ArticleAnalyticsDashboard({
@@ -34,6 +39,7 @@ export function ArticleAnalyticsDashboard({
   totalViews,
   avgReadTimeLabel,
   topCategory,
+  todaySourceStats,
 }: Props) {
   const chartConfig = {
     views: {
@@ -44,7 +50,7 @@ export function ArticleAnalyticsDashboard({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="gap-0">
           <div className="space-y-5 p-6">
             <p className="text-sm font-medium tracking-tight text-muted-foreground">
@@ -90,6 +96,43 @@ export function ArticleAnalyticsDashboard({
             </div>
           </div>
         </Card>
+
+        <Card className="gap-0">
+          <div className="space-y-4 p-6">
+            <p className="text-sm font-medium tracking-tight text-muted-foreground">
+              Sources Today
+            </p>
+            <div className="space-y-2 text-sm text-slate-700">
+              <p className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <Search className="h-3.5 w-3.5 text-indigo-500" />
+                  Google
+                </span>
+                <span className="font-semibold tabular-nums">
+                  {todaySourceStats.google.toLocaleString()}
+                </span>
+              </p>
+              <p className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-sky-500" />
+                  Facebook
+                </span>
+                <span className="font-semibold tabular-nums">
+                  {todaySourceStats.facebook.toLocaleString()}
+                </span>
+              </p>
+              <p className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <Instagram className="h-3.5 w-3.5 text-rose-500" />
+                  Instagram
+                </span>
+                <span className="font-semibold tabular-nums">
+                  {todaySourceStats.instagram.toLocaleString()}
+                </span>
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <Card className="gap-0">
@@ -128,11 +171,11 @@ export function ArticleAnalyticsDashboard({
                           })
                         : ""
                     }
-                    formatter={(value) => [
+                    formatter={(value) => (
                       <span className="font-medium tracking-tight text-slate-900">
                         {(value as number).toLocaleString()} views
-                      </span>,
-                    ]}
+                      </span>
+                    )}
                   />
                 }
               />

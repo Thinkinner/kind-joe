@@ -10,12 +10,32 @@ function hostNoPort(host: string | null): string {
   return host.split(":")[0] ?? "";
 }
 
+function normalizeHostFromEnv(value: string | undefined): string | null {
+  if (!value) return null;
+  const raw = value.trim().replace(/\/$/, "");
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return raw.replace(/^https?:\/\//i, "").split("/")[0].split(":")[0].toLowerCase() || null;
+  }
+}
+
+function normalizeBaseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  const raw = value.trim().replace(/\/$/, "");
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
 export function proxy(request: NextRequest) {
-  const adminHost = process.env.ADMIN_DASHBOARD_HOST?.split(":")[0];
-  const mainSiteBase =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? null;
+  const adminHost =
+    normalizeHostFromEnv(process.env.ADMIN_DASHBOARD_HOST) ??
+    normalizeHostFromEnv(process.env.NEXT_PUBLIC_ADMIN_URL);
+  const mainSiteBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL);
   const adminSiteBase =
-    process.env.NEXT_PUBLIC_ADMIN_URL?.replace(/\/$/, "") ??
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_ADMIN_URL) ??
     (adminHost ? `https://${adminHost}` : null);
 
   const host = hostNoPort(request.headers.get("host"));
@@ -48,7 +68,10 @@ export function proxy(request: NextRequest) {
   }
 
   if (adminHost && adminSiteBase && host !== adminHost && path.startsWith("/admin")) {
-    return NextResponse.redirect(new URL(`${path}${search}`, adminSiteBase));
+    const target = new URL(`${path}${search}`, adminSiteBase);
+    if (target.href !== request.nextUrl.href) {
+      return NextResponse.redirect(target);
+    }
   }
 
   const res = NextResponse.next();

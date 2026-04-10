@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const SESSION_KEY = "kj_visit_session_id";
 const VISITOR_KEY = "kj_visit_visitor_id";
 const LAST_SENT_KEY = "kj_visit_last_sent";
+const HEARTBEAT_MS = 15000;
 
 function randomId(prefix: string) {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -37,6 +38,21 @@ function shouldTrackPath(pathname: string) {
   return true;
 }
 
+function sendTrack(payload: {
+  sessionId: string;
+  visitorId: string;
+  path: string;
+  query: string | null;
+  referrer: string | null;
+}) {
+  return fetch("/api/track-page", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  });
+}
+
 function TrackerLogic() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,9 +62,6 @@ function TrackerLogic() {
 
     const query = searchParams.toString();
     const pageKey = `${pathname}${query ? `?${query}` : ""}`;
-    const lastSent = sessionStorage.getItem(LAST_SENT_KEY);
-    if (lastSent === pageKey) return;
-
     const payload = {
       sessionId: getOrCreateSessionId(),
       visitorId: getOrCreateVisitorId(),
@@ -56,16 +69,41 @@ function TrackerLogic() {
       query: query || null,
       referrer: document.referrer || null,
     };
+    const startedAt = Date.now();
 
-    sessionStorage.setItem(LAST_SENT_KEY, pageKey);
-    void fetch("/api/track-page", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      keepalive: true,
-    }).catch(() => {
-      // Tracking should never break the page experience.
-    });
+    const lastSent = sessionStorage.getItem(LAST_SENT_KEY);
+    if (lastSent !== pageKey) {
+      sessionStorage.setItem(LAST_SENT_KEY, pageKey);
+      void sendTrack(payload).catch(() => {
+        // Tracking should never break the page experience.
+      });
+    }
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void sendTrack(payload).catch(() => {
+        // Tracking should never break the page experience.
+      });
+    }, HEARTBEAT_MS);
+
+    const onHidden = () => {
+      if (document.visibilityState !== "hidden") return;
+      void sendTrack(payload).catch(() => {
+        // Tracking should never break the page experience.
+      });
+    };
+
+    document.addEventListener("visibilitychange", onHidden);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onHidden);
+      if (Date.now() - startedAt >= 1500) {
+        void sendTrack(payload).catch(() => {
+          // Tracking should never break the page experience.
+        });
+      }
+    };
   }, [pathname, searchParams]);
 
   return null;

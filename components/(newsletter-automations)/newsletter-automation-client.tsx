@@ -6,7 +6,6 @@ import {
   History,
   Loader2,
   Sparkles,
-  Wand2,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -181,12 +180,12 @@ export function NewsletterAutomationClient() {
 
       <main className="min-h-0 w-full flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8">
         {currentView === "generator" && (
-          <div className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-4 pb-28">
+          <div className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-4 pb-32">
             <div className="mb-6 rounded-xl border border-slate-200/70 bg-white px-4 py-3 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Generator
               </p>
-              <h2 className="mt-1 text-3xl font-semibold tracking-tight text-neutral-900">
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-neutral-900">
                 New edition
               </h2>
               <p className="mt-1.5 text-sm text-neutral-600">
@@ -207,29 +206,47 @@ export function NewsletterAutomationClient() {
                 </div>
               </div>
             ) : (
-              <div className="mb-8 flex gap-3 rounded-xl border border-slate-200/70 bg-white py-3 pl-3 pr-4 text-sm text-neutral-700 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.18)]">
-                <div className="mt-0.5 rounded-full bg-indigo-100 p-1.5">
-                  <Wand2 className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
-                </div>
-                <div>
-                  <p className="font-medium text-neutral-900">
-                    {ingestSummary?.count ?? 0} article
-                    {(ingestSummary?.count ?? 0) === 1 ? "" : "s"} in range
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-neutral-600">
-                    Using rows where the article publish time (or ingest time if missing)
-                    is within the last{" "}
-                    <strong className="text-neutral-800">
-                      {ingestSummary?.freshHours ?? NEWSLETTER_INGEST_FRESH_HOURS} hours
-                    </strong>
-                    . If this count is 0, <strong className="text-neutral-800">Start generation</strong> still runs and pulls the built-in RSS feeds instead.
-                  </p>
-                  <div className="mt-3">
-                    <Progress
-                      value={Math.min(100, ((ingestSummary?.count ?? 0) / 30) * 100)}
-                      className="h-1.5 bg-indigo-100"
-                    />
+              <div
+                className={cn(
+                  "mb-8 rounded-xl border p-4 text-sm shadow-[0_10px_30px_-20px_rgb(15_23_42/0.18)]",
+                  (ingestSummary?.count ?? 0) === 0
+                    ? "border-slate-200 bg-slate-50 text-slate-800"
+                    : "border-slate-200/70 bg-white text-neutral-700",
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={cn(
+                      "mt-0.5 rounded-lg p-2",
+                      (ingestSummary?.count ?? 0) === 0
+                        ? "bg-slate-200/70 text-slate-600"
+                        : "bg-indigo-100/80 text-indigo-600",
+                    )}
+                  >
+                    <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
                   </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold tracking-tight text-slate-900">
+                      {ingestSummary?.count ?? 0} article
+                      {(ingestSummary?.count ?? 0) === 1 ? "" : "s"} in range
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      Using rows where the article publish time (or ingest time if missing)
+                      is within the last{" "}
+                      <strong className="text-slate-800">
+                        {ingestSummary?.freshHours ?? NEWSLETTER_INGEST_FRESH_HOURS} hours
+                      </strong>
+                      . If this count is 0,{" "}
+                      <strong className="text-slate-800">Start generation</strong> still runs
+                      and pulls the built-in RSS feeds instead.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Progress
+                    value={Math.min(100, ((ingestSummary?.count ?? 0) / 30) * 100)}
+                    className="h-1.5 bg-slate-200/70"
+                  />
                 </div>
               </div>
             )}
@@ -238,16 +255,18 @@ export function NewsletterAutomationClient() {
               config={personalization}
               setConfig={setPersonalization}
             />
-            <div className="fixed bottom-4 left-1/2 z-20 w-[min(720px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200/70 bg-white/95 p-3 shadow-[0_20px_45px_-24px_rgb(15_23_42/0.35)] backdrop-blur">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-slate-500">
-                  {isGenerating ? statusLabel : "Ready to generate a new newsletter edition"}
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/80 bg-white/90 backdrop-blur">
+              <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+                <div className="text-xs text-slate-600">
+                  {isGenerating
+                    ? statusLabel
+                    : "Ready to generate a new newsletter edition"}
                 </div>
                 <button
                   type="button"
                   onClick={handleGenerate}
                   disabled={isGenerating || !ingestReady}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_-18px_rgb(225_29_72/0.8)] transition hover:from-rose-500 hover:to-orange-500 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_-18px_rgba(79,70,229,0.65)] transition hover:bg-[#4338CA] disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

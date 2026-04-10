@@ -61,6 +61,83 @@ const cleanJson = (text: string): string => {
   return cleaned.substring(start, end + 1).trim();
 };
 
+function normalizeSubject(raw: string): string {
+  return raw
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/^(here(?:'s| is)\s+(?:the\s+)?)?subject\s*[:\-]\s*/i, "")
+    .replace(/^(email\s+)?subject\s*[:\-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isBoilerplateLine(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return (
+    !v ||
+    v === "here is the json requested" ||
+    v === "here's the json requested" ||
+    v === "json requested" ||
+    v === "here is the json" ||
+    v === "here's the json"
+  );
+}
+
+function extractSubjectFromText(text: string): string {
+  if (!text) return "";
+
+  const cleanedJson = cleanJson(text);
+  try {
+    const parsed = JSON.parse(cleanedJson) as { subject?: unknown; title?: unknown };
+    const fromJson =
+      typeof parsed.subject === "string"
+        ? parsed.subject
+        : typeof parsed.title === "string"
+          ? parsed.title
+          : "";
+    const normalized = normalizeSubject(fromJson);
+    if (normalized) return normalized;
+  } catch {
+    // Non-JSON fallback below.
+  }
+
+  const stripped = text
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
+  const subjectMatch = stripped.match(/(?:email\s+)?subject\s*[:\-]\s*(.+)/i);
+  if (subjectMatch?.[1]) {
+    const fromMatch = normalizeSubject(subjectMatch[1]);
+    if (fromMatch && !isBoilerplateLine(fromMatch)) return fromMatch;
+  }
+
+  const firstLine = stripped.split(/\r?\n/).find((line) => line.trim()) || "";
+  const normalizedLine = normalizeSubject(firstLine);
+  if (normalizedLine && !isBoilerplateLine(normalizedLine)) return normalizedLine;
+
+  const nextLine = stripped
+    .split(/\r?\n/)
+    .map((line) => normalizeSubject(line))
+    .find((line) => line && !isBoilerplateLine(line));
+  if (nextLine) return nextLine;
+
+  const normalizedAll = normalizeSubject(stripped);
+  return isBoilerplateLine(normalizedAll) ? "" : normalizedAll;
+}
+
+function fallbackSubjectFromLeadStory(leadStory: NewsletterStory): string {
+  const raw = normalizeSubject(leadStory.headline || "");
+  if (!raw) return "Top Story Update";
+
+  const words = raw
+    .replace(/[^\w\s'-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "Top Story Update";
+
+  const picked = words.slice(0, 8).join(" ").trim();
+  return picked || "Top Story Update";
+}
+
 const emailSubjectSuggestSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -190,10 +267,15 @@ Rules (follow strictly):
         maxOutputTokens: 128,
       },
     });
-    const cleanedText = cleanJson(response.text || "{}");
-    const parsed = JSON.parse(cleanedText) as { subject?: string };
-    const s = (parsed.subject || "").trim();
-    if (!s) throw new Error("Empty subject");
+    const s = extractSubjectFromText(response.text || "");
+    if (!s) {
+      const fallback = fallbackSubjectFromLeadStory(leadStory);
+      console.warn("newsletter_subject_fallback_used", {
+        leadHeadline: leadStory.headline,
+        fallback,
+      });
+      return fallback;
+    }
     return s;
   });
 }

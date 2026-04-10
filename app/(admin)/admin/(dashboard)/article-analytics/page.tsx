@@ -18,8 +18,52 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type TodaySourceStats = {
+  google: number;
+  facebook: number;
+  instagram: number;
+};
+
+function toHost(referrer?: string | null): string {
+  if (!referrer) return "";
+  try {
+    return new URL(referrer).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function aggregateTodaySources(
+  rows: Array<{ trafficSource: string | null; utmSource: string | null; referrer: string | null; views: number }>,
+): TodaySourceStats {
+  const out: TodaySourceStats = { google: 0, facebook: 0, instagram: 0 };
+  for (const row of rows) {
+    const joined = [row.trafficSource, row.utmSource, toHost(row.referrer)]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const views = row.views ?? 0;
+    if (!views) continue;
+
+    if (joined.includes("google") || joined.includes("search")) {
+      out.google += views;
+    }
+    if (joined.includes("facebook") || joined.includes("fb.com") || joined === "fb") {
+      out.facebook += views;
+    }
+    if (
+      joined.includes("instagram") ||
+      joined.includes("instagr.am") ||
+      joined === "ig"
+    ) {
+      out.instagram += views;
+    }
+  }
+  return out;
+}
+
 export default async function ArticleAnalyticsPage() {
-  const [data, dailyViewsRaw, avgReadMinutesRaw, topCategoryRaw] =
+  const [data, dailyViewsRaw, avgReadMinutesRaw, topCategoryRaw, todaySourcesRaw] =
     await Promise.all([
       db
         .select({
@@ -70,6 +114,20 @@ export default async function ArticleAnalyticsPage() {
         .groupBy(sql`COALESCE(${articles.category}, 'General')`)
         .orderBy(desc(sql`COUNT(${articlePageviews.id})`))
         .limit(1),
+      db
+        .select({
+          trafficSource: articlePageviews.trafficSource,
+          utmSource: articlePageviews.utmSource,
+          referrer: articlePageviews.referrer,
+          views: sql<number>`CAST(COUNT(${articlePageviews.id}) AS INT)`,
+        })
+        .from(articlePageviews)
+        .where(gte(articlePageviews.viewedAt, sql`DATE_TRUNC('day', NOW())`))
+        .groupBy(
+          articlePageviews.trafficSource,
+          articlePageviews.utmSource,
+          articlePageviews.referrer,
+        ),
     ]);
 
   const rows: ArticleTrafficRow[] = data.map((r) => ({
@@ -87,6 +145,7 @@ export default async function ArticleAnalyticsPage() {
   const seconds = Math.round((avgReadMinutes - minutes) * 60);
   const avgReadTimeLabel = `${minutes}m ${String(seconds).padStart(2, "0")}s`;
   const topCategory = topCategoryRaw[0]?.category ?? "General";
+  const todaySourceStats = aggregateTodaySources(todaySourcesRaw);
 
   const dailyViewsMap = new Map(
     dailyViewsRaw.map((item) => [item.day, item.views ?? 0]),
@@ -119,6 +178,7 @@ export default async function ArticleAnalyticsPage() {
         totalViews={totalViews}
         avgReadTimeLabel={avgReadTimeLabel}
         topCategory={topCategory}
+        todaySourceStats={todaySourceStats}
       />
     </div>
   );

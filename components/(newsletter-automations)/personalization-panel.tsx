@@ -23,17 +23,19 @@ const PersonalizationPanel: React.FC<PersonalizationPanelProps> = ({
 
   const fieldClass = cn(
     "w-full min-h-[120px] resize-y rounded-xl border border-transparent bg-slate-50/80 p-3 text-sm transition-colors",
-    "placeholder:font-mono placeholder:italic placeholder:text-muted-foreground/35",
+    "placeholder:font-mono placeholder:italic placeholder:text-muted-foreground/20",
     "focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200/50",
   );
   const chipClass =
-    "rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] text-indigo-700";
+    "rounded-full border border-indigo-300/70 bg-transparent px-2.5 py-1 text-[11px] text-indigo-700";
+  const iconWrapClass = "inline-flex rounded-lg bg-indigo-100/80 p-1.5";
+  const iconClass = "h-4 w-4 text-indigo-600";
 
   return (
     <section className="mb-10 space-y-4">
       <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-4 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.18)] sm:px-5">
         <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-neutral-900">
-          <span className="inline-flex rounded-full bg-indigo-100 p-1.5">
+          <span className="inline-flex rounded-lg bg-indigo-100/80 p-1.5">
             <Bot className="h-5 w-5 text-indigo-600" aria-hidden />
           </span>
           AI training &amp; persona
@@ -43,11 +45,11 @@ const PersonalizationPanel: React.FC<PersonalizationPanelProps> = ({
         </p>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         <Card className="gap-0 p-5">
           <label className="mb-2 flex items-center gap-2 text-sm font-medium tracking-tight text-neutral-800">
-            <span className="inline-flex rounded-full bg-violet-100 p-1">
-              <BrainCircuit className="h-4 w-4 text-violet-600" aria-hidden />
+            <span className={iconWrapClass}>
+              <BrainCircuit className={iconClass} aria-hidden />
             </span>
             Content strategy
           </label>
@@ -67,8 +69,8 @@ const PersonalizationPanel: React.FC<PersonalizationPanelProps> = ({
 
         <Card className="gap-0 p-5">
           <label className="mb-2 flex items-center gap-2 text-sm font-medium tracking-tight text-neutral-800">
-            <span className="inline-flex rounded-full bg-indigo-100 p-1">
-              <PenLine className="h-4 w-4 text-indigo-600" aria-hidden />
+            <span className={iconWrapClass}>
+              <PenLine className={iconClass} aria-hidden />
             </span>
             Writing style &amp; voice
           </label>
@@ -88,8 +90,8 @@ const PersonalizationPanel: React.FC<PersonalizationPanelProps> = ({
 
         <Card className="gap-0 p-5">
           <label className="mb-2 flex items-center gap-2 text-sm font-medium tracking-tight text-neutral-800">
-            <span className="inline-flex rounded-full bg-rose-100 p-1">
-              <Sparkles className="h-4 w-4 text-rose-600" aria-hidden />
+            <span className={iconWrapClass}>
+              <Sparkles className={iconClass} aria-hidden />
             </span>
             Example newsletter (optional)
           </label>

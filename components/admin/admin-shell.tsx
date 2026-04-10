@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   Settings,
   LogOut,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -48,6 +49,7 @@ const baseNav = [
   { href: "/admin/predictions", label: "News Predictions", icon: Sparkles, permission: PERMISSIONS.ADMIN_PREDICTIONS },
   { href: "/admin/webhooks", label: "Webhooks", icon: Webhook, permission: PERMISSIONS.ADMIN_WEBHOOKS },
   { href: "/admin/ingest-data", label: "Ingest data", icon: Database, permission: PERMISSIONS.ADMIN_INGEST_DATA },
+  { href: "/admin/activity-log", label: "Activity log", icon: History, permission: PERMISSIONS.ADMIN_SUPERADMIN },
   { href: "/admin/staff-users", label: "Staff & roles", icon: Users, permission: PERMISSIONS.ADMIN_USERS },
 ] as const;
 

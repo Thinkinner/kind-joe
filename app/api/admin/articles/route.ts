@@ -9,6 +9,7 @@ import {
   articleTags,
   categories,
   tags as tagsTable,
+  users,
 } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
@@ -93,8 +94,10 @@ export async function GET(request: NextRequest) {
       publishAt: articles.publishAt,
       updatedAt: articles.updatedAt,
       isDraft: articles.isDraft,
+      authorName: users.name,
     })
     .from(articles)
+    .leftJoin(users, eq(users.id, articles.authorId))
     .where(whereClause)
     .orderBy(desc(articles.updatedAt))
     .limit(limit)

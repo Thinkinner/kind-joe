@@ -4,22 +4,44 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2 } from "lucide-react";
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/helpers/articles";
 import { toast } from "sonner";
 
 type Props = {
   articleId?: string;
+  postCreateRedirectTo?: string;
+  initialValues?: {
+    title?: string;
+    slug?: string;
+    excerpt?: string;
+    category?: string;
+    tags?: string[];
+    draftHtml?: string;
+  };
 };
 
-export function AdminArticleForm({ articleId }: Props) {
+export function AdminArticleForm({
+  articleId,
+  postCreateRedirectTo = "/admin/articles",
+  initialValues,
+}: Props) {
   const router = useRouter();
   const editorRef = useRef<Editor | null>(null);
   const [loading, setLoading] = useState(!!articleId);
@@ -39,6 +61,14 @@ export function AdminArticleForm({ articleId }: Props) {
   });
   const [contentHtml, setContentHtml] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [postImageUrl, setPostImageUrl] = useState("");
+  const [postImageUploading, setPostImageUploading] = useState(false);
+  const [postImageDragging, setPostImageDragging] = useState(false);
+  const [showPostPrompt, setShowPostPrompt] = useState(false);
+  const [pendingCreatedSlug, setPendingCreatedSlug] = useState("");
+  const [savingPostCard, setSavingPostCard] = useState(false);
+  const postImageInputRef = useRef<HTMLInputElement | null>(null);
+  const appliedInitialRef = useRef(false);
 
   useEffect(() => {
     if (!articleId) return;
@@ -76,6 +106,17 @@ export function AdminArticleForm({ articleId }: Props) {
       cancelled = true;
     };
   }, [articleId]);
+
+  useEffect(() => {
+    if (articleId || appliedInitialRef.current || !initialValues) return;
+    appliedInitialRef.current = true;
+    if (initialValues.title) setTitle(initialValues.title);
+    if (initialValues.slug) setSlug(initialValues.slug);
+    if (initialValues.excerpt) setExcerpt(initialValues.excerpt);
+    if (initialValues.category) setCategory(initialValues.category);
+    if (Array.isArray(initialValues.tags)) setTags(initialValues.tags);
+    if (initialValues.draftHtml) setContentHtml(initialValues.draftHtml);
+  }, [articleId, initialValues]);
 
   const onTitle = (v: string) => {
     setTitle(v);
@@ -153,11 +194,86 @@ export function AdminArticleForm({ articleId }: Props) {
       }
       const data = await res.json();
       toast.success("Created");
-      router.push(`/admin/articles/${data.id}/edit`);
+      const finalSlug = slugify(slug || title);
+      setPendingCreatedSlug(finalSlug || String(data.slug ?? ""));
+      setShowPostPrompt(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadPostImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    setPostImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      if (data.url) setPostImageUrl(String(data.url));
+      toast.success("Post image uploaded");
+    } catch {
+      toast.error("Upload failed — check Cloudinary env");
+    } finally {
+      setPostImageUploading(false);
+    }
+  };
+
+  const finishAfterCreate = () => {
+    setShowPostPrompt(false);
+    router.replace(postCreateRedirectTo);
+    router.refresh();
+  };
+
+  const createPostCard = async () => {
+    if (!postImageUrl.trim()) {
+      toast.message("Upload a post image first");
+      return;
+    }
+    if (!pendingCreatedSlug.trim()) {
+      finishAfterCreate();
+      return;
+    }
+    setSavingPostCard(true);
+    try {
+      const siteBase = (
+        process.env.NEXT_PUBLIC_SITE_URL || "https://www.kindjoe.com"
+      ).replace(/\/$/, "");
+      const lowerCategory = category.trim().toLowerCase();
+      const isVentura =
+        lowerCategory.includes("ventura") ||
+        tags.some((tag) => tag.toLowerCase().includes("ventura"));
+      const destinationUrl = isVentura
+        ? `${siteBase}/ventura/${pendingCreatedSlug}`
+        : `${siteBase}/${pendingCreatedSlug}`;
+      const endpoint = isVentura ? "/api/admin/ventura-posts" : "/api/admin/posts";
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: postImageUrl,
+          destinationUrl,
+        }),
+      });
+      if (!res.ok) throw new Error("Could not create post card");
+      toast.success("Post card created");
+      finishAfterCreate();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not create post card",
+      );
+    } finally {
+      setSavingPostCard(false);
     }
   };
 
@@ -268,7 +384,7 @@ export function AdminArticleForm({ articleId }: Props) {
               <Label className="text-sm font-medium tracking-tight">Main editor</Label>
               <AdminBlockEditor
                 initialDoc={blocks}
-                initialHtml={articleId ? contentHtml : undefined}
+                initialHtml={contentHtml || undefined}
                 onChange={onEditorChange}
                 onEditorReady={(ed) => {
                   editorRef.current = ed;
@@ -397,6 +513,112 @@ export function AdminArticleForm({ articleId }: Props) {
           </Card>
         </aside>
       </div>
+
+      <Dialog open={showPostPrompt} onOpenChange={setShowPostPrompt}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Post Image</DialogTitle>
+            <DialogDescription>
+              Upload a tile image for this article post card. Link URL is
+              generated automatically from the article slug.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <input
+              ref={postImageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                void uploadPostImageFile(file);
+                e.currentTarget.value = "";
+              }}
+            />
+
+            {postImageUrl ? (
+              <div className="space-y-3">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  <img
+                    src={postImageUrl}
+                    alt="Post preview"
+                    className="h-[200px] w-full object-cover"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPostImageUrl("")}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => postImageInputRef.current?.click()}
+                  >
+                    Change
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => postImageInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!postImageDragging) setPostImageDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setPostImageDragging(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setPostImageDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (!file) return;
+                  void uploadPostImageFile(file);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-8 text-sm transition-colors",
+                  postImageDragging
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
+                )}
+              >
+                {postImageUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading image...
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="h-4 w-4" />
+                    Drag & drop image, or click to browse
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={finishAfterCreate}>
+              Skip
+            </Button>
+            <Button
+              onClick={createPostCard}
+              disabled={savingPostCard || postImageUploading || !postImageUrl}
+            >
+              {savingPostCard ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save Post Card
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

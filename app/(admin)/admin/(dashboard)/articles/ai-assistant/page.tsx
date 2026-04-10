@@ -1,5 +1,5 @@
-import { ArticleAssistantPanel } from "@/components/admin/cms/article-assistant-panel";
+import { NewArticleWithAssistant } from "@/components/admin/cms/new-article-with-assistant";
 
 export default function AdminArticleAssistantPage() {
-  return <ArticleAssistantPanel />;
+  return <NewArticleWithAssistant />;
 }

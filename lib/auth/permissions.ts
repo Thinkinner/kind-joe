@@ -13,6 +13,7 @@ export const PERMISSIONS = {
   ADMIN_WEBHOOKS: "admin.webhooks",
   ADMIN_INGEST_DATA: "admin.ingest_data",
   ADMIN_SECURITY: "admin.security",
+  ADMIN_SUPERADMIN: "admin.superadmin",
   /** Backward-compatible alias. */
   ADMIN_SETTINGS: "admin.security",
   /** Staff directory & roles — gated via ROLE_PERMISSIONS + route rules. */
@@ -42,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_WEBHOOKS,
     PERMISSIONS.ADMIN_INGEST_DATA,
     PERMISSIONS.ADMIN_SECURITY,
+    PERMISSIONS.ADMIN_SUPERADMIN,
     PERMISSIONS.ADMIN_USERS,
   ],
   owner: [
@@ -115,6 +117,9 @@ export function userHasPermission(
   permission: AppPermission,
 ): boolean {
   const roles = getStaffRoles(user);
+  if (permission === PERMISSIONS.ADMIN_SUPERADMIN) {
+    return roles.some((r) => isSuperAdminRole(r));
+  }
   if (roles.some((r) => isSuperAdminRole(r))) return true;
   const pageAccess = normalizeUserPageAccess(user);
   if (pageAccess) return pageAccess.includes(permission);

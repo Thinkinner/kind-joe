@@ -77,6 +77,10 @@ export default async function AdminLayout({
       effectiveUser,
       PERMISSIONS.ADMIN_SECURITY,
     ),
+    [PERMISSIONS.ADMIN_SUPERADMIN]: userHasPermission(
+      effectiveUser,
+      PERMISSIONS.ADMIN_SUPERADMIN,
+    ),
     [PERMISSIONS.ADMIN_USERS]: userHasPermission(
       effectiveUser,
       PERMISSIONS.ADMIN_USERS,

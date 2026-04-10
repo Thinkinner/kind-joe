@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -21,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -29,7 +27,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +56,6 @@ export default function AdminPostsPage() {
   const [open, setOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [destinationUrl, setDestinationUrl] = useState("");
-  const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [draggingImage, setDraggingImage] = useState(false);
@@ -107,7 +103,6 @@ export default function AdminPostsPage() {
         body: JSON.stringify({
           imageUrl,
           destinationUrl,
-          caption,
         }),
       });
       if (!res.ok) throw new Error("create");
@@ -118,7 +113,6 @@ export default function AdminPostsPage() {
       setEditingPost(null);
       setImageUrl("");
       setDestinationUrl("");
-      setCaption("");
       await load();
     } catch {
       toast.error("Could not create post");
@@ -263,17 +257,17 @@ export default function AdminPostsPage() {
               {addButtonLabel}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="overflow-hidden p-0 sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="px-8 pt-7">
                 {editingPost
                   ? `Edit ${feedType === "ventura" ? "Ventura post" : "post"}`
-                  : `New ${feedType === "ventura" ? "Ventura post" : "post"}`}
+                  : "Create Post"}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-2">
+            <div className="space-y-6 px-8 py-6">
               <div>
-                <Label htmlFor="img">Image</Label>
+                <Label htmlFor="img" className="mb-2 block">Image</Label>
                 <input
                   ref={imageFileInputRef}
                   type="file"
@@ -286,84 +280,89 @@ export default function AdminPostsPage() {
                     e.currentTarget.value = "";
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => imageFileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (!draggingImage) setDraggingImage(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    setDraggingImage(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDraggingImage(false);
-                    const file = e.dataTransfer.files?.[0];
-                    if (!file) return;
-                    void uploadImageFile(file);
-                  }}
-                  className={cn(
-                    "mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-5 text-sm transition-colors",
-                    draggingImage
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
-                  )}
-                >
-                  {uploadingImage ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading image...
-                    </>
-                  ) : (
-                    <>
-                      <ImagePlus className="h-4 w-4" />
-                      Drag & drop image, or click to browse
-                    </>
-                  )}
-                </button>
+                {imageUrl.trim() ? (
+                  <div className="mt-2 space-y-3">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      <img
+                        src={imageUrl}
+                        alt="Selected post media"
+                        className="h-[200px] w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-lg"
+                        onClick={() => setImageUrl("")}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="rounded-lg"
+                        onClick={() => imageFileInputRef.current?.click()}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => imageFileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (!draggingImage) setDraggingImage(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setDraggingImage(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDraggingImage(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (!file) return;
+                        void uploadImageFile(file);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-5 text-sm transition-colors",
+                        draggingImage
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
+                      )}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading image...
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="h-4 w-4" />
+                          Drag & drop image, or click to browse
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
-                <Label htmlFor="img">Image URL</Label>
-                <Input
-                  id="img"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://res.cloudinary.com/…"
-                />
-                <p className="mt-1 text-xs text-neutral-500">
-                  Use{" "}
-                  <Link
-                    href="/admin/articles/new"
-                    className="text-orange-700 underline"
-                  >
-                    article editor
-                  </Link>{" "}
-                  upload or Cloudinary.
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="dest">Destination URL</Label>
+                <Label htmlFor="dest">Link URL</Label>
                 <Input
                   id="dest"
                   type="url"
                   value={destinationUrl}
                   onChange={(e) => setDestinationUrl(e.target.value)}
                   placeholder="https://…"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cap">Caption (optional)</Label>
-                <Textarea
-                  id="cap"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  rows={2}
+                  className="rounded-lg"
                 />
               </div>
             </div>
-            <DialogFooter>
+            <div className="flex justify-end border-t border-slate-200 px-8 py-5">
               <Button
                 disabled={
                   saving ||
@@ -372,11 +371,12 @@ export default function AdminPostsPage() {
                   !destinationUrl.trim()
                 }
                 onClick={create}
+                className="rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {editingPost ? "Update" : "Save"}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
         </div>
@@ -425,7 +425,6 @@ export default function AdminPostsPage() {
                     setEditingPost(p);
                     setImageUrl(p.imageUrl);
                     setDestinationUrl(p.destinationUrl);
-                    setCaption(p.caption ?? "");
                     setOpen(true);
                   }}
                 >
@@ -498,7 +497,6 @@ export default function AdminPostsPage() {
               setEditingPost(null);
               setImageUrl("");
               setDestinationUrl("");
-              setCaption("");
               setOpen(true);
             }}
           >

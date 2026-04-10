@@ -22,6 +22,7 @@ type GroupedStep = {
   path: string;
   query: string | null;
   viewedAt: Date;
+  lastViewedAt: Date;
   count: number;
 };
 
@@ -35,6 +36,8 @@ type JourneySummary = {
 };
 
 export const dynamic = "force-dynamic";
+const EVENT_FETCH_LIMIT = 1200;
+const JOURNEY_DISPLAY_LIMIT = 20;
 
 function groupConsecutiveSteps(steps: JourneyEvent[]) {
   const next: GroupedStep[] = [];
@@ -44,35 +47,36 @@ function groupConsecutiveSteps(steps: JourneyEvent[]) {
     const prevPath = prev ? `${prev.path}${prev.query ? `?${prev.query}` : ""}` : null;
     if (currentPath === prevPath && prev) {
       prev.count += 1;
+      prev.lastViewedAt = step.viewedAt;
       continue;
     }
-    next.push({ ...step, count: 1 });
+    next.push({ ...step, lastViewedAt: step.viewedAt, count: 1 });
   }
   return next;
 }
 
-function formatDuration(from: Date, to: Date) {
-  const totalSeconds = Math.max(
-    0,
-    Math.round((to.getTime() - from.getTime()) / 1000),
-  );
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+function formatDuration(from: Date, to: Date, stepCount: number) {
+  const totalSeconds = Math.max(0, (to.getTime() - from.getTime()) / 1000);
+  if (totalSeconds <= 0 && stepCount > 1) return "<1s";
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+  const rounded = Math.round(totalSeconds);
+  const minutes = Math.floor(rounded / 60);
+  const seconds = rounded % 60;
   return `${minutes}m ${seconds}s`;
 }
 
 function formatStepDelta(current: Date, previous?: Date) {
   if (!previous) return "+0s";
-  const seconds = Math.max(
-    0,
-    Math.round((current.getTime() - previous.getTime()) / 1000),
-  );
-  if (seconds >= 60) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
+  const seconds = Math.max(0, (current.getTime() - previous.getTime()) / 1000);
+  if (seconds < 1) return "+<1s";
+  if (seconds < 60) return `+${seconds.toFixed(1)}s`;
+  const rounded = Math.round(seconds);
+  if (rounded >= 60) {
+    const m = Math.floor(rounded / 60);
+    const s = rounded % 60;
     return `+${m}m ${s}s`;
   }
-  return `+${seconds}s`;
+  return `+${rounded}s`;
 }
 
 function pathIcon(path: string) {
@@ -81,7 +85,13 @@ function pathIcon(path: string) {
   return Circle;
 }
 
-export default async function VisitorJourneysPage() {
+export default async function VisitorJourneysPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  await searchParams;
+
   const rows = await db
     .select({
       sessionId: visitorJourneyEvents.sessionId,
@@ -92,7 +102,7 @@ export default async function VisitorJourneysPage() {
     })
     .from(visitorJourneyEvents)
     .orderBy(desc(visitorJourneyEvents.viewedAt))
-    .limit(1500);
+    .limit(EVENT_FETCH_LIMIT);
 
   const bySession = new Map<string, JourneySummary>();
 
@@ -136,7 +146,7 @@ export default async function VisitorJourneysPage() {
       };
     })
     .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
-    .slice(0, 60);
+    .slice(0, JOURNEY_DISPLAY_LIMIT);
 
   const visitorSessionCounts = new Map<string, number>();
   for (const journey of journeys) {
@@ -164,6 +174,9 @@ export default async function VisitorJourneysPage() {
         </h1>
         <p className="mt-1 text-sm font-normal tracking-tight text-neutral-600">
           Footstep trail of page navigation (all public pages, admin excluded).
+        </p>
+        <p className="mt-1 text-xs text-neutral-500">
+          Showing latest {JOURNEY_DISPLAY_LIMIT} journeys.
         </p>
       </div>
 
@@ -215,7 +228,12 @@ export default async function VisitorJourneysPage() {
                   <UserCircle2 className="h-5 w-5 shrink-0 text-slate-500" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium tracking-tight text-slate-800">
-                      Duration: {formatDuration(journey.startedAt, journey.lastSeenAt)}
+                      Duration:{" "}
+                      {formatDuration(
+                        journey.startedAt,
+                        journey.lastSeenAt,
+                        journey.steps.length,
+                      )}
                     </p>
                     <p className="text-[11px] text-slate-500">
                       Started {journey.startedAt.toLocaleString()} · Last seen{" "}
@@ -258,6 +276,11 @@ export default async function VisitorJourneysPage() {
                     const isLast = idx === journey.steps.length - 1;
                     const Icon = pathIcon(step.path);
                     const prev = journey.steps[idx - 1];
+                    const stepDuration = formatDuration(
+                      step.viewedAt,
+                      step.lastViewedAt,
+                      step.count,
+                    );
                     return (
                       <li key={`${journey.sessionId}_${idx}`} className="relative pl-8">
                         {idx < journey.steps.length - 1 && (
@@ -285,6 +308,12 @@ export default async function VisitorJourneysPage() {
                                 x{step.count}
                               </Badge>
                             )}
+                            <Badge
+                              variant="outline"
+                              className="rounded-md border-slate-200/70 text-slate-600"
+                            >
+                              stayed {stepDuration}
+                            </Badge>
                             {isLast && (
                               <Badge
                                 variant="secondary"
@@ -300,7 +329,11 @@ export default async function VisitorJourneysPage() {
                               hour: "numeric",
                               minute: "2-digit",
                             })}{" "}
-                            · {formatStepDelta(step.viewedAt, prev?.viewedAt)}
+                            ·{" "}
+                            {formatStepDelta(
+                              step.viewedAt,
+                              prev?.lastViewedAt ?? prev?.viewedAt,
+                            )}
                           </p>
                         </div>
                       </li>

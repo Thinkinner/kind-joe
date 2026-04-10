@@ -35,6 +35,7 @@ type Row = {
   title: string;
   excerpt: string | null;
   category: string | null;
+  authorName: string | null;
   coverImageUrl: string | null;
   publishedAt: string | null;
   publishAt: string | null;
@@ -304,12 +305,17 @@ export default function AdminArticlesPage() {
                   <p className="truncate text-[15px] font-semibold text-slate-900">
                     {a.title}
                   </p>
-                  <Badge
-                    variant="secondary"
-                    className="mt-1 rounded-md border-0 bg-slate-100 text-[11px] text-slate-600"
-                  >
-                    {a.category ?? "General"}
-                  </Badge>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="rounded-md border-0 bg-slate-100 text-[11px] text-slate-600"
+                    >
+                      {a.category ?? "General"}
+                    </Badge>
+                    <span className="text-[11px] text-slate-500">
+                      Added by {a.authorName || "Unknown"}
+                    </span>
+                  </div>
                 </div>
               </div>
 

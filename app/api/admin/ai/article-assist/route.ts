@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: `${system}\n\nINPUT:\n${userPayload}`,
       config: {
         responseMimeType: "application/json",
@@ -81,6 +81,14 @@ export async function POST(req: Request) {
       category: String(data.category ?? ""),
       tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
       excerpt: String(data.excerpt ?? ""),
+      seoScore:
+        typeof data.seoScore === "number" ? data.seoScore : undefined,
+      seoFeedback: String(data.seoFeedback ?? ""),
+      tone: String(data.tone ?? ""),
+      bias: String(data.bias ?? ""),
+      suggestions: Array.isArray(data.suggestions)
+        ? data.suggestions.map(String)
+        : [],
       seoTitle: String(data.seoTitle ?? ""),
       seoDescription: String(data.seoDescription ?? ""),
       suggestedCoverPrompt: String(data.suggestedCoverPrompt ?? ""),
