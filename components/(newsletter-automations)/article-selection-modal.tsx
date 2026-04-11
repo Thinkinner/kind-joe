@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Search, X, Loader2, ArrowRight, RefreshCw, Globe } from "lucide-react";
 import { RawRssItem, NewsletterStory } from "@/lib/(newsletter-automations)/types";
 import { generateStoryFromSelectedArticle } from "@/lib/(newsletter-automations)/gemini-service";
-import { getFreshNewsRssArticlesForNewsletter } from "@/lib/(newsletter-automations)/storage-services";
+import { getNewsRssArticlesForNewsletterSelection } from "@/lib/(newsletter-automations)/storage-services";
 
 interface ArticleSelectionModalProps {
   isOpen: boolean;
@@ -30,17 +30,38 @@ export default function ArticleSelectionModal({
   const [localPool, setLocalPool] = useState<RawRssItem[]>([]);
 
   useEffect(() => {
-    if (isOpen) {
-      setLocalPool(sourcePool || []);
-      setSearchQuery("");
-    }
+    if (!isOpen) return;
+    let cancelled = false;
+
+    setSearchQuery("");
+    setIsFetchingLive(true);
+    (async () => {
+      try {
+        const latestItems = await getNewsRssArticlesForNewsletterSelection();
+        if (!cancelled) {
+          setLocalPool(latestItems);
+        }
+      } catch (error) {
+        console.error("Failed to load ingest articles on modal open", error);
+        // Fallback to the in-memory source pool if ingest fetch fails.
+        if (!cancelled) {
+          setLocalPool(sourcePool || []);
+        }
+      } finally {
+        if (!cancelled) setIsFetchingLive(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, sourcePool]);
 
   const handleRefreshFromIngest = async () => {
     setIsFetchingLive(true);
     try {
-      const freshItems = await getFreshNewsRssArticlesForNewsletter();
-      setLocalPool(freshItems);
+      const latestItems = await getNewsRssArticlesForNewsletterSelection();
+      setLocalPool(latestItems);
     } catch (error) {
       console.error("Failed to load ingest articles", error);
       alert("Could not load articles from news_rss_articles. Check console.");
@@ -103,6 +124,9 @@ export default function ArticleSelectionModal({
                   {targetSlotName}
                 </span>
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Source: <span className="font-medium">news_rss_articles</span>
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -152,7 +176,7 @@ export default function ArticleSelectionModal({
             <div className="flex h-full flex-col items-center justify-center space-y-4">
               <RefreshCw className="h-10 w-10 animate-spin text-muted-foreground" />
               <p className="text-muted-foreground font-medium text-lg animate-pulse">
-                Scanning RSS feeds for breaking news...
+                Loading articles from news_rss_articles...
               </p>
             </div>
           ) : (
@@ -160,7 +184,7 @@ export default function ArticleSelectionModal({
               {filteredArticles.length === 0 ? (
                 <div className="text-center text-muted-foreground mt-20 flex flex-col items-center">
                   <Search className="h-12 w-12 mb-4 opacity-20" />
-                  <p className="mb-4">No articles found in your local pool.</p>
+                  <p className="mb-4">No articles found in news_rss_articles.</p>
                   <button
                     onClick={handleRefreshFromIngest}
                     className="flex items-center gap-2 border border-primary bg-primary px-6 py-3 font-bold text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"

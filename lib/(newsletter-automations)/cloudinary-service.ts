@@ -1,6 +1,6 @@
 "use server";
 
-import { NewsletterData, AppSettings } from "./types";
+import { NewsletterData } from "./types";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 
@@ -30,53 +30,139 @@ const generateSignature = async (paramsToSign: Record<string, string>, apiSecret
   return hashHex;
 };
 
+type CloudinaryConfig = {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+  uploadPreset: string;
+};
+
+const resolveCloudinaryConfig = (): CloudinaryConfig => ({
+  cloudName: (process.env.CLOUDINARY_CLOUD_NAME || "").trim(),
+  apiKey: (process.env.CLOUDINARY_API_KEY || "").trim(),
+  apiSecret: (process.env.CLOUDINARY_API_SECRET || "").trim(),
+  uploadPreset: (process.env.CLOUDINARY_UPLOAD_PRESET || "").trim(),
+});
+
+const hasSignedAuth = (cfg: CloudinaryConfig): boolean =>
+  Boolean(cfg.cloudName && cfg.apiKey && cfg.apiSecret);
+
+const hasPresetAuth = (cfg: CloudinaryConfig): boolean =>
+  Boolean(cfg.cloudName && cfg.uploadPreset);
+
+const withCloudinaryAuth = async (
+  formData: FormData,
+  cfg: CloudinaryConfig,
+): Promise<void> => {
+  if (cfg.apiKey && cfg.apiSecret) {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const paramsToSign = { timestamp };
+    const signature = await generateSignature(paramsToSign, cfg.apiSecret);
+    formData.append("api_key", cfg.apiKey);
+    formData.append("timestamp", timestamp);
+    formData.append("signature", signature);
+    return;
+  }
+
+  if (cfg.uploadPreset) {
+    formData.append("upload_preset", cfg.uploadPreset);
+    return;
+  }
+
+  throw new Error("Cloudinary is not configured (CLOUDINARY_* env vars).");
+};
+
+const normalizeImageUrlCandidates = (rawUrl: string): string[] => {
+  const base = (rawUrl || "").trim().replace(/&amp;/g, "&");
+  if (!base) return [];
+
+  const candidates = new Set<string>([base]);
+  let next = base;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const decoded = decodeURIComponent(next);
+      if (decoded === next) break;
+      if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+        candidates.add(decoded);
+        next = decoded;
+      } else {
+        break;
+      }
+    } catch {
+      break;
+    }
+  }
+
+  return Array.from(candidates);
+};
+
+const uploadToCloudinary = async (
+  fileValue: string,
+  cfg: CloudinaryConfig,
+): Promise<string | null> => {
+  if (!cfg.cloudName) return null;
+
+  const url = `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`;
+  const formData = new FormData();
+  formData.append("file", fileValue);
+  await withCloudinaryAuth(formData, cfg);
+
+  const response = await fetch(url, { method: "POST", body: formData });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.warn(`Cloudinary upload failed for ${fileValue}:`, errorText);
+    return null;
+  }
+
+  const data = (await response.json()) as { secure_url?: string };
+  return data.secure_url ?? null;
+};
+
+const downloadImageAsDataUri = async (imageUrl: string): Promise<string | null> => {
+  try {
+    const response = await fetch(imageUrl, {
+      headers: { Accept: "image/*,*/*;q=0.8" },
+    });
+    if (!response.ok) return null;
+
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.startsWith("image/")) return null;
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return `data:${contentType};base64,${bytes.toString("base64")}`;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Uploads a single image URL to Cloudinary.
  * Supports Signed Upload (preferred) or Unsigned Preset.
  */
-export const uploadImage = async (imageUrl: string, settings: AppSettings): Promise<string> => {
-  if (!imageUrl || !settings.cloudinaryCloudName) return "";
-
-  const url = `https://api.cloudinary.com/v1_1/${settings.cloudinaryCloudName}/image/upload`;
-  const formData = new FormData();
-  
-  formData.append("file", imageUrl);
+export const uploadImage = async (imageUrl: string): Promise<string> => {
+  const cfg = resolveCloudinaryConfig();
+  if (!imageUrl || !cfg.cloudName) return "";
+  if (imageUrl.includes("res.cloudinary.com")) return imageUrl;
 
   try {
-    // METHOD A: Signed Upload (Uses API Key & Secret)
-    if (settings.cloudinaryApiKey && settings.cloudinaryApiSecret) {
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const paramsToSign = { timestamp }; // Add other params here if needed (e.g. public_id, folder)
-      
-      const signature = await generateSignature(paramsToSign, settings.cloudinaryApiSecret);
-      
-      formData.append("api_key", settings.cloudinaryApiKey);
-      formData.append("timestamp", timestamp);
-      formData.append("signature", signature);
-    } 
-    // METHOD B: Unsigned Upload (Uses Preset)
-    else if (settings.cloudinaryUploadPreset) {
-      formData.append("upload_preset", settings.cloudinaryUploadPreset);
-    } 
-    else {
-      // Missing auth details
-      console.warn("Missing Cloudinary credentials (API Key/Secret or Upload Preset).");
-      return imageUrl;
+    const candidates = normalizeImageUrlCandidates(imageUrl);
+
+    for (const candidate of candidates) {
+      const uploaded = await uploadToCloudinary(candidate, cfg);
+      if (uploaded) return uploaded;
     }
 
-    const response = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
+    // Some feeds expose encoded/blocked URLs that Cloudinary cannot pull directly.
+    // In that case, download bytes and upload as a data URI.
+    for (const candidate of candidates) {
+      const dataUri = await downloadImageAsDataUri(candidate);
+      if (!dataUri) continue;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn(`Cloudinary upload failed for ${imageUrl}:`, errorText);
-      return imageUrl; // Fallback to original
+      const uploaded = await uploadToCloudinary(dataUri, cfg);
+      if (uploaded) return uploaded;
     }
 
-    const data = await response.json();
-    return data.secure_url; // Return the new Cloudinary URL
+    return imageUrl; // Fallback to original
   } catch (error) {
     console.error(`Error uploading to Cloudinary: ${imageUrl}`, error);
     return imageUrl; // Fallback to original
@@ -89,18 +175,12 @@ export const uploadImage = async (imageUrl: string, settings: AppSettings): Prom
  */
 export const processNewsletterImages = async (
   data: NewsletterData,
-  settings: AppSettings,
 ): Promise<NewsletterData> => {
   await assertStaff();
-  // Check if we have enough info to proceed
-  const hasSignedAuth =
-    settings.cloudinaryCloudName &&
-    settings.cloudinaryApiKey &&
-    settings.cloudinaryApiSecret;
-  const hasPresetAuth = settings.cloudinaryCloudName && settings.cloudinaryUploadPreset;
+  const cfg = resolveCloudinaryConfig();
 
-  if (!hasSignedAuth && !hasPresetAuth) {
-    console.log("Cloudinary settings incomplete. Skipping image upload.");
+  if (!hasSignedAuth(cfg) && !hasPresetAuth(cfg)) {
+    console.log("Cloudinary env vars incomplete. Skipping image upload.");
     return data;
   }
 
@@ -112,7 +192,7 @@ export const processNewsletterImages = async (
       if (!story.imageUrl) return story;
 
       // Upload and get new URL
-      const newUrl = await uploadImage(story.imageUrl, settings);
+      const newUrl = await uploadImage(story.imageUrl);
 
       return {
         ...story,
@@ -130,35 +210,20 @@ export const processNewsletterImages = async (
 /** Upload a browser data-URL image to Cloudinary (manual story images in review). */
 export async function uploadBase64ImageToCloudinary(
   base64DataUri: string,
-  settings: AppSettings,
 ): Promise<string> {
   await assertStaff();
   if (!base64DataUri?.includes("base64,")) {
     throw new Error("Invalid base64 image data");
   }
-  if (!settings.cloudinaryCloudName) {
-    throw new Error("Cloudinary cloud name not configured in settings");
+  const cfg = resolveCloudinaryConfig();
+  if (!cfg.cloudName) {
+    throw new Error("Cloudinary is not configured (CLOUDINARY_CLOUD_NAME missing)");
   }
 
-  const url = `https://api.cloudinary.com/v1_1/${settings.cloudinaryCloudName}/image/upload`;
+  const url = `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`;
   const formData = new FormData();
   formData.append("file", base64DataUri);
-
-  if (settings.cloudinaryApiKey && settings.cloudinaryApiSecret) {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const paramsToSign = { timestamp };
-    const signature = await generateSignature(
-      paramsToSign,
-      settings.cloudinaryApiSecret,
-    );
-    formData.append("api_key", settings.cloudinaryApiKey);
-    formData.append("timestamp", timestamp);
-    formData.append("signature", signature);
-  } else if (settings.cloudinaryUploadPreset) {
-    formData.append("upload_preset", settings.cloudinaryUploadPreset);
-  } else {
-    throw new Error("Cloudinary API credentials or upload preset required");
-  }
+  await withCloudinaryAuth(formData, cfg);
 
   const response = await fetch(url, { method: "POST", body: formData });
   if (!response.ok) {

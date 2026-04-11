@@ -118,6 +118,39 @@ export async function getFreshNewsRssArticlesForNewsletter(): Promise<
   return rows.map(mapNewsRssRowToRawItem);
 }
 
+/**
+ * Selection pool for manual story replacement in review UI.
+ * Returns latest ingested rows (enabled sources), not constrained by fresh-hour cutoff.
+ */
+export async function getNewsRssArticlesForNewsletterSelection(
+  limit = 300,
+): Promise<RawRssItem[]> {
+  await assertStaff();
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(1000, Math.floor(limit))) : 300;
+
+  const rows = await db
+    .select({
+      title: newsRssArticles.title,
+      link: newsRssArticles.link,
+      imageUrl: newsRssArticles.imageUrl,
+      contentSnippet: newsRssArticles.contentSnippet,
+      publishedAt: newsRssArticles.publishedAt,
+      createdAt: newsRssArticles.createdAt,
+      sourceName: newsRssSource.name,
+    })
+    .from(newsRssArticles)
+    .innerJoin(newsRssSource, eq(newsRssArticles.sourceId, newsRssSource.id))
+    .where(eq(newsRssSource.enabled, true))
+    .orderBy(
+      desc(
+        sql`coalesce(${newsRssArticles.publishedAt}, ${newsRssArticles.createdAt})`,
+      ),
+    )
+    .limit(safeLimit);
+
+  return rows.map(mapNewsRssRowToRawItem);
+}
+
 function createSlug(text: string): string {
   return text
     .toLowerCase()

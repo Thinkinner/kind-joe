@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Cpu,
   Loader2,
-  Cloud,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -147,7 +146,7 @@ const SettingsView: React.FC = () => {
               <code className="bg-white px-1.5 py-0.5 font-mono text-[11px] text-neutral-800 ring-1 ring-neutral-200/80">
                 GEMINI_NEWSLETTER_MODEL
               </code>
-              . Newsletter images use Cloudinary fields below.
+              . Newsletter image uploads use `CLOUDINARY_*` env vars.
             </p>
           </div>
         </div>
@@ -171,63 +170,6 @@ const SettingsView: React.FC = () => {
               onChange={(e) => handleChange("authorId", e.target.value)}
               className="max-w-lg rounded-none border-neutral-200 bg-white font-mono text-sm shadow-sm"
             />
-          </div>
-        </section>
-
-        <div className="h-px w-full bg-neutral-200/90" />
-
-        <section className="space-y-4">
-          <SectionTitle icon={Cloud}>Cloudinary</SectionTitle>
-          <p className="text-sm text-neutral-600">
-            Same credentials as article uploads. Used to re-host RSS images for
-            newsletters.
-          </p>
-          <div className="grid max-w-lg gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cname">Cloud name</Label>
-              <Input
-                id="cname"
-                value={settings.cloudinaryCloudName || ""}
-                onChange={(e) =>
-                  handleChange("cloudinaryCloudName", e.target.value)
-                }
-                className="rounded-none border-neutral-200 bg-white shadow-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ckey">API key</Label>
-              <Input
-                id="ckey"
-                value={settings.cloudinaryApiKey || ""}
-                onChange={(e) =>
-                  handleChange("cloudinaryApiKey", e.target.value)
-                }
-                className="rounded-none border-neutral-200 bg-white shadow-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="csecret">API secret</Label>
-              <Input
-                id="csecret"
-                type="password"
-                value={settings.cloudinaryApiSecret || ""}
-                onChange={(e) =>
-                  handleChange("cloudinaryApiSecret", e.target.value)
-                }
-                className="rounded-none border-neutral-200 bg-white shadow-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cpreset">Upload preset (unsigned)</Label>
-              <Input
-                id="cpreset"
-                value={settings.cloudinaryUploadPreset || ""}
-                onChange={(e) =>
-                  handleChange("cloudinaryUploadPreset", e.target.value)
-                }
-                className="rounded-none border-neutral-200 bg-white shadow-sm"
-              />
-            </div>
           </div>
         </section>
 

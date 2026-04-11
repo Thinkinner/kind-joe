@@ -153,9 +153,14 @@ const INVITE_PERMISSION_GROUPS: Array<{
   permissions: AppPermission[];
 }> = [
   {
+    label: "Core",
+    permissions: [PERMISSIONS.ADMIN_DASHBOARD],
+  },
+  {
     label: "Content",
     permissions: [
       PERMISSIONS.ADMIN_ARTICLES,
+      PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
       PERMISSIONS.ADMIN_POSTS,
       PERMISSIONS.ADMIN_NEWSLETTER,
     ],
@@ -217,6 +222,15 @@ export default function StaffUsersPage() {
   );
   const [submittingLookup, setSubmittingLookup] = useState(false);
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
+  const [editingInvite, setEditingInvite] = useState<PendingInvite | null>(null);
+  const [editingInviteRole, setEditingInviteRole] =
+    useState<(typeof INVITE_ROLES)[number]>("writer");
+  const [editingInviteAccessMode, setEditingInviteAccessMode] =
+    useState<InviteAccessMode>("role_default");
+  const [editingInviteCustomAccess, setEditingInviteCustomAccess] = useState<
+    AppPermission[]
+  >([]);
+  const [savingInviteChanges, setSavingInviteChanges] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [globalAccessOpen, setGlobalAccessOpen] = useState(false);
 
@@ -351,9 +365,7 @@ export default function StaffUsersPage() {
     }
     const inviteCustomAccess =
       lookupAccessMode === "custom"
-        ? Array.from(
-            new Set([PERMISSIONS.ADMIN_DASHBOARD, ...lookupCustomAccess]),
-          )
+        ? Array.from(new Set(lookupCustomAccess))
         : [];
     const inviteAdminPageAccess =
       viewerCanSeeSuperadmin && lookupAccessMode === "custom"
@@ -420,6 +432,68 @@ export default function StaffUsersPage() {
       toast.error(e instanceof Error ? e.message : "Could not resend invite");
     } finally {
       setResendingInviteId(null);
+    }
+  };
+
+  const openInviteAccessEditor = (invite: PendingInvite) => {
+    setEditingInvite(invite);
+    setEditingInviteRole(
+      INVITE_ROLES.includes(invite.staffRole as (typeof INVITE_ROLES)[number])
+        ? (invite.staffRole as (typeof INVITE_ROLES)[number])
+        : "writer",
+    );
+    if (invite.adminPageAccess && invite.adminPageAccess.length > 0) {
+      setEditingInviteAccessMode("custom");
+      setEditingInviteCustomAccess(invite.adminPageAccess);
+    } else {
+      setEditingInviteAccessMode("role_default");
+      setEditingInviteCustomAccess([]);
+    }
+  };
+
+  const savePendingInviteChanges = async () => {
+    if (!editingInvite) return;
+    if (
+      viewerCanSeeSuperadmin &&
+      editingInviteAccessMode === "custom" &&
+      editingInviteCustomAccess.length === 0
+    ) {
+      toast.error("Select at least one page for custom access.");
+      return;
+    }
+    const adminPageAccess =
+      viewerCanSeeSuperadmin && editingInviteAccessMode === "custom"
+        ? Array.from(new Set(editingInviteCustomAccess))
+        : null;
+
+    setSavingInviteChanges(true);
+    try {
+      const res = await fetch("/api/admin/staff-invitations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingInvite.id,
+          staffRole: editingInviteRole,
+          ...(viewerCanSeeSuperadmin ? { adminPageAccess } : {}),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string"
+            ? j.error
+            : "Could not update pending invitation",
+        );
+      }
+      toast.success("Pending invitation updated.");
+      setEditingInvite(null);
+      await load();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not update pending invitation",
+      );
+    } finally {
+      setSavingInviteChanges(false);
     }
   };
 
@@ -499,9 +573,7 @@ export default function StaffUsersPage() {
   );
   const reviewPermissions =
     viewerCanSeeSuperadmin && lookupAccessMode === "custom"
-      ? Array.from(
-          new Set([PERMISSIONS.ADMIN_DASHBOARD, ...lookupCustomAccess]),
-        )
+      ? Array.from(new Set(lookupCustomAccess))
       : INVITE_ROLE_DEFAULT_PERMISSIONS[lookupRole];
   const reviewPermissionLabels = reviewPermissions.map(
     (perm) => PERMISSION_LABELS[perm] ?? perm,
@@ -705,9 +777,6 @@ export default function StaffUsersPage() {
                                 </div>
                               </div>
                             ))}
-                            <p className="text-xs text-slate-500">
-                              Dashboard access is included automatically.
-                            </p>
                           </div>
                         )}
                       </div>
@@ -864,6 +933,14 @@ export default function StaffUsersPage() {
                   type="button"
                   size="sm"
                   variant="outline"
+                  onClick={() => openInviteAccessEditor(inv)}
+                >
+                  Manage access
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
                   onClick={() => void resendInvitation(inv)}
                   disabled={resendingInviteId === inv.id}
                 >
@@ -988,6 +1065,156 @@ export default function StaffUsersPage() {
           </tbody>
         </table>
       </div>
+
+      <Sheet
+        open={editingInvite != null}
+        onOpenChange={(open) => {
+          if (!open && !savingInviteChanges) setEditingInvite(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto border-l border-slate-200 bg-white sm:max-w-xl"
+          onPointerDownOutside={(e) => {
+            if (savingInviteChanges) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (savingInviteChanges) e.preventDefault();
+          }}
+        >
+          <SheetHeader className="border-b border-slate-100 px-6 py-5">
+            <SheetTitle className="text-xl">Manage pending invite access</SheetTitle>
+            <SheetDescription>
+              Update role and access before this invitation is accepted.
+            </SheetDescription>
+          </SheetHeader>
+
+          {editingInvite ? (
+            <div className="space-y-4 px-6 py-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                <p className="font-medium text-slate-900">{editingInvite.email}</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Expires {new Date(editingInvite.expiresAt).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Role
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {INVITE_ROLES.map((role) => (
+                    <Button
+                      key={role}
+                      type="button"
+                      variant={editingInviteRole === role ? "default" : "outline"}
+                      className="capitalize"
+                      onClick={() => setEditingInviteRole(role)}
+                      disabled={savingInviteChanges}
+                    >
+                      {role}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {viewerCanSeeSuperadmin ? (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Access
+                  </p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-800">
+                      <Checkbox
+                        checked={editingInviteAccessMode === "role_default"}
+                        onCheckedChange={(checked) => {
+                          if (checked === true) setEditingInviteAccessMode("role_default");
+                        }}
+                        disabled={savingInviteChanges}
+                      />
+                      Use role default
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-800">
+                      <Checkbox
+                        checked={editingInviteAccessMode === "custom"}
+                        onCheckedChange={(checked) => {
+                          if (checked === true) setEditingInviteAccessMode("custom");
+                        }}
+                        disabled={savingInviteChanges}
+                      />
+                      Customize page access
+                    </label>
+                  </div>
+                  {editingInviteAccessMode === "custom" && (
+                    <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      {INVITE_PERMISSION_GROUPS.map((group) => (
+                        <div key={group.label} className="space-y-2">
+                          <p className="text-xs font-semibold text-slate-700">
+                            {group.label}
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {group.permissions.map((perm) => (
+                              <label
+                                key={perm}
+                                className="flex items-center gap-2 text-sm text-slate-800"
+                              >
+                                <Checkbox
+                                  checked={editingInviteCustomAccess.includes(perm)}
+                                  onCheckedChange={(checked) => {
+                                    setEditingInviteCustomAccess((prev) => {
+                                      if (checked === true) {
+                                        return Array.from(new Set([...prev, perm]));
+                                      }
+                                      return prev.filter((p) => p !== perm);
+                                    });
+                                  }}
+                                  disabled={savingInviteChanges}
+                                />
+                                {PERMISSION_LABELS[perm]}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Access follows role defaults for non-superadmin users.
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          <SheetFooter className="sticky bottom-0 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditingInvite(null)}
+              disabled={savingInviteChanges}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void savePendingInviteChanges()}
+              disabled={
+                savingInviteChanges ||
+                (viewerCanSeeSuperadmin &&
+                  editingInviteAccessMode === "custom" &&
+                  editingInviteCustomAccess.length === 0)
+              }
+            >
+              {savingInviteChanges ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save invite access"
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={modalUser != null}

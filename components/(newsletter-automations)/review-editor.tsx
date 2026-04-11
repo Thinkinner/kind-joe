@@ -21,7 +21,11 @@ import {
 } from "lucide-react";
 
 // --- SERVICES & TYPES ---
-import { uploadBase64ImageToCloudinary } from "@/lib/(newsletter-automations)/cloudinary-service";
+import {
+  processNewsletterImages,
+  uploadBase64ImageToCloudinary,
+  uploadImage,
+} from "@/lib/(newsletter-automations)/cloudinary-service";
 import BlockEditor from "@/components/(newsletter-automations)/newsletter-block-editor";
 import {
   NewsletterDraft,
@@ -160,6 +164,51 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     return () => clearTimeout(timer);
   }, [data, articles, draft]); // Listen for ANY changes to your data
 
+  // One-time migration: swap non-Cloudinary image URLs to Cloudinary URLs when possible.
+  useEffect(() => {
+    if (didCloudinarySyncRef.current) return;
+    didCloudinarySyncRef.current = true;
+
+    const sourceStories = draft.data?.stories || [];
+    const hasNonCloudinaryImages = sourceStories.some(
+      (story) =>
+        Boolean(story.imageUrl?.trim()) &&
+        !story.imageUrl.includes("res.cloudinary.com"),
+    );
+    if (!hasNonCloudinaryImages) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const hydrated = await processNewsletterImages(draft.data);
+        if (cancelled) return;
+
+        const changed = hydrated.stories.some(
+          (story, idx) => story.imageUrl !== sourceStories[idx]?.imageUrl,
+        );
+        if (!changed) return;
+
+        setData({
+          ...hydrated,
+          intro: introAfterStoriesChange(hydrated.intro, hydrated.stories),
+        });
+        setArticles((prev) =>
+          prev.map((article, idx) =>
+            article
+              ? { ...article, coverImageUrl: hydrated.stories[idx]?.imageUrl || null }
+              : article,
+          ),
+        );
+      } catch (err) {
+        console.error("Cloudinary image sync failed:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draft]);
+
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
     index: number,
@@ -248,7 +297,11 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   const [isUploadingMap, setIsUploadingMap] = useState<Record<number, boolean>>(
     {},
   );
+  const [isRehostingMap, setIsRehostingMap] = useState<Record<number, boolean>>(
+    {},
+  );
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const didCloudinarySyncRef = useRef(false);
 
   // Regeneration State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -321,6 +374,21 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     }
   };
 
+  const handleCopyPreviewLink = async () => {
+    try {
+      const path = `/kindjoe/newsletter/preview/${draft.id}`;
+      const previewUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}${path}`
+          : path;
+      await navigator.clipboard.writeText(previewUrl);
+      setSuccessMsg("Public preview link copied.");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch {
+      setErrorMsg("Failed to copy preview link.");
+    }
+  };
+
   const hasMissingImages = data.stories.some(
     (story) => !story.imageUrl || story.imageUrl.trim() === "",
   );
@@ -383,11 +451,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       reader.onloadend = async () => {
         const base64data = reader.result as string;
         try {
-          const settings = await getSettings();
-          const newUrl = await uploadBase64ImageToCloudinary(
-            base64data,
-            settings,
-          );
+          const newUrl = await uploadBase64ImageToCloudinary(base64data);
           updateStory(index, "imageUrl", newUrl);
           setSuccessMsg("Image uploaded to Cloudinary!");
           setTimeout(() => setSuccessMsg(""), 2000);
@@ -405,6 +469,40 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       console.error("File reading error", err);
       setErrorMsg("Failed to process file.");
       setIsUploadingMap((prev) => ({ ...prev, [index]: false }));
+    }
+  };
+
+  const handleRehostImage = async (index: number) => {
+    const currentUrl = data.stories[index]?.imageUrl?.trim();
+    if (!currentUrl) {
+      setErrorMsg("No image URL to upload.");
+      return;
+    }
+    if (currentUrl.includes("res.cloudinary.com")) return;
+
+    setIsRehostingMap((prev) => ({ ...prev, [index]: true }));
+    setErrorMsg("");
+
+    try {
+      const cloudinaryUrl = await uploadImage(currentUrl);
+      if (!cloudinaryUrl || cloudinaryUrl === currentUrl) {
+        throw new Error("Could not upload this source image to Cloudinary.");
+      }
+
+      updateStory(index, "imageUrl", cloudinaryUrl);
+      if (articles[index]) {
+        updateArticle(index, "coverImageUrl", cloudinaryUrl);
+      }
+      setSuccessMsg("Image rehosted to Cloudinary!");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error
+          ? `Cloudinary upload failed: ${err.message}`
+          : "Cloudinary upload failed.",
+      );
+    } finally {
+      setIsRehostingMap((prev) => ({ ...prev, [index]: false }));
     }
   };
 
@@ -773,6 +871,17 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
               Copy HTML
             </button>
           )}
+          {activeTab === "overview" && !isProcessing && (
+            <button
+              type="button"
+              onClick={handleCopyPreviewLink}
+              title="Copy public preview link"
+              className="inline-flex min-h-11 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-2 border border-border bg-white px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-neutral-50 sm:basis-auto sm:flex-initial dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              Preview Link
+            </button>
+          )}
           {activeTab === "overview" && (
             <button
               type="button"
@@ -991,6 +1100,23 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
                               <UploadCloud className="h-4 w-4" />
                             )}
                           </button>
+                          {story.imageUrl?.trim() &&
+                            !story.imageUrl.includes("res.cloudinary.com") && (
+                              <button
+                                type="button"
+                                onClick={() => handleRehostImage(idx)}
+                                disabled={isRehostingMap[idx]}
+                                className="inline-flex min-w-[44px] items-center justify-center gap-1.5 border border-orange-300 bg-orange-50 px-2.5 text-xs font-semibold text-orange-900 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                title="Upload this source URL to Cloudinary"
+                              >
+                                {isRehostingMap[idx] ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <LinkIcon className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline">Rehost</span>
+                              </button>
+                            )}
                         </div>
 
                         {/* SUMMARY */}

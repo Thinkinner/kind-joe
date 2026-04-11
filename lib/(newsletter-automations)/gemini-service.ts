@@ -63,6 +63,7 @@ const cleanJson = (text: string): string => {
 
 function normalizeSubject(raw: string): string {
   return raw
+    .replace(/[’]/g, "'")
     .replace(/^["'`]+|["'`]+$/g, "")
     .replace(/^(here(?:'s| is)\s+(?:the\s+)?)?subject\s*[:\-]\s*/i, "")
     .replace(/^(email\s+)?subject\s*[:\-]\s*/i, "")
@@ -70,16 +71,75 @@ function normalizeSubject(raw: string): string {
     .trim();
 }
 
+const SUBJECT_MAX_WORDS = 10;
+
+function subjectWords(value: string): string[] {
+  return value
+    .replace(/[^\w\s'-]/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter(Boolean);
+}
+
+function finalizeSubjectCandidate(raw: string): string {
+  const cleaned = normalizeSubject(raw);
+  if (!cleaned) return "";
+
+  const words = subjectWords(cleaned);
+  if (!words.length) return "";
+  if (words.length <= SUBJECT_MAX_WORDS) return cleaned;
+
+  const truncated = words.slice(0, SUBJECT_MAX_WORDS);
+  const trailingStopWords = new Set(["the", "a", "an", "and", "or", "of", "to", "for", "with", "from", "in", "on"]);
+  while (truncated.length > 4 && trailingStopWords.has(truncated[truncated.length - 1].toLowerCase())) {
+    truncated.pop();
+  }
+  return truncated.join(" ").trim();
+}
+
 function isBoilerplateLine(value: string): boolean {
   const v = value.trim().toLowerCase();
   return (
     !v ||
+    v === "here is" ||
+    v === "here's" ||
+    v === "here is the" ||
+    v === "here's the" ||
+    v === "here is the subject" ||
+    v === "here's the subject" ||
+    v === "here is subject" ||
+    v === "here's subject" ||
+    v === "subject" ||
+    v === "email subject" ||
     v === "here is the json requested" ||
     v === "here's the json requested" ||
     v === "json requested" ||
     v === "here is the json" ||
     v === "here's the json"
   );
+}
+
+function isWeakSubjectCandidate(value: string): boolean {
+  const v = value.trim();
+  if (!v) return true;
+  if (isBoilerplateLine(v)) return true;
+
+  const alphaNumChars = v.replace(/[^a-z0-9]/gi, "");
+  if (alphaNumChars.length < 3) return true;
+
+  const words = subjectWords(v.toLowerCase());
+
+  if (!words.length) return true;
+  if (words.length > 10) return true;
+  if (words.length === 1 && words[0].length < 3) return true;
+
+  const weakPatterns = [
+    /^here(?:'s| is)(?:\s+the)?$/i,
+    /^(email\s+)?subject(?:\s+line)?$/i,
+  ];
+  if (weakPatterns.some((rx) => rx.test(v))) return true;
+
+  return false;
 }
 
 function extractSubjectFromText(text: string): string {
@@ -94,8 +154,8 @@ function extractSubjectFromText(text: string): string {
         : typeof parsed.title === "string"
           ? parsed.title
           : "";
-    const normalized = normalizeSubject(fromJson);
-    if (normalized) return normalized;
+    const normalized = finalizeSubjectCandidate(fromJson);
+    if (normalized && !isWeakSubjectCandidate(normalized)) return normalized;
   } catch {
     // Non-JSON fallback below.
   }
@@ -106,35 +166,45 @@ function extractSubjectFromText(text: string): string {
     .trim();
   const subjectMatch = stripped.match(/(?:email\s+)?subject\s*[:\-]\s*(.+)/i);
   if (subjectMatch?.[1]) {
-    const fromMatch = normalizeSubject(subjectMatch[1]);
-    if (fromMatch && !isBoilerplateLine(fromMatch)) return fromMatch;
+    const fromMatch = finalizeSubjectCandidate(subjectMatch[1]);
+    if (fromMatch && !isWeakSubjectCandidate(fromMatch)) return fromMatch;
   }
 
   const firstLine = stripped.split(/\r?\n/).find((line) => line.trim()) || "";
-  const normalizedLine = normalizeSubject(firstLine);
-  if (normalizedLine && !isBoilerplateLine(normalizedLine)) return normalizedLine;
+  const normalizedLine = finalizeSubjectCandidate(firstLine);
+  if (normalizedLine && !isWeakSubjectCandidate(normalizedLine)) return normalizedLine;
 
   const nextLine = stripped
     .split(/\r?\n/)
-    .map((line) => normalizeSubject(line))
-    .find((line) => line && !isBoilerplateLine(line));
+    .map((line) => finalizeSubjectCandidate(line))
+    .find((line) => line && !isWeakSubjectCandidate(line));
   if (nextLine) return nextLine;
 
-  const normalizedAll = normalizeSubject(stripped);
-  return isBoilerplateLine(normalizedAll) ? "" : normalizedAll;
+  const normalizedAll = finalizeSubjectCandidate(stripped);
+  return isWeakSubjectCandidate(normalizedAll) ? "" : normalizedAll;
 }
 
 function fallbackSubjectFromLeadStory(leadStory: NewsletterStory): string {
-  const raw = normalizeSubject(leadStory.headline || "");
-  if (!raw) return "Top Story Update";
+  const rawHeadline = (leadStory.headline || "").trim();
+  if (!rawHeadline) return "Top Story Update";
 
-  const words = raw
-    .replace(/[^\w\s'-]/g, " ")
+  // Drop source/presenter prefix patterns like "Bessent: ...".
+  const colonIndex = rawHeadline.indexOf(":");
+  const candidate =
+    colonIndex > 0 && rawHeadline.slice(0, colonIndex).trim().split(/\s+/).length <= 4
+      ? rawHeadline.slice(colonIndex + 1).trim()
+      : rawHeadline;
+
+  const words = candidate
+    .replace(/[’]/g, "'")
+    .replace(/[^\w\s-]/g, " ")
     .split(/\s+/)
-    .filter(Boolean);
+    .map((w) => w.trim())
+    .filter((w) => w.length > 1 || /^\d$/.test(w));
+
   if (!words.length) return "Top Story Update";
 
-  const picked = words.slice(0, 8).join(" ").trim();
+  const picked = finalizeSubjectCandidate(words.join(" "));
   return picked || "Top Story Update";
 }
 

@@ -20,7 +20,6 @@ import {
 import { generateNewsletter } from "@/lib/(newsletter-automations)/gemini-service";
 import {
   saveDraft,
-  getSettings,
   getNewsletterFreshIngestSummary,
   getFreshNewsRssArticlesForNewsletter,
 } from "@/lib/(newsletter-automations)/storage-services";
@@ -93,11 +92,7 @@ export function NewsletterAutomationClient() {
 
       setGenStatus(GenerationStatus.UPLOADING_IMAGES);
       toast.loading("Optimizing images...", { id: toastId });
-      const settings = await getSettings();
-      const finalNewsletter = await processNewsletterImages(
-        generatedNewsletter,
-        settings,
-      );
+      const finalNewsletter = await processNewsletterImages(generatedNewsletter);
 
       const newDraft: NewsletterDraft = {
         id: crypto.randomUUID(),

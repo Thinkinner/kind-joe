@@ -13,40 +13,78 @@ const PROXY_STRATEGIES = [
   (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
 ];
 
+const unwrapProxyPayload = (text: string): string => {
+  const trimmed = text.replace(/^\uFEFF/, "").trimStart();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
+
+  try {
+    const payload = JSON.parse(trimmed) as
+      | { contents?: unknown; data?: unknown; body?: unknown; response?: unknown }
+      | unknown[];
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      const candidates = [payload.contents, payload.data, payload.body, payload.response];
+      const firstText = candidates.find((v) => typeof v === "string");
+      if (typeof firstText === "string") return firstText.replace(/^\uFEFF/, "").trimStart();
+    }
+  } catch {
+    // Not valid JSON; treat as plain text.
+  }
+
+  return trimmed;
+};
+
+const looksLikeFeedXml = (text: string): boolean => {
+  const head = text.slice(0, 12000).toLowerCase();
+  return (
+    head.includes("<rss") ||
+    head.includes("<feed") ||
+    head.includes("<?xml") ||
+    head.includes("<rdf:rdf") ||
+    head.includes("<item") ||
+    head.includes("<entry")
+  );
+};
+
 const fetchWithFallback = async (sourceUrl: string): Promise<string> => {
   let lastError: any;
+  const reasons: string[] = [];
   
   for (const createProxyUrl of PROXY_STRATEGIES) {
     try {
       const proxyUrl = createProxyUrl(sourceUrl);
-      const response = await fetch(proxyUrl);
+      const response = await fetch(proxyUrl, {
+        headers: {
+          Accept: "application/rss+xml, application/xml, text/xml, */*",
+        },
+      });
       
       if (!response.ok) {
         throw new Error(`Proxy responded with ${response.status}`);
       }
       
-      const text = await response.text().then((t) => t.replace(/^\uFEFF/, "").trimStart());
-      // Proxies sometimes return HTML errors or JSON; real feeds vary (omit <?xml>, mixed case).
-      const head = text.slice(0, 12000).toLowerCase();
-      const looksLikeFeed =
-        head.includes("<rss") ||
-        head.includes("<feed") ||
-        head.includes("<?xml") ||
-        head.includes("<rdf:rdf") ||
-        head.includes("<item") ||
-        head.includes("<entry");
-      if (!looksLikeFeed) {
-        throw new Error("Response was not XML");
+      const rawText = await response.text();
+      const text = unwrapProxyPayload(rawText);
+      if (!looksLikeFeedXml(text)) {
+        throw new Error("Proxy response did not look like an RSS/Atom feed");
       }
 
       return text;
     } catch (error) {
       console.warn(`Fetch failed for ${sourceUrl} using proxy. trying next...`, error);
+      reasons.push(error instanceof Error ? error.message : String(error));
       lastError = error;
     }
   }
   
-  throw lastError || new Error("All proxies failed");
+  const details = reasons.filter(Boolean).join(" | ");
+  throw (
+    lastError ||
+    new Error(
+      details
+        ? `All proxy fetch strategies failed: ${details}`
+        : "All proxy fetch strategies failed",
+    )
+  );
 };
 
 const getElementText = (parent: Element, tagName: string): string => {

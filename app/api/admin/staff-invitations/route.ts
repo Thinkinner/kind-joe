@@ -36,6 +36,11 @@ const PostSchema = z.object({
   staffRole: InvitableStaffRoleSchema,
   adminPageAccess: z.array(PermissionSlug).optional().nullable(),
 });
+const PatchSchema = z.object({
+  id: z.string().min(1),
+  staffRole: InvitableStaffRoleSchema.optional(),
+  adminPageAccess: z.array(PermissionSlug).optional().nullable(),
+});
 
 function publicSiteBase(): string {
   return (
@@ -151,5 +156,89 @@ export async function POST(req: NextRequest) {
     ok: true,
     message: `Invitation email queued for ${email}.`,
     from: getTransactionalFrom(),
+  });
+}
+
+/** Owner/admin: update pending invite role/access */
+export async function PATCH(req: NextRequest) {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
+  if (!staff.ok) {
+    return NextResponse.json(
+      { error: staff.reason },
+      { status: staff.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+  if (
+    parsed.data.staffRole === undefined &&
+    parsed.data.adminPageAccess === undefined
+  ) {
+    return NextResponse.json(
+      { error: "Provide staffRole and/or adminPageAccess." },
+      { status: 400 },
+    );
+  }
+
+  const canSetPageAccess = hasSuperAdminRole(getStaffRoles(staff.user));
+  if (parsed.data.adminPageAccess !== undefined && !canSetPageAccess) {
+    return NextResponse.json(
+      { error: "Only superadmin can set invite page access." },
+      { status: 403 },
+    );
+  }
+
+  const setPayload: {
+    staffRole?: z.infer<typeof InvitableStaffRoleSchema>;
+    adminPageAccess?: AppPermission[] | null;
+  } = {};
+  if (parsed.data.staffRole !== undefined) {
+    setPayload.staffRole = parsed.data.staffRole;
+  }
+  if (parsed.data.adminPageAccess !== undefined) {
+    setPayload.adminPageAccess =
+      parsed.data.adminPageAccess === null
+        ? null
+        : Array.from(new Set(parsed.data.adminPageAccess));
+  }
+
+  const [updated] = await db
+    .update(staffInvitation)
+    .set(setPayload)
+    .where(
+      and(
+        eq(staffInvitation.id, parsed.data.id),
+        isNull(staffInvitation.acceptedAt),
+      ),
+    )
+    .returning({
+      id: staffInvitation.id,
+      email: staffInvitation.email,
+      staffRole: staffInvitation.staffRole,
+      adminPageAccess: staffInvitation.adminPageAccess,
+      expiresAt: staffInvitation.expiresAt,
+      createdAt: staffInvitation.createdAt,
+    });
+
+  if (!updated) {
+    return NextResponse.json(
+      { error: "Pending invitation not found." },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    invitation: {
+      ...updated,
+      expiresAt: updated.expiresAt.toISOString(),
+      createdAt: updated.createdAt.toISOString(),
+    },
   });
 }
