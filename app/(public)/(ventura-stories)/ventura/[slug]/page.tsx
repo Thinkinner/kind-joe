@@ -171,6 +171,16 @@ export default async function VenturaArticleBySlug(props: {
               </div>
             </div>
 
+            {/* ADSENSE_PAUSED_TOKEN_V1: In-article ad temporarily disabled.
+            <section className="mt-6 px-4 lg:px-6">
+              <AdsenseUnit
+                slot={inlineAdSlot}
+                label="In-article ad"
+                minHeightClassName="min-h-[140px]"
+              />
+            </section>
+            */}
+
             {/* Content Area with Orange Links */}
             <div className="mt-8 px-4 lg:px-6">
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-orange-600">
@@ -182,6 +192,16 @@ export default async function VenturaArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8 lg:sticky lg:top-24 self-start">
             <VenturaGetEmail />
+
+            {/* ADSENSE_PAUSED_TOKEN_V1: Sidebar ad temporarily disabled.
+            <section className="px-4 lg:px-0">
+              <AdsenseUnit
+                slot={sidebarAdSlot}
+                label="Sidebar ad"
+                minHeightClassName="min-h-[280px]"
+              />
+            </section>
+            */}
 
             {/* Ventura Promo Box */}
             <section className="px-4 lg:px-0">
