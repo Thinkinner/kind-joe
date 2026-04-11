@@ -3,14 +3,20 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
-import { staffInvitation, user as authUser } from "@/db/auth-schema";
+import { staffInvitation } from "@/db/auth-schema";
+import { getStaffRoles } from "@/lib/auth/account-type";
 import {
   generateInviteToken,
   InvitableStaffRoleSchema,
   staffRoleLabel,
 } from "@/lib/auth/staff-invite";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import {
+  ALL_ADMIN_PERMISSIONS,
+  PERMISSIONS,
+  type AppPermission,
+} from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { hasSuperAdminRole } from "@/lib/auth/staff-roles";
 import {
   getTransactionalFrom,
   sendAuthEmail,
@@ -21,9 +27,14 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const PermissionSlug = z.enum(
+  ALL_ADMIN_PERMISSIONS as [AppPermission, ...AppPermission[]],
+);
+
 const PostSchema = z.object({
   email: z.string().email(),
   staffRole: InvitableStaffRoleSchema,
+  adminPageAccess: z.array(PermissionSlug).optional().nullable(),
 });
 
 function publicSiteBase(): string {
@@ -49,6 +60,7 @@ export async function GET() {
       id: staffInvitation.id,
       email: staffInvitation.email,
       staffRole: staffInvitation.staffRole,
+      adminPageAccess: staffInvitation.adminPageAccess,
       expiresAt: staffInvitation.expiresAt,
       createdAt: staffInvitation.createdAt,
     })
@@ -86,6 +98,20 @@ export async function POST(req: NextRequest) {
 
   const email = parsed.data.email.trim().toLowerCase();
   const staffRole = parsed.data.staffRole;
+  const invitePageAccess = parsed.data.adminPageAccess;
+  const canSetPageAccess = hasSuperAdminRole(getStaffRoles(staff.user));
+  if (invitePageAccess !== undefined && !canSetPageAccess) {
+    return NextResponse.json(
+      { error: "Only superadmin can set invite page access." },
+      { status: 403 },
+    );
+  }
+  const normalizedInvitePageAccess: AppPermission[] | null | undefined =
+    invitePageAccess === undefined
+      ? undefined
+      : invitePageAccess === null
+        ? null
+        : Array.from(new Set(invitePageAccess));
   const { raw, hash } = generateInviteToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -102,6 +128,7 @@ export async function POST(req: NextRequest) {
     id: randomUUID(),
     email,
     staffRole,
+    adminPageAccess: normalizedInvitePageAccess ?? null,
     tokenHash: hash,
     expiresAt,
     createdByUserId: staff.user.id,

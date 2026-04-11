@@ -47,6 +47,8 @@ export const staffInvitation = pgTable(
     id: text("id").primaryKey(),
     email: text("email").notNull(),
     staffRole: text("staff_role").notNull(),
+    /** Optional explicit page-access allowlist to apply when invite is accepted. */
+    adminPageAccess: jsonb("admin_page_access").$type<string[]>(),
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdByUserId: text("created_by_user_id")

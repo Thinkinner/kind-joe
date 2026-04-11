@@ -18,6 +18,7 @@ export function JoinTeamClient() {
   const [meta, setMeta] = useState<{
     email: string;
     staffRole: string;
+    hasCustomAccess: boolean;
     hasAccount: boolean;
     signedIn: boolean;
     sessionEmailMatchesInvite: boolean;
@@ -165,6 +166,13 @@ export function JoinTeamClient() {
     <div className="space-y-4">
       <p className="text-sm text-neutral-600">
         Invited email: <span className="font-medium text-neutral-900">{meta.email}</span>
+      </p>
+      <p className="text-sm text-neutral-600">
+        Access level:{" "}
+        <span className="font-medium text-neutral-900 capitalize">
+          {meta.staffRole}
+        </span>
+        {meta.hasCustomAccess ? " + custom page access" : ""}
       </p>
 
       {canAcceptDirectly ? (

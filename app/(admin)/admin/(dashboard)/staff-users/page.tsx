@@ -16,6 +16,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -79,6 +88,7 @@ type PendingInvite = {
   id: string;
   email: string;
   staffRole: string;
+  adminPageAccess: AppPermission[] | null;
   expiresAt: string;
   createdAt: string;
 };
@@ -96,11 +106,101 @@ const PERMISSION_LABELS: Record<AppPermission, string> = {
   [PERMISSIONS.ADMIN_WEBHOOKS]: "Webhooks",
   [PERMISSIONS.ADMIN_INGEST_DATA]: "Ingest data",
   [PERMISSIONS.ADMIN_SECURITY]: "Security",
+  [PERMISSIONS.ADMIN_SUPERADMIN]: "Superadmin",
   [PERMISSIONS.ADMIN_USERS]: "Staff & roles",
 };
 
 const ACCESS_PRESET_OPTIONS = ["admin", "editor", "viewer"] as const;
 type AccessPreset = (typeof ACCESS_PRESET_OPTIONS)[number];
+type InviteAccessMode = "role_default" | "custom";
+
+const INVITE_ROLE_DEFAULT_PERMISSIONS: Record<
+  (typeof INVITE_ROLES)[number],
+  AppPermission[]
+> = {
+  writer: [PERMISSIONS.ADMIN_DASHBOARD, PERMISSIONS.ADMIN_ARTICLES],
+  editor: [
+    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_ARTICLES,
+    PERMISSIONS.ADMIN_ANALYTICS,
+    PERMISSIONS.ADMIN_NEWSLETTER,
+  ],
+  manager: [
+    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_ARTICLES,
+    PERMISSIONS.ADMIN_ANALYTICS,
+    PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
+    PERMISSIONS.ADMIN_POSTS,
+    PERMISSIONS.ADMIN_NEWSLETTER,
+    PERMISSIONS.ADMIN_PREDICTIONS,
+    PERMISSIONS.ADMIN_WEBHOOKS,
+    PERMISSIONS.ADMIN_INGEST_DATA,
+    PERMISSIONS.ADMIN_SECURITY,
+  ],
+  admin: [
+    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_ARTICLES,
+    PERMISSIONS.ADMIN_ANALYTICS,
+    PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
+    PERMISSIONS.ADMIN_POSTS,
+    PERMISSIONS.ADMIN_NEWSLETTER,
+    PERMISSIONS.ADMIN_USERS,
+  ],
+};
+
+const INVITE_PERMISSION_GROUPS: Array<{
+  label: string;
+  permissions: AppPermission[];
+}> = [
+  {
+    label: "Content",
+    permissions: [
+      PERMISSIONS.ADMIN_ARTICLES,
+      PERMISSIONS.ADMIN_POSTS,
+      PERMISSIONS.ADMIN_NEWSLETTER,
+    ],
+  },
+  {
+    label: "Insights",
+    permissions: [
+      PERMISSIONS.ADMIN_ANALYTICS,
+      PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
+      PERMISSIONS.ADMIN_PREDICTIONS,
+    ],
+  },
+  {
+    label: "Technical",
+    permissions: [PERMISSIONS.ADMIN_WEBHOOKS, PERMISSIONS.ADMIN_INGEST_DATA],
+  },
+  {
+    label: "Admin",
+    permissions: [PERMISSIONS.ADMIN_USERS, PERMISSIONS.ADMIN_SECURITY],
+  },
+];
+
+function permissionsForPreset(preset: AccessPreset): AppPermission[] {
+  if (preset === "admin") {
+    return ALL_ADMIN_PERMISSIONS.filter(
+      (perm) => perm !== PERMISSIONS.ADMIN_SUPERADMIN,
+    );
+  }
+  if (preset === "editor") {
+    return [
+      PERMISSIONS.ADMIN_DASHBOARD,
+      PERMISSIONS.ADMIN_ARTICLES,
+      PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
+      PERMISSIONS.ADMIN_ANALYTICS,
+      PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
+      PERMISSIONS.ADMIN_POSTS,
+    ];
+  }
+  return [PERMISSIONS.ADMIN_DASHBOARD, PERMISSIONS.ADMIN_VISITOR_JOURNEYS];
+}
+
+function labelForInviteAccess(access: AppPermission[] | null): string {
+  if (!access || access.length === 0) return "Role default access";
+  return `${access.length} page permissions`;
+}
 
 export default function StaffUsersPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -110,6 +210,11 @@ export default function StaffUsersPage() {
   const [lookupEmail, setLookupEmail] = useState("");
   const [lookupRole, setLookupRole] =
     useState<(typeof INVITE_ROLES)[number]>("writer");
+  const [lookupAccessMode, setLookupAccessMode] =
+    useState<InviteAccessMode>("role_default");
+  const [lookupCustomAccess, setLookupCustomAccess] = useState<AppPermission[]>(
+    [],
+  );
   const [submittingLookup, setSubmittingLookup] = useState(false);
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -174,24 +279,7 @@ export default function StaffUsersPage() {
   };
 
   const applyAccessPreset = (preset: AccessPreset) => {
-    let next: AppPermission[];
-    if (preset === "admin") {
-      next = ALL_ADMIN_PERMISSIONS.filter(
-        (perm) => perm !== PERMISSIONS.ADMIN_SUPERADMIN,
-      );
-    } else if (preset === "editor") {
-      next = [
-        PERMISSIONS.ADMIN_DASHBOARD,
-        PERMISSIONS.ADMIN_ARTICLES,
-        PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
-        PERMISSIONS.ADMIN_ANALYTICS,
-        PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
-        PERMISSIONS.ADMIN_POSTS,
-      ];
-    } else {
-      next = [PERMISSIONS.ADMIN_DASHBOARD, PERMISSIONS.ADMIN_VISITOR_JOURNEYS];
-    }
-    setDraftPageAccess(next);
+    setDraftPageAccess(permissionsForPreset(preset));
   };
 
   const saveModal = async () => {
@@ -245,9 +333,6 @@ export default function StaffUsersPage() {
       toast.error("Enter an email address.");
       return;
     }
-    const matchedExisting = nonStaffRows.find(
-      (r) => r.email.trim().toLowerCase() === email,
-    );
     const matchedStaff = staffRows.find(
       (r) => r.email.trim().toLowerCase() === email,
     );
@@ -256,42 +341,50 @@ export default function StaffUsersPage() {
       toast.error("This email is already on the staff list.");
       return;
     }
+    if (
+      viewerCanSeeSuperadmin &&
+      lookupAccessMode === "custom" &&
+      lookupCustomAccess.length === 0
+    ) {
+      toast.error("Select at least one page for custom access.");
+      return;
+    }
+    const inviteCustomAccess =
+      lookupAccessMode === "custom"
+        ? Array.from(
+            new Set([PERMISSIONS.ADMIN_DASHBOARD, ...lookupCustomAccess]),
+          )
+        : [];
+    const inviteAdminPageAccess =
+      viewerCanSeeSuperadmin && lookupAccessMode === "custom"
+        ? inviteCustomAccess
+        : undefined;
 
     setSubmittingLookup(true);
     try {
-      if (matchedExisting) {
-        const res = await fetch("/api/admin/staff-users", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: matchedExisting.id,
-            staffRoles: [lookupRole],
-          }),
-        });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            typeof j.error === "string" ? j.error : "Could not add role",
-          );
-        }
-        toast.success("User added to staff.");
-      } else {
-        const res = await fetch("/api/admin/staff-invitations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, staffRole: lookupRole }),
-        });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            typeof j.error === "string" ? j.error : "Invite failed",
-          );
-        }
-        toast.success(j.message ?? "Invitation sent.");
+      const res = await fetch("/api/admin/staff-invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          staffRole: lookupRole,
+          ...(inviteAdminPageAccess !== undefined
+            ? { adminPageAccess: inviteAdminPageAccess }
+            : {}),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Invite failed",
+        );
       }
+      toast.success(j.message ?? "Invitation sent.");
 
       setLookupEmail("");
       setLookupRole("writer");
+      setLookupAccessMode("role_default");
+      setLookupCustomAccess([]);
       setAddOpen(false);
       await load();
     } catch (e) {
@@ -310,6 +403,9 @@ export default function StaffUsersPage() {
         body: JSON.stringify({
           email: invite.email,
           staffRole: invite.staffRole,
+          ...(invite.adminPageAccess !== null
+            ? { adminPageAccess: invite.adminPageAccess }
+            : {}),
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -387,10 +483,36 @@ export default function StaffUsersPage() {
   const exactStaffMatch = staffRows.find(
     (r) => r.email.trim().toLowerCase() === normalizedLookupEmail,
   );
+  const identityStatus = exactStaffMatch
+    ? "already_staff"
+    : exactExistingMatch
+      ? "existing_user"
+      : normalizedLookupEmail
+        ? "new_invite"
+        : "idle";
+  const hasValidLookupEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    normalizedLookupEmail,
+  );
   const viewerSelfRow = rows.find((r) => r.isSelf);
   const viewerCanSeeSuperadmin = Boolean(
     viewerSelfRow?.staffRoles?.includes("superadmin"),
   );
+  const reviewPermissions =
+    viewerCanSeeSuperadmin && lookupAccessMode === "custom"
+      ? Array.from(
+          new Set([PERMISSIONS.ADMIN_DASHBOARD, ...lookupCustomAccess]),
+        )
+      : INVITE_ROLE_DEFAULT_PERMISSIONS[lookupRole];
+  const reviewPermissionLabels = reviewPermissions.map(
+    (perm) => PERMISSION_LABELS[perm] ?? perm,
+  );
+  const canSendInvite =
+    hasValidLookupEmail &&
+    !exactStaffMatch &&
+    !submittingLookup &&
+    (!viewerCanSeeSuperadmin ||
+      lookupAccessMode === "role_default" ||
+      lookupCustomAccess.length > 0);
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const visibleStaffRows = staffRows.filter((row) => {
     if (!normalizedSearch) return true;
@@ -443,23 +565,28 @@ export default function StaffUsersPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger asChild>
+            <Sheet open={addOpen} onOpenChange={setAddOpen}>
+              <SheetTrigger asChild>
                 <Button type="button" size="sm" className="rounded-xl">
                   <UserPlus className="h-4 w-4" />
                   Add Member
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Add team member</DialogTitle>
-                  <DialogDescription>
-                    Enter an email. If it already exists, we add a role. If not, we
-                    send an invitation.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 py-1">
-                  <div>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-full overflow-y-auto border-l border-slate-200 bg-white sm:max-w-2xl"
+              >
+                <SheetHeader className="border-b border-slate-100 px-6 py-5">
+                  <SheetTitle className="text-xl">Add team member</SheetTitle>
+                  <SheetDescription>
+                    Invite flow with identity, role, access, and review.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="space-y-4 px-6 py-5">
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Step 1 - Identity
+                    </p>
                     <label className="sr-only" htmlFor="lookup-email">
                       Email
                     </label>
@@ -469,61 +596,177 @@ export default function StaffUsersPage() {
                       placeholder="colleague@company.com"
                       value={lookupEmail}
                       onChange={(e) => setLookupEmail(e.target.value)}
-                      className="bg-white"
+                      className="mt-2 bg-white"
                     />
+                    <p className="mt-2 text-xs text-slate-600">
+                      {identityStatus === "already_staff"
+                        ? "Status: already staff"
+                        : identityStatus === "existing_user"
+                          ? "Status: existing user"
+                          : identityStatus === "new_invite"
+                            ? "Status: new invite"
+                            : "Status: enter an email to check"}
+                    </p>
+                    {lookupMatches.length > 0 && !exactExistingMatch && (
+                      <div className="mt-2 rounded-lg border border-neutral-200 bg-white">
+                        {lookupMatches.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            className="flex w-full items-center justify-between border-b border-neutral-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-neutral-50"
+                            onClick={() => setLookupEmail(u.email)}
+                          >
+                            <span className="font-medium text-neutral-900">
+                              {u.name}
+                            </span>
+                            <span className="text-neutral-600">{u.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <Select
-                    value={lookupRole}
-                    onValueChange={(v) =>
-                      setLookupRole(v as (typeof INVITE_ROLES)[number])
-                    }
-                  >
-                    <SelectTrigger className="w-full bg-white sm:w-[170px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INVITE_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {exactStaffMatch ? (
-                    <p className="text-xs text-amber-700">
-                      This email is already staff.
+
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Step 2 - Role
                     </p>
-                  ) : exactExistingMatch ? (
-                    <p className="text-xs text-emerald-700">
-                      Found existing user: {exactExistingMatch.name} (
-                      {exactExistingMatch.email})
-                    </p>
-                  ) : (
-                    normalizedLookupEmail && (
-                      <p className="text-xs text-neutral-600">
-                        No exact existing user found. This will send an invitation.
-                      </p>
-                    )
-                  )}
-                  {lookupMatches.length > 0 && !exactExistingMatch && (
-                    <div className="rounded-lg border border-neutral-200 bg-white">
-                      {lookupMatches.map((u) => (
-                        <button
-                          key={u.id}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {INVITE_ROLES.map((role) => (
+                        <Button
+                          key={role}
                           type="button"
-                          className="flex w-full items-center justify-between border-b border-neutral-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-neutral-50"
-                          onClick={() => setLookupEmail(u.email)}
+                          variant={lookupRole === role ? "default" : "outline"}
+                          className="capitalize"
+                          onClick={() => setLookupRole(role)}
                         >
-                          <span className="font-medium text-neutral-900">
-                            {u.name}
-                          </span>
-                          <span className="text-neutral-600">{u.email}</span>
-                        </button>
+                          {role}
+                        </Button>
                       ))}
                     </div>
-                  )}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Step 3 - Access
+                    </p>
+                    {viewerCanSeeSuperadmin ? (
+                      <div className="mt-2 space-y-3">
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm text-slate-800">
+                            <Checkbox
+                              checked={lookupAccessMode === "role_default"}
+                              onCheckedChange={(checked) => {
+                                if (checked === true) {
+                                  setLookupAccessMode("role_default");
+                                }
+                              }}
+                            />
+                            Use role default
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-slate-800">
+                            <Checkbox
+                              checked={lookupAccessMode === "custom"}
+                              onCheckedChange={(checked) => {
+                                if (checked === true) {
+                                  setLookupAccessMode("custom");
+                                }
+                              }}
+                            />
+                            Customize page access
+                          </label>
+                        </div>
+                        {lookupAccessMode === "custom" && (
+                          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            {INVITE_PERMISSION_GROUPS.map((group) => (
+                              <div key={group.label} className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-700">
+                                  {group.label}
+                                </p>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  {group.permissions.map((perm) => (
+                                    <label
+                                      key={perm}
+                                      className="flex items-center gap-2 text-sm text-slate-800"
+                                    >
+                                      <Checkbox
+                                        checked={lookupCustomAccess.includes(perm)}
+                                        onCheckedChange={(checked) => {
+                                          setLookupCustomAccess((prev) => {
+                                            if (checked === true) {
+                                              return Array.from(new Set([...prev, perm]));
+                                            }
+                                            return prev.filter((p) => p !== perm);
+                                          });
+                                        }}
+                                      />
+                                      {PERMISSION_LABELS[perm]}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                            <p className="text-xs text-slate-500">
+                              Dashboard access is included automatically.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-slate-600">
+                        Access follows role defaults.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Step 4 - Review before invite
+                    </p>
+                    <div className="mt-2 space-y-1.5 text-sm text-slate-700">
+                      <p>
+                        Email:{" "}
+                        <span className="font-medium text-slate-900">
+                          {normalizedLookupEmail || "—"}
+                        </span>
+                      </p>
+                      <p>
+                        Role:{" "}
+                        <span className="font-medium capitalize text-slate-900">
+                          {lookupRole}
+                        </span>
+                      </p>
+                      <p>
+                        Access level:{" "}
+                        <span className="font-medium text-slate-900">
+                          {viewerCanSeeSuperadmin && lookupAccessMode === "custom"
+                            ? "Customize page access"
+                            : "Use role default"}
+                        </span>
+                      </p>
+                      <p>Pages they can access:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {reviewPermissionLabels.map((label) => (
+                          <Badge
+                            key={label}
+                            className="border border-slate-200 bg-white text-slate-700"
+                          >
+                            {label}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p>
+                        Invite expiry:{" "}
+                        <span className="font-medium text-slate-900">7 days</span>
+                      </p>
+                    </div>
+                    {identityStatus === "already_staff" && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        This email is already staff and cannot be invited again.
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <DialogFooter>
+                <SheetFooter className="sticky bottom-0 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -535,25 +778,20 @@ export default function StaffUsersPage() {
                   <Button
                     type="button"
                     onClick={() => void handleLookupSubmit()}
-                    disabled={submittingLookup || !!exactStaffMatch}
+                    disabled={!canSendInvite}
                   >
                     {submittingLookup ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : exactExistingMatch ? (
-                      <>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add role
-                      </>
                     ) : (
                       <>
                         <Mail className="mr-2 h-4 w-4" />
-                        Send invite
+                        Send Invite
                       </>
                     )}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
             {viewerCanSeeSuperadmin ? (
               <Dialog open={globalAccessOpen} onOpenChange={setGlobalAccessOpen}>
                 <DialogTrigger asChild>
@@ -618,7 +856,8 @@ export default function StaffUsersPage() {
                   <p className="font-medium text-neutral-900">{inv.email}</p>
                   <p className="text-neutral-600">
                     {inv.staffRole} · expires{" "}
-                    {new Date(inv.expiresAt).toLocaleDateString()}
+                    {new Date(inv.expiresAt).toLocaleDateString()} ·{" "}
+                    {labelForInviteAccess(inv.adminPageAccess)}
                   </p>
                 </div>
                 <Button
@@ -699,11 +938,6 @@ export default function StaffUsersPage() {
                             {role}
                           </Badge>
                         ),
-                      )}
-                      {r.directoryMasked && (
-                        <Badge className="border-0 bg-amber-100 text-amber-700">
-                          Masked
-                        </Badge>
                       )}
                     </div>
                   </td>

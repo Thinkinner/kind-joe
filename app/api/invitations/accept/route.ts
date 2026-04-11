@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { staffInvitation, user as authUser } from "@/db/auth-schema";
 import { hashInviteToken } from "@/lib/auth/staff-invite";
 import {
+  hasSuperAdminRole,
   normalizeStaffRoles,
   parseStaffRolesFromDb,
   primaryStaffRole,
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
       id: staffInvitation.id,
       email: staffInvitation.email,
       staffRole: staffInvitation.staffRole,
+      adminPageAccess: staffInvitation.adminPageAccess,
       expiresAt: staffInvitation.expiresAt,
       acceptedAt: staffInvitation.acceptedAt,
     })
@@ -70,6 +72,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     email: inv.email,
     staffRole: inv.staffRole,
+    hasCustomAccess: Array.isArray(inv.adminPageAccess),
     hasAccount: Boolean(existingUser),
     signedIn: Boolean(session?.user),
     sessionEmailMatchesInvite:
@@ -139,15 +142,32 @@ export async function POST(req: NextRequest) {
     inv.staffRole,
   ]);
   const primary = primaryStaffRole(merged);
+  const normalizedInvitePageAccess = Array.isArray(inv.adminPageAccess)
+    ? Array.from(
+        new Set(
+          inv.adminPageAccess.filter((perm): perm is string => typeof perm === "string"),
+        ),
+      )
+    : null;
 
   await db.transaction(async (tx) => {
+    const updatePayload: {
+      accountType: "staff";
+      staffRoles: string[];
+      staffRole: string;
+      adminPageAccess?: string[] | null;
+    } = {
+      accountType: "staff",
+      staffRoles: merged,
+      staffRole: primary,
+    };
+    // Preserve superadmin accounts from invite-scoped page-access overrides.
+    if (!hasSuperAdminRole(merged)) {
+      updatePayload.adminPageAccess = normalizedInvitePageAccess;
+    }
     await tx
       .update(authUser)
-      .set({
-        accountType: "staff",
-        staffRoles: merged,
-        staffRole: primary,
-      })
+      .set(updatePayload)
       .where(eq(authUser.id, userId));
 
     await tx
