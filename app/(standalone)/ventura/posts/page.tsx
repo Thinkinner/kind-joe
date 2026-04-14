@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
+import { VenturaPostsEmailGrabber } from "@/components/stories/post-email-grabber";
 import { db } from "@/db";
 import { venturaPosts } from "@/db/schema";
 
@@ -92,6 +93,7 @@ export default async function VenturaPostsPage() {
           );
         })}
       </div>
+      <VenturaPostsEmailGrabber />
     </main>
   );
 }

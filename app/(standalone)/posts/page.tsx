@@ -2,6 +2,7 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
 import { StandalonePostsGrid } from "@/components/posts/standalone-posts-grid";
+import { PostsEmailGrabber } from "@/components/stories/post-email-grabber";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
@@ -95,6 +96,7 @@ export default async function StandalonePostsPage() {
       </header>
 
       <StandalonePostsGrid allPosts={allPosts} />
+      <PostsEmailGrabber />
     </main>
   );
 }

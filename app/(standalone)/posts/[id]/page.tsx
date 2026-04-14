@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FeedDesktopRail } from "@/components/predictions/feed-desktop-rail";
 import { SocialPostCard } from "@/components/social/social-post-card";
 import { SocialPostComments } from "@/components/social/social-post-comments";
+import { PostEmailGrabber } from "@/components/stories/post-email-grabber";
 import { getSocialPostById } from "@/lib/social/queries";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -59,6 +60,7 @@ export default async function SocialPostPage({ params }: PageProps) {
           </section>
         </div>
       </div>
+      <PostEmailGrabber postId={postId} />
     </div>
   );
 }
