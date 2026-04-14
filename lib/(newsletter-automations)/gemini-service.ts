@@ -499,15 +499,36 @@ REMINDER — JSON field "title": This is the email inbox subject line. It MUST b
 export const generateFullArticleContent = async (story: NewsletterStory) => {
   await assertNewsletterStaff();
   const ai = getClient();
+  const now = new Date();
+  const currentDateTimeString = now.toLocaleString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Los_Angeles",
+    timeZoneName: "short",
+  });
 
   // SIMPLIFIED PROMPT: Removed complex <br/> requirements to reduce JSON errors.
   // We let the frontend handle spacing between paragraphs.
-  const prompt = `Research and write a 300-400 word news article for: ${story.headline}.
-  Context: ${story.summary}
-  Use ONLY <p> tags for 'contentHtml'. Do not add extra line breaks like <br>.
-  Just return a series of paragraphs.
-  Each <p> must contain EXACTLY 2 sentences only.
-  Repeat this format until the total article reaches ~300-400 words.`;
+  const prompt = `As-of timestamp (use this as "now"): ${currentDateTimeString}.
+
+Research and write a 300-400 word news article for: ${story.headline}.
+Context: ${story.summary}
+
+Timeliness and title rules (critical):
+- Treat people/titles based on the as-of timestamp above and grounded web results.
+- Do NOT use stale role labels.
+- Only call someone "former" if they are truly former as of the timestamp.
+- Example: if Donald Trump is the sitting U.S. president as of the timestamp, write "President Donald Trump" (not "former president Donald Trump").
+
+Formatting rules:
+- Use ONLY <p> tags for 'contentHtml'. Do not add extra line breaks like <br>.
+- Return a series of paragraphs.
+- Each <p> must contain EXACTLY 2 sentences only.
+- Repeat this format until the total article reaches ~300-400 words.`;
 
   return retry(async () => {
     const response = await ai.models.generateContent({
