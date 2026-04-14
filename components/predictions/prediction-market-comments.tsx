@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { authClient } from "@/lib/auth-client";
 import type {
@@ -14,9 +16,11 @@ import type {
 import { PREDICTION_COMMENT_MAX_LENGTH } from "@/lib/predictions/comments-public";
 
 function displayAuthor(a: PredictionCommentAuthorView) {
+  const n = a.name?.trim();
+  if (n) return n;
   const u = a.username?.trim();
   if (u) return `@${u}`;
-  return a.name;
+  return "Unknown";
 }
 
 function initials(a: PredictionCommentAuthorView) {
@@ -68,7 +72,7 @@ function CommentBlock({
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const canReply = depth === 0 && viewerId;
+  const canReply = !dark && depth === 0 && viewerId;
 
   async function submitReply() {
     if (!viewerId) {
@@ -99,24 +103,51 @@ function CommentBlock({
   }
 
   return (
-    <article className={depth === 1 ? (dark ? "ml-11 border-l border-white/15 pl-4" : "ml-11 border-l border-slate-200 pl-4") : ""}>
+    <article
+      className={
+        depth === 1
+          ? dark
+            ? "ml-11 border-l border-[#27272a] pl-4"
+            : "ml-11 border-l border-slate-200 pl-4"
+          : ""
+      }
+    >
       <div className="flex gap-3">
-        <Avatar className={dark ? "size-10 border border-white/20" : "size-10 border border-slate-200"}>
+        <Avatar className={dark ? "size-10 border border-[#27272a]" : "size-10 border border-slate-200"}>
           {node.author.image ? <AvatarImage src={node.author.image} alt="" /> : null}
-          <AvatarFallback className={dark ? "bg-white/10 text-xs text-white" : "text-xs"}>
+          <AvatarFallback className={dark ? "bg-[#1c1c1f] text-xs text-white" : "text-xs"}>
             {initials(node.author)}
           </AvatarFallback>
         </Avatar>
-        <div className={dark ? "min-w-0 flex-1 border-b border-white/10 pb-4" : "min-w-0 flex-1 border-b border-slate-100 pb-4"}>
+        <div
+          className={
+            dark
+              ? "min-w-0 flex-1 border-b border-[#27272a] pb-6"
+              : "min-w-0 flex-1 border-b border-slate-100 pb-4"
+          }
+        >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className={dark ? "text-sm font-semibold text-white" : "text-sm font-semibold text-slate-900"}>
+            <span
+              className={
+                dark ? "text-[14px] font-bold text-white" : "text-sm font-semibold text-slate-900"
+              }
+            >
               {displayAuthor(node.author)}
             </span>
-            <span className={dark ? "text-xs text-white/45" : "text-xs text-slate-400"} title={formatTime(node.createdAt)}>
-              {relativeTime(node.createdAt)}
+            <span
+              className={dark ? "text-[12px] text-[#a1a1aa]" : "text-xs text-slate-400"}
+              title={formatTime(node.createdAt)}
+            >
+              {dark ? `${relativeTime(node.createdAt)} ago` : relativeTime(node.createdAt)}
             </span>
           </div>
-          <p className={dark ? "mt-1 whitespace-pre-wrap text-[15px] leading-6 text-white/90" : "mt-1 whitespace-pre-wrap text-[15px] leading-6 text-slate-800"}>
+          <p
+            className={
+              dark
+                ? "mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-[#a1a1aa]"
+                : "mt-1 whitespace-pre-wrap text-[15px] leading-6 text-slate-800"
+            }
+          >
             {node.body}
           </p>
 
@@ -138,7 +169,7 @@ function CommentBlock({
               <Textarea
                 value={replyBody}
                 onChange={(e) => setReplyBody(e.target.value)}
-                placeholder="Post your reply"
+                placeholder="Write your reply"
                 maxLength={PREDICTION_COMMENT_MAX_LENGTH}
                 rows={3}
                 className={dark ? "border-white/20 bg-black/20 text-sm text-white placeholder:text-white/40" : "bg-white text-sm"}
@@ -281,61 +312,116 @@ export function PredictionMarketComments({
 
   return (
     <section className={dark ? "overflow-hidden bg-transparent" : "overflow-hidden bg-white"}>
-      <header className={dark ? "border-b border-white/10 px-5 py-3" : "border-b border-slate-200 px-5 py-3"}>
-        <h2 className={dark ? "text-base font-bold tracking-tight text-white" : "text-base font-bold tracking-tight text-slate-900"}>Replies</h2>
-      </header>
+      {!dark ? (
+        <header className="border-b border-slate-200 px-5 py-3">
+          <h2 className="text-base font-bold tracking-tight text-slate-900">Replies</h2>
+        </header>
+      ) : null}
 
       {!sessionPending && viewerId ? (
-        <div className={dark ? "border-b border-white/10 px-5 py-4" : "border-b border-slate-200 px-5 py-4"}>
-          <div className="space-y-2">
-          <Textarea
-            value={topBody}
-            onChange={(e) => setTopBody(e.target.value)}
-            placeholder="What are your thoughts?"
-            maxLength={PREDICTION_COMMENT_MAX_LENGTH}
-            rows={3}
-            className={dark ? "rounded-xl border-white/20 bg-black/20 text-sm text-white placeholder:text-white/40" : "rounded-xl border-slate-300 text-sm"}
-          />
-          <div className="flex items-center justify-between gap-3">
-            <span className={dark ? "text-xs text-white/50" : "text-xs text-slate-500"}>
-              {topBody.length}/{PREDICTION_COMMENT_MAX_LENGTH}
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              className={dark ? "bg-white text-black hover:bg-white/90" : ""}
-              disabled={submittingTop || topBody.trim().length === 0}
-              onClick={() => void submitTop()}
-            >
-              Post
-            </Button>
+        <div className={dark ? "border-b border-[#27272a] px-6 py-6" : "border-b border-slate-200 px-5 py-4"}>
+          <div className={dark ? "flex gap-4" : "space-y-2"}>
+            {dark ? (
+              <Avatar className="size-10 border border-[#27272a]">
+                {sessionData?.user?.image ? <AvatarImage src={sessionData.user.image} alt="" /> : null}
+                <AvatarFallback className="bg-[#1c1c1f] text-xs text-white">
+                  {(sessionData?.user?.name?.slice(0, 2) || "YO").toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ) : null}
+            <div className={dark ? "relative flex-1" : "space-y-2"}>
+              {dark ? (
+                <Input
+                  value={topBody}
+                  onChange={(e) => setTopBody(e.target.value)}
+                  placeholder="Add a comment..."
+                  maxLength={PREDICTION_COMMENT_MAX_LENGTH}
+                  className="h-12 rounded-lg border-[#27272a] bg-[#1c1c1f] pr-12 text-white placeholder:text-[#a1a1aa]"
+                />
+              ) : (
+                <Textarea
+                  value={topBody}
+                  onChange={(e) => setTopBody(e.target.value)}
+                  placeholder="What are your thoughts?"
+                  maxLength={PREDICTION_COMMENT_MAX_LENGTH}
+                  rows={3}
+                  className="rounded-xl border-slate-300 text-sm"
+                />
+              )}
+              {dark ? (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#4B6FD0] hover:bg-[#102A80]/15 disabled:opacity-40"
+                  disabled={submittingTop || topBody.trim().length === 0}
+                  onClick={() => void submitTop()}
+                >
+                  <Send size={16} />
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+          {!dark ? (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-slate-500">
+                {topBody.length}/{PREDICTION_COMMENT_MAX_LENGTH}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                disabled={submittingTop || topBody.trim().length === 0}
+                onClick={() => void submitTop()}
+              >
+                Comment
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : !sessionPending ? (
-        <div className={dark ? "border-b border-white/10 bg-white/[0.02] px-5 py-4 text-sm text-white/75" : "border-b border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-700"}>
-          <Link
-            href={`/login?next=${encodeURIComponent(nextPath)}`}
-            className={dark ? "font-semibold text-white hover:underline" : "font-semibold hover:underline"}
-          >
-            Sign in
-          </Link>{" "}
-          or{" "}
-          <Link
-            href={`/register?next=${encodeURIComponent(nextPath)}`}
-            className={dark ? "font-semibold text-white hover:underline" : "font-semibold hover:underline"}
-          >
-            create an account
-          </Link>{" "}
-          to join the thread.
+        <div
+          className={
+            dark
+              ? "border-b border-[#27272a] bg-[#1c1c1f] px-6 py-6 text-center"
+              : "border-b border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-700"
+          }
+        >
+          {dark ? (
+            <>
+              <p className="mb-3 text-[#a1a1aa]">Sign in to join the discussion</p>
+              <Link
+                href={`/login?next=${encodeURIComponent(nextPath)}`}
+                className="inline-flex rounded-lg bg-[#102A80] px-5 py-2 text-sm font-bold text-white hover:bg-[#1A3EA0]"
+              >
+                Sign in
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={`/login?next=${encodeURIComponent(nextPath)}`}
+                className="font-semibold hover:underline"
+              >
+                Sign in
+              </Link>{" "}
+              or{" "}
+              <Link
+                href={`/register?next=${encodeURIComponent(nextPath)}`}
+                className="font-semibold hover:underline"
+              >
+                create an account
+              </Link>{" "}
+              to join this question.
+            </>
+          )}
         </div>
       ) : null}
 
-      <div className="px-5 py-3">
+      <div className={dark ? "px-6 py-6" : "px-5 py-3"}>
         {loading ? (
           <p className={dark ? "text-sm text-white/60" : "text-sm text-slate-500"}>Loading comments…</p>
         ) : comments.length === 0 ? (
-          <p className={dark ? "text-sm text-white/60" : "text-sm text-slate-500"}>No posts yet. Start the conversation.</p>
+          <p className={dark ? "text-sm text-white/60" : "text-sm text-slate-500"}>
+            No comments yet. Start the conversation.
+          </p>
         ) : (
           <div className="space-y-4">
             {comments.map((c) => (

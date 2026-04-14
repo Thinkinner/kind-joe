@@ -479,6 +479,16 @@ export const predictionMarketStatusEnum = pgEnum("prediction_market_status", [
   "locked",
   "resolved",
 ]);
+export const predictionCategoryEnum = pgEnum("prediction_category", [
+  "general",
+  "politics",
+  "economy",
+  "technology",
+  "science",
+  "sports",
+  "world",
+  "culture",
+]);
 
 export const predictionMarkets = pgTable(
   "prediction_markets",
@@ -487,16 +497,22 @@ export const predictionMarkets = pgTable(
     slug: varchar("slug", { length: 160 }).notNull(),
     title: varchar("title", { length: 240 }).notNull(),
     description: text("description"),
+    category: predictionCategoryEnum("category").notNull().default("general"),
     status: predictionMarketStatusEnum("status").notNull().default("open"),
     opensAt: timestamp("opens_at", { withTimezone: true }).defaultNow().notNull(),
     locksAt: timestamp("locks_at", { withTimezone: true }),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    winningOptionId: integer("winning_option_id").references(
+      (): AnyPgColumn => predictionOptions.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
     slugUnique: uniqueIndex("prediction_markets_slug_unique").on(t.slug),
     statusIdx: index("prediction_markets_status_idx").on(t.status),
+    categoryIdx: index("prediction_markets_category_idx").on(t.category),
     opensAtIdx: index("prediction_markets_opens_at_idx").on(t.opensAt),
     locksAtIdx: index("prediction_markets_locks_at_idx").on(t.locksAt),
   }),
@@ -548,6 +564,30 @@ export const predictionVotes = pgTable(
   }),
 );
 
+export const predictionAnonVotes = pgTable(
+  "prediction_anon_votes",
+  {
+    id: serial("id").primaryKey(),
+    marketId: integer("market_id")
+      .notNull()
+      .references(() => predictionMarkets.id, { onDelete: "cascade" }),
+    optionId: integer("option_id")
+      .notNull()
+      .references(() => predictionOptions.id, { onDelete: "cascade" }),
+    voterKey: varchar("voter_key", { length: 190 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    marketIdx: index("prediction_anon_votes_market_id_idx").on(t.marketId),
+    optionIdx: index("prediction_anon_votes_option_id_idx").on(t.optionId),
+    voterIdx: index("prediction_anon_votes_voter_key_idx").on(t.voterKey),
+    oneVotePerMarketPerKey: uniqueIndex("prediction_anon_votes_market_voter_unique").on(
+      t.marketId,
+      t.voterKey,
+    ),
+  }),
+);
+
 export const predictionLikes = pgTable(
   "prediction_likes",
   {
@@ -595,5 +635,102 @@ export const predictionComments = pgTable(
       t.createdAt,
     ),
     parentIdx: index("prediction_comments_parent_id_idx").on(t.parentId),
+  }),
+);
+
+export const socialAttachmentTypeEnum = pgEnum("social_attachment_type", [
+  "image",
+  "link",
+]);
+
+export const socialPosts = pgTable(
+  "social_posts",
+  {
+    id: serial("id").primaryKey(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    authorCreatedIdx: index("social_posts_author_created_idx").on(
+      t.authorId,
+      t.createdAt,
+    ),
+    createdIdx: index("social_posts_created_idx").on(t.createdAt),
+  }),
+);
+
+export const socialPostAttachments = pgTable(
+  "social_post_attachments",
+  {
+    id: serial("id").primaryKey(),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => socialPosts.id, { onDelete: "cascade" }),
+    type: socialAttachmentTypeEnum("type").notNull(),
+    url: text("url").notNull(),
+    title: text("title"),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    siteName: text("site_name"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    postIdx: index("social_post_attachments_post_id_idx").on(t.postId),
+  }),
+);
+
+export const socialPostComments = pgTable(
+  "social_post_comments",
+  {
+    id: serial("id").primaryKey(),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => socialPosts.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    parentId: integer("parent_id").references(
+      (): AnyPgColumn => socialPostComments.id,
+      { onDelete: "cascade" },
+    ),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    postCreatedIdx: index("social_post_comments_post_created_idx").on(
+      t.postId,
+      t.createdAt,
+    ),
+    parentIdx: index("social_post_comments_parent_id_idx").on(t.parentId),
+  }),
+);
+
+export const socialUserProfiles = pgTable(
+  "social_user_profiles",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    bio: text("bio"),
+    location: varchar("location", { length: 120 }),
+    websiteUrl: text("website_url"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    updatedIdx: index("social_user_profiles_updated_idx").on(t.updatedAt),
   }),
 );

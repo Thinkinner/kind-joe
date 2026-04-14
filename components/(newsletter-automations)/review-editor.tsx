@@ -134,6 +134,20 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     }
   };
 
+  const handleRegenerateDailyBriefLead = () => {
+    const regeneratedLead = deriveNewsletterLeadFromStories(data.stories);
+    if (!regeneratedLead) {
+      setErrorMsg(
+        "Could not regenerate Daily brief lead. Add or improve story summaries first.",
+      );
+      return;
+    }
+    setErrorMsg("");
+    setData((prev) => ({ ...prev, intro: regeneratedLead }));
+    setSuccessMsg("Daily brief lead regenerated from current story summaries.");
+    setTimeout(() => setSuccessMsg(""), 2000);
+  };
+
   useEffect(() => {
     // Wait 1.5 seconds after the user stops typing/changing things before saving
     const timer = setTimeout(async () => {
@@ -987,7 +1001,8 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
                     </label>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Optional. Leave empty to auto-fill from the first sentences
-                      of your story summaries.
+                      of your story summaries, or regenerate from the latest
+                      summaries after edits.
                     </p>
                     <textarea
                       className={`mt-2 min-h-[100px] w-full resize-y p-3 leading-relaxed ${OVERVIEW_FIELD_CLASS} ${OVERVIEW_TEXTAREA_SCROLLBAR}`}
@@ -997,6 +1012,25 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
                       }
                       placeholder="One or two sentences for the blue callout under DAILY BRIEF…"
                     />
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRegenerateDailyBriefLead}
+                        className="inline-flex items-center gap-2 border border-orange-600 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-950 transition-colors hover:bg-orange-100 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-100 dark:hover:bg-orange-950/80"
+                        title="Regenerate Daily brief lead from current story summaries"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Regenerate lead
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setData((prev) => ({ ...prev, intro: "" }))}
+                        className="inline-flex items-center gap-2 border border-border bg-white px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                        title="Clear manual text and use auto-fill"
+                      >
+                        Clear manual lead
+                      </button>
+                    </div>
                   </div>
 
                   {/* STORIES LIST */}

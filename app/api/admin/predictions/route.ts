@@ -8,11 +8,13 @@ import {
   ensureUniquePredictionSlug,
   slugifyPredictionTitle,
 } from "@/lib/predictions/admin";
+import { PREDICTION_CATEGORIES } from "@/lib/predictions/categories";
 import { listPredictionMarkets } from "@/lib/predictions/queries";
 
 const createMarketSchema = z.object({
   title: z.string().trim().min(4).max(240),
   description: z.string().trim().max(1200).optional(),
+  category: z.enum(PREDICTION_CATEGORIES).optional(),
   opensAt: z.string().datetime().optional(),
   locksAt: z.string().datetime().optional(),
   options: z.array(z.string().trim().min(1).max(180)).min(2).max(12),
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
 
     const title = parsed.data.title.trim();
     const description = parsed.data.description?.trim() || null;
+    const category = parsed.data.category ?? "general";
     const opensAt = parsed.data.opensAt ? new Date(parsed.data.opensAt) : new Date();
     const locksAt = parsed.data.locksAt ? new Date(parsed.data.locksAt) : null;
     if (locksAt && locksAt <= opensAt) {
@@ -87,6 +90,7 @@ export async function POST(req: Request) {
           slug,
           title,
           description,
+          category,
           opensAt,
           locksAt,
           status: "open",

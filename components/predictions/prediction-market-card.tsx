@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Heart, MessageCircle, Send } from "lucide-react";
+import { Clock3, Ellipsis, Heart, MessageCircle, Send, Users } from "lucide-react";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
+import { PREDICTION_CATEGORY_LABELS } from "@/lib/predictions/categories";
 
 export function isOpenForVoting(m: PredictionMarketView, now = new Date()): boolean {
   if (m.status !== "open") return false;
@@ -30,6 +31,20 @@ function createdAgo(iso: string): string {
   return `${Math.floor(diff / day)}d ago`;
 }
 
+function endsInLabel(m: PredictionMarketView): string {
+  if (!m.locksAt) return lockLabel(m);
+  const now = Date.now();
+  const lockTs = new Date(m.locksAt).getTime();
+  const diff = lockTs - now;
+  if (!Number.isFinite(lockTs) || diff <= 0) return "Ended";
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+  if (diff < hour) return "Ends in under 1 hour";
+  if (diff < day) return `Ends in about ${Math.ceil(diff / hour)} hours`;
+  const days = Math.ceil(diff / day);
+  return `Ends in about ${days} day${days > 1 ? "s" : ""}`;
+}
+
 export function PredictionMarketCard({
   market: m,
   canVote,
@@ -42,6 +57,10 @@ export function PredictionMarketCard({
   onOpenDetail,
   onLike,
   likeSubmitting = false,
+  variant = "default",
+  canManage = false,
+  onEdit,
+  onDelete,
 }: {
   market: PredictionMarketView;
   canVote: boolean;
@@ -54,10 +73,16 @@ export function PredictionMarketCard({
   onOpenDetail?: (slug: string) => void;
   onLike?: (marketId: number) => void;
   likeSubmitting?: boolean;
+  variant?: "default" | "hero" | "compact";
+  canManage?: boolean;
+  onEdit?: (market: PredictionMarketView) => void;
+  onDelete?: (market: PredictionMarketView) => void;
 }) {
   const HeadingTag = headingLevel;
   const feed = style === "feed";
   const threadDark = style === "threadDark";
+  const hero = variant === "hero";
+  const compact = variant === "compact";
 
   function shouldIgnoreCardOpen(target: EventTarget | null): boolean {
     if (!(target instanceof Element)) return false;
@@ -87,6 +112,130 @@ export function PredictionMarketCard({
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${m.title} ${shareUrl}`)}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encoded}`,
   };
+  const posterName = m.authorName?.trim() || "Someone";
+  const categoryLabel = PREDICTION_CATEGORY_LABELS[m.category];
+  const shownOptions = compact ? m.options.slice(0, Math.min(2, m.options.length)) : m.options;
+  const hiddenOptionsCount = Math.max(0, m.options.length - shownOptions.length);
+  const twoOptionThreadCard = threadDark && m.options.length === 2;
+  const yesOption = m.options[0] ?? null;
+  const noOption = m.options[1] ?? null;
+  const referenceCompact = threadDark && compact && yesOption && noOption;
+
+  if (referenceCompact) {
+    return (
+      <article
+        role={enableCardOpen ? "button" : undefined}
+        tabIndex={enableCardOpen ? 0 : undefined}
+        onClick={(e) => {
+          if (!enableCardOpen) return;
+          if (shouldIgnoreCardOpen(e.target)) return;
+          openDetail();
+        }}
+        onKeyDown={(e) => {
+          if (!enableCardOpen) return;
+          if (e.key !== "Enter" && e.key !== " ") return;
+          if (shouldIgnoreCardOpen(e.target)) return;
+          e.preventDefault();
+          openDetail();
+        }}
+        className={`rounded-xl border border-[#27272a] bg-[#121214] p-6 ${
+          enableCardOpen ? "cursor-pointer" : ""
+        }`}
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)" }}
+      >
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[2px] text-[#4B6FD0]">
+            {categoryLabel}
+          </p>
+          {canManage ? (
+            <details data-no-card-open="true" className="relative">
+              <summary className="inline-flex list-none cursor-pointer items-center rounded-md p-1 text-[#a1a1aa] hover:bg-[#1c1c1f] hover:text-white">
+                <Ellipsis size={14} />
+              </summary>
+              <div
+                data-no-card-open="true"
+                className="absolute right-0 top-7 z-20 w-32 rounded-md border border-[#27272a] bg-[#121214] p-1 text-sm"
+              >
+                <button
+                  type="button"
+                  data-no-card-open="true"
+                  className="block w-full rounded px-2 py-1.5 text-left text-white/85 hover:bg-[#1c1c1f]"
+                  onClick={() => onEdit?.(m)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  data-no-card-open="true"
+                  className="block w-full rounded px-2 py-1.5 text-left text-red-300 hover:bg-[#1c1c1f]"
+                  onClick={() => onDelete?.(m)}
+                >
+                  Delete
+                </button>
+              </div>
+            </details>
+          ) : null}
+        </div>
+
+        <HeadingTag className="mb-4 text-[20px] font-bold leading-[1.1] tracking-[-0.5px] text-white">
+          {m.title}
+        </HeadingTag>
+
+        <div className="mb-6 flex items-center gap-4 text-[13px] text-[#a1a1aa]">
+          <span className="inline-flex items-center gap-1">
+            <Users size={14} />
+            {m.totalVotes.toLocaleString()} predictions
+          </span>
+          <span>•</span>
+          <span>{endsInLabel(m)}</span>
+        </div>
+
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <p className="mb-1 text-[12px] uppercase text-[#a1a1aa]">Current Probability</p>
+            <p className="text-[32px] font-extrabold leading-none text-white">{yesOption.percentage}%</p>
+          </div>
+          <div className="text-right">
+            <p className="mb-1 text-[12px] uppercase text-[#a1a1aa]">No Probability</p>
+            <p className="text-[16px] font-bold text-[#ef4444]">{noOption.percentage}%</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            data-no-card-open="true"
+            onClick={() => void onVote(m.id, yesOption.id)}
+            disabled={!canVote || submitting}
+            className={`h-14 rounded-lg text-[16px] font-bold transition ${
+              m.viewerVoteOptionId === yesOption.id
+                ? "border-2 border-white bg-[#102A80] text-white"
+                : "bg-[#102A80] text-white hover:bg-[#1A3EA0]"
+            } ${!canVote || submitting ? "cursor-not-allowed opacity-70" : ""}`}
+          >
+            {m.viewerVoteOptionId === yesOption.id
+              ? `Predicted ${yesOption.label}`
+              : `Predict ${yesOption.label}`}
+          </button>
+          <button
+            type="button"
+            data-no-card-open="true"
+            onClick={() => void onVote(m.id, noOption.id)}
+            disabled={!canVote || submitting}
+            className={`h-14 rounded-lg text-[16px] font-bold transition ${
+              m.viewerVoteOptionId === noOption.id
+                ? "border-2 border-white bg-[#ef4444] text-white"
+                : "bg-[#ef4444] text-white hover:opacity-90"
+            } ${!canVote || submitting ? "cursor-not-allowed opacity-70" : ""}`}
+          >
+            {m.viewerVoteOptionId === noOption.id
+              ? `Predicted ${noOption.label}`
+              : `Predict ${noOption.label}`}
+          </button>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -106,7 +255,7 @@ export function PredictionMarketCard({
       }}
       className={
         threadDark
-          ? `border-b border-white/10 bg-transparent px-5 py-4 ${
+          ? `${hero ? "rounded-2xl border border-white/12 bg-[linear-gradient(150deg,#0f1319_0%,#0a0d12_100%)] shadow-[0_10px_40px_rgba(0,0,0,0.45)]" : "border-b border-white/10 bg-[linear-gradient(150deg,#0f1319_0%,#0a0d12_100%)]"} ${hero ? "p-6" : "px-5 py-5"} ${
               enableCardOpen ? "cursor-pointer" : ""
             }`
           : feed
@@ -118,35 +267,79 @@ export function PredictionMarketCard({
             }`
       }
     >
-      {threadDark ? (
-        <div className="mb-3 flex items-center gap-2 text-xs text-white/60">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/10 text-[11px] font-semibold text-white">
-            KJ
-          </span>
-          <span className="font-semibold text-white">kindjoe</span>
-          <span>·</span>
-          <span>poll</span>
-          {m.createdAt ? (
-            <>
-              <span>·</span>
-              <span>{createdAgo(m.createdAt)}</span>
-            </>
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
+          <div className="mb-1 flex items-center gap-2">
+            {canManage ? (
+              <details data-no-card-open="true" className="relative">
+                <summary
+                  className={
+                    threadDark
+                      ? "inline-flex list-none cursor-pointer items-center rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white"
+                      : "inline-flex list-none cursor-pointer items-center rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  }
+                >
+                  <Ellipsis size={14} />
+                </summary>
+                <div
+                  data-no-card-open="true"
+                  className={
+                    threadDark
+                      ? "absolute left-0 top-7 z-20 w-32 rounded-md border border-white/20 bg-[#151515] p-1 text-sm"
+                      : "absolute left-0 top-7 z-20 w-32 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-md"
+                  }
+                >
+                  <button
+                    type="button"
+                    data-no-card-open="true"
+                    className={
+                      threadDark
+                        ? "block w-full rounded px-2 py-1.5 text-left text-white/85 hover:bg-white/10"
+                        : "block w-full rounded px-2 py-1.5 text-left text-slate-700 hover:bg-slate-100"
+                    }
+                    onClick={() => onEdit?.(m)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    data-no-card-open="true"
+                    className={
+                      threadDark
+                        ? "block w-full rounded px-2 py-1.5 text-left text-red-300 hover:bg-white/10"
+                        : "block w-full rounded px-2 py-1.5 text-left text-red-600 hover:bg-slate-100"
+                    }
+                    onClick={() => onDelete?.(m)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </details>
+            ) : null}
+            <p
+              className={
+                threadDark
+                  ? "text-xs font-bold uppercase tracking-[0.18em] text-[#4B6FD0]"
+                  : "text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+              }
+            >
+              {categoryLabel}
+            </p>
+          </div>
           <HeadingTag
             className={
               headingLevel === "h1"
                 ? threadDark
-                  ? "text-xl font-bold tracking-tight text-white sm:text-[1.7rem]"
+                  ? hero
+                    ? "text-2xl font-bold tracking-tight text-white sm:text-[2rem]"
+                    : "text-xl font-bold tracking-tight text-white sm:text-[1.7rem]"
                   : feed
                   ? "text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl"
                   : "text-2xl font-black tracking-tight text-slate-900 sm:text-3xl"
                 : threadDark
-                  ? "text-lg font-semibold tracking-tight text-white sm:text-xl"
+                  ? compact
+                    ? "text-[20px] font-bold leading-[1.15] tracking-tight text-white"
+                    : "text-[28px] font-extrabold leading-[1.08] tracking-tight text-white sm:text-[34px]"
                   : "text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
             }
           >
@@ -170,12 +363,83 @@ export function PredictionMarketCard({
               : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
           }
         >
-          {lockLabel(m)}
+          {threadDark ? endsInLabel(m) : lockLabel(m)}
         </div>
       </div>
 
-      <div className={feed || threadDark ? "space-y-2.5" : "space-y-2.5"}>
-        {m.options.map((o) => {
+      {m.status === "resolved" && m.winningOptionLabel ? (
+        <div
+          className={
+            threadDark
+              ? "mb-3 rounded-xl border border-[#4B6FD0]/40 bg-[#4B6FD0]/10 px-3 py-2 text-xs text-[#93ACF0]"
+              : "mb-3 rounded-xl border border-[#4B6FD0]/30 bg-[#4B6FD0]/10 px-3 py-2 text-xs text-[#1A3EA0]"
+          }
+        >
+          Result: <span className="font-semibold">{m.winningOptionLabel}</span>
+        </div>
+      ) : null}
+
+      {twoOptionThreadCard && yesOption && noOption ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 text-[13px] text-white/75">
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={14} />
+              {m.totalVotes.toLocaleString()} predictions
+            </span>
+            <span className="text-white/35">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 size={14} />
+              {endsInLabel(m)}
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                Current probability
+              </p>
+              <p className="mt-1 text-[46px] font-extrabold leading-none text-white">
+                {yesOption.percentage}%
+              </p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                {noOption.label} probability
+              </p>
+              <p className="mt-1 text-[34px] font-extrabold leading-none text-rose-500">
+                {noOption.percentage}%
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              data-no-card-open="true"
+              onClick={() => void onVote(m.id, yesOption.id)}
+              disabled={!canVote || submitting}
+              className={`h-14 rounded-xl bg-[#102A80] px-5 text-base font-extrabold text-white transition hover:bg-[#1A3EA0] ${
+                m.viewerVoteOptionId === yesOption.id ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[#0f141b]" : ""
+              } ${!canVote || submitting ? "cursor-not-allowed opacity-70" : ""}`}
+            >
+              Predict {yesOption.label.toUpperCase()}
+            </button>
+            <button
+              type="button"
+              data-no-card-open="true"
+              onClick={() => void onVote(m.id, noOption.id)}
+              disabled={!canVote || submitting}
+              className={`h-14 rounded-xl bg-rose-500 px-5 text-base font-extrabold text-white transition hover:bg-rose-400 ${
+                m.viewerVoteOptionId === noOption.id ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[#0f141b]" : ""
+              } ${!canVote || submitting ? "cursor-not-allowed opacity-70" : ""}`}
+            >
+              Predict {noOption.label.toUpperCase()}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={feed || threadDark ? (compact ? "space-y-2" : "space-y-2.5") : "space-y-2.5"}>
+        {shownOptions.map((o) => {
           const mine = m.viewerVoteOptionId === o.id;
           return (
             <button
@@ -184,7 +448,7 @@ export function PredictionMarketCard({
               data-no-card-open="true"
               onClick={() => void onVote(m.id, o.id)}
               disabled={!canVote || submitting}
-              className={`w-full border px-3 py-3 text-left transition ${
+              className={`w-full border ${compact ? "px-2.5 py-2.5" : "px-3 py-3"} text-left transition ${
                 threadDark
                   ? mine
                     ? "border-white/40 bg-white/12"
@@ -196,7 +460,7 @@ export function PredictionMarketCard({
               style={feed || threadDark ? { borderRadius: 16 } : undefined}
             >
               <div className="mb-1.5 flex items-center justify-between gap-3">
-                <span className={threadDark ? "text-sm font-medium text-white" : "text-sm font-medium text-slate-900"}>
+                <span className={threadDark ? `${compact ? "text-[13px]" : "text-sm"} font-medium text-white` : "text-sm font-medium text-slate-900"}>
                   {o.label}
                   {mine ? (
                     <span
@@ -210,7 +474,7 @@ export function PredictionMarketCard({
                     </span>
                   ) : null}
                 </span>
-                <span className={threadDark ? "text-sm font-semibold text-white/80" : "text-sm font-semibold text-slate-700"}>
+                <span className={threadDark ? `${compact ? "text-xs" : "text-sm"} font-semibold text-white/80` : "text-sm font-semibold text-slate-700"}>
                   {o.percentage}%
                 </span>
               </div>
@@ -222,13 +486,30 @@ export function PredictionMarketCard({
                   style={{ width: `${o.percentage}%` }}
                 />
               </div>
+              <div
+                className={
+                  threadDark
+                    ? "mt-1.5 text-[11px] text-white/55"
+                    : "mt-1.5 text-[11px] text-slate-500"
+                }
+              >
+                {o.votes.toLocaleString()} votes
+              </div>
             </button>
           );
         })}
-      </div>
+        {hiddenOptionsCount > 0 ? (
+          <p className={threadDark ? "text-xs text-white/50" : "text-xs text-slate-500"}>
+            +{hiddenOptionsCount} more option{hiddenOptionsCount > 1 ? "s" : ""}
+          </p>
+        ) : null}
+        </div>
+      )}
 
       <div className={threadDark ? "mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/55" : "mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500"}>
-        <span>{m.totalVotes.toLocaleString()} total votes</span>
+        <span>
+          {threadDark ? `${posterName} • ${m.totalVotes.toLocaleString()} total votes` : `${m.totalVotes.toLocaleString()} total votes`}
+        </span>
         {canVote ? (
           m.viewerVoteOptionId != null ? (
             <span className={threadDark ? "font-semibold text-white" : "font-semibold text-sky-700"}>

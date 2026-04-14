@@ -106,6 +106,7 @@ export default function Navbar({
     { name: "Home", href: "/" },
     { name: "Featured", href: "/news", title: "KJ Featured Articles" },
     { name: "Ventura County", href: "/ventura-county" },
+    // { name: "Predictions", href: "/predictions" },
   ] as const;
 
   useEffect(() => {
@@ -477,6 +478,7 @@ export default function Navbar({
                   { name: "Home", href: "/" },
                   { name: "KJ Featured Articles", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
+                  // { name: "Predictions", href: "/predictions" },
                 ].map((item) => {
                   const isActive = pathname === item.href;
                   return (

@@ -568,8 +568,11 @@ export default function StaffUsersPage() {
     normalizedLookupEmail,
   );
   const viewerSelfRow = rows.find((r) => r.isSelf);
+  const viewerRoles = viewerSelfRow?.staffRoles ?? [];
+  const viewerIsOwner = viewerRoles.includes("owner");
+  const viewerIsAdmin = viewerRoles.includes("admin");
   const viewerCanSeeSuperadmin = Boolean(
-    viewerSelfRow?.staffRoles?.includes("superadmin"),
+    viewerRoles.includes("superadmin"),
   );
   const reviewPermissions =
     viewerCanSeeSuperadmin && lookupAccessMode === "custom"
@@ -599,7 +602,15 @@ export default function StaffUsersPage() {
   });
   const editableRoleOptions = viewerCanSeeSuperadmin
     ? [...STAFF_ROLE_PRECEDENCE]
-    : STAFF_ROLE_PRECEDENCE.filter((r) => r !== "superadmin");
+    : viewerIsOwner
+      ? STAFF_ROLE_PRECEDENCE.filter((r) => r !== "superadmin")
+      : viewerIsAdmin
+        ? STAFF_ROLE_PRECEDENCE.filter(
+            (r) => r !== "superadmin" && r !== "owner",
+          )
+        : STAFF_ROLE_PRECEDENCE.filter(
+            (r) => r !== "superadmin" && r !== "owner",
+          );
   const roleBadgeClass = (role: string) => {
     if (role === "superadmin") {
       return "rounded-full border border-indigo-900/20 bg-indigo-900/90 px-2.5 py-0.5 text-xs font-medium text-white";
@@ -1029,13 +1040,6 @@ export default function StaffUsersPage() {
                         <DropdownMenuContent align="end" className="w-52">
                           <DropdownMenuItem onClick={() => openEditModal(r)}>
                             Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              toast.message("Transfer ownership flow coming soon")
-                            }
-                          >
-                            Transfer Ownership
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="destructive"

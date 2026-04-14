@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CirclePlus, Compass, Heart, House, Search, User } from "lucide-react";
+import { Compass, House, ListFilter, User } from "lucide-react";
 
 function RailIconButton({
   children,
@@ -37,7 +37,7 @@ function RailIconButton({
 export function FeedDesktopRail({
   active = "home",
 }: {
-  active?: "home" | "search" | "new" | "likes" | "profile";
+  active?: "home" | "board" | "profile";
 }) {
   return (
     <aside className="fixed left-0 top-0 hidden h-screen w-16 border-r border-white/10 bg-black/55 backdrop-blur md:block">
@@ -50,19 +50,13 @@ export function FeedDesktopRail({
 
         <div className="flex flex-1 items-center">
           <div className="flex flex-col items-center gap-2">
-            <RailIconButton href="/feed" active={active === "home"}>
+            <RailIconButton href="/predictions" active={active === "home"}>
               <House size={18} />
             </RailIconButton>
-            <RailIconButton active={active === "search"}>
-              <Search size={18} />
+            <RailIconButton href="/predictions" active={active === "board"}>
+              <ListFilter size={18} />
             </RailIconButton>
-            <RailIconButton active={active === "new"}>
-              <CirclePlus size={18} />
-            </RailIconButton>
-            <RailIconButton active={active === "likes"}>
-              <Heart size={18} />
-            </RailIconButton>
-            <RailIconButton active={active === "profile"}>
+            <RailIconButton href="/account/profile" active={active === "profile"}>
               <User size={18} />
             </RailIconButton>
           </div>

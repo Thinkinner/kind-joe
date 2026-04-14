@@ -2,17 +2,20 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
-import { predictionMarkets } from "@/db/schema";
+import { predictionMarkets, predictionOptions } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { PREDICTION_CATEGORIES } from "@/lib/predictions/categories";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 
 const updateMarketSchema = z.object({
   title: z.string().trim().min(4).max(240).optional(),
   description: z.string().trim().max(1200).nullable().optional(),
+  category: z.enum(PREDICTION_CATEGORIES).optional(),
   opensAt: z.string().datetime().optional(),
   locksAt: z.string().datetime().nullable().optional(),
   status: z.enum(["open", "locked", "resolved"]).optional(),
+  winningOptionId: z.number().int().positive().nullable().optional(),
 });
 
 export async function PATCH(
@@ -71,6 +74,46 @@ export async function PATCH(
     }
 
     const nextStatus = data.status ?? row.status;
+    let finalWinningOptionId =
+      data.winningOptionId === undefined ? row.winningOptionId : data.winningOptionId;
+
+    if (finalWinningOptionId != null) {
+      const option = await db
+        .select({ marketId: predictionOptions.marketId })
+        .from(predictionOptions)
+        .where(eq(predictionOptions.id, finalWinningOptionId))
+        .limit(1);
+      if (!option[0]) {
+        return NextResponse.json(
+          { error: "Winning option was not found." },
+          { status: 400 },
+        );
+      }
+      if (option[0].marketId !== marketId) {
+        return NextResponse.json(
+          { error: "Winning option must belong to this market." },
+          { status: 400 },
+        );
+      }
+    }
+
+    if (nextStatus === "resolved" && finalWinningOptionId == null) {
+      return NextResponse.json(
+        { error: "Pick a winning option before resolving." },
+        { status: 400 },
+      );
+    }
+    if (nextStatus !== "resolved" && data.winningOptionId !== undefined && data.winningOptionId != null) {
+      return NextResponse.json(
+        { error: "Winning option can only be set when resolving." },
+        { status: 400 },
+      );
+    }
+
+    if (nextStatus !== "resolved" && data.status !== undefined && data.winningOptionId === undefined) {
+      finalWinningOptionId = null;
+    }
+
     const resolvedAt =
       nextStatus === "resolved"
         ? row.resolvedAt ?? new Date()
@@ -84,10 +127,13 @@ export async function PATCH(
         title: data.title ?? row.title,
         description:
           data.description === undefined ? row.description : data.description,
+        category: data.category ?? row.category,
         opensAt,
         locksAt,
         status: nextStatus,
         resolvedAt,
+        winningOptionId:
+          data.winningOptionId === undefined ? finalWinningOptionId : data.winningOptionId,
         updatedAt: new Date(),
       })
       .where(eq(predictionMarkets.id, marketId));

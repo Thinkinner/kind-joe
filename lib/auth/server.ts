@@ -23,6 +23,8 @@ export type AuthAppUser = {
   adminPageAccess?: string[] | null;
 };
 
+let warnedSessionQueryFailure = false;
+
 function normalizeNextPath(nextPath: string | undefined): string {
   if (!nextPath) return "/";
   if (!nextPath.startsWith("/")) return "/";
@@ -86,8 +88,21 @@ export async function getServerSession() {
   try {
     return await auth.api.getSession({ headers: reqHeaders });
   } catch (err) {
-    logAuthEvent("error", "auth_get_server_session_failed", {
-      message: err instanceof Error ? err.message : String(err),
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.includes("Failed query") &&
+      (message.includes(`from "session"`) || message.includes("where \"session\""))
+    ) {
+      if (!warnedSessionQueryFailure) {
+        warnedSessionQueryFailure = true;
+        logAuthEvent("warn", "auth_get_server_session_query_failed", {
+          reason: "session_table_mismatch_or_invalid_token",
+        });
+      }
+      return null;
+    }
+    logAuthEvent("warn", "auth_get_server_session_failed", {
+      reason: "non_query_error",
     });
     return null;
   }
@@ -143,9 +158,6 @@ export async function requireReaderSession(
     redirect(readerLoginRedirectPath(loginPath, nextPath));
   }
   const user = session.user as AuthAppUser;
-  if (isStaffAccount(user)) {
-    redirect("/admin");
-  }
   return { session, user };
 }
 

@@ -89,6 +89,7 @@ export async function GET() {
     const real = parseStaffRolesFromDb(row);
     const isSelf = row.id === staff.user.id;
     const targetHasSuperAdmin = hasSuperAdminRole(real);
+    const targetHasOwner = real.includes("owner");
     const mask = row.directoryRoleMask?.trim();
     const useMask = Boolean(mask) && !isSelf && !viewerIsSuperAdmin && !viewerIsOwner;
 
@@ -106,6 +107,7 @@ export async function GET() {
     if (targetIsStaff) {
       canEditRoles = true;
       if (targetHasSuperAdmin && !callerSuperAdmin) canEditRoles = false;
+      if (targetHasOwner && !callerSuperAdmin && !callerOwner) canEditRoles = false;
     } else {
       // Readers: superadmin/owner/admin can promote and assign roles.
       canEditRoles = callerSuperAdmin || callerOwner || callerAdmin;
@@ -220,6 +222,7 @@ export async function PATCH(req: NextRequest) {
 
   const targetRoles = parseStaffRolesFromDb(targetRow);
   const targetHasSuperAdmin = hasSuperAdminRole(targetRoles);
+  const targetHasOwner = targetRoles.includes("owner");
 
   const setPayload: Partial<typeof authUser.$inferInsert> = {};
 
@@ -251,6 +254,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     const norm = normalizeStaffRoles(nextRoles);
+    const nextHasOwner = norm.includes("owner");
+    if (!callerSuperAdmin && !callerOwner && nextHasOwner) {
+      return NextResponse.json(
+        { error: "Only owner can assign owner role." },
+        { status: 403 },
+      );
+    }
+    if (!callerSuperAdmin && !callerOwner && callerAdmin && targetHasOwner) {
+      return NextResponse.json(
+        { error: "Only owner can change an owner account." },
+        { status: 403 },
+      );
+    }
     setPayload.staffRoles = norm;
     setPayload.staffRole = primaryStaffRole(norm);
     setPayload.accountType = "staff";
@@ -344,10 +360,17 @@ export async function DELETE(req: NextRequest) {
 
   const targetRoles = parseStaffRolesFromDb(targetRow);
   const targetHasSuperAdmin = hasSuperAdminRole(targetRoles);
+  const targetHasOwner = targetRoles.includes("owner");
 
   if (!callerSuperAdmin && targetHasSuperAdmin) {
     return NextResponse.json(
       { error: "Only superadmin can remove a superadmin member." },
+      { status: 403 },
+    );
+  }
+  if (!callerSuperAdmin && !callerOwner && callerAdmin && targetHasOwner) {
+    return NextResponse.json(
+      { error: "Only owner can remove an owner member." },
       { status: 403 },
     );
   }

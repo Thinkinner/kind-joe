@@ -1,12 +1,15 @@
 import { and, eq } from "drizzle-orm";
+import { createHash, randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  predictionAnonVotes,
   predictionMarkets,
   predictionOptions,
   predictionVotes,
 } from "@/db/schema";
+import { getClientIp } from "@/lib/auth/rate-limit";
 import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 
@@ -15,18 +18,44 @@ const voteBodySchema = z.object({
   optionId: z.number().int().positive(),
 });
 
+const ANON_VOTER_COOKIE = "kindjoe_anon_voter";
+
+function hashString(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function resolveAnonymousVoter(req: Request): {
+  voterKey: string;
+  cookieValueToSet?: string;
+} {
+  const ip = getClientIp(req);
+  if (ip && ip !== "unknown") {
+    return { voterKey: `ip:${hashString(ip)}` };
+  }
+
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const existing = cookieHeader
+    .split(";")
+    .map((v) => v.trim())
+    .find((v) => v.startsWith(`${ANON_VOTER_COOKIE}=`))
+    ?.split("=")[1];
+  if (existing) {
+    return { voterKey: `session:${existing}` };
+  }
+
+  const generated = randomUUID().replace(/-/g, "");
+  return {
+    voterKey: `session:${generated}`,
+    cookieValueToSet: generated,
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession();
     const user = session?.user as AuthAppUser | undefined;
     const viewerId = user?.id;
-
-    if (!viewerId) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: "UNAUTHORIZED" },
-        { status: 401 },
-      );
-    }
+    const anonymous = !viewerId ? resolveAnonymousVoter(req) : null;
 
     const payload = await req.json();
     const parsed = voteBodySchema.safeParse(payload);
@@ -88,20 +117,50 @@ export async function POST(req: Request) {
       );
     }
 
-    await db
-      .insert(predictionVotes)
-      .values({
-        marketId,
-        optionId,
-        voterId: viewerId,
-      })
-      .onConflictDoUpdate({
-        target: [predictionVotes.marketId, predictionVotes.voterId],
-        set: { optionId },
-      });
+    if (viewerId) {
+      await db
+        .insert(predictionVotes)
+        .values({
+          marketId,
+          optionId,
+          voterId: viewerId,
+        })
+        .onConflictDoUpdate({
+          target: [predictionVotes.marketId, predictionVotes.voterId],
+          set: { optionId },
+        });
+    } else if (anonymous) {
+      await db
+        .insert(predictionAnonVotes)
+        .values({
+          marketId,
+          optionId,
+          voterKey: anonymous.voterKey,
+        })
+        .onConflictDoUpdate({
+          target: [predictionAnonVotes.marketId, predictionAnonVotes.voterKey],
+          set: { optionId },
+        });
+    }
 
-    const hydrated = await getPredictionMarketById(marketId, viewerId);
-    return NextResponse.json({ market: hydrated });
+    const hydrated = await getPredictionMarketById(
+      marketId,
+      viewerId ?? null,
+      anonymous?.voterKey ?? null,
+    );
+    const response = NextResponse.json({ market: hydrated });
+    if (anonymous?.cookieValueToSet) {
+      response.cookies.set({
+        name: ANON_VOTER_COOKIE,
+        value: anonymous.cookieValueToSet,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+    return response;
   } catch (err) {
     console.error("prediction_vote_failed", err);
     return NextResponse.json(

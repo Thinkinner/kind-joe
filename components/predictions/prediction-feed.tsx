@@ -1,28 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CirclePlus,
-  FileText,
-  Gift,
-  Image as ImageIcon,
-  ListFilter,
-  MapPin,
-  MessageSquareText,
-  Smile,
-} from "lucide-react";
+import { Vote } from "lucide-react";
 import { toast } from "sonner";
 import { PredictionMarketCard, isOpenForVoting } from "@/components/predictions/prediction-market-card";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
 import { authClient } from "@/lib/auth-client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { FeedDesktopRail } from "@/components/predictions/feed-desktop-rail";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-const PAGE_SIZE = 10;
+import { Input } from "@/components/ui/input";
+import { PredictionPublicShell } from "@/components/predictions/prediction-public-shell";
+import {
+  PREDICTION_CATEGORIES,
+  PREDICTION_CATEGORY_LABELS,
+  type PredictionCategory,
+} from "@/lib/predictions/categories";
 
 export function PredictionFeed({
   initialMarkets,
@@ -37,19 +41,42 @@ export function PredictionFeed({
   const [markets, setMarkets] = useState<PredictionMarketView[]>(initialMarkets);
   const [submitting, setSubmitting] = useState<number | null>(null);
   const [likeSubmitting, setLikeSubmitting] = useState<number | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialMarkets.length >= PAGE_SIZE);
-  const [offset, setOffset] = useState(initialMarkets.length);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composeTopic, setComposeTopic] = useState("");
   const [composeBody, setComposeBody] = useState("");
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [composeCategory, setComposeCategory] = useState<PredictionCategory>("general");
+  const [composeOptions, setComposeOptions] = useState<string[]>(["Yes", "No"]);
+  const [composeSubmitting, setComposeSubmitting] = useState(false);
+  const [editingMarket, setEditingMarket] = useState<PredictionMarketView | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deletingMarket, setDeletingMarket] = useState<PredictionMarketView | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  function resetComposer() {
+    setComposeTopic("");
+    setComposeBody("");
+    setComposeCategory("general");
+    setComposeOptions(["Yes", "No"]);
+  }
+
+  function normalizeComposeOptions(rawOptions: string[]): string[] {
+    const trimmed = rawOptions.map((o) => o.trim()).filter((o) => o.length > 0);
+    const deduped = [...new Map(trimmed.map((o) => [o.toLowerCase(), o])).values()];
+    const defaults = ["Yes", "No"];
+
+    // Keep user-provided options first, then fill up with defaults.
+    for (const fallback of defaults) {
+      if (deduped.length >= 2) break;
+      if (!deduped.some((o) => o.toLowerCase() === fallback.toLowerCase())) {
+        deduped.push(fallback);
+      }
+    }
+    return deduped.slice(0, 6);
+  }
 
   async function onVote(marketId: number, optionId: number) {
-    if (!votingEnabled) {
-      router.push("/login?next=%2Ffeed");
-      return;
-    }
     setSubmitting(marketId);
     try {
       const res = await fetch("/api/predictions/vote", {
@@ -67,7 +94,9 @@ export function PredictionFeed({
         return;
       }
       if (body.market) {
-        setMarkets((prev) => prev.map((m) => (m.id === body.market!.id ? body.market! : m)));
+        setMarkets((prev) =>
+          prev.map((market) => (market.id === body.market!.id ? body.market! : market)),
+        );
       }
       toast.success("Vote saved.");
     } catch {
@@ -79,7 +108,7 @@ export function PredictionFeed({
 
   async function onLike(marketId: number) {
     if (!votingEnabled) {
-      router.push("/login?next=%2Ffeed");
+      router.push("/login?next=%2Fpredictions");
       return;
     }
     setLikeSubmitting(marketId);
@@ -99,7 +128,9 @@ export function PredictionFeed({
         return;
       }
       if (body.market) {
-        setMarkets((prev) => prev.map((m) => (m.id === body.market!.id ? body.market! : m)));
+        setMarkets((prev) =>
+          prev.map((market) => (market.id === body.market!.id ? body.market! : market)),
+        );
       }
     } catch {
       toast.error("Could not update reaction.");
@@ -108,214 +139,383 @@ export function PredictionFeed({
     }
   }
 
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
+  function onEditMarket(market: PredictionMarketView) {
+    setEditingMarket(market);
+    setEditTitle(market.title);
+    setEditDescription(market.description ?? "");
+  }
+
+  async function submitEditMarket() {
+    if (!editingMarket) return;
+    const nextTitle = editTitle.trim();
+    if (!nextTitle) {
+      toast.error("Question headline is required.");
+      return;
+    }
+    setEditSubmitting(true);
     try {
-      const res = await fetch(`/api/predictions?limit=${PAGE_SIZE}&offset=${offset}`, {
+      const res = await fetch(`/api/predictions/${editingMarket.id}`, {
+        method: "PATCH",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: nextTitle,
+          description: editDescription.trim() || null,
+        }),
       });
       const body = (await res.json().catch(() => ({}))) as {
-        markets?: PredictionMarketView[];
-        hasMore?: boolean;
-        nextOffset?: number;
+        market?: PredictionMarketView;
         error?: string;
       };
-      if (!res.ok) {
-        toast.error(body.error ?? "Could not load more predictions.");
+      if (!res.ok || !body.market) {
+        toast.error(body.error ?? "Could not update poll.");
         return;
       }
-      const next = body.markets ?? [];
-      setMarkets((prev) => {
-        const seen = new Set(prev.map((m) => m.id));
-        const deduped = next.filter((m) => !seen.has(m.id));
-        return [...prev, ...deduped];
-      });
-      setHasMore(Boolean(body.hasMore));
-      setOffset(typeof body.nextOffset === "number" ? body.nextOffset : offset + next.length);
+      setMarkets((prev) => prev.map((m) => (m.id === body.market!.id ? body.market! : m)));
+      setEditingMarket(null);
+      toast.success("Poll updated.");
     } catch {
-      toast.error("Could not load more predictions.");
+      toast.error("Could not update poll.");
     } finally {
-      setLoadingMore(false);
+      setEditSubmitting(false);
     }
-  }, [hasMore, loadingMore, offset]);
+  }
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0];
-        if (first?.isIntersecting) {
-          void loadMore();
-        }
-      },
-      { rootMargin: "320px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
+  function onDeleteMarket(market: PredictionMarketView) {
+    setDeletingMarket(market);
+  }
 
-  function onPostCompose() {
+  async function confirmDeleteMarket() {
+    if (!deletingMarket) return;
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch(`/api/predictions/${deletingMarket.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(body.error ?? "Could not delete poll.");
+        return;
+      }
+      setMarkets((prev) => prev.filter((m) => m.id !== deletingMarket.id));
+      setDeletingMarket(null);
+      toast.success("Poll deleted.");
+    } catch {
+      toast.error("Could not delete poll.");
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
+  async function onPostCompose() {
     if (!votingEnabled) {
       router.push("/login?next=%2Ffeed");
       return;
     }
-    if (!composeBody.trim()) return;
-    toast.success("Post composer ready. Publishing flow can be wired next.");
-    setComposerOpen(false);
-    setComposeTopic("");
-    setComposeBody("");
+    const topic = composeTopic.trim();
+    const body = composeBody.trim();
+    if (!body) return;
+
+    setComposeSubmitting(true);
+    try {
+      const uniqueOptions = normalizeComposeOptions(composeOptions);
+      if (uniqueOptions.length < 2) {
+        toast.error("Please add at least one more option.");
+        return;
+      }
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ topic, body, options: uniqueOptions, category: composeCategory }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        market?: PredictionMarketView | null;
+        error?: string;
+      };
+      if (!res.ok || !data.market) {
+        toast.error(data.error ?? "Could not publish prediction question.");
+        if (res.status === 401) {
+          router.push("/login?next=%2Fpredictions");
+        }
+        return;
+      }
+      setMarkets((prev) => [data.market!, ...prev.filter((it) => it.id !== data.market!.id)]);
+      setComposerOpen(false);
+      resetComposer();
+      toast.success("Prediction question published.");
+      router.push(`/predictions/${data.market.slug}`);
+    } catch {
+      toast.error("Could not publish prediction question.");
+    } finally {
+      setComposeSubmitting(false);
+    }
   }
 
+  const orderedMarkets = [...markets].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] text-white">
-      <FeedDesktopRail active="home" />
-
-      <div className="pb-24 pt-2 md:pl-16">
-        <div className="mx-auto w-full max-w-[640px] px-2 sm:px-4">
-          <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0a0a0a]/95 px-4 py-3 text-center backdrop-blur">
-            <span className="text-sm font-semibold text-white">For you</span>
-          </div>
-
-          <section className="mt-3 overflow-hidden rounded-3xl border border-white/10 bg-[#0f0f10] shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-            <div className="border-b border-white/10 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="size-9 border border-white/20">
-                  <AvatarImage src={sessionData?.user?.image ?? undefined} alt="" />
-                  <AvatarFallback className="bg-white/10 text-[11px] text-white">
-                    {(sessionData?.user?.name ?? "You").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <button
-                  type="button"
-                  onClick={() => setComposerOpen(true)}
-                  className="flex-1 rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-left text-sm text-white/45 transition hover:bg-white/[0.06]"
-                >
-                  What&apos;s new?
-                </button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="rounded-full bg-white px-4 text-black hover:bg-white/90"
-                  onClick={() => setComposerOpen(true)}
-                >
-                  Post
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              {markets.map((m) => (
-                <PredictionMarketCard
-                  key={m.id}
-                  market={m}
-                  canVote={isOpenForVoting(m)}
-                  submitting={submitting === m.id}
-                  onVote={onVote}
-                  onLike={onLike}
-                  likeSubmitting={likeSubmitting === m.id}
-                  showDiscussLink
-                  style="threadDark"
-                  enableCardOpen
-                  onOpenDetail={(slug) => router.push(`/predictions/${slug}`)}
-                />
-              ))}
-            </div>
-
-            <div
-              ref={sentinelRef}
-              className="border-t border-white/10 px-5 py-4 text-center text-sm text-white/60"
-            >
-              {loadingMore ? "Loading more..." : hasMore ? "Keep scrolling" : "You reached the end"}
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setComposerOpen(true)}
-        className="fixed bottom-7 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-black shadow-xl transition hover:scale-[1.03]"
+    <PredictionPublicShell active="feed">
+      <section
+        className="mb-4 rounded-xl border border-[#27272a] px-6 py-10 text-center"
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)" }}
       >
-        <CirclePlus size={28} />
-      </button>
+        <h1 className="text-[30px] font-bold leading-[1.1] tracking-tight text-white sm:text-[42px]">
+          Predict the News. <span className="text-[#4B6FD0]">Shape the Narrative.</span>
+        </h1>
+        <p className="mx-auto mt-4 max-w-2xl text-[14px] text-[#a1a1aa] sm:text-[15px]">
+          Vote on what happens next, track crowd confidence, and join market discussions.
+        </p>
+        <div className="mt-6">
+          {votingEnabled ? (
+            <Button
+              type="button"
+              onClick={() => setComposerOpen(true)}
+              className="h-11 rounded-lg bg-[#102A80] px-6 font-bold text-white hover:bg-[#1A3EA0]"
+            >
+              Create a prediction event
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => router.push("/login?next=%2Fpredictions")}
+              className="h-11 rounded-lg bg-[#102A80] px-6 font-bold text-white hover:bg-[#1A3EA0]"
+            >
+              Sign in to predict
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-[14px] font-bold uppercase tracking-[1px] text-[#a1a1aa]">
+            Trending events
+          </h2>
+        </div>
+        {orderedMarkets.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {orderedMarkets.map((market) => (
+              <PredictionMarketCard
+                key={market.id}
+                market={market}
+                canVote={isOpenForVoting(market)}
+                submitting={submitting === market.id}
+                onVote={onVote}
+                onLike={onLike}
+                likeSubmitting={likeSubmitting === market.id}
+                style="threadDark"
+                variant="compact"
+                canManage={Boolean(userId) && market.authorId === userId}
+                onEdit={onEditMarket}
+                onDelete={onDeleteMarket}
+                enableCardOpen
+                onOpenDetail={(slug) => router.push(`/predictions/${slug}`)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-[#27272a] bg-[#121214] px-4 py-16 text-center">
+            <h3 className="text-[16px] font-bold text-white">No events yet</h3>
+            <p className="mt-2 text-[14px] text-[#a1a1aa]">
+              Be the first to create a breaking news prediction event.
+            </p>
+          </div>
+        )}
+      </section>
 
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[min(980px,calc(100%-1.5rem))] gap-0 border-white/10 bg-[#0f0f10] p-0 text-white shadow-2xl"
+          className="w-[min(760px,calc(100%-1.5rem))] max-h-[90vh] gap-0 overflow-hidden rounded-3xl border-white/10 bg-[#0f0f10] p-0 text-white shadow-2xl sm:max-w-none"
         >
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-white/10 px-5 py-3 sm:px-6">
             <DialogClose asChild>
               <button
                 type="button"
-                className="text-[34px] font-light leading-none text-white/80 transition hover:text-white"
+                className="text-sm font-medium text-white/90 transition hover:text-white"
               >
                 Cancel
               </button>
             </DialogClose>
-            <DialogTitle className="text-4xl font-semibold tracking-tight">New thread</DialogTitle>
+            <DialogTitle className="justify-self-center text-xl font-semibold tracking-tight">
+              New prediction
+            </DialogTitle>
             <Button
               type="button"
               onClick={onPostCompose}
-              disabled={!composeBody.trim()}
-              className="h-12 rounded-2xl bg-white px-8 text-lg font-semibold text-black hover:bg-white/90 disabled:opacity-40"
+              disabled={!composeBody.trim() || composeSubmitting}
+              className="h-8 rounded-lg bg-white/15 px-4 text-sm font-semibold text-white hover:bg-white/25 disabled:opacity-40"
             >
-              Post
+              {composeSubmitting ? "Posting..." : "Post"}
             </Button>
           </div>
 
-          <div className="px-6 py-6">
-            <div className="flex gap-4">
-              <Avatar className="size-14 border border-white/20">
-                <AvatarImage src={sessionData?.user?.image ?? undefined} alt="" />
-                <AvatarFallback className="bg-white/10 text-sm text-white">
-                  {(sessionData?.user?.name ?? "You").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 text-3xl font-semibold text-white">
-                  {sessionData?.user?.name ?? "You"}
-                </div>
+          <div className="overflow-y-auto px-5 py-5 sm:px-6">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-2">
                 <input
                   value={composeTopic}
                   onChange={(e) => setComposeTopic(e.target.value)}
-                  placeholder="Add a topic"
-                  className="mb-3 w-full border-none bg-transparent p-0 text-[34px] font-medium text-white placeholder:text-white/40 outline-none"
+                  placeholder="Question (optional)"
+                  className="min-w-0 flex-1 border-none bg-transparent p-0 text-lg font-medium leading-tight text-white placeholder:text-white/45 outline-none sm:text-xl"
                 />
-                <Textarea
-                  value={composeBody}
-                  onChange={(e) => setComposeBody(e.target.value)}
-                  placeholder="What's new?"
-                  rows={4}
-                  className="min-h-[120px] resize-none border-none bg-transparent p-0 text-2xl text-white placeholder:text-white/45 shadow-none outline-none focus-visible:ring-0"
-                />
-
-                <div className="mt-4 flex flex-wrap items-center gap-4 text-white/70">
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><ImageIcon size={24} /></button>
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><Gift size={24} /></button>
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><Smile size={24} /></button>
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><ListFilter size={24} /></button>
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><MessageSquareText size={24} /></button>
-                  <button type="button" className="rounded-lg p-2 hover:bg-white/10"><MapPin size={24} /></button>
+              </div>
+              <Textarea
+                value={composeBody}
+                onChange={(e) => setComposeBody(e.target.value)}
+                placeholder="Add context."
+                rows={4}
+                className="min-h-[86px] resize-none border-none bg-transparent p-0 text-sm text-white placeholder:text-white/45 shadow-none outline-none focus-visible:ring-0 sm:text-base"
+              />
+              <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-white/60">
+                    Category
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {PREDICTION_CATEGORIES.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setComposeCategory(category)}
+                        className={`rounded-full border px-3 py-1.5 text-xs ${
+                          composeCategory === category
+                            ? "border-white bg-white text-black"
+                            : "border-white/20 text-white/80 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        {PREDICTION_CATEGORY_LABELS[category]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-2 text-sm font-medium text-white/80">
+                  <Vote size={14} />
+                  Options
+                </div>
+                {composeOptions.map((option, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-white/50">
+                      Choice {idx + 1}
+                    </label>
+                    <Input
+                      value={option}
+                      onChange={(e) =>
+                        setComposeOptions((prev) =>
+                          prev.map((p, i) => (i === idx ? e.target.value : p)),
+                        )
+                      }
+                      placeholder={idx === 0 ? "Yes (editable)" : idx === 1 ? "No (editable)" : `Option ${idx + 1}`}
+                      className="h-10 rounded-lg border-white/15 bg-white/[0.03] text-sm text-white placeholder:text-white/45"
+                    />
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 rounded-md px-3 text-white/85 hover:bg-white/[0.08] hover:text-white"
+                    disabled={composeOptions.length >= 6}
+                    onClick={() =>
+                      setComposeOptions((prev) => [...prev, `Option ${prev.length + 1}`])
+                    }
+                  >
+                    Add choice
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 rounded-md px-3 text-white/70 hover:bg-white/[0.08] hover:text-white"
+                    disabled={composeOptions.length <= 2}
+                    onClick={() => setComposeOptions((prev) => prev.slice(0, -1))}
+                  >
+                    Remove choice
+                  </Button>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-6 border-t border-white/10 pt-5">
-              <button
-                type="button"
-                className="inline-flex items-center gap-3 text-2xl font-medium text-white/80 hover:text-white"
-              >
-                <FileText size={30} />
-                Add to thread
-              </button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      <Dialog
+        open={Boolean(editingMarket)}
+        onOpenChange={(open) => {
+          if (!open) setEditingMarket(null);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="w-[min(620px,calc(100%-1.5rem))] gap-0 overflow-hidden rounded-2xl border border-[#27272a] bg-[#121214] p-0 text-white"
+        >
+          <div className="border-b border-[#27272a] px-5 py-4">
+            <DialogTitle className="text-[18px] font-bold">Edit prediction</DialogTitle>
+          </div>
+          <div className="space-y-3 px-5 py-4">
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Question headline"
+              className="border-[#27272a] bg-[#1c1c1f] text-white placeholder:text-[#a1a1aa]"
+            />
+            <Textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Context and resolution criteria"
+              rows={5}
+              className="border-[#27272a] bg-[#1c1c1f] text-white placeholder:text-[#a1a1aa]"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-[#27272a] px-5 py-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="border-[#27272a] bg-transparent text-white hover:bg-[#1c1c1f] hover:text-white">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => void submitEditMarket()}
+              disabled={editSubmitting}
+              className="bg-[#102A80] font-bold text-white hover:bg-[#1A3EA0]"
+            >
+              {editSubmitting ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(deletingMarket)}
+        onOpenChange={(open) => {
+          if (!open) setDeletingMarket(null);
+        }}
+      >
+        <AlertDialogContent className="border-[#27272a] bg-[#121214] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this poll?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[#a1a1aa]">
+              This action cannot be undone. The question and its votes will be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#27272a] bg-transparent text-white hover:bg-[#1c1c1f] hover:text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void confirmDeleteMarket()}
+              disabled={deleteSubmitting}
+              className="bg-[#ef4444] text-white hover:bg-[#ef4444]/90"
+            >
+              {deleteSubmitting ? "Deleting..." : "Delete poll"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PredictionPublicShell>
   );
 }
 
