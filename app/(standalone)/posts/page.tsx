@@ -1,8 +1,5 @@
-import Image from "next/image";
 import { headers } from "next/headers";
-import { CompactLiveWatchPill } from "@/components/kindjoe-signals/compact-live-watch-pill";
-import { StandalonePostsGrid } from "@/components/posts/standalone-posts-grid";
-import { PostsEmailGrabber } from "@/components/stories/post-email-grabber";
+import { StandalonePostsFeed } from "@/components/posts/standalone-posts-feed";
 import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
@@ -74,29 +71,18 @@ export default async function StandalonePostsPage() {
   const allPosts = await getPosts();
 
   return (
-    <main className="mx-auto max-w-4xl pt-4 sm:pt-6">
-      <header className="mb-8 border-b border-neutral-200/80 px-3 pb-8 pt-2 sm:mb-10 sm:px-4 sm:pb-10 sm:pt-4">
-        <div className="mx-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-2.5 sm:gap-x-5 sm:gap-y-3">
-          <div className="flex h-10 shrink-0 items-center gap-2.5">
-            <Image
-              src="/brand/kindjoe-profile.jpg"
-              width={40}
-              height={40}
-              alt="thekindjoe profile"
-              className="rounded-full ring-2 ring-neutral-100"
-            />
-            <span className="text-sm font-semibold leading-none tracking-tight text-neutral-900 sm:text-base">
-              thekindjoe
-            </span>
-          </div>
-          <div className="flex h-10 items-center">
-            <CompactLiveWatchPill variant="light" />
-          </div>
-        </div>
-      </header>
-
-      <StandalonePostsGrid allPosts={allPosts} />
-      <PostsEmailGrabber />
+    <main className="mx-auto max-w-5xl pt-2 sm:pt-4">
+      <StandalonePostsFeed
+        allPosts={allPosts}
+        profileImageSrc="/brand/kindjoe-profile.jpg"
+        profileName="thekindjoe"
+        featuredImageSrc="/brand/kindjoe-bg.jpg"
+        featuredDestinationUrl="https://www.youtube.com/@thekindjoe-w4d"
+        subscribeTitle="Get the biggest entertainment news stories delivered straight to your inbox with the TMZ Newsletter. Don't miss out!"
+        subscribeEndpoint="/api/post-email-capture"
+        subscribeTags={["kindjoe_posts_feed"]}
+        subscribeButtonClassName="bg-neutral-700 hover:bg-neutral-800"
+      />
     </main>
   );
 }
