@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { articlePageviews, articles, visitorJourneyEvents } from "@/db/schema";
 import { 
@@ -12,6 +12,12 @@ import {
   BarChart3,
   Calendar
 } from "lucide-react";
+import {
+  formatTrendState,
+  getPeriodWindow,
+  parseTrendRange,
+  type TrendState,
+} from "@/lib/analytics/trends";
 
 // --- Types & Constants ---
 type RangeKey = "today" | "week" | "month" | "all";
@@ -26,42 +32,42 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
 
 // --- Utilities ---
 const toSingle = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
-const parseRange = (r?: string): RangeKey => (["today", "week", "month", "all"].includes(r!) ? r as RangeKey : "week");
 const parseTop = (r?: string): TopKey => ([5, 10, 20].includes(Number(r)) ? Number(r) as TopKey : 10);
-
-function getPeriodStart(range: RangeKey, now: Date) {
-  if (range === "all") return null;
-  const d = new Date(now);
-  if (range === "today") d.setHours(0, 0, 0, 0);
-  else if (range === "week") d.setDate(d.getDate() - 7);
-  else d.setDate(d.getDate() - 30);
-  return d;
-}
 
 // --- Component Parts ---
 
 function MetricCard({ 
   label, 
   value, 
-  prevValue, 
   icon: Icon, 
-  trend 
+  trendState,
 }: { 
-  label: string; value: number; prevValue?: number; icon: any; trend?: boolean 
+  label: string;
+  value: number;
+  icon: any;
+  trendState?: TrendState;
 }) {
-  const diff = prevValue ? ((value - prevValue) / (prevValue || 1)) * 100 : 0;
-  const isPos = diff > 0;
-
   return (
     <div className="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)] transition-all hover:shadow-[0_14px_34px_-20px_rgb(15_23_42/0.24)]">
       <div className="flex items-center justify-between">
         <div className="rounded-lg bg-neutral-50 p-2 text-neutral-600 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
           <Icon size={18} />
         </div>
-        {trend && prevValue !== undefined && (
-          <div className={`flex items-center gap-0.5 text-xs font-bold ${isPos ? "text-emerald-600" : "text-rose-600"}`}>
-            {isPos ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {Math.abs(diff).toFixed(1)}%
+        {trendState && (
+          <div
+            className={`flex items-center gap-0.5 text-xs font-bold ${
+              trendState.direction === "up"
+                ? "text-emerald-600"
+                : trendState.direction === "down"
+                  ? "text-rose-600"
+                  : trendState.direction === "flat"
+                    ? "text-slate-600"
+                    : "text-amber-600"
+            }`}
+          >
+            {trendState.direction === "up" ? <ArrowUpRight size={14} /> : null}
+            {trendState.direction === "down" ? <ArrowDownRight size={14} /> : null}
+            {trendState.label}
           </div>
         )}
       </div>
@@ -81,26 +87,51 @@ export default async function AdminDashboardPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = (await searchParams) ?? {};
-  const range = parseRange(toSingle(params.range));
+  const range = parseTrendRange(toSingle(params.range)) as RangeKey;
   const top = parseTop(toSingle(params.top));
 
   const now = new Date();
-  const currentStart = getPeriodStart(range, now);
-  const chartDays = range === "today" ? 1 : range === "week" ? 7 : 30;
+  const period = getPeriodWindow(range, now);
+  const chartDays = range === "today" ? 1 : range === "week" ? 7 : range === "month" ? 30 : 30;
 
-  // DB logic remains largely same but cleaned up
-  const currentVisitorWhere = currentStart ? gte(visitorJourneyEvents.viewedAt, currentStart) : undefined;
-  const currentArticleWhere = currentStart ? gte(articlePageviews.viewedAt, currentStart) : undefined;
+  const currentVisitorWhere =
+    period.currentStart && range !== "all"
+      ? and(
+          gte(visitorJourneyEvents.viewedAt, period.currentStart),
+          lt(visitorJourneyEvents.viewedAt, period.currentEnd),
+        )
+      : undefined;
+  const previousVisitorWhere =
+    period.previousStart && period.previousEnd
+      ? and(
+          gte(visitorJourneyEvents.viewedAt, period.previousStart),
+          lt(visitorJourneyEvents.viewedAt, period.previousEnd),
+        )
+      : undefined;
+  const currentArticleWhere =
+    period.currentStart && range !== "all"
+      ? and(
+          gte(articlePageviews.viewedAt, period.currentStart),
+          lt(articlePageviews.viewedAt, period.currentEnd),
+        )
+      : undefined;
 
   const [
-    stats,
+    currentStats,
+    previousStats,
     topArticles,
+    currentBounds,
   ] = await Promise.all([
     db.select({
       visits: sql<number>`COUNT(*)`,
       sessions: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.sessionId})`,
       visitors: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.visitorId})`
     }).from(visitorJourneyEvents).where(currentVisitorWhere),
+    db.select({
+      visits: sql<number>`COUNT(*)`,
+      sessions: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.sessionId})`,
+      visitors: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.visitorId})`
+    }).from(visitorJourneyEvents).where(previousVisitorWhere),
     db.select({
       id: articles.id,
       title: articles.title,
@@ -110,9 +141,46 @@ export default async function AdminDashboardPage({
       .innerJoin(articles, eq(articlePageviews.articleId, articles.id))
       .where(currentArticleWhere)
       .groupBy(articles.id).orderBy(desc(sql`COUNT(${articlePageviews.id})`)).limit(top),
+    db.select({
+      minViewedAt: sql<Date | null>`MIN(${visitorJourneyEvents.viewedAt})`,
+      maxViewedAt: sql<Date | null>`MAX(${visitorJourneyEvents.viewedAt})`,
+    }).from(visitorJourneyEvents).where(currentVisitorWhere),
   ]);
 
-  const totalVisits = stats[0]?.visits ?? 0;
+  const totalVisits = currentStats[0]?.visits ?? 0;
+  const totalVisitors = currentStats[0]?.visitors ?? 0;
+  const totalSessions = currentStats[0]?.sessions ?? 0;
+  const previousVisits = previousStats[0]?.visits ?? 0;
+  const previousVisitors = previousStats[0]?.visitors ?? 0;
+  const previousSessions = previousStats[0]?.sessions ?? 0;
+
+  const minViewedAt = currentBounds[0]?.minViewedAt;
+  const maxViewedAt = currentBounds[0]?.maxViewedAt;
+  const measuredDays =
+    minViewedAt && maxViewedAt
+      ? Math.max(
+          1,
+          Math.ceil(
+            (new Date(maxViewedAt).getTime() - new Date(minViewedAt).getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1,
+        )
+      : chartDays;
+  const avgDaily = Math.round(totalVisits / measuredDays);
+  const previousAvgDaily = Math.round(previousVisits / measuredDays);
+  const noComparison: TrendState = {
+    label: "N/A",
+    direction: "na",
+    isAvailable: false,
+    deltaPercent: null,
+  };
+  const visitsTrend = range === "all" ? noComparison : formatTrendState(totalVisits, previousVisits);
+  const visitorsTrend =
+    range === "all" ? noComparison : formatTrendState(totalVisitors, previousVisitors);
+  const sessionsTrend =
+    range === "all" ? noComparison : formatTrendState(totalSessions, previousSessions);
+  const avgDailyTrend =
+    range === "all" ? noComparison : formatTrendState(avgDaily, previousAvgDaily);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-10">
@@ -142,10 +210,30 @@ export default async function AdminDashboardPage({
 
       {/* Primary Metrics Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Total Visits" value={totalVisits} icon={MousePointer2} trend />
-        <MetricCard label="Unique Visitors" value={stats[0]?.visitors ?? 0} icon={Users} />
-        <MetricCard label="Sessions" value={stats[0]?.sessions ?? 0} icon={BarChart3} />
-        <MetricCard label="Avg. Daily" value={Math.round(totalVisits / chartDays)} icon={Calendar} />
+        <MetricCard
+          label="Total Visits"
+          value={totalVisits}
+          icon={MousePointer2}
+          trendState={visitsTrend}
+        />
+        <MetricCard
+          label="Unique Visitors"
+          value={totalVisitors}
+          icon={Users}
+          trendState={visitorsTrend}
+        />
+        <MetricCard
+          label="Sessions"
+          value={totalSessions}
+          icon={BarChart3}
+          trendState={sessionsTrend}
+        />
+        <MetricCard
+          label="Avg. Daily"
+          value={avgDaily}
+          icon={Calendar}
+          trendState={avgDailyTrend}
+        />
       </div>
 
       {/* Main Content Grid */}
@@ -216,23 +304,11 @@ export default async function AdminDashboardPage({
 
           <div className="rounded-xl border border-slate-200/60 bg-white p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
              <h2 className="font-bold text-neutral-900 mb-4">Device Distribution</h2>
-             <div className="space-y-4">
-                {/* Dummy data example of how to style more breakdown cards */}
-                {[
-                    { label: 'Desktop', val: '64%', color: 'bg-primary' },
-                    { label: 'Mobile', val: '31%', color: 'bg-indigo-300' },
-                    { label: 'Other', val: '5%', color: 'bg-neutral-300' }
-                ].map(item => (
-                    <div key={item.label}>
-                        <div className="flex justify-between text-xs mb-1 font-medium">
-                            <span>{item.label}</span>
-                            <span className="text-neutral-500">{item.val}</span>
-                        </div>
-                        <div className="h-1 w-full bg-neutral-100 rounded-full">
-                            <div className={`h-full rounded-full ${item.color}`} style={{ width: item.val }} />
-                        </div>
-                    </div>
-                ))}
+             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
+                <p className="text-sm font-medium text-slate-700">N/A</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Device metrics are collecting once client-side device tracking is enabled.
+                </p>
              </div>
           </div>
         </section>

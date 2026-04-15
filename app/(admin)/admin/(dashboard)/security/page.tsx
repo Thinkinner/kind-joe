@@ -1,4 +1,5 @@
 import { StaffTwoFactorSettings } from "@/components/admin/staff-two-factor-settings";
+import { StaffAliasSettings } from "@/components/admin/staff-alias-settings";
 
 export default function AdminSecurityPage() {
   return (
@@ -12,6 +13,12 @@ export default function AdminSecurityPage() {
           here after you can sign in reliably.
         </p>
       </div>
+      <section className="rounded-2xl border border-neutral-200 bg-neutral-50/50 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-neutral-900">Author alias</h2>
+        <div className="mt-4">
+          <StaffAliasSettings />
+        </div>
+      </section>
       <section className="rounded-2xl border border-neutral-200 bg-neutral-50/50 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-neutral-900">
           Authenticator (TOTP)

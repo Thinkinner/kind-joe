@@ -18,6 +18,7 @@ import { calcReadingMinutesFromHtml, slugify } from "@/lib/helpers/articles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const ALIAS_REQUIRED_MESSAGE = "Set your alias in Settings before publishing.";
 
 const SubmitSchema = z.object({
   slug: z.string().min(1),
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
       publishAt: articles.publishAt,
       updatedAt: articles.updatedAt,
       isDraft: articles.isDraft,
-      authorName: users.name,
+      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
     })
     .from(articles)
     .leftJoin(users, eq(users.id, articles.authorId))
@@ -131,9 +132,12 @@ export async function POST(req: NextRequest) {
   }
 
   const u = staff.user;
+  const aliasFullName =
+    typeof u.aliasFullName === "string" ? u.aliasFullName.trim() : "";
   await ensureCmsUser({
     id: u.id,
     name: u.name || u.email || "Staff",
+    aliasFullName: aliasFullName || null,
     avatarUrl: u.image,
   });
 
@@ -164,6 +168,9 @@ export async function POST(req: NextRequest) {
       const readingMinutes =
         input.readingMinutes ?? calcReadingMinutesFromHtml(input.contentHtml);
       const finalIsDraft = wantsPublishedNow || wantsScheduled ? false : input.isDraft;
+      if (!finalIsDraft && !aliasFullName) {
+        throw new Error("ALIAS_REQUIRED");
+      }
 
       const publishedAtDate =
         wantsPublishedNow && input.publishedAt
@@ -238,6 +245,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.message === "ALIAS_REQUIRED") {
+      return NextResponse.json({ error: ALIAS_REQUIRED_MESSAGE }, { status: 400 });
+    }
     if (err instanceof Error && err.message === "SLUG_CONFLICT") {
       return NextResponse.json({ error: "Slug already exists." }, { status: 409 });
     }

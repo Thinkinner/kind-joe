@@ -46,7 +46,7 @@ export async function GET() {
       publishAt: articles.publishAt,
       createdAt: articles.createdAt,
       readingMinutes: articles.readingMinutes,
-      authorName: users.name,
+      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
       authorAvatarUrl: users.avatarUrl,
     })
     .from(articles)

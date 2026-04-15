@@ -5,8 +5,10 @@ import {
   gte,
   isNotNull,
   isNull,
+  lt,
   sql,
 } from "drizzle-orm";
+import Link from "next/link";
 import { db } from "@/db";
 import { articlePageviews, articles } from "@/db/schema";
 import {
@@ -15,8 +17,23 @@ import {
 import {
   type ArticleTrafficRow,
 } from "@/components/admin/cms/traffic-dashboard";
+import {
+  formatTrendState,
+  getPeriodWindow,
+  parseTrendRange,
+  trendRangeLabel,
+  type TrendState,
+  type TrendRange,
+} from "@/lib/analytics/trends";
 
 export const dynamic = "force-dynamic";
+
+const RANGE_OPTIONS: Array<{ key: TrendRange; label: string }> = [
+  { key: "today", label: "24h" },
+  { key: "week", label: "7d" },
+  { key: "month", label: "30d" },
+  { key: "all", label: "All Time" },
+];
 
 type TodaySourceStats = {
   google: number;
@@ -62,8 +79,41 @@ function aggregateTodaySources(
   return out;
 }
 
-export default async function ArticleAnalyticsPage() {
-  const [data, dailyViewsRaw, avgReadMinutesRaw, topCategoryRaw, todaySourcesRaw] =
+export default async function ArticleAnalyticsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = (await searchParams) ?? {};
+  const rangeRaw = params.range;
+  const rangeValue = Array.isArray(rangeRaw) ? rangeRaw[0] : rangeRaw;
+  const range = parseTrendRange(rangeValue);
+  const period = getPeriodWindow(range);
+
+  const currentViewsWhere =
+    period.currentStart && period.range !== "all"
+      ? and(
+          gte(articlePageviews.viewedAt, period.currentStart),
+          lt(articlePageviews.viewedAt, period.currentEnd),
+        )
+      : undefined;
+  const previousViewsWhere =
+    period.previousStart && period.previousEnd
+      ? and(
+          gte(articlePageviews.viewedAt, period.previousStart),
+          lt(articlePageviews.viewedAt, period.previousEnd),
+        )
+      : undefined;
+
+  const [
+    data,
+    dailyViewsRaw,
+    avgReadMinutesRaw,
+    topCategoryRaw,
+    todaySourcesRaw,
+    currentViewsRaw,
+    previousViewsRaw,
+  ] =
     await Promise.all([
       db
         .select({
@@ -128,6 +178,18 @@ export default async function ArticleAnalyticsPage() {
           articlePageviews.utmSource,
           articlePageviews.referrer,
         ),
+      db
+        .select({
+          views: sql<number>`CAST(COUNT(${articlePageviews.id}) AS INT)`,
+        })
+        .from(articlePageviews)
+        .where(currentViewsWhere),
+      db
+        .select({
+          views: sql<number>`CAST(COUNT(${articlePageviews.id}) AS INT)`,
+        })
+        .from(articlePageviews)
+        .where(previousViewsWhere),
     ]);
 
   const rows: ArticleTrafficRow[] = data.map((r) => ({
@@ -139,7 +201,19 @@ export default async function ArticleAnalyticsPage() {
     totalViews: r.totalViews ?? 0,
   }));
 
-  const totalViews = rows.reduce((sum, row) => sum + row.totalViews, 0);
+  const allTimeViews = rows.reduce((sum, row) => sum + row.totalViews, 0);
+  const currentViews = currentViewsRaw[0]?.views ?? 0;
+  const previousViews = previousViewsRaw[0]?.views ?? 0;
+  const totalViews = range === "all" ? allTimeViews : currentViews;
+  const totalViewsTrend: TrendState =
+    range === "all"
+      ? {
+          label: "N/A",
+          direction: "na",
+          isAvailable: false,
+          deltaPercent: null,
+        }
+      : formatTrendState(currentViews, previousViews);
   const avgReadMinutes = avgReadMinutesRaw[0]?.value ?? 0;
   const minutes = Math.floor(avgReadMinutes);
   const seconds = Math.round((avgReadMinutes - minutes) * 60);
@@ -172,10 +246,27 @@ export default async function ArticleAnalyticsPage() {
           Pageviews by article (latest 80). Click a row for traffic sources.
         </p>
       </div>
+      <div className="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-white p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
+        {RANGE_OPTIONS.map((opt) => (
+          <Link
+            key={opt.key}
+            href={`?range=${opt.key}`}
+            className={`px-4 py-1.5 text-sm font-medium transition-all ${
+              range === opt.key
+                ? "rounded-lg bg-primary text-primary-foreground shadow-sm"
+                : "text-neutral-600 hover:text-neutral-900"
+            }`}
+          >
+            {opt.label}
+          </Link>
+        ))}
+      </div>
       <ArticleAnalyticsDashboard
         rows={rows}
         chartData={chartData}
         totalViews={totalViews}
+        totalViewsTrend={totalViewsTrend}
+        totalViewsTrendRangeLabel={trendRangeLabel(range)}
         avgReadTimeLabel={avgReadTimeLabel}
         topCategory={topCategory}
         todaySourceStats={todaySourceStats}

@@ -6,6 +6,7 @@ import { users } from "@/db/schema";
 export async function ensureCmsUser(opts: {
   id: string;
   name: string;
+  aliasFullName?: string | null;
   avatarUrl?: string | null;
 }) {
   const existing = await db
@@ -19,6 +20,7 @@ export async function ensureCmsUser(opts: {
       .update(users)
       .set({
         name: opts.name,
+        aliasFullName: opts.aliasFullName ?? null,
         avatarUrl: opts.avatarUrl ?? null,
       })
       .where(eq(users.id, opts.id));
@@ -28,6 +30,7 @@ export async function ensureCmsUser(opts: {
   await db.insert(users).values({
     id: opts.id,
     name: opts.name,
+    aliasFullName: opts.aliasFullName ?? null,
     avatarUrl: opts.avatarUrl ?? null,
     role: "Writer",
   });

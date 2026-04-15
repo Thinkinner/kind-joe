@@ -36,6 +36,7 @@ export const roleEnum = pgEnum("role", ["Admin", "Writer", "Editor"]);
 export const users = pgTable("users", {
   id: varchar("id", { length: 128 }).primaryKey(),
   name: varchar("name", { length: 120 }).notNull(),
+  aliasFullName: varchar("alias_full_name", { length: 120 }),
   avatarUrl: text("avatar_url"),
   role: roleEnum("role").notNull().default("Writer"),
 });

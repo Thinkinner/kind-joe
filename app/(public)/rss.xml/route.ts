@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db"; // adjust to your actual db path
 import { articles, users } from "@/db/schema";
-import { and, eq, isNotNull, gte, lt } from "drizzle-orm";
+import { and, eq, isNotNull, gte, lt, sql } from "drizzle-orm";
 
 // Helper: get start/end of "today" in UTC
 function getTodayRangeUTC() {
@@ -29,7 +29,7 @@ export async function GET() {
       title: articles.title,
       excerpt: articles.excerpt,
       publishedAt: articles.publishedAt,
-      authorName: users.name,
+      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
       coverImageUrl: articles.coverImageUrl,
       contentHtml: articles.contentHtml,
     })
@@ -62,7 +62,7 @@ export async function GET() {
         <link>${url}</link>
         <guid isPermaLink="true">${url}</guid>
         <pubDate>${pubDate}</pubDate>
-        <author>Kind Joe Staff</author>
+        <author>${escape(article.authorName ?? "Kind Joe Staff")}</author>
         ${
           article.coverImageUrl
             ? `<enclosure url="${article.coverImageUrl}" type="image/jpeg" />`

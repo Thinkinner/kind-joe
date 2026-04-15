@@ -13,6 +13,7 @@ import {
   TrafficDashboard,
   type ArticleTrafficRow,
 } from "@/components/admin/cms/traffic-dashboard";
+import { type TrendState } from "@/lib/analytics/trends";
 
 type ChartPoint = {
   date: string;
@@ -24,6 +25,8 @@ type Props = {
   rows: ArticleTrafficRow[];
   chartData: ChartPoint[];
   totalViews: number;
+  totalViewsTrend: TrendState;
+  totalViewsTrendRangeLabel: string;
   avgReadTimeLabel: string;
   topCategory: string;
   todaySourceStats: {
@@ -37,6 +40,8 @@ export function ArticleAnalyticsDashboard({
   rows,
   chartData,
   totalViews,
+  totalViewsTrend,
+  totalViewsTrendRangeLabel,
   avgReadTimeLabel,
   topCategory,
   todaySourceStats,
@@ -62,10 +67,25 @@ export function ArticleAnalyticsDashboard({
                 maximumFractionDigits: 1,
               }).format(totalViews)}
             </p>
-            <Badge className="rounded-md border-0 bg-emerald-100 text-emerald-700">
-              <TrendingUp className="h-3.5 w-3.5" />
-              +12.5%
-            </Badge>
+            <div className="space-y-1">
+              <Badge
+                className={`rounded-md border-0 ${
+                  totalViewsTrend.direction === "up"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : totalViewsTrend.direction === "down"
+                      ? "bg-rose-100 text-rose-700"
+                      : totalViewsTrend.direction === "flat"
+                        ? "bg-slate-100 text-slate-700"
+                        : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                {totalViewsTrend.label}
+              </Badge>
+              <p className="text-xs text-muted-foreground">
+                vs previous {totalViewsTrendRangeLabel}
+              </p>
+            </div>
           </div>
         </Card>
 

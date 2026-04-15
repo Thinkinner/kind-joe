@@ -45,7 +45,7 @@ export async function GET(
         coverImageUrl: articles.coverImageUrl,
         category: articles.category,
         authorId: articles.authorId,
-        authorName: users.name,
+        authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
         authorAvatar: users.avatarUrl,
         contentHtml: articles.contentHtml,
         content: articles.content,

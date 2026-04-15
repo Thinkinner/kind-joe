@@ -41,7 +41,7 @@ export async function getArticlesAction(limit: number, offset: number) {
         publishedAt: articles.publishedAt,
         // 🧠 These were missing:
         readingMinutes: articles.readingMinutes,
-        authorName: users.name,
+        authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
         authorAvatarUrl: users.avatarUrl,
         // Tags grouping
         tags: sql<any[]>`COALESCE(
@@ -94,7 +94,7 @@ export async function getFullArticleBySlug(slug: string) {
   const row = await db
     .select({
       article: articles,
-      authorName: users.name,
+      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
       authorAvatar: users.avatarUrl,
       // 🧠 This MUST be inside the select object
       tags: sql<{ id: number; name: string; slug: string }[]>`COALESCE(
@@ -158,7 +158,7 @@ export async function getRecommendedArticles(
         category: articles.category,
         publishedAt: articles.publishedAt,
         readingMinutes: articles.readingMinutes,
-        authorName: users.name,
+        authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
         authorAvatarUrl: users.avatarUrl,
         // 🧠 Smart Branding: Fetch tags so the card knows if it's Ventura or KindJoe
         tags: sql<any[]>`COALESCE(
@@ -217,7 +217,7 @@ export async function getVenturaArticlesAction(
         category: articles.category,
         publishedAt: articles.publishedAt,
         readingMinutes: articles.readingMinutes,
-        authorName: users.name,
+        authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))

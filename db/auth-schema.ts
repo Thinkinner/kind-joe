@@ -12,6 +12,8 @@ import {
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  /** Public byline alias for staff publishing (non-legal display name). */
+  aliasFullName: text("alias_full_name"),
   email: text("email").notNull().unique(),
   /** Public handle; optional, unique when set. */
   username: text("username").unique(),
