@@ -214,7 +214,7 @@ function InlineSubscribePanel({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email address"
-          className="h-11 min-w-0 flex-1 border border-neutral-300 px-4 text-base outline-none focus:border-neutral-500"
+          className="py-4 h-11 min-w-0 flex-1 border border-neutral-300 px-4 text-base outline-none focus:border-neutral-500"
         />
         <button
           type="submit"
