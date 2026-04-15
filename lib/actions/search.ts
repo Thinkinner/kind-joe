@@ -2,7 +2,7 @@
 
 import { db } from "@/db"; // adjust path to your db folder
 import { articles, users } from "@/db/schema";
-import { ilike, or, and, isNull, eq, sql } from "drizzle-orm";
+import { ilike, or, and, isNull, eq } from "drizzle-orm";
 
 export async function searchArticles(query: string) {
   if (!query || query.length < 2) return [];
@@ -14,7 +14,7 @@ export async function searchArticles(query: string) {
       slug: articles.slug,
       excerpt: articles.excerpt,
       category: articles.category,
-      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
+      authorName: users.name,
     })
     .from(articles)
     .leftJoin(users, eq(articles.authorId, users.id))

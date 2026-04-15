@@ -15,7 +15,6 @@ export type AuthAppUser = {
   id: string;
   email: string;
   name: string;
-  aliasFullName?: string | null;
   image?: string | null;
   username?: string | null;
   accountType?: string | null;
@@ -46,7 +45,6 @@ async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
   const [row] = await db
     .select({
       accountType: authUser.accountType,
-      aliasFullName: authUser.aliasFullName,
       staffRole: authUser.staffRole,
       staffRoles: authUser.staffRoles,
       adminPageAccess: authUser.adminPageAccess,
@@ -58,10 +56,6 @@ async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
   return {
     ...user,
     accountType: row.accountType ?? user.accountType,
-    aliasFullName:
-      typeof row.aliasFullName === "string"
-        ? row.aliasFullName
-        : (user.aliasFullName ?? null),
     staffRole: row.staffRole ?? user.staffRole,
     staffRoles: row.staffRoles ?? user.staffRoles,
     adminPageAccess:

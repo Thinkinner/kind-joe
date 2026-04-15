@@ -66,7 +66,6 @@ export async function PATCH(req: NextRequest) {
   await ensureCmsUser({
     id: staff.user.id,
     name: staff.user.name || staff.user.email || "Staff",
-    aliasFullName,
     avatarUrl: staff.user.image,
   });
 

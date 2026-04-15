@@ -45,7 +45,7 @@ export default async function KindjoeTopStoriesPage() {
       publishAt: articles.publishAt,
       createdAt: articles.createdAt,
       readingMinutes: articles.readingMinutes,
-      authorName: sql<string>`coalesce(${users.aliasFullName}, ${users.name})`,
+      authorName: users.name,
       authorAvatarUrl: users.avatarUrl,
     })
     .from(articles)

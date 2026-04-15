@@ -13,7 +13,6 @@ import { slugify } from "@/lib/helpers/articles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ALIAS_REQUIRED_MESSAGE = "Set your alias in Settings before publishing.";
 
 function emptyToNull(v: unknown): string | null {
   if (v === "" || v === undefined) return null;
@@ -82,27 +81,14 @@ export async function PUT(
   }
 
   const u = staff.user;
-  const aliasFullName =
-    typeof u.aliasFullName === "string" ? u.aliasFullName.trim() : "";
   await ensureCmsUser({
     id: u.id,
     name: u.name || u.email || "Staff",
-    aliasFullName: aliasFullName || null,
     avatarUrl: u.image,
   });
 
   const { id } = await ctx.params;
   const body = await req.json();
-  const hasPublishAt =
-    body.publishAt != null &&
-    (!(typeof body.publishAt === "string") || body.publishAt.trim().length > 0);
-  const hasPublishedAt =
-    body.publishedAt != null &&
-    (!(typeof body.publishedAt === "string") || body.publishedAt.trim().length > 0);
-  const isPublishingNow = body.isDraft === false || hasPublishAt || hasPublishedAt;
-  if (isPublishingNow && !aliasFullName) {
-    return NextResponse.json({ error: ALIAS_REQUIRED_MESSAGE }, { status: 400 });
-  }
 
   const content = body.content ?? body.blocks ?? null;
   if (!content || typeof content !== "object") {
