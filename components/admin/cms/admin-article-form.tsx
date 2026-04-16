@@ -31,6 +31,7 @@ import { toast } from "sonner";
 type Props = {
   articleId?: string;
   postCreateRedirectTo?: string;
+  assistantMode?: boolean;
   initialValues?: {
     title?: string;
     slug?: string;
@@ -125,6 +126,7 @@ function mapArticleCategoryToPredictionCategory(
 export function AdminArticleForm({
   articleId,
   postCreateRedirectTo = "/admin/articles",
+  assistantMode = false,
   initialValues,
 }: Props) {
   const router = useRouter();
@@ -354,25 +356,40 @@ export function AdminArticleForm({
         router.refresh();
         return;
       }
-      const res = await fetch("/api/admin/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...meta,
-          slug: slug || slugify(title),
-          blocks,
-        }),
-      });
-      if (!res.ok) {
+      const baseSlug = slugify(slug || title) || `article-${Date.now()}`;
+      let finalCreateSlug = baseSlug;
+      let data: Record<string, unknown> | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const res = await fetch("/api/admin/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...meta,
+            slug: finalCreateSlug,
+            blocks,
+          }),
+        });
+        if (res.ok) {
+          data = (await res.json()) as Record<string, unknown>;
+          break;
+        }
         const err = await res.json().catch(() => ({}));
-        throw new Error(
-          typeof err.error === "string" ? err.error : "Create failed",
-        );
+        const message =
+          typeof err.error === "string" ? err.error : "Create failed";
+        const isSlugConflict =
+          /slug/i.test(message) &&
+          /(exist|conflict|use|duplicate)/i.test(message);
+        if (isSlugConflict && attempt < 3) {
+          finalCreateSlug = `${baseSlug}-${attempt + 2}`;
+          continue;
+        }
+        throw new Error(message);
       }
-      const data = await res.json();
+      if (!data) throw new Error("Create failed");
+
+      if (slug !== finalCreateSlug) setSlug(finalCreateSlug);
       toast.success("Created");
-      const finalSlug = slugify(slug || title);
-      setPendingCreatedSlug(finalSlug || String(data.slug ?? ""));
+      setPendingCreatedSlug(finalCreateSlug || String(data.slug ?? ""));
       setPendingCreatedArticleId(String(data.id ?? ""));
       setPredictionTitle(title.trim() ? `Will ${title.trim()}?` : "");
       setPredictionBody(excerpt.trim() || "How do you think this story will unfold?");
@@ -519,9 +536,9 @@ export function AdminArticleForm({
       return;
     }
     setSuggestingPrediction(true);
-    const loadingToastId = toast.loading(
-      "AI is generating prediction ideas... this can take 2-3 minutes.",
-    );
+    const loadingToastId = assistantMode
+      ? null
+      : toast.loading("AI is generating prediction ideas... this can take 2-3 minutes.");
     try {
       const res = await fetch("/api/admin/ai/article-assist", {
         method: "POST",
@@ -543,7 +560,11 @@ export function AdminArticleForm({
           "error" in payload && typeof payload.error === "string"
             ? payload.error
             : "Could not generate suggestion";
-        toast.error(message, { id: loadingToastId });
+        if (loadingToastId) {
+          toast.error(message, { id: loadingToastId });
+        } else {
+          toast.error(message);
+        }
         return;
       }
       const suggestion = payload as PredictionSuggestionPayload;
@@ -590,11 +611,19 @@ export function AdminArticleForm({
       setPredictionSuggestionRationale(
         typeof suggestion.rationale === "string" ? suggestion.rationale.trim() : "",
       );
-      toast.success("AI suggestion applied. Review and edit before creating.", {
-        id: loadingToastId,
-      });
+      if (loadingToastId) {
+        toast.success("AI suggestion applied. Review and edit before creating.", {
+          id: loadingToastId,
+        });
+      } else {
+        toast.success("AI suggestion applied. Review and edit before creating.");
+      }
     } catch {
-      toast.error("Could not generate suggestion", { id: loadingToastId });
+      if (loadingToastId) {
+        toast.error("Could not generate suggestion", { id: loadingToastId });
+      } else {
+        toast.error("Could not generate suggestion");
+      }
     } finally {
       setSuggestingPrediction(false);
     }
@@ -1167,7 +1196,7 @@ export function AdminArticleForm({
                 {suggestingPrediction ? "Suggesting..." : "Suggest with AI"}
               </Button>
             </div>
-            {suggestingPrediction ? (
+            {suggestingPrediction && !assistantMode ? (
               <p className="mt-2 text-xs text-indigo-800/80">
                 AI help can take up to 2-3 minutes.
               </p>
