@@ -519,6 +519,9 @@ export function AdminArticleForm({
       return;
     }
     setSuggestingPrediction(true);
+    const loadingToastId = toast.loading(
+      "AI is generating prediction ideas... this can take 2-3 minutes.",
+    );
     try {
       const res = await fetch("/api/admin/ai/article-assist", {
         method: "POST",
@@ -540,7 +543,7 @@ export function AdminArticleForm({
           "error" in payload && typeof payload.error === "string"
             ? payload.error
             : "Could not generate suggestion";
-        toast.error(message);
+        toast.error(message, { id: loadingToastId });
         return;
       }
       const suggestion = payload as PredictionSuggestionPayload;
@@ -587,9 +590,11 @@ export function AdminArticleForm({
       setPredictionSuggestionRationale(
         typeof suggestion.rationale === "string" ? suggestion.rationale.trim() : "",
       );
-      toast.success("AI suggestion applied. Review and edit before creating.");
+      toast.success("AI suggestion applied. Review and edit before creating.", {
+        id: loadingToastId,
+      });
     } catch {
-      toast.error("Could not generate suggestion");
+      toast.error("Could not generate suggestion", { id: loadingToastId });
     } finally {
       setSuggestingPrediction(false);
     }
@@ -1162,6 +1167,11 @@ export function AdminArticleForm({
                 {suggestingPrediction ? "Suggesting..." : "Suggest with AI"}
               </Button>
             </div>
+            {suggestingPrediction ? (
+              <p className="mt-2 text-xs text-indigo-800/80">
+                AI help can take up to 2-3 minutes.
+              </p>
+            ) : null}
             {predictionSuggestionType ? (
               <p className="mt-2 text-xs text-indigo-800">
                 Suggested format:{" "}
