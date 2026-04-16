@@ -9,12 +9,12 @@ function TrackerLogic({ articleId }: { articleId: string }) {
   const hasTracked = useRef(false); // Prevents double-firing in React Strict Mode
 
   useEffect(() => {
-    if (hasTracked.current) return;
+    if (hasTracked.current || !articleId) return;
 
     const trackView = async () => {
       hasTracked.current = true;
       try {
-        await fetch(process.env.NEXT_PUBLIC_ADMIN_API_URL as string, {
+        await fetch("/api/articles/track-view", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -23,8 +23,9 @@ function TrackerLogic({ articleId }: { articleId: string }) {
             utmMedium: searchParams.get("utm_medium"),
             utmCampaign: searchParams.get("utm_campaign"),
             // Important: Send the browser's document referrer (Google, FB, etc.)
-            referrer: document.referrer, 
+            referrer: document.referrer,
           }),
+          keepalive: true,
         });
       } catch (error) {
         console.error("Failed to send tracking data", error);

@@ -329,7 +329,7 @@ export function PredictionMarketComments({
                 </AvatarFallback>
               </Avatar>
             ) : null}
-            <div className={dark ? "relative flex-1" : "space-y-2"}>
+            <div className={dark ? "relative flex-1" : "relative space-y-2"}>
               {dark ? (
                 <Input
                   value={topBody}
@@ -345,7 +345,7 @@ export function PredictionMarketComments({
                   placeholder="What are your thoughts?"
                   maxLength={PREDICTION_COMMENT_MAX_LENGTH}
                   rows={3}
-                  className="rounded-xl border-slate-300 text-sm"
+                  className="rounded-xl border-slate-300 pr-14 text-sm"
                 />
               )}
               {dark ? (
@@ -357,23 +357,23 @@ export function PredictionMarketComments({
                 >
                   <Send size={16} />
                 </button>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Post comment"
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white p-2 text-[#4B6FD0] shadow-sm hover:bg-[#102A80]/10 disabled:opacity-40"
+                  disabled={submittingTop || topBody.trim().length === 0}
+                  onClick={() => void submitTop()}
+                >
+                  <Send size={16} />
+                </button>
+              )}
             </div>
           </div>
           {!dark ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-500">
-                {topBody.length}/{PREDICTION_COMMENT_MAX_LENGTH}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                disabled={submittingTop || topBody.trim().length === 0}
-                onClick={() => void submitTop()}
-              >
-                Comment
-              </Button>
-            </div>
+            <span className="text-xs text-slate-500">
+              {topBody.length}/{PREDICTION_COMMENT_MAX_LENGTH}
+            </span>
           ) : null}
         </div>
       ) : !sessionPending ? (

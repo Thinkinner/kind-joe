@@ -39,6 +39,8 @@ export const user = pgTable("user", {
    * Real account owners (DB `owner` in `staff_roles`) always see true roles for everyone.
    */
   directoryRoleMask: text("directory_role_mask"),
+  /** Set true when admin issues temporary password; user must set a new one. */
+  forcePasswordChange: boolean("force_password_change").default(false).notNull(),
   twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
 });
 

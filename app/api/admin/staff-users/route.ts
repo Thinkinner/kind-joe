@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { randomBytes, randomUUID } from "crypto";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { hashPassword } from "better-auth/crypto";
 import { db } from "@/db";
-import { user as authUser } from "@/db/auth-schema";
+import { account, user as authUser } from "@/db/auth-schema";
 import { getStaffRoles } from "@/lib/auth/account-type";
+import {
+  sendAuthEmail,
+  staffTemporaryPasswordEmailHtml,
+  staffTemporaryPasswordEmailText,
+} from "@/lib/email/resend";
 import {
   ALL_ADMIN_PERMISSIONS,
   PERMISSIONS,
@@ -24,27 +31,41 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RoleSlug = z.enum(STAFF_ROLE_PRECEDENCE);
+const AssignableRoleSlugs = STAFF_ROLE_PRECEDENCE.filter(
+  (role) => role !== "manager",
+) as [string, ...string[]];
+const RoleSlug = z.enum(AssignableRoleSlugs);
 const PermissionSlug = z.enum(ALL_ADMIN_PERMISSIONS as [AppPermission, ...AppPermission[]]);
 
 const PatchSchema = z
   .object({
     userId: z.string().min(1),
     staffRoles: z.array(RoleSlug).min(1).max(5).optional(),
-    directoryRoleMask: z.union([z.string().max(240), z.null()]).optional(),
     adminPageAccess: z.union([z.array(PermissionSlug), z.null()]).optional(),
   })
   .refine(
-    (d) =>
-      d.staffRoles !== undefined ||
-      d.directoryRoleMask !== undefined ||
-      d.adminPageAccess !== undefined,
-    { message: "Provide staffRoles, directoryRoleMask and/or adminPageAccess." },
+    (d) => d.staffRoles !== undefined || d.adminPageAccess !== undefined,
+    { message: "Provide staffRoles and/or adminPageAccess." },
   );
 
 const DeleteSchema = z.object({
   userId: z.string().min(1),
 });
+
+const TemporaryPasswordSchema = z.object({
+  userId: z.string().min(1),
+});
+
+function generateTemporaryPassword(): string {
+  const alphabet =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  const bytes = randomBytes(14);
+  let out = "KJ-";
+  for (const b of bytes) {
+    out += alphabet[b % alphabet.length];
+  }
+  return out;
+}
 
 export async function GET() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
@@ -159,7 +180,6 @@ export async function GET() {
       canEditPageAccess: callerSuperAdmin && !isSelf,
       adminPageAccess: callerSuperAdmin ? normalizedPageAccess : null,
       effectivePageAccess,
-      canEditDirectoryMask: isSelf && (row.accountType ?? "reader") === "staff",
     };
   });
 
@@ -189,15 +209,7 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const { userId, staffRoles: nextRoles, directoryRoleMask, adminPageAccess } =
-    parsed.data;
-
-  if (directoryRoleMask !== undefined && userId !== caller.id) {
-    return NextResponse.json(
-      { error: "Only you can change your directory label." },
-      { status: 403 },
-    );
-  }
+  const { userId, staffRoles: nextRoles, adminPageAccess } = parsed.data;
   if (adminPageAccess !== undefined && !callerSuperAdmin) {
     return NextResponse.json(
       { error: "Only superadmin can set page access." },
@@ -272,12 +284,6 @@ export async function PATCH(req: NextRequest) {
     setPayload.accountType = "staff";
   }
 
-  if (directoryRoleMask !== undefined) {
-    setPayload.directoryRoleMask =
-      directoryRoleMask === null || directoryRoleMask.trim() === ""
-        ? null
-        : directoryRoleMask.trim();
-  }
   if (adminPageAccess !== undefined) {
     setPayload.adminPageAccess =
       adminPageAccess === null ? null : [...new Set(adminPageAccess)];
@@ -306,6 +312,142 @@ export async function PATCH(req: NextRequest) {
   }
 
   return NextResponse.json(updated);
+}
+
+export async function POST(req: NextRequest) {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
+  if (!staff.ok) {
+    return NextResponse.json(
+      { error: staff.reason },
+      { status: staff.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const caller = staff.user;
+  const callerRoles = getStaffRoles(caller);
+  const callerSuperAdmin = hasSuperAdminRole(callerRoles);
+  const callerOwner = callerRoles.includes("owner");
+  const callerAdmin = callerRoles.includes("admin");
+
+  const parsed = TemporaryPasswordSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  if (!callerSuperAdmin && !callerOwner && !callerAdmin) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const { userId } = parsed.data;
+  if (userId === caller.id) {
+    return NextResponse.json(
+      { error: "Use account settings to change your own password." },
+      { status: 400 },
+    );
+  }
+
+  const [target] = await db
+    .select({
+      id: authUser.id,
+      name: authUser.name,
+      email: authUser.email,
+      accountType: authUser.accountType,
+      staffRole: authUser.staffRole,
+      staffRoles: authUser.staffRoles,
+    })
+    .from(authUser)
+    .where(eq(authUser.id, userId))
+    .limit(1);
+
+  if (!target) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+  if ((target.accountType ?? "reader") !== "staff") {
+    return NextResponse.json(
+      { error: "Temporary password is only available for staff accounts." },
+      { status: 400 },
+    );
+  }
+
+  const targetRoles = parseStaffRolesFromDb(target);
+  const targetHasSuperAdmin = hasSuperAdminRole(targetRoles);
+  const targetHasOwner = targetRoles.includes("owner");
+  if (!callerSuperAdmin && targetHasSuperAdmin) {
+    return NextResponse.json(
+      { error: "Only superadmin can reset a superadmin password." },
+      { status: 403 },
+    );
+  }
+  if (!callerSuperAdmin && !callerOwner && callerAdmin && targetHasOwner) {
+    return NextResponse.json(
+      { error: "Only owner can reset an owner password." },
+      { status: 403 },
+    );
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const hashedPassword = await hashPassword(temporaryPassword);
+  const now = new Date();
+
+  const [existingCredentialAccount] = await db
+    .select({ id: account.id })
+    .from(account)
+    .where(
+      and(eq(account.userId, target.id), eq(account.providerId, "credential")),
+    )
+    .limit(1);
+
+  await db.transaction(async (tx) => {
+    if (existingCredentialAccount) {
+      await tx
+        .update(account)
+        .set({
+          password: hashedPassword,
+          updatedAt: now,
+        })
+        .where(eq(account.id, existingCredentialAccount.id));
+    } else {
+      await tx.insert(account).values({
+        id: randomUUID(),
+        accountId: target.id,
+        providerId: "credential",
+        userId: target.id,
+        password: hashedPassword,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await tx
+      .update(authUser)
+      .set({ forcePasswordChange: true })
+      .where(eq(authUser.id, target.id));
+  });
+
+  let emailSent = true;
+  let emailErrorMessage = "";
+  try {
+    await sendAuthEmail({
+      to: target.email,
+      subject: "Your Kind Joe temporary password",
+      html: staffTemporaryPasswordEmailHtml(target.name ?? "", temporaryPassword),
+      text: staffTemporaryPasswordEmailText(target.name ?? "", temporaryPassword),
+    });
+  } catch (err) {
+    emailSent = false;
+    emailErrorMessage = err instanceof Error ? err.message : "Failed to send email";
+  }
+
+  return NextResponse.json({
+    ok: true,
+    email: target.email,
+    temporaryPassword,
+    emailSent,
+    ...(emailSent ? {} : { emailError: emailErrorMessage }),
+  });
 }
 
 export async function DELETE(req: NextRequest) {

@@ -609,18 +609,31 @@ export const generateStoryFromSelectedArticle = async (
   const ai = getClient();
 
   return retry(async () => {
+    const articleUrl = (selectedItem.link || "").trim();
+    const sourceSnippet = (
+      selectedItem.contentSnippet ||
+      selectedItem.content ||
+      ""
+    ).slice(0, 6000);
+    const sourceTitle = (selectedItem.title || "").trim();
+
     const prompt = `
       You are an expert news editor writing in a clean, fast, and uncensored "news-wire" style. 
       I have manually selected a specific article to replace the story in the slot: "${targetSlotName}".
       
       ARTICLE DETAILS:
-      Title: ${selectedItem.title}
+      Title: ${sourceTitle || "(not provided)"}
       Source: ${selectedItem.sourceName}
-      URL: ${selectedItem.link}
-      Content Snippet: ${selectedItem.contentSnippet || selectedItem.content}
+      URL: ${articleUrl || "(none provided)"}
+      Content Snippet / Notes: ${sourceSnippet || "(none provided)"}
 
       TASK:
       Write exactly ONE story formatted perfectly for the newsletter slot "${targetSlotName}".
+
+      SOURCEING RULES (CRITICAL):
+      - If a URL is provided, prioritize that URL as the primary source and validate details from it.
+      - If only notes are provided, rely on those notes and your grounded web checks when needed.
+      - Do not invent facts. If uncertain, keep claims conservative.
       
       STRICT FORMATTING RULES for the 'summary' field (CRITICAL):
       1. INTRO: Write EXACTLY 1 to 2 short sentences total. Combine the Who/What/Where into a tight, punchy intro. Do NOT write a long paragraph.
@@ -638,6 +651,7 @@ export const generateStoryFromSelectedArticle = async (
       model: NEWSLETTER_MODEL,
       contents: prompt,
       config: {
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: singleStorySchema,
         temperature: 0.2,

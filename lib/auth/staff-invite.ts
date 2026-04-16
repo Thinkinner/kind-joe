@@ -5,7 +5,6 @@ import { z } from "zod";
 export const INVITABLE_STAFF_ROLES = [
   "writer",
   "editor",
-  "manager",
   "admin",
 ] as const;
 
@@ -16,7 +15,6 @@ export const InvitableStaffRoleSchema = z.enum(INVITABLE_STAFF_ROLES);
 const ROLE_LABELS: Record<InvitableStaffRole, string> = {
   writer: "Writer",
   editor: "Editor",
-  manager: "Manager",
   admin: "Admin",
 };
 

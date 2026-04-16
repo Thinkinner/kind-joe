@@ -14,7 +14,8 @@ type AssistMode =
   | "excerpt"
   | "seo"
   | "content"
-  | "title";
+  | "title"
+  | "predictionSuggestion";
 
 export async function POST(req: Request) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
@@ -45,12 +46,28 @@ export async function POST(req: Request) {
 
     const safeHtml = String(html).slice(0, 8000);
 
+    const modeGuidance =
+      mode === "predictionSuggestion"
+        ? [
+            "Generate a high-engagement prediction/poll suggestion from the article topic.",
+            "Return concise JSON fields: suggestionType, title, description, category, options, rationale.",
+            "suggestionType must be either 'prediction' or 'poll'.",
+            "options must be 2-6 short options suitable for voting.",
+            "Do not default to Yes/No unless the question is truly binary.",
+            "For poll-style engagement questions, prefer 3-5 nuanced options.",
+            "If the topic is discussion-oriented, write an engaging audience question instead of a strict forecast.",
+            "category should map to one of: general, politics, economy, technology, science, sports, world, culture.",
+            "Do not return markdown.",
+          ].join("\n")
+        : "";
+
     const system = [
       "You are an SEO assistant for a news/blog CMS.",
       "Return JSON matching the schema only.",
       "Be neutral and factual; do not invent concrete statistics.",
       "Tags: lowercase kebab-case, specific, 5–12 items unless mode says otherwise.",
       `Mode: ${mode}.`,
+      modeGuidance,
       customPrompt ? `Extra instructions: ${customPrompt}` : "",
     ]
       .filter(Boolean)
@@ -81,6 +98,12 @@ export async function POST(req: Request) {
       category: String(data.category ?? ""),
       tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
       excerpt: String(data.excerpt ?? ""),
+      suggestionType:
+        data.suggestionType === "poll" || data.suggestionType === "prediction"
+          ? data.suggestionType
+          : "",
+      options: Array.isArray(data.options) ? data.options.map(String) : [],
+      rationale: String(data.rationale ?? ""),
       seoScore:
         typeof data.seoScore === "number" ? data.seoScore : undefined,
       seoFeedback: String(data.seoFeedback ?? ""),

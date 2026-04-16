@@ -120,6 +120,48 @@ export function PredictionMarketCard({
   const yesOption = m.options[0] ?? null;
   const noOption = m.options[1] ?? null;
   const referenceCompact = threadDark && compact && yesOption && noOption;
+  const lightOptionThemes = [
+    {
+      base: "border-sky-200 bg-sky-50 hover:bg-sky-100",
+      selected: "border-sky-500 bg-sky-100 ring-2 ring-sky-300/70",
+      label: "text-sky-950",
+      percent: "text-sky-900",
+      voteMeta: "text-sky-800",
+      voteBadge: "text-sky-800",
+      track: "bg-white/85",
+      fill: "bg-sky-500",
+    },
+    {
+      base: "border-emerald-200 bg-emerald-50 hover:bg-emerald-100",
+      selected: "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-300/70",
+      label: "text-emerald-950",
+      percent: "text-emerald-900",
+      voteMeta: "text-emerald-800",
+      voteBadge: "text-emerald-800",
+      track: "bg-white/85",
+      fill: "bg-emerald-500",
+    },
+    {
+      base: "border-amber-200 bg-amber-50 hover:bg-amber-100",
+      selected: "border-amber-500 bg-amber-100 ring-2 ring-amber-300/70",
+      label: "text-amber-950",
+      percent: "text-amber-900",
+      voteMeta: "text-amber-800",
+      voteBadge: "text-amber-800",
+      track: "bg-white/85",
+      fill: "bg-amber-500",
+    },
+    {
+      base: "border-violet-200 bg-violet-50 hover:bg-violet-100",
+      selected: "border-violet-500 bg-violet-100 ring-2 ring-violet-300/70",
+      label: "text-violet-950",
+      percent: "text-violet-900",
+      voteMeta: "text-violet-800",
+      voteBadge: "text-violet-800",
+      track: "bg-white/85",
+      fill: "bg-violet-500",
+    },
+  ] as const;
 
   if (referenceCompact) {
     return (
@@ -438,9 +480,18 @@ export function PredictionMarketCard({
           </div>
         </div>
       ) : (
-        <div className={feed || threadDark ? (compact ? "space-y-2" : "space-y-2.5") : "space-y-2.5"}>
-        {shownOptions.map((o) => {
+        <div
+          className={
+            feed || threadDark
+              ? compact
+                ? "space-y-2"
+                : "space-y-2.5"
+              : "space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2.5"
+          }
+        >
+        {shownOptions.map((o, idx) => {
           const mine = m.viewerVoteOptionId === o.id;
+          const lightTheme = lightOptionThemes[idx % lightOptionThemes.length];
           return (
             <button
               key={o.id}
@@ -454,34 +505,52 @@ export function PredictionMarketCard({
                     ? "border-white/40 bg-white/12"
                     : "border-white/15 bg-white/[0.03] hover:bg-white/[0.07]"
                   : mine
-                    ? "border-sky-500 bg-sky-50"
-                    : "border-slate-200 bg-white hover:bg-slate-50"
+                    ? lightTheme.selected
+                    : lightTheme.base
               } ${!canVote || submitting ? "cursor-not-allowed opacity-80" : ""}`}
-              style={feed || threadDark ? { borderRadius: 16 } : undefined}
+              style={feed || threadDark ? { borderRadius: 16 } : { borderRadius: 14 }}
             >
               <div className="mb-1.5 flex items-center justify-between gap-3">
-                <span className={threadDark ? `${compact ? "text-[13px]" : "text-sm"} font-medium text-white` : "text-sm font-medium text-slate-900"}>
+                <span
+                  className={
+                    threadDark
+                      ? `${compact ? "text-[13px]" : "text-sm"} font-medium text-white`
+                      : `${compact ? "text-[13px]" : "text-sm"} font-semibold ${lightTheme.label}`
+                  }
+                >
                   {o.label}
                   {mine ? (
                     <span
                       className={
                         threadDark
                           ? "ml-2 text-xs font-semibold text-white/80"
-                          : "ml-2 text-xs font-semibold text-sky-700"
+                          : `ml-2 rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[11px] font-semibold ${lightTheme.voteBadge}`
                       }
                     >
                       Your vote
                     </span>
                   ) : null}
                 </span>
-                <span className={threadDark ? `${compact ? "text-xs" : "text-sm"} font-semibold text-white/80` : "text-sm font-semibold text-slate-700"}>
+                <span
+                  className={
+                    threadDark
+                      ? `${compact ? "text-xs" : "text-sm"} font-semibold text-white/80`
+                      : `text-base font-extrabold ${lightTheme.percent}`
+                  }
+                >
                   {o.percentage}%
                 </span>
               </div>
-              <div className={threadDark ? "h-2 w-full rounded-full bg-white/12" : "h-2 w-full rounded-full bg-slate-100"}>
+              <div
+                className={
+                  threadDark
+                    ? "h-2 w-full rounded-full bg-white/12"
+                    : `h-2.5 w-full rounded-full ${lightTheme.track}`
+                }
+              >
                 <div
-                  className={`h-2 rounded-full ${
-                    threadDark ? (mine ? "bg-white" : "bg-white/45") : mine ? "bg-sky-500" : "bg-slate-400"
+                  className={`${threadDark ? "h-2" : "h-2.5"} rounded-full ${
+                    threadDark ? (mine ? "bg-white" : "bg-white/45") : lightTheme.fill
                   }`}
                   style={{ width: `${o.percentage}%` }}
                 />
@@ -490,7 +559,7 @@ export function PredictionMarketCard({
                 className={
                   threadDark
                     ? "mt-1.5 text-[11px] text-white/55"
-                    : "mt-1.5 text-[11px] text-slate-500"
+                    : `mt-1.5 text-xs font-medium ${lightTheme.voteMeta}`
                 }
               >
                 {o.votes.toLocaleString()} votes

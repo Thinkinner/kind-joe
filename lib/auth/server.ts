@@ -21,6 +21,7 @@ export type AuthAppUser = {
   staffRole?: string | null;
   staffRoles?: string[] | null;
   adminPageAccess?: string[] | null;
+  forcePasswordChange?: boolean | null;
 };
 
 let warnedSessionQueryFailure = false;
@@ -48,6 +49,7 @@ async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
       staffRole: authUser.staffRole,
       staffRoles: authUser.staffRoles,
       adminPageAccess: authUser.adminPageAccess,
+      forcePasswordChange: authUser.forcePasswordChange,
     })
     .from(authUser)
     .where(eq(authUser.id, user.id))
@@ -62,6 +64,10 @@ async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
       row.adminPageAccess === undefined
         ? (user.adminPageAccess ?? null)
         : row.adminPageAccess,
+    forcePasswordChange:
+      row.forcePasswordChange === undefined
+        ? (user.forcePasswordChange ?? false)
+        : row.forcePasswordChange,
   };
 }
 
@@ -133,6 +139,10 @@ export async function requireStaffPermission(
   if (!isStaffAccount(hydratedUser)) {
     redirect("/login?reason=staff_only");
   }
+  if (hydratedUser.forcePasswordChange) {
+    const qp = new URLSearchParams({ next: "/admin" });
+    redirect(`/force-password-change?${qp.toString()}`);
+  }
   if (!userHasPermission(hydratedUser, permission)) {
     if (onForbidden === "not_found") {
       notFound();
@@ -158,6 +168,10 @@ export async function requireReaderSession(
     redirect(readerLoginRedirectPath(loginPath, nextPath));
   }
   const user = session.user as AuthAppUser;
+  if (user.forcePasswordChange) {
+    const qp = new URLSearchParams({ next: normalizeNextPath(nextPath) });
+    redirect(`/force-password-change?${qp.toString()}`);
+  }
   return { session, user };
 }
 

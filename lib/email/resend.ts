@@ -115,6 +115,29 @@ export function staffInviteEmailText(roleLabel: string, acceptUrl: string) {
   return `You've been invited to join Kind Joe as ${roleLabel}.\n\nAccept (expires in 7 days):\n${acceptUrl}\n\nUse this email to sign in or register, then open the link to finish.`;
 }
 
+export function staffTemporaryPasswordEmailHtml(
+  name: string | undefined,
+  tempPassword: string,
+) {
+  const safeName = name?.trim() ? escapeHtml(name.trim()) : "";
+  const safePassword = escapeHtml(tempPassword);
+  return `
+<p>Hi${safeName ? ` ${safeName}` : ""},</p>
+<p>Your Kind Joe admin has issued a temporary password for your account:</p>
+<p style="font-size:24px;font-weight:700;letter-spacing:0.08em;font-family:ui-monospace,monospace;margin:16px 0;">${safePassword}</p>
+<p>Sign in with your email and this temporary password. You will be required to choose a new password immediately after login.</p>
+<p style="color:#64748b;font-size:14px;">If you did not request this, contact an admin right away.</p>
+`.trim();
+}
+
+export function staffTemporaryPasswordEmailText(
+  name: string | undefined,
+  tempPassword: string,
+) {
+  const greeting = name?.trim() ? `Hi ${name.trim()},\n\n` : "";
+  return `${greeting}A Kind Joe admin issued a temporary password for your account:\n\n${tempPassword}\n\nSign in with your email and this temporary password. You will be required to set a new password immediately after login.\n\nIf you did not request this, contact an admin right away.`;
+}
+
 /**
  * Sends transactional mail via Resend. Better Auth recommends not awaiting
  * these handlers on the request path; use {@link queueAuthEmail} from `lib/auth.ts`.

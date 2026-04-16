@@ -50,6 +50,7 @@ import {
 import { toast } from "sonner";
 import {
   Globe2,
+  KeyRound,
   Mail,
   Loader2,
   MoreHorizontal,
@@ -74,14 +75,12 @@ type Row = {
   staffRoles: string[] | null;
   rolesDisplay: string;
   directoryMasked: boolean;
-  directoryRoleMask?: string | null;
   isSelf: boolean;
   showRealRoles: boolean;
   canEditRoles: boolean;
   canEditPageAccess?: boolean;
   adminPageAccess?: string[] | null;
   effectivePageAccess?: string[] | null;
-  canEditDirectoryMask: boolean;
 };
 
 type PendingInvite = {
@@ -93,7 +92,14 @@ type PendingInvite = {
   createdAt: string;
 };
 
-const INVITE_ROLES = ["writer", "editor", "manager", "admin"] as const;
+type TemporaryPasswordResult = {
+  email: string;
+  temporaryPassword: string;
+  emailSent: boolean;
+  emailError?: string;
+};
+
+const INVITE_ROLES = ["writer", "editor", "admin"] as const;
 const PERMISSION_LABELS: Record<AppPermission, string> = {
   [PERMISSIONS.ADMIN_DASHBOARD]: "Dashboard",
   [PERMISSIONS.ADMIN_ARTICLES]: "Articles",
@@ -124,18 +130,6 @@ const INVITE_ROLE_DEFAULT_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_ARTICLES,
     PERMISSIONS.ADMIN_ANALYTICS,
     PERMISSIONS.ADMIN_NEWSLETTER,
-  ],
-  manager: [
-    PERMISSIONS.ADMIN_DASHBOARD,
-    PERMISSIONS.ADMIN_ARTICLES,
-    PERMISSIONS.ADMIN_ANALYTICS,
-    PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
-    PERMISSIONS.ADMIN_POSTS,
-    PERMISSIONS.ADMIN_NEWSLETTER,
-    PERMISSIONS.ADMIN_PREDICTIONS,
-    PERMISSIONS.ADMIN_WEBHOOKS,
-    PERMISSIONS.ADMIN_INGEST_DATA,
-    PERMISSIONS.ADMIN_SECURITY,
   ],
   admin: [
     PERMISSIONS.ADMIN_DASHBOARD,
@@ -237,10 +231,14 @@ export default function StaffUsersPage() {
   const [modalUser, setModalUser] = useState<Row | null>(null);
   const [draftRoles, setDraftRoles] = useState<string[]>([]);
   const [draftPageAccess, setDraftPageAccess] = useState<AppPermission[]>([]);
-  const [draftMask, setDraftMask] = useState("");
   const [savingModal, setSavingModal] = useState(false);
   const [pendingRemoveUser, setPendingRemoveUser] = useState<Row | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
+  const [sendingTempPasswordId, setSendingTempPasswordId] = useState<string | null>(
+    null,
+  );
+  const [tempPasswordResult, setTempPasswordResult] =
+    useState<TemporaryPasswordResult | null>(null);
 
   const load = async () => {
     const [usersRes, invRes] = await Promise.all([
@@ -275,7 +273,6 @@ export default function StaffUsersPage() {
       (r.adminPageAccess as AppPermission[] | null) ??
         ((r.effectivePageAccess as AppPermission[] | null) ?? []),
     );
-    setDraftMask((r.directoryRoleMask ?? "").trim());
   };
 
   const closeModal = () => {
@@ -307,7 +304,6 @@ export default function StaffUsersPage() {
       const body: {
         userId: string;
         staffRoles: string[];
-        directoryRoleMask?: string | null;
         adminPageAccess?: AppPermission[] | null;
       } = {
         userId: modalUser.id,
@@ -315,10 +311,6 @@ export default function StaffUsersPage() {
       };
       if (modalUser.canEditPageAccess) {
         body.adminPageAccess = draftPageAccess;
-      }
-      if (modalUser.canEditDirectoryMask) {
-        body.directoryRoleMask =
-          draftMask.trim() === "" ? null : draftMask.trim();
       }
       const res = await fetch("/api/admin/staff-users", {
         method: "PATCH",
@@ -523,6 +515,46 @@ export default function StaffUsersPage() {
     }
   };
 
+  const sendTemporaryPassword = async (member: Row) => {
+    setSendingTempPasswordId(member.id);
+    try {
+      const res = await fetch("/api/admin/staff-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: member.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string"
+            ? j.error
+            : "Could not generate temporary password",
+        );
+      }
+      const payload: TemporaryPasswordResult = {
+        email: typeof j.email === "string" ? j.email : member.email,
+        temporaryPassword:
+          typeof j.temporaryPassword === "string" ? j.temporaryPassword : "",
+        emailSent: Boolean(j.emailSent),
+        emailError: typeof j.emailError === "string" ? j.emailError : undefined,
+      };
+      setTempPasswordResult(payload);
+      if (payload.emailSent) {
+        toast.success(`Temporary password sent to ${payload.email}.`);
+      } else {
+        toast.warning(
+          `Temporary password created for ${payload.email}, but email failed.`,
+        );
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate temporary password",
+      );
+    } finally {
+      setSendingTempPasswordId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -611,6 +643,9 @@ export default function StaffUsersPage() {
         : STAFF_ROLE_PRECEDENCE.filter(
             (r) => r !== "superadmin" && r !== "owner",
           );
+  const assignableRoleOptions = editableRoleOptions.filter(
+    (role) => role !== "manager",
+  );
   const roleBadgeClass = (role: string) => {
     if (role === "superadmin") {
       return "rounded-full border border-indigo-900/20 bg-indigo-900/90 px-2.5 py-0.5 text-xs font-medium text-white";
@@ -1042,6 +1077,17 @@ export default function StaffUsersPage() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => void sendTemporaryPassword(r)}
+                            disabled={sendingTempPasswordId === r.id || r.isSelf}
+                          >
+                            {sendingTempPasswordId === r.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <KeyRound className="mr-2 h-4 w-4" />
+                            )}
+                            Send Temporary Password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             variant="destructive"
                             onClick={() => {
                               setPendingRemoveUser(r);
@@ -1265,7 +1311,7 @@ export default function StaffUsersPage() {
 
           <div className="space-y-4 py-1">
             <div className="flex flex-col gap-3">
-              {editableRoleOptions.map((role) => (
+              {assignableRoleOptions.map((role) => (
                 <label
                   key={role}
                   className="flex cursor-pointer items-center gap-3 text-neutral-900"
@@ -1281,23 +1327,6 @@ export default function StaffUsersPage() {
                 </label>
               ))}
             </div>
-
-            {modalUser?.canEditDirectoryMask && (
-              <div className="border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-xs text-neutral-500">
-                  Directory label (optional): what{" "}
-                  <strong>non-owners/non-superadmins</strong> see instead of your real roles.
-                  Owners and superadmins always see the truth.
-                </p>
-                <Input
-                  className="bg-white"
-                  placeholder='e.g. "Writer" or "Editor, Writer"'
-                  value={draftMask}
-                  onChange={(e) => setDraftMask(e.target.value)}
-                  disabled={savingModal}
-                />
-              </div>
-            )}
 
             {modalUser?.canEditPageAccess && (
               <div className="border-t border-neutral-100 pt-4">
@@ -1421,6 +1450,51 @@ export default function StaffUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={tempPasswordResult != null}
+        onOpenChange={(open) => {
+          if (!open) setTempPasswordResult(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Temporary password created</DialogTitle>
+            <DialogDescription>
+              Share this only with {tempPasswordResult?.email}. It works once and
+              then they must set a new password.
+            </DialogDescription>
+          </DialogHeader>
+          {tempPasswordResult ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Temporary password
+                </p>
+                <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">
+                  {tempPasswordResult.temporaryPassword}
+                </p>
+              </div>
+              {tempPasswordResult.emailSent ? (
+                <p className="text-sm text-emerald-700">
+                  Email sent to {tempPasswordResult.email}.
+                </p>
+              ) : (
+                <p className="text-sm text-amber-700">
+                  Email was not sent. Share this password manually.
+                  {tempPasswordResult.emailError
+                    ? ` (${tempPasswordResult.emailError})`
+                    : ""}
+                </p>
+              )}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" onClick={() => setTempPasswordResult(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

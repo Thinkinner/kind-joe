@@ -16,6 +16,11 @@ import { Label } from "@/components/ui/label";
 
 type StaffLoginStep = "credentials" | "totp";
 
+function requiresPasswordChange(user: unknown): boolean {
+  if (!user || typeof user !== "object") return false;
+  return (user as { forcePasswordChange?: unknown }).forcePasswordChange === true;
+}
+
 export function StaffLoginForm() {
   const router = useRouter();
   const turnstileRef = useRef<TurnstileInstance | null>(null);
@@ -76,6 +81,12 @@ export function StaffLoginForm() {
         setPending(false);
         return;
       }
+      if (requiresPasswordChange(u)) {
+        const qp = new URLSearchParams({ next: "/admin" });
+        router.push(`/force-password-change?${qp.toString()}`);
+        router.refresh();
+        return;
+      }
       router.push("/admin");
       router.refresh();
     } catch {
@@ -123,6 +134,12 @@ export function StaffLoginForm() {
         await authClient.signOut();
         setError("This account is not authorized for admin.");
         setPending(false);
+        return;
+      }
+      if (requiresPasswordChange(u)) {
+        const qp = new URLSearchParams({ next: "/admin" });
+        router.push(`/force-password-change?${qp.toString()}`);
+        router.refresh();
         return;
       }
       router.push("/admin");

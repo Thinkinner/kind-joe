@@ -54,6 +54,12 @@ function safeNextPath(nextPath: string | undefined): string {
   return nextPath;
 }
 
+function requiresPasswordChange(user: unknown): boolean {
+  if (!user || typeof user !== "object") return false;
+  const val = (user as { forcePasswordChange?: unknown }).forcePasswordChange;
+  return val === true;
+}
+
 /** Staff and readers share one session; staff default landing after /login is admin. */
 function postLoginRedirectPath(user: unknown, nextPath: string | undefined): string {
   const next = safeNextPath(nextPath);
@@ -72,7 +78,13 @@ function finishReaderSignIn(
   nextPath: string | undefined,
 ): void {
   stashNavSessionHint(user);
-  window.location.assign(postLoginRedirectPath(user, nextPath));
+  const target = postLoginRedirectPath(user, nextPath);
+  if (requiresPasswordChange(user)) {
+    const qp = new URLSearchParams({ next: target });
+    window.location.assign(`/force-password-change?${qp.toString()}`);
+    return;
+  }
+  window.location.assign(target);
 }
 
 export function ReaderLoginForm({ nextPath = "/" }: { nextPath?: string }) {

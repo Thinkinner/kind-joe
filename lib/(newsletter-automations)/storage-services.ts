@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   draftsTable,
@@ -54,6 +54,33 @@ function mapNewsRssRowToRawItem(row: {
     content: row.contentSnippet ?? "",
     imageUrl: row.imageUrl ?? undefined,
     sourceName: row.sourceName,
+  };
+}
+
+function siteBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    "https://www.kindjoe.com"
+  );
+}
+
+function mapCmsArticleRowToRawItem(row: {
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  coverImageUrl: string | null;
+  publishedAt: Date | null;
+  updatedAt: Date;
+}): RawRssItem {
+  const when = row.publishedAt ?? row.updatedAt;
+  return {
+    title: row.title,
+    link: `${siteBaseUrl()}/${row.slug}`,
+    pubDate: when.toISOString(),
+    contentSnippet: row.excerpt ?? "",
+    content: row.excerpt ?? "",
+    imageUrl: row.coverImageUrl ?? undefined,
+    sourceName: "KindJoe DB",
   };
 }
 
@@ -149,6 +176,34 @@ export async function getNewsRssArticlesForNewsletterSelection(
     .limit(safeLimit);
 
   return rows.map(mapNewsRssRowToRawItem);
+}
+
+/**
+ * Published CMS articles for manual story replacement in review UI.
+ */
+export async function getDbArticlesForNewsletterSelection(
+  limit = 200,
+): Promise<RawRssItem[]> {
+  await assertStaff();
+  const safeLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(500, Math.floor(limit)))
+    : 200;
+
+  const rows = await db
+    .select({
+      title: articles.title,
+      slug: articles.slug,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      publishedAt: articles.publishedAt,
+      updatedAt: articles.updatedAt,
+    })
+    .from(articles)
+    .where(and(eq(articles.isDraft, false), isNull(articles.deletedAt)))
+    .orderBy(desc(sql`coalesce(${articles.publishedAt}, ${articles.updatedAt})`))
+    .limit(safeLimit);
+
+  return rows.map(mapCmsArticleRowToRawItem);
 }
 
 function createSlug(text: string): string {

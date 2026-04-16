@@ -17,15 +17,12 @@ export function JoinTeamClient() {
   const [metaLoading, setMetaLoading] = useState(false);
   const [meta, setMeta] = useState<{
     email: string;
-    staffRole: string;
-    hasCustomAccess: boolean;
     hasAccount: boolean;
     signedIn: boolean;
     sessionEmailMatchesInvite: boolean;
   } | null>(null);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const MIN_PASSWORD = 12;
@@ -109,10 +106,6 @@ export function JoinTeamClient() {
       setAuthError(`Password must be at least ${MIN_PASSWORD} characters.`);
       return;
     }
-    if (password !== confirmPassword) {
-      setAuthError("Passwords do not match.");
-      return;
-    }
 
     setAuthLoading(true);
     try {
@@ -164,17 +157,6 @@ export function JoinTeamClient() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-neutral-600">
-        Invited email: <span className="font-medium text-neutral-900">{meta.email}</span>
-      </p>
-      <p className="text-sm text-neutral-600">
-        Access level:{" "}
-        <span className="font-medium text-neutral-900 capitalize">
-          {meta.staffRole}
-        </span>
-        {meta.hasCustomAccess ? " + custom page access" : ""}
-      </p>
-
       {canAcceptDirectly ? (
         <Button
           type="button"
@@ -198,6 +180,9 @@ export function JoinTeamClient() {
             void signInAndAccept();
           }}
         >
+          <p className="text-sm text-neutral-600">
+            Enter your password to join the team.
+          </p>
           <div className="space-y-1.5">
             <Label htmlFor="invite-password">Password</Label>
             <Input
@@ -228,6 +213,9 @@ export function JoinTeamClient() {
             void registerAndAccept();
           }}
         >
+          <p className="text-sm text-neutral-600">
+            Create your account to continue.
+          </p>
           <div className="space-y-1.5">
             <Label htmlFor="invite-name">Name</Label>
             <Input
@@ -246,18 +234,6 @@ export function JoinTeamClient() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              minLength={MIN_PASSWORD}
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-confirm-password">Confirm Password</Label>
-            <Input
-              id="invite-confirm-password"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
               minLength={MIN_PASSWORD}
               required
             />

@@ -24,6 +24,7 @@ export const authClient = createAuthClient({
       user: {
         accountType: { type: "string", required: false },
         staffRole: { type: "string", required: false },
+        forcePasswordChange: { type: "boolean", required: false },
         username: { type: "string", required: false },
       },
     }),

@@ -10,6 +10,7 @@ import {
   tags,
   users,
 } from "@/db/schema";
+import { getPredictionMarketById } from "@/lib/predictions/queries";
 
 function publishedWhere(now = new Date()) {
   return and(
@@ -29,10 +30,10 @@ function publishedWhere(now = new Date()) {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     const now = new Date();
 
     // main article + author
@@ -54,6 +55,7 @@ export async function GET(
         createdAt: articles.createdAt,
         updatedAt: articles.updatedAt,
         readingMinutes: articles.readingMinutes,
+        predictionId: articles.predictionId,
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
@@ -97,10 +99,16 @@ export async function GET(
       .innerJoin(tags, eq(articleTags.tagId, tags.id))
       .where(eq(articleTags.articleId, article.id));
 
+    const linkedPrediction =
+      typeof article.predictionId === "number" && Number.isFinite(article.predictionId)
+        ? await getPredictionMarketById(article.predictionId)
+        : null;
+
     return NextResponse.json({
       ...article,
       categories: cats,
       tags: tgs,
+      linkedPrediction,
     });
   } catch (e) {
     console.error(e);

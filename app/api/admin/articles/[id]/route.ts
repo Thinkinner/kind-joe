@@ -4,6 +4,7 @@ import { db } from "@/db";
 import {
   articles,
   articleTags,
+  predictionMarkets,
   tags,
 } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -23,6 +24,15 @@ function parseDateish(v: unknown): Date | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function parsePredictionId(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    return undefined;
+  }
+  return value;
 }
 
 export async function GET(
@@ -108,6 +118,23 @@ export async function PUT(
     }
   }
 
+  const predictionId = parsePredictionId(body.predictionId);
+  if (body.predictionId !== undefined && predictionId === undefined) {
+    return new NextResponse("predictionId must be a positive integer or null", {
+      status: 400,
+    });
+  }
+  if (predictionId != null) {
+    const linkedPrediction = await db
+      .select({ id: predictionMarkets.id })
+      .from(predictionMarkets)
+      .where(eq(predictionMarkets.id, predictionId))
+      .limit(1);
+    if (!linkedPrediction[0]) {
+      return new NextResponse("prediction not found", { status: 400 });
+    }
+  }
+
   const update: Record<string, unknown> = {
     title: body.title ?? "",
     slug: slug ?? undefined,
@@ -121,6 +148,7 @@ export async function PUT(
     seo: body.seo ?? {},
     readingMinutes:
       typeof body.readingMinutes === "number" ? body.readingMinutes : null,
+    predictionId,
   };
 
   if (body.authorId != null) {

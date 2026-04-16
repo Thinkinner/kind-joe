@@ -69,6 +69,28 @@ const createSlug = (text: string) => {
     .replace(/^-+|-+$/g, ""); // Trim start/end dashes
 };
 
+function buildNewsletterDataWithFinalSlugs(
+  newsletterData: NewsletterData,
+  draftArticles: DbArticle[],
+): NewsletterData {
+  const stories = (newsletterData.stories || []).map((story, idx) => {
+    const article = draftArticles[idx];
+    const slugFromArticleTitle = createSlug(article?.title || "");
+    const fallbackSlug = (story.slug || "").trim() || createSlug(story.headline || "");
+    const finalSlug = slugFromArticleTitle || fallbackSlug;
+    return { ...story, slug: finalSlug };
+  });
+
+  return {
+    ...newsletterData,
+    stories,
+    intro:
+      (newsletterData.intro || "").trim() ||
+      deriveNewsletterLeadFromStories(stories) ||
+      "",
+  };
+}
+
 /** Overview edit fields: neutral surface (theme `input` is blue-tinted). */
 const OVERVIEW_FIELD_CLASS =
   "border border-neutral-200 bg-white text-sm text-neutral-900 outline-none transition-colors focus:border-orange-500 focus:ring-1 focus:ring-orange-500/25 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-orange-500";
@@ -361,27 +383,11 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
   const handleCopyHtml = async () => {
     try {
-      // 1. Create a temporary copy of stories with CLEAN slugs
-      // This forces the link to match what the Database creates
-      const cleanStories = data.stories.map((story) => ({
-        ...story,
-        slug: createSlug(story.headline || ""), // Force clean slug
-      }));
-
-      const cleanData = {
-        ...data,
-        stories: cleanStories,
-        intro:
-          (data.intro || "").trim() ||
-          deriveNewsletterLeadFromStories(cleanStories) ||
-          "",
-      };
-
-      // 2. Generate HTML using the clean data
-      const html = generateEmailHtml(cleanData);
+      const linkSafeData = buildNewsletterDataWithFinalSlugs(data, articles);
+      const html = generateEmailHtml(linkSafeData);
 
       await navigator.clipboard.writeText(html);
-      setSuccessMsg("Email HTML (with clean links) copied!");
+      setSuccessMsg("Email HTML copied with publish-matching links.");
       setTimeout(() => setSuccessMsg(""), 2000);
     } catch (err) {
       setErrorMsg("Failed to copy HTML to clipboard");
@@ -738,13 +744,14 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       }
 
       // 3. Prepare Payload
-      const emailHtml = generateEmailHtml(data);
+      const dataWithFinalSlugs = buildNewsletterDataWithFinalSlugs(data, articles);
+      const emailHtml = generateEmailHtml(dataWithFinalSlugs);
       const flatArticles: Record<string, any> = {};
       articles.forEach((art, idx) => {
         flatArticles[`article_${idx + 1}`] = art;
       });
       const flatStories: Record<string, any> = {};
-      data.stories.forEach((story, idx) => {
+      dataWithFinalSlugs.stories.forEach((story, idx) => {
         const n = idx + 1;
         flatStories[`story_${n}_headline`] = story.headline;
         flatStories[`story_${n}_summary`] = story.summary;
@@ -755,11 +762,15 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       });
 
       const payload: WebhookPayload = {
-        newsletter: { subject: data.title, html: emailHtml, data: data },
+        newsletter: {
+          subject: dataWithFinalSlugs.title,
+          html: emailHtml,
+          data: dataWithFinalSlugs,
+        },
         articles: articles,
         ...flatArticles,
         ...flatStories,
-        newsletter_title: data.title,
+        newsletter_title: dataWithFinalSlugs.title,
         newsletter_html: emailHtml,
       };
 

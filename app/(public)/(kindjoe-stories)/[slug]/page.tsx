@@ -9,16 +9,18 @@ import {
   getArticleCategories,
   getRecommendedArticles,
 } from "@/lib/actions/articles";
+import { getPredictionMarketById } from "@/lib/predictions/queries";
+import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 
 // Components
 import ArticleContent from "@/components/stories/article-single-page-content";
 import ShareButtons from "@/components/stories/share-buttons";
 import GetEmail from "@/components/stories/kindjoe-get-email";
 import ArticleTracker from "@/components/article-tracker";
-import { ArticleCard } from "@/components/stories/stories/article-card";
 import { formatToLA } from "@/lib/format-date";
 import { RecommendedCard } from "@/components/cards/recommended-card";
 import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
+import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 
 export const revalidate = 60;
 
@@ -38,7 +40,11 @@ export async function generateMetadata(props: {
   if (!data) return {};
   const { article: a } = data;
 
-  const seo = typeof a.seo === "string" ? JSON.parse(a.seo) : (a.seo as any);
+  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seo =
+    seoRaw && typeof seoRaw === "object"
+      ? (seoRaw as { title?: string; description?: string; canonical?: string })
+      : {};
   const title = seo?.title || a.title;
   const description = seo?.description || a.excerpt || undefined;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.kindjoe.com";
@@ -73,11 +79,14 @@ export default async function ArticleBySlug(props: {
   const data = await getFullArticleBySlug(slug);
   if (!data) notFound();
 
-  const { article: a, authorName, authorAvatar, tags } = data;
+  const { article: a, tags } = data;
+  const session = await getServerSession();
+  const user = session?.user as AuthAppUser | undefined;
+  const viewerId = user?.id ?? null;
 
   // 2. 🧠 SMART REDIRECT LOGIC
   // Check if article has the "ventura-county" tag
-  const hasVenturaTag = tags?.some((t: any) => t.slug === "ventura-county");
+  const hasVenturaTag = tags.some((t) => t.slug === "ventura-county");
 
   if (hasVenturaTag) {
     // If it has the tag, this article doesn't belong on the KindJoe layout
@@ -89,6 +98,10 @@ export default async function ArticleBySlug(props: {
     getArticleCategories(a.id),
     getRecommendedArticles(a.id, a.category, 5),
   ]);
+  const linkedPrediction =
+    typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
+      ? await getPredictionMarketById(a.predictionId, viewerId)
+      : null;
 
   const content =
     typeof a.content === "string" ? JSON.parse(a.content) : a.content;
@@ -185,6 +198,11 @@ export default async function ArticleBySlug(props: {
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
                 <ArticleContent value={content} />
               </div>
+              <ArticlePredictionCta
+                articleSlug={slug}
+                market={linkedPrediction}
+                canCreate={Boolean(viewerId)}
+              />
             </div>
           </article>
 
@@ -207,7 +225,10 @@ export default async function ArticleBySlug(props: {
               </h3>
               <div className="flex flex-col gap-6">
                 {recommended.map((item) => (
-                  <RecommendedCard key={item.id} article={item as any} />
+                  <RecommendedCard
+                    key={item.id}
+                    article={{ ...item, category: item.category ?? "General" }}
+                  />
                 ))}
               </div>
             </section>

@@ -53,6 +53,10 @@ export const articles = pgTable(
     authorId: varchar("author_id", { length: 128 })
       .notNull()
       .references(() => users.id),
+    predictionId: integer("prediction_id").references(
+      (): AnyPgColumn => predictionMarkets.id,
+      { onDelete: "set null" },
+    ),
 
     seo: jsonb("seo"),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -78,6 +82,7 @@ export const articles = pgTable(
     slugIdx: index("articles_slug_idx").on(t.slug),
     publishedIdx: index("articles_published_idx").on(t.publishedAt),
     listIdx: index("articles_list_idx").on(t.isDraft, t.publishedAt),
+    predictionIdx: index("articles_prediction_id_idx").on(t.predictionId),
   }),
 );
 

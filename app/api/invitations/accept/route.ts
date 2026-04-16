@@ -71,8 +71,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     email: inv.email,
-    staffRole: inv.staffRole,
-    hasCustomAccess: Array.isArray(inv.adminPageAccess),
     hasAccount: Boolean(existingUser),
     signedIn: Boolean(session?.user),
     sessionEmailMatchesInvite:
