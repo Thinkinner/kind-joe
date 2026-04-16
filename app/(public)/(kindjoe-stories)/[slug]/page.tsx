@@ -21,6 +21,7 @@ import { formatToLA } from "@/lib/format-date";
 import { RecommendedCard } from "@/components/cards/recommended-card";
 import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
+import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 
 export const revalidate = 60;
 
@@ -172,6 +173,9 @@ export default async function ArticleBySlug(props: {
               </div>
 
               <ShareButtons />
+              <div className="mt-4">
+                <ScrollToArticleCta />
+              </div>
             </header>
 
             <div className="mt-4 lg:mt-6 px-4 lg:px-6">
@@ -194,7 +198,7 @@ export default async function ArticleBySlug(props: {
             </section>
             */}
 
-            <div className="mt-8 px-4 lg:px-6">
+            <div id="article-content" className="mt-8 px-4 lg:px-6">
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
                 <ArticleContent value={content} />
               </div>

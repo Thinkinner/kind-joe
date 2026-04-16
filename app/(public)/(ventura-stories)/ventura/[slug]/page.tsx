@@ -17,6 +17,7 @@ import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import ArticleTracker from "@/components/article-tracker";
 import { RecommendedCard } from "@/components/cards/recommended-card"; // The new horizontal card
 import { formatToLA } from "@/lib/format-date";
+import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 
 export const revalidate = 60;
 
@@ -155,6 +156,9 @@ export default async function VenturaArticleBySlug(props: {
               </div>
 
               <ShareButtons />
+              <div className="mt-4">
+                <ScrollToArticleCta />
+              </div>
             </header>
 
             {/* Hero Image */}
@@ -182,7 +186,7 @@ export default async function VenturaArticleBySlug(props: {
             */}
 
             {/* Content Area with Orange Links */}
-            <div className="mt-8 px-4 lg:px-6">
+            <div id="article-content" className="mt-8 px-4 lg:px-6">
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-orange-600">
                 <ArticleContent value={content} />
               </div>
