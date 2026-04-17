@@ -5,6 +5,8 @@ import { RawRssItem, RssSource } from "./types";
 // List of CORS proxies to try in order. 
 // Proxies are necessary because browsers block direct requests to RSS feeds (CORS).
 const PROXY_STRATEGIES = [
+  // Strategy 0: Same-origin server proxy (avoids browser CORS/proxy quirks)
+  (url: string) => `/api/admin/newsletter/feed-proxy?url=${encodeURIComponent(url)}`,
   // Strategy 1: AllOrigins (Add timestamp to prevent caching)
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&t=${Date.now()}`,
   // Strategy 2: CORS Proxy IO
@@ -15,12 +17,22 @@ const PROXY_STRATEGIES = [
 
 const unwrapProxyPayload = (text: string): string => {
   const trimmed = text.replace(/^\uFEFF/, "").trimStart();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
+  if (
+    !trimmed.startsWith("{") &&
+    !trimmed.startsWith("[") &&
+    !trimmed.startsWith('"')
+  ) {
+    return trimmed;
+  }
 
   try {
     const payload = JSON.parse(trimmed) as
       | { contents?: unknown; data?: unknown; body?: unknown; response?: unknown }
-      | unknown[];
+      | unknown[]
+      | string;
+    if (typeof payload === "string") {
+      return payload.replace(/^\uFEFF/, "").trimStart();
+    }
     if (payload && typeof payload === "object" && !Array.isArray(payload)) {
       const candidates = [payload.contents, payload.data, payload.body, payload.response];
       const firstText = candidates.find((v) => typeof v === "string");
@@ -31,6 +43,23 @@ const unwrapProxyPayload = (text: string): string => {
   }
 
   return trimmed;
+};
+
+const decodeEscapedXml = (text: string): string => {
+  const looksEscapedXml =
+    text.includes("&lt;rss") ||
+    text.includes("&lt;feed") ||
+    text.includes("&lt;?xml") ||
+    text.includes("&lt;item") ||
+    text.includes("&lt;entry");
+  if (!looksEscapedXml) return text;
+
+  return text
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, "&");
 };
 
 const looksLikeFeedXml = (text: string): boolean => {
@@ -63,7 +92,8 @@ const fetchWithFallback = async (sourceUrl: string): Promise<string> => {
       }
       
       const rawText = await response.text();
-      const text = unwrapProxyPayload(rawText);
+      const unwrappedText = unwrapProxyPayload(rawText);
+      const text = decodeEscapedXml(unwrappedText);
       if (!looksLikeFeedXml(text)) {
         throw new Error("Proxy response did not look like an RSS/Atom feed");
       }
@@ -77,13 +107,10 @@ const fetchWithFallback = async (sourceUrl: string): Promise<string> => {
   }
   
   const details = reasons.filter(Boolean).join(" | ");
-  throw (
-    lastError ||
-    new Error(
-      details
-        ? `All proxy fetch strategies failed: ${details}`
-        : "All proxy fetch strategies failed",
-    )
+  throw new Error(
+    details
+      ? `All proxy fetch strategies failed: ${details}`
+      : `All proxy fetch strategies failed${lastError ? `: ${String(lastError)}` : ""}`,
   );
 };
 

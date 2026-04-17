@@ -61,6 +61,76 @@ const cleanJson = (text: string): string => {
   return cleaned.substring(start, end + 1).trim();
 };
 
+function extractBalancedJsonObject(text: string): string | null {
+  const source = (text || "").trim();
+  if (!source) return null;
+
+  const start = source.indexOf("{");
+  if (start < 0) return null;
+
+  let inString = false;
+  let escaped = false;
+  let depth = 0;
+
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(start, i + 1).trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseGeneratedJson<T>(rawText: string): T {
+  const candidates = [
+    rawText,
+    cleanJson(rawText),
+    extractBalancedJsonObject(rawText),
+    extractBalancedJsonObject(cleanJson(rawText)),
+  ].filter((value): value is string => Boolean(value && value.trim()));
+
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim();
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  throw new Error("Unable to parse model JSON payload.");
+}
+
 function normalizeSubject(raw: string): string {
   return raw
     .replace(/[’]/g, "'")
@@ -455,10 +525,9 @@ REMINDER — JSON field "title": This is the email inbox subject line. It MUST b
         },
       });
 
-      const cleanedText = cleanJson(response.text || "{}");
-      let data;
+      let data: NewsletterData;
       try {
-        data = JSON.parse(cleanedText) as NewsletterData;
+        data = parseGeneratedJson<NewsletterData>(response.text || "{}");
       } catch (e) {
         console.error(
           "Newsletter JSON Parse Error. Raw text:\n",
@@ -543,11 +612,19 @@ Formatting rules:
       },
     });
 
-    const cleanedText = cleanJson(response.text || "{}");
     let parsed;
 
     try {
-      parsed = JSON.parse(cleanedText);
+      parsed = parseGeneratedJson<{
+        slug: string;
+        title: string;
+        excerpt: string;
+        contentHtml: string;
+        seoTitle: string;
+        seoDescription: string;
+        seoKeywords: string[];
+        readingMinutes: number;
+      }>(response.text || "{}");
     } catch (e) {
       // CRITICAL LOGGING: This will show up in your terminal if it fails again.
       console.error(
@@ -591,9 +668,8 @@ export const regenerateSingleStory = async (
       },
     });
 
-    const cleanedText = cleanJson(response.text || "{}");
     try {
-      return JSON.parse(cleanedText);
+      return parseGeneratedJson<NewsletterStory>(response.text || "{}");
     } catch (e) {
       console.error("Regen JSON Parse Error. Raw text:\n", response.text);
       throw new Error("AI generated malformed data. Please try again.");
@@ -658,9 +734,10 @@ export const generateStoryFromSelectedArticle = async (
       },
     });
 
-    const cleanedText = cleanJson(response.text || "{}");
     try {
-      const parsedStory = JSON.parse(cleanedText) as NewsletterStory;
+      const parsedStory = parseGeneratedJson<NewsletterStory>(
+        response.text || "{}",
+      );
 
       // Force the source data to match the selected article exactly so AI doesn't hallucinate it
       return {

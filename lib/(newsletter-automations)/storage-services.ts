@@ -29,6 +29,7 @@ import { slugify } from "@/lib/helpers/articles";
 async function assertStaff() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
   if (!staff.ok) throw new Error("Unauthorized");
+  return staff;
 }
 
 function newsletterIngestCutoff(): Date {
@@ -270,7 +271,7 @@ function newArticleId(): string {
 }
 
 export const publishNewsletterToArticles = async (draftId: string) => {
-  await assertStaff();
+  const staff = await assertStaff();
   try {
     const [draft] = await db
       .select()
@@ -278,15 +279,14 @@ export const publishNewsletterToArticles = async (draftId: string) => {
       .where(eq(draftsTable.id, draftId))
       .limit(1);
 
-    const [settingsRow] = await db.select().from(settingsTable).limit(1);
-
     if (!draft) throw new Error("Draft not found");
-    const authorId = settingsRow?.authorId?.trim();
-    if (!authorId) {
-      throw new Error(
-        "Set Database Author ID in Newsletter settings (Better Auth user id).",
-      );
-    }
+    const publisherId = staff.user.id;
+    const authorId = publisherId;
+    const publisherName =
+      staff.user.aliasFullName?.trim() ||
+      staff.user.name?.trim() ||
+      staff.user.email?.trim() ||
+      "Newsletter publisher";
 
     const newsletterArticles = draft.articles || [];
     if (newsletterArticles.length === 0) {
@@ -294,15 +294,15 @@ export const publishNewsletterToArticles = async (draftId: string) => {
     }
 
     const result = await db.transaction(async (tx) => {
-      const authorHit = await tx
+      const publisherHit = await tx
         .select({ id: cmsUsers.id })
         .from(cmsUsers)
-        .where(eq(cmsUsers.id, authorId))
+        .where(eq(cmsUsers.id, publisherId))
         .limit(1);
-      if (!authorHit[0]) {
+      if (!publisherHit[0]) {
         await tx.insert(cmsUsers).values({
-          id: authorId,
-          name: "Newsletter author",
+          id: publisherId,
+          name: publisherName,
           role: "Writer",
         });
       }
@@ -353,7 +353,7 @@ export const publishNewsletterToArticles = async (draftId: string) => {
           isDraft: false,
           publishedAt: new Date(),
           updatedAt: new Date(),
-          publishedBy: authorId,
+          publishedBy: publisherId,
         });
 
         for (const tagEntry of normalizedTags) {
