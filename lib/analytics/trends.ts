@@ -91,8 +91,17 @@ export function formatTrendState(current: number, previous: number): TrendState 
       };
     }
 
+    if (previous === 0 && current > 0) {
+      return {
+        label: "New",
+        direction: "up",
+        isAvailable: false,
+        deltaPercent: null,
+      };
+    }
+
     return {
-      label: "N/A",
+      label: "No baseline",
       direction: "na",
       isAvailable: false,
       deltaPercent: null,

@@ -216,6 +216,7 @@ export default function StaffUsersPage() {
   );
   const [submittingLookup, setSubmittingLookup] = useState(false);
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
+  const [cancelingInviteId, setCancelingInviteId] = useState<string | null>(null);
   const [editingInvite, setEditingInvite] = useState<PendingInvite | null>(null);
   const [editingInviteRole, setEditingInviteRole] =
     useState<(typeof INVITE_ROLES)[number]>("writer");
@@ -424,6 +425,29 @@ export default function StaffUsersPage() {
       toast.error(e instanceof Error ? e.message : "Could not resend invite");
     } finally {
       setResendingInviteId(null);
+    }
+  };
+
+  const cancelInvitation = async (invite: PendingInvite) => {
+    setCancelingInviteId(invite.id);
+    try {
+      const res = await fetch("/api/admin/staff-invitations", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: invite.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Could not cancel invitation",
+        );
+      }
+      toast.success(`Invitation canceled for ${invite.email}.`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not cancel invitation");
+    } finally {
+      setCancelingInviteId(null);
     }
   };
 
@@ -674,7 +698,7 @@ export default function StaffUsersPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-slate-200/70 bg-white p-4">
+      <div className="border-y border-slate-200/70 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Team management</h2>
@@ -959,13 +983,13 @@ export default function StaffUsersPage() {
       </div>
 
       {invites.length > 0 && (
-        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
+        <div className="border-y border-amber-200/70 py-3">
           <h2 className="text-sm font-semibold text-amber-900">Pending invitations</h2>
           <ul className="mt-2 space-y-2 text-sm">
             {invites.map((inv) => (
               <li
                 key={inv.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/70 bg-white px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/70 px-2 py-2 last:border-b-0"
               >
                 <div>
                   <p className="font-medium text-neutral-900">{inv.email}</p>
@@ -980,6 +1004,7 @@ export default function StaffUsersPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => openInviteAccessEditor(inv)}
+                  disabled={cancelingInviteId === inv.id}
                 >
                   Manage access
                 </Button>
@@ -988,12 +1013,30 @@ export default function StaffUsersPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => void resendInvitation(inv)}
-                  disabled={resendingInviteId === inv.id}
+                  disabled={
+                    resendingInviteId === inv.id || cancelingInviteId === inv.id
+                  }
                 >
                   {resendingInviteId === inv.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     "Resend"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => void cancelInvitation(inv)}
+                  disabled={
+                    cancelingInviteId === inv.id || resendingInviteId === inv.id
+                  }
+                >
+                  {cancelingInviteId === inv.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Cancel"
                   )}
                 </Button>
               </li>
@@ -1011,7 +1054,7 @@ export default function StaffUsersPage() {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200/70 bg-white">
+      <div className="overflow-x-auto border-t border-slate-200/70">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>

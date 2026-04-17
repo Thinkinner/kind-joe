@@ -24,6 +24,7 @@ import type {
 import { NEWSLETTER_INGEST_FRESH_HOURS } from "@/lib/(newsletter-automations)/constants";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { slugify } from "@/lib/helpers/articles";
 
 async function assertStaff() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
@@ -206,13 +207,45 @@ export async function getDbArticlesForNewsletterSelection(
   return rows.map(mapCmsArticleRowToRawItem);
 }
 
-function createSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+const NEWSLETTER_FEATURED_TAG = "kindjoetopstories";
+const MAX_SLUG_ATTEMPTS = 4;
+
+function normalizeNewsletterTagEntries(
+  keywords: unknown[],
+  category?: string | null,
+): Array<{ name: string; slug: string }> {
+  const rawValues = [...keywords];
+  if (typeof category === "string" && category.trim()) {
+    rawValues.push(category);
+  }
+  rawValues.push(NEWSLETTER_FEATURED_TAG);
+
+  const bySlug = new Map<string, { name: string; slug: string }>();
+  for (const value of rawValues) {
+    const name = String(value ?? "").trim();
+    if (!name) continue;
+    const slug = slugify(name);
+    if (!slug) continue;
+    if (slug === NEWSLETTER_FEATURED_TAG) {
+      bySlug.set(NEWSLETTER_FEATURED_TAG, {
+        name: NEWSLETTER_FEATURED_TAG,
+        slug: NEWSLETTER_FEATURED_TAG,
+      });
+      continue;
+    }
+    if (!bySlug.has(slug)) {
+      bySlug.set(slug, { name, slug });
+    }
+  }
+
+  if (!bySlug.has(NEWSLETTER_FEATURED_TAG)) {
+    bySlug.set(NEWSLETTER_FEATURED_TAG, {
+      name: NEWSLETTER_FEATURED_TAG,
+      slug: NEWSLETTER_FEATURED_TAG,
+    });
+  }
+
+  return Array.from(bySlug.values());
 }
 
 function htmlToMinimalTiptapDoc(html: string): { type: "doc"; content: unknown[] } {
@@ -277,82 +310,55 @@ export const publishNewsletterToArticles = async (draftId: string) => {
       let publishedCount = 0;
 
       for (const item of newsletterArticles) {
-        let finalSlug = createSlug(item.title);
-        if (!finalSlug) finalSlug = `article-${Date.now()}`;
-        finalSlug = finalSlug.slice(0, 200);
+        const baseSlug = (slugify(item.title) || `article-${Date.now()}`).slice(0, 200);
+        let finalSlug = baseSlug;
+        for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+          const existing = await tx
+            .select({ id: articles.id })
+            .from(articles)
+            .where(eq(articles.slug, finalSlug))
+            .limit(1);
+          if (!existing[0]) break;
+          finalSlug = `${baseSlug}-${attempt + 2}`.slice(0, 200);
+        }
 
-        const keywords = [...(item.seo?.keywords || [])];
-        if (item.category) keywords.push(item.category);
-        keywords.push("kindjoetopstories");
-        const uniqueTags = Array.from(new Set(keywords.map((k) => String(k))));
+        const normalizedTags = normalizeNewsletterTagEntries(
+          Array.isArray(item.seo?.keywords) ? item.seo.keywords : [],
+          item.category,
+        );
+        const seoKeywords = normalizedTags.map((tag) => tag.name);
 
         const contentJson =
           item.content && typeof item.content === "object"
             ? item.content
             : htmlToMinimalTiptapDoc(item.contentHtml || item.excerpt || "");
 
-        const existing = await tx
-          .select({ id: articles.id })
-          .from(articles)
-          .where(eq(articles.slug, finalSlug))
-          .limit(1);
+        const articleId = newArticleId();
+        await tx.insert(articles).values({
+          id: articleId,
+          slug: finalSlug,
+          title: item.title,
+          excerpt: item.excerpt || "",
+          coverImageUrl: item.coverImageUrl || null,
+          category: item.category || "General",
+          authorId,
+          content: contentJson as object,
+          contentHtml: item.contentHtml || "",
+          seo: {
+            title: item.seo?.title || item.title,
+            description: item.seo?.description || item.excerpt || "",
+            keywords: seoKeywords,
+          },
+          readingMinutes: item.readingMinutes || 3,
+          isDraft: false,
+          publishedAt: new Date(),
+          updatedAt: new Date(),
+          publishedBy: authorId,
+        });
 
-        let articleId: string;
-        if (existing[0]) {
-          articleId = existing[0].id;
-          await tx
-            .update(articles)
-            .set({
-              title: item.title,
-              excerpt: item.excerpt || "",
-              coverImageUrl: item.coverImageUrl || null,
-              category: item.category || "General",
-              authorId,
-              content: contentJson as object,
-              contentHtml: item.contentHtml || "",
-              seo: {
-                title: item.seo?.title || item.title,
-                description: item.seo?.description || item.excerpt || "",
-                keywords: uniqueTags,
-              },
-              readingMinutes: item.readingMinutes || 3,
-              isDraft: false,
-              publishedAt: new Date(),
-              updatedAt: new Date(),
-              publishedBy: authorId,
-              deletedAt: null,
-            })
-            .where(eq(articles.id, articleId));
-        } else {
-          articleId = newArticleId();
-          await tx.insert(articles).values({
-            id: articleId,
-            slug: finalSlug,
-            title: item.title,
-            excerpt: item.excerpt || "",
-            coverImageUrl: item.coverImageUrl || null,
-            category: item.category || "General",
-            authorId,
-            content: contentJson as object,
-            contentHtml: item.contentHtml || "",
-            seo: {
-              title: item.seo?.title || item.title,
-              description: item.seo?.description || item.excerpt || "",
-              keywords: uniqueTags,
-            },
-            readingMinutes: item.readingMinutes || 3,
-            isDraft: false,
-            publishedAt: new Date(),
-            updatedAt: new Date(),
-            publishedBy: authorId,
-          });
-        }
-
-        await tx.delete(articleTags).where(eq(articleTags.articleId, articleId));
-
-        for (const tagName of uniqueTags) {
-          const tagSlug = createSlug(tagName);
-          if (!tagSlug) continue;
+        for (const tagEntry of normalizedTags) {
+          const tagName = tagEntry.name;
+          const tagSlug = tagEntry.slug;
 
           await tx
             .insert(tags)

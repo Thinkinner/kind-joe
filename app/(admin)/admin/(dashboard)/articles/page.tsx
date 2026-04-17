@@ -272,8 +272,8 @@ export default function AdminArticlesPage() {
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_12px_32px_-20px_rgb(15_23_42/0.2)]">
-        <div className="hidden grid-cols-[minmax(0,1fr)_190px_90px] items-center gap-4 border-b border-slate-200/60 bg-slate-50/60 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
+      <section className="overflow-hidden border-t border-slate-200/60">
+        <div className="hidden grid-cols-[minmax(0,1fr)_190px_90px] items-center gap-4 border-b border-slate-200/60 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
           <p>Title</p>
           <p>Status</p>
           <p className="text-right">Actions</p>

@@ -15,6 +15,7 @@ type PrefillData = {
   tags?: string[];
   excerpt?: string;
   draftHtml?: string;
+  seoDescription?: string;
 };
 
 export function NewArticleWithAssistant() {
@@ -35,7 +36,7 @@ export function NewArticleWithAssistant() {
           title: "",
           html: source,
           customPrompt:
-            "Treat input as a source article URL or raw article text. Produce a high-quality 300-350 word rewritten article. Return title, slug, category, tags (about 20), excerpt, and draftHtml.",
+            "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. The draftHtml should target about 350 words (roughly 320-380) and be formatted in short paragraphs (1-2 sentences per paragraph). Return title, slug, category, tags (about 20), excerpt (at least 12 words), draftHtml, and seoDescription (70-160 chars).",
         }),
       });
       if (!res.ok) {
@@ -50,6 +51,7 @@ export function NewArticleWithAssistant() {
         tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
         excerpt: String(data.excerpt ?? ""),
         draftHtml: String(data.draftHtml ?? ""),
+        seoDescription: String(data.seoDescription ?? ""),
       });
       setStarted(true);
       toast.success("Draft generated. Continue editing below.");

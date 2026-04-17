@@ -170,11 +170,11 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                {navPermissions[PERMISSIONS.ADMIN_SECURITY] && (
+                {navPermissions[PERMISSIONS.ADMIN_DASHBOARD] && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/security">
                       <Settings className="h-4 w-4" aria-hidden />
-                      <span>Settings</span>
+                      <span>Profile settings</span>
                     </Link>
                   </DropdownMenuItem>
                 )}

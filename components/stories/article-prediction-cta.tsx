@@ -75,7 +75,7 @@ export function ArticlePredictionCta({
     }
     const trimmedBody = body.trim();
     if (!trimmedBody) {
-      toast.error("Add some context before creating a prediction.");
+      toast.error("Add some context before publishing this discussion.");
       return;
     }
     const cleanedOptions = options.map((opt) => opt.trim()).filter(Boolean);
@@ -107,7 +107,7 @@ export function ArticlePredictionCta({
           router.push(loginPath);
           return;
         }
-        toast.error(payload.error ?? "Could not create a prediction.");
+        toast.error(payload.error ?? "Could not publish discussion.");
         return;
       }
       setCurrentMarket(payload.market);
@@ -116,26 +116,26 @@ export function ArticlePredictionCta({
       setBody("");
       setCategory("general");
       setOptions(["Yes", "No"]);
-      toast.success("Prediction created and linked.");
+      toast.success("Discussion published.");
     } catch {
-      toast.error("Could not create a prediction.");
+      toast.error("Could not publish discussion.");
     } finally {
       setCreating(false);
     }
   }
 
   return (
-    <section className="mt-10 rounded-2xl border border-slate-300 bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm ring-1 ring-slate-100 sm:p-6">
-      <div className="mb-4">
-        <h3 className="text-xl font-bold tracking-tight text-slate-900">
+    <section className="mt-10 border-y border-neutral-200 py-6 sm:py-8">
+      <div className="mb-5">
+        <h3 className="text-2xl font-bold tracking-tight text-slate-900">
           What&apos;s your take on this story?
         </h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600">
           Vote before the outcome is known and compare your call with the crowd.
         </p>
       </div>
       {currentMarket ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PredictionMarketCard
             market={currentMarket}
             canVote={isOpenForVoting(currentMarket)}
@@ -144,7 +144,7 @@ export function ArticlePredictionCta({
             style="card"
             showDiscussLink={false}
           />
-          <div className="rounded-xl border border-slate-300 bg-white shadow-sm ring-1 ring-slate-100">
+          <div className="border-t border-neutral-200 pt-5">
             <PredictionMarketComments
               slug={currentMarket.slug}
               nextPath={`/${articleSlug}`}
@@ -153,32 +153,40 @@ export function ArticlePredictionCta({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5">
+        <div className="border-l-2 border-neutral-300 pl-4 sm:pl-5">
           <p className="text-sm text-slate-700">
-            No prediction has been linked to this story yet.
+            No community take has been linked to this story yet.
           </p>
           {canCreate ? (
-            <Button className="mt-4" onClick={() => setCreateOpen(true)}>
-              Create prediction for this story
+            <Button
+              className="mt-4 rounded-md"
+              onClick={() => setCreateOpen(true)}
+            >
+              Start the discussion
             </Button>
           ) : (
-            <Button className="mt-4" onClick={() => router.push(loginPath)}>
-              Sign in to create prediction
+            <Button
+              className="mt-4 rounded-md"
+              onClick={() => router.push(loginPath)}
+            >
+              Sign in to join discussion
             </Button>
           )}
         </div>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="w-[min(720px,calc(100%-1rem))] max-h-[90vh] overflow-y-auto sm:max-w-none">
-          <DialogTitle>Create story prediction</DialogTitle>
-          <div className="space-y-4">
+        <DialogContent className="w-[min(780px,calc(100%-1rem))] max-h-[90vh] overflow-y-auto border-0 bg-white p-0 shadow-none sm:max-w-none">
+          <div className="space-y-5 p-5 sm:p-6">
+            <DialogTitle className="border-b border-neutral-200 pb-3 text-2xl font-bold tracking-tight text-slate-900">
+              Start the discussion
+            </DialogTitle>
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase text-slate-500">Question</p>
               <Input
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Optional headline for the prediction"
+                placeholder="Optional headline for this discussion"
               />
             </div>
             <div className="space-y-1">
@@ -240,12 +248,12 @@ export function ArticlePredictionCta({
                 </Button>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-neutral-200 pt-4">
               <Button variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={handleCreatePrediction} disabled={creating}>
-                {creating ? "Creating..." : "Create and link prediction"}
+                {creating ? "Publishing..." : "Publish discussion"}
               </Button>
             </div>
           </div>

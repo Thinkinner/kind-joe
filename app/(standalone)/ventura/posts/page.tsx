@@ -42,8 +42,6 @@ export default async function VenturaPostsPage() {
         allPosts={allPosts}
         profileImageSrc="/brand/ventura-profile.jpg"
         profileName="Joe Knows Ventura"
-        featuredImageSrc="/brand/kindjoe-bg.jpg"
-        featuredDestinationUrl="https://www.youtube.com/@thekindjoe-w4d"
         subscribeTitle="Get the biggest Ventura stories delivered straight to your inbox with the joeknowsventura newsletter. Don't miss out!"
         subscribeEndpoint="/api/ventura-post-email-capture"
         subscribeTags={["ventura_posts_feed"]}

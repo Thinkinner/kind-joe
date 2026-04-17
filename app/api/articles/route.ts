@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db"; // 👈 change this path to where your drizzle instance is
 import { articles, users } from "@/db/schema"; // 👈 adjust path
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 const MAX_PUBLIC = 50;
 
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       publishedAt: articles.publishedAt,
       readingMinutes: articles.readingMinutes,
       category: articles.category,
-      authorName: users.name,
+      authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
       authorAvatarUrl: users.avatarUrl,
     })
     .from(articles)

@@ -1,25 +1,36 @@
 import { StaffTwoFactorSettings } from "@/components/admin/staff-two-factor-settings";
 import { StaffAliasSettings } from "@/components/admin/staff-alias-settings";
+import Link from "next/link";
 
 export default function AdminSecurityPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-          Security
+          Profile settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-600">
-          Optional two-factor authentication for your staff account. Enable it
-          here after you can sign in reliably.
+          Manage your profile name, public byline alias, password, and account
+          security options.
+        </p>
+        <p className="mt-2 text-sm text-neutral-700">
+          Need to update your password?{" "}
+          <Link
+            href="/force-password-change?next=/admin/security"
+            className="font-medium underline underline-offset-2"
+          >
+            Change password
+          </Link>
+          .
         </p>
       </div>
-      <section className="rounded-2xl border border-neutral-200 bg-neutral-50/50 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-neutral-900">Author alias</h2>
+      <section className="border-t border-neutral-200 pt-6">
+        <h2 className="text-lg font-semibold text-neutral-900">Name & alias</h2>
         <div className="mt-4">
           <StaffAliasSettings />
         </div>
       </section>
-      <section className="rounded-2xl border border-neutral-200 bg-neutral-50/50 p-6 shadow-sm">
+      <section className="border-t border-neutral-200 pt-6">
         <h2 className="text-lg font-semibold text-neutral-900">
           Authenticator (TOTP)
         </h2>

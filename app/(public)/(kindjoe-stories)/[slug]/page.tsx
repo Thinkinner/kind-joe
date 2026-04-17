@@ -16,6 +16,7 @@ import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import ArticleContent from "@/components/stories/article-single-page-content";
 import ShareButtons from "@/components/stories/share-buttons";
 import GetEmail from "@/components/stories/kindjoe-get-email";
+import FocusableImage from "@/components/stories/focusable-image";
 import ArticleTracker from "@/components/article-tracker";
 import { formatToLA } from "@/lib/format-date";
 import { RecommendedCard } from "@/components/cards/recommended-card";
@@ -103,6 +104,20 @@ export default async function ArticleBySlug(props: {
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
       : null;
+  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seo =
+    seoRaw && typeof seoRaw === "object"
+      ? (seoRaw as { authorName?: string })
+      : {};
+  const bylineAlias = seo.authorName?.trim() || "";
+  const useAliasByline = bylineAlias.length > 0;
+  const publisherName = useAliasByline ? bylineAlias : "KindJoe";
+  const publisherInitials = publisherName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "KJ";
 
   const content =
     typeof a.content === "string" ? JSON.parse(a.content) : a.content;
@@ -129,61 +144,94 @@ export default async function ArticleBySlug(props: {
                 {a.title}
               </h1>
 
-              {/* Author/Publisher Bar */}
-              <div className="mt-6 mb-6 flex items-center justify-between border-y border-neutral-100 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative h-12 w-12 flex-shrink-0">
-                    <img
-                      src="/brand/kindjoe-profile.jpg"
-                      alt="KindJoe"
-                      className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
-                    />
-                    {/* Verification Badge */}
-                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-3 h-3"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+              <div className="mt-6 border-y border-neutral-200 py-4 sm:py-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-12 w-12 flex-shrink-0">
+                        {useAliasByline ? (
+                          <div
+                            aria-label={publisherName}
+                            className="flex h-full w-full items-center justify-center rounded-full bg-neutral-900 text-sm font-bold tracking-wide text-white ring-2 ring-white shadow-sm"
+                          >
+                            {publisherInitials}
+                          </div>
+                        ) : (
+                          <img
+                            src="/brand/kindjoe-profile.jpg"
+                            alt="KindJoe"
+                            className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
+                          />
+                        )}
+                        {/* Verification Badge */}
+                        <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
+                          <svg
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="w-3 h-3"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-neutral-900 leading-none">
+                          {publisherName}
+                        </span>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
+                          <span>Official Publisher</span>
+                          <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
+                          <time className="text-neutral-700 font-semibold">
+                            {formatToLA(
+                              a.publishedAt ?? a.publishAt ?? a.createdAt,
+                            )}
+                          </time>
+                        </div>
+                      </div>
                     </div>
+                    <p className="hidden text-xs font-semibold uppercase tracking-wide text-neutral-400 sm:block">
+                      Community
+                    </p>
                   </div>
 
-                  <div className="flex flex-col">
-                    {/* Hardcoded Name */}
-                    <span className="text-sm font-bold text-neutral-900 leading-none">
-                      KindJoe
-                    </span>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
-                      <span>Official Publisher</span>
-                      <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
-                      <time className="text-neutral-700 font-semibold">
-                        {formatToLA(
-                          a.publishedAt ?? a.publishAt ?? a.createdAt,
-                        )}
-                      </time>
+                  <div className="h-px w-full bg-neutral-200" />
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">
+                        Join the conversation
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        React with your take and see what people think below.
+                      </p>
+                    </div>
+                    <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
+                      <ScrollToArticleCta
+                        targetId="article-predictions"
+                        label="Share your take"
+                        className="w-full sm:w-auto"
+                      />
+                      <ShareButtons
+                        showLabel={false}
+                        className="w-full justify-start sm:w-auto sm:justify-end"
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <ShareButtons />
-              <div className="mt-4">
-                <ScrollToArticleCta />
               </div>
             </header>
 
             <div className="mt-4 lg:mt-6 px-4 lg:px-6">
               <div className="overflow-hidden rounded-xl shadow-sm">
-                <img
+                <FocusableImage
                   src={a.coverImageUrl ?? "/placeholder.jpg"}
                   alt={a.title}
-                  className="w-full h-full object-cover aspect-[16/9]"
+                  className="aspect-[16/9] cursor-zoom-in"
                 />
               </div>
             </div>
@@ -202,11 +250,13 @@ export default async function ArticleBySlug(props: {
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
                 <ArticleContent value={content} />
               </div>
-              <ArticlePredictionCta
-                articleSlug={slug}
-                market={linkedPrediction}
-                canCreate={Boolean(viewerId)}
-              />
+              <div id="article-predictions">
+                <ArticlePredictionCta
+                  articleSlug={slug}
+                  market={linkedPrediction}
+                  canCreate={Boolean(viewerId)}
+                />
+              </div>
             </div>
           </article>
 

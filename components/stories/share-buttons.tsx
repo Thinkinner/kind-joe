@@ -4,7 +4,17 @@ import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 
-export default function ShareButtons() {
+type ShareButtonsProps = {
+  className?: string;
+  showLabel?: boolean;
+  label?: string;
+};
+
+export default function ShareButtons({
+  className = "",
+  showLabel = true,
+  label = "Share",
+}: ShareButtonsProps) {
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
@@ -12,10 +22,12 @@ export default function ShareButtons() {
   }, []);
 
   return (
-    <div className="mt-4 flex items-center gap-3">
-      <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Share
-      </span>
+    <div className={`flex items-center gap-3 ${className}`.trim()}>
+      {showLabel ? (
+        <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          {label}
+        </span>
+      ) : null}
 
       {/* Facebook */}
       <a
@@ -24,6 +36,7 @@ export default function ShareButtons() {
         )}`}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="Share on Facebook"
         className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
       >
         <FaFacebookF className="h-4 w-4" />
@@ -36,6 +49,7 @@ export default function ShareButtons() {
         )}`}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="Share on X"
         className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
       >
         <FaXTwitter className="h-4 w-4" />
@@ -48,6 +62,7 @@ export default function ShareButtons() {
         )}`}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="Share on LinkedIn"
         className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
       >
         <FaLinkedinIn className="h-4 w-4" />

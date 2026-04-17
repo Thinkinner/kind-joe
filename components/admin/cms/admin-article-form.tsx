@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { ArrowLeft, ImagePlus, Loader2, WandSparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ImagePlus, Loader2, WandSparkles } from "lucide-react";
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +38,7 @@ type Props = {
     category?: string;
     tags?: string[];
     draftHtml?: string;
+    seoDescription?: string;
   };
 };
 
@@ -57,6 +57,20 @@ type PredictionSuggestionPayload = {
   options?: string[];
   rationale?: string;
 };
+
+type AdminProfileResponse = {
+  aliasFullName?: string | null;
+};
+
+type ArticleSeoFields = {
+  description?: string | null;
+};
+
+function countWords(text: string) {
+  const normalized = text.trim().replace(/\s+/g, " ");
+  if (!normalized) return 0;
+  return normalized.split(" ").length;
+}
 
 function isLikelyOpenEndedPrompt(question: string): boolean {
   const q = question.trim().toLowerCase();
@@ -147,6 +161,7 @@ export function AdminArticleForm({
     content: [{ type: "paragraph" }],
   });
   const [contentHtml, setContentHtml] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [postImageUrl, setPostImageUrl] = useState("");
   const [postImageUploading, setPostImageUploading] = useState(false);
@@ -182,8 +197,37 @@ export function AdminArticleForm({
   const [predictionOptions, setPredictionOptions] = useState<PredictionLookupItem[]>([]);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionLoaded, setPredictionLoaded] = useState(false);
+  const [authorAlias, setAuthorAlias] = useState("");
+  const [aliasLoading, setAliasLoading] = useState(true);
+  const [aliasModalOpen, setAliasModalOpen] = useState(false);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [publishModalStage, setPublishModalStage] = useState<"publishing" | "success">(
+    "publishing",
+  );
   const postImageInputRef = useRef<HTMLInputElement | null>(null);
   const appliedInitialRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/profile", { cache: "no-store" });
+        if (!res.ok) throw new Error("Could not load author alias.");
+        const data = (await res.json()) as AdminProfileResponse;
+        if (cancelled) return;
+        const alias = (data.aliasFullName ?? "").trim();
+        setAuthorAlias(alias);
+      } catch {
+        if (cancelled) return;
+        setAuthorAlias("");
+      } finally {
+        if (!cancelled) setAliasLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!articleId) return;
@@ -208,6 +252,11 @@ export function AdminArticleForm({
             ? data.predictionId
             : null,
         );
+        const seoRaw =
+          data.seo && typeof data.seo === "object" && !Array.isArray(data.seo)
+            ? (data.seo as ArticleSeoFields)
+            : {};
+        setSeoDescription((seoRaw.description ?? "").trim());
         if (data.publishAt) {
           const d = new Date(data.publishAt);
           setPublishAt(d.toISOString().slice(0, 16));
@@ -236,6 +285,7 @@ export function AdminArticleForm({
     if (initialValues.category) setCategory(initialValues.category);
     if (Array.isArray(initialValues.tags)) setTags(initialValues.tags);
     if (initialValues.draftHtml) setContentHtml(initialValues.draftHtml);
+    if (initialValues.seoDescription) setSeoDescription(initialValues.seoDescription);
   }, [articleId, initialValues]);
 
   const onTitle = (v: string) => {
@@ -243,11 +293,39 @@ export function AdminArticleForm({
     if (!articleId) setSlug(slugify(v));
   };
 
+  const normalizeTag = (raw: string) => {
+    const cleaned = raw
+      .trim()
+      .replace(/^[\s,;.|/\\-]+|[\s,;.|/\\-]+$/g, "")
+      .replace(/\s+/g, " ");
+    return cleaned.toLowerCase();
+  };
+
   const addTag = (raw: string) => {
-    const next = raw.trim().toLowerCase();
+    const next = normalizeTag(raw);
     if (!next) return;
     if (tags.includes(next)) return;
     setTags((prev) => [...prev, next]);
+  };
+
+  const addTagsFromInput = (raw: string) => {
+    const parts = raw
+      .split(/[\n,;]+/g)
+      .map((part) => normalizeTag(part))
+      .filter(Boolean);
+
+    if (parts.length === 0) return;
+
+    setTags((prev) => {
+      const seen = new Set(prev);
+      const next = [...prev];
+      for (const part of parts) {
+        if (seen.has(part)) continue;
+        seen.add(part);
+        next.push(part);
+      }
+      return next;
+    });
   };
 
   const removeTag = (tagToRemove: string) => {
@@ -255,6 +333,10 @@ export function AdminArticleForm({
   };
 
   const buildMeta = (opts: { publishNow?: boolean; schedule?: boolean }) => {
+    const nextSeo: Record<string, unknown> = {};
+    if (seoDescription.trim()) {
+      nextSeo.description = seoDescription.trim();
+    }
     const meta: Record<string, unknown> = {
       title,
       slug,
@@ -265,6 +347,7 @@ export function AdminArticleForm({
       isDraft: opts.publishNow || opts.schedule ? false : isDraft,
       contentHtml,
       predictionId,
+      seo: nextSeo,
     };
 
     if (opts.publishNow) {
@@ -340,9 +423,27 @@ export function AdminArticleForm({
 
   const selectedPrediction =
     predictionId == null ? null : predictionOptions.find((item) => item.id === predictionId) ?? null;
+  const aliasMissing = !authorAlias.trim();
+  const excerptWordCount = countWords(excerpt);
+
+  useEffect(() => {
+    if (aliasLoading) return;
+    setAliasModalOpen(aliasMissing);
+  }, [aliasLoading, aliasMissing]);
 
   const save = async (opts: { publishNow?: boolean; schedule?: boolean }) => {
+    if (aliasMissing) {
+      toast.error(
+        "Set your author alias in Security before creating or publishing articles.",
+      );
+      return;
+    }
     setSaving(true);
+    const shouldShowPublishFlow = !articleId && Boolean(opts.publishNow);
+    if (shouldShowPublishFlow) {
+      setPublishModalStage("publishing");
+      setPublishModalOpen(true);
+    }
     try {
       const meta = buildMeta(opts);
       if (articleId) {
@@ -389,6 +490,10 @@ export function AdminArticleForm({
 
       if (slug !== finalCreateSlug) setSlug(finalCreateSlug);
       toast.success("Created");
+      if (shouldShowPublishFlow) {
+        setPublishModalStage("success");
+        return;
+      }
       setPendingCreatedSlug(finalCreateSlug || String(data.slug ?? ""));
       setPendingCreatedArticleId(String(data.id ?? ""));
       setPredictionTitle(title.trim() ? `Will ${title.trim()}?` : "");
@@ -401,10 +506,23 @@ export function AdminArticleForm({
       setPredictionPromptContext("createFlow");
       setShowPostPrompt(true);
     } catch (e) {
+      if (shouldShowPublishFlow) {
+        setPublishModalOpen(false);
+      }
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
+  };
+
+  const finishPublishFlow = () => {
+    setPublishModalOpen(false);
+    if (assistantMode) {
+      router.refresh();
+      return;
+    }
+    router.replace(postCreateRedirectTo);
+    router.refresh();
   };
 
   const uploadPostImageFile = async (file: File) => {
@@ -754,8 +872,8 @@ export function AdminArticleForm({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="sticky top-3 z-20 rounded-xl border border-slate-200/70 bg-white/95 px-4 py-3 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.24)] backdrop-blur">
+    <div className="space-y-8">
+      <div className="fixed left-0 right-0 top-11 z-50 border-y border-slate-200/70 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:left-52 lg:top-0 lg:px-8 xl:left-56 xl:px-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
@@ -772,7 +890,7 @@ export function AdminArticleForm({
             <Button
               type="button"
               variant="outline"
-              disabled={saving || !publishAt}
+              disabled={saving || !publishAt || aliasLoading || aliasMissing}
               onClick={() => save({ schedule: true })}
             >
               Schedule
@@ -780,7 +898,7 @@ export function AdminArticleForm({
             <Button
               type="button"
               variant="outline"
-              disabled={saving}
+              disabled={saving || aliasLoading || aliasMissing}
               onClick={() => save({})}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -788,7 +906,7 @@ export function AdminArticleForm({
             </Button>
             <Button
               type="button"
-              disabled={saving}
+              disabled={saving || aliasLoading || aliasMissing}
               onClick={() => save({ publishNow: true })}
             >
               Publish now
@@ -796,8 +914,9 @@ export function AdminArticleForm({
           </div>
         </div>
       </div>
+      <div className="h-[62px] lg:h-[64px]" />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8 xl:col-span-9">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
             <Input
@@ -805,7 +924,7 @@ export function AdminArticleForm({
               value={title}
               onChange={(e) => onTitle(e.target.value)}
               placeholder="Untitled article"
-              className="h-auto border-none bg-transparent px-0 text-4xl font-bold tracking-tight placeholder:opacity-50 focus-visible:ring-0"
+              className="h-auto border-x-0 border-t-0 border-b border-slate-200 px-0 pb-3 text-4xl font-bold tracking-tight placeholder:text-slate-400 focus-visible:ring-0"
             />
 
             <Textarea
@@ -814,11 +933,13 @@ export function AdminArticleForm({
               onChange={(e) => setExcerpt(e.target.value)}
               rows={4}
               placeholder="Write a concise excerpt..."
-              className="rounded-xl border-slate-200/70 bg-white text-base leading-relaxed"
+              className="rounded-none border-slate-200/70 bg-white text-base leading-relaxed"
             />
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium tracking-tight">Main editor</Label>
+              <Label className="text-sm font-semibold tracking-tight text-slate-800">
+                Main editor
+              </Label>
               <AdminBlockEditor
                 initialDoc={blocks}
                 initialHtml={contentHtml || undefined}
@@ -826,14 +947,14 @@ export function AdminArticleForm({
                 onEditorReady={(ed) => {
                   editorRef.current = ed;
                 }}
-                className="rounded-xl border-slate-200/70"
+                className="rounded-none border-slate-200/70"
               />
             </div>
           </div>
         </div>
 
-        <aside className="space-y-4 lg:col-span-4 xl:col-span-3">
-          <Card className="gap-0 p-5">
+        <aside className="space-y-4 lg:col-span-4 lg:sticky lg:top-20 lg:self-start xl:col-span-3">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-2">
               <Label htmlFor="slug" className="text-xs tracking-tight text-muted-foreground">
                 Slug
@@ -845,9 +966,9 @@ export function AdminArticleForm({
                 placeholder="url-slug"
               />
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-2">
               <Label htmlFor="category" className="text-xs tracking-tight text-muted-foreground">
                 Category
@@ -858,9 +979,9 @@ export function AdminArticleForm({
                 onChange={(e) => setCategory(e.target.value)}
               />
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-2">
               <Label className="text-xs tracking-tight text-muted-foreground">Tags</Label>
               <div className="flex flex-wrap gap-2">
@@ -879,23 +1000,36 @@ export function AdminArticleForm({
               <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter" && e.key !== ",") return;
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData("text");
+                  if (!pasted.trim()) return;
                   e.preventDefault();
-                  addTag(tagInput);
+                  addTagsFromInput(pasted);
+                  setTagInput("");
+                }}
+                onKeyDown={(e) => {
+                  if (
+                    e.key !== "Enter" &&
+                    e.key !== "," &&
+                    e.key !== "Tab"
+                  ) {
+                    return;
+                  }
+                  e.preventDefault();
+                  addTagsFromInput(tagInput);
                   setTagInput("");
                 }}
                 onBlur={() => {
                   if (!tagInput.trim()) return;
-                  addTag(tagInput);
+                  addTagsFromInput(tagInput);
                   setTagInput("");
                 }}
-                placeholder="Type tag and press Enter"
+                placeholder="Paste tags or type and press Enter"
               />
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Cover image
@@ -912,21 +1046,21 @@ export function AdminArticleForm({
                 onChange={(e) => setCoverImageUrl(e.target.value)}
                 placeholder="https://..."
               />
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-indigo-700">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={onUploadCover}
                 />
-                <span className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-medium hover:bg-indigo-100">
-                  {uploading ? "Uploading..." : "Upload file"}
+                <span className="inline-flex min-w-[120px] items-center justify-center border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50">
+                  {uploading ? "Uploading..." : "Upload image"}
                 </span>
               </label>
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Publishing
@@ -947,9 +1081,36 @@ export function AdminArticleForm({
                 />
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
+            <div className="space-y-3">
+              <Label htmlFor="meta-description" className="text-xs tracking-tight text-muted-foreground">
+                Meta description
+              </Label>
+              <Textarea
+                id="meta-description"
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                rows={3}
+                placeholder="Write a unique search description in your own voice (70+ chars)."
+              />
+              <p className="text-[11px] text-slate-500">
+                {seoDescription.trim().length} chars - required when publishing/scheduling.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-5">
+            <div className="space-y-1 text-[11px] text-slate-500">
+              <p>Summary words: {excerptWordCount}</p>
+              <p>
+                For publish/schedule: add a unique meta description, a strong summary, and enough original body content.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Linked prediction
@@ -1030,9 +1191,9 @@ export function AdminArticleForm({
                 </>
               )}
             </div>
-          </Card>
+          </div>
 
-          <Card className="gap-0 p-5">
+          <div className="border-t border-slate-200 pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Post & prediction modals
@@ -1057,7 +1218,7 @@ export function AdminArticleForm({
                 </>
               )}
             </div>
-          </Card>
+          </div>
         </aside>
       </div>
 
@@ -1301,6 +1462,79 @@ export function AdminArticleForm({
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
               Create & Link Prediction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={publishModalOpen}
+        onOpenChange={(open) => {
+          if (publishModalStage === "publishing") return;
+          setPublishModalOpen(open);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={publishModalStage !== "publishing"}
+        >
+          {publishModalStage === "publishing" ? (
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>Publishing article</DialogTitle>
+                <DialogDescription>
+                  Please wait while we save and publish your article.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center gap-3 py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Publishing article...
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    Please wait while we save and publish your article.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Article published</DialogTitle>
+                <DialogDescription>
+                  {assistantMode
+                    ? "Your article is published. We will refresh this page now."
+                    : "Your article is published. We will take you back to Articles."}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button onClick={finishPublishFlow}>
+                  {assistantMode ? "Refresh page" : "Go to articles"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={aliasModalOpen} onOpenChange={setAliasModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              Set author alias first
+            </DialogTitle>
+            <DialogDescription>
+              Creating and publishing is blocked until you set your profile alias.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAliasModalOpen(false)}>
+              Continue editing
+            </Button>
+            <Button type="button" asChild>
+              <Link href="/admin/security">Go to profile settings</Link>
             </Button>
           </DialogFooter>
         </DialogContent>

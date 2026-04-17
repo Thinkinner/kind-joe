@@ -17,8 +17,8 @@ const VenturaGetEmail = () => {
   };
 
   return (
-    <section className="px-4 py-5">
-      <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-800">
+    <section className="border-b border-neutral-200 pb-5">
+      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-900">
         Get Newsletter
       </h2>
       <p className="mt-2 text-xs text-neutral-600">
@@ -30,11 +30,11 @@ const VenturaGetEmail = () => {
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="h-10 w-full rounded-md border border-neutral-300 px-3 text-sm focus-visible:ring-2 focus-visible:ring-orange-500"
         />
         <Button
           type="submit"
-          className="w-full rounded border border-orange-600 bg-orange-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white hover:bg-orange-700"
+          className="h-10 w-full rounded-md border border-orange-600 bg-orange-600 px-3 text-xs font-semibold uppercase tracking-wide text-white hover:bg-orange-700"
         >
           Subscribe
         </Button>

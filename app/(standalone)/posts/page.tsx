@@ -76,8 +76,6 @@ export default async function StandalonePostsPage() {
         allPosts={allPosts}
         profileImageSrc="/brand/kindjoe-profile.jpg"
         profileName="thekindjoe"
-        featuredImageSrc="/brand/kindjoe-bg.jpg"
-        featuredDestinationUrl="https://www.youtube.com/@thekindjoe-w4d"
         subscribeTitle="Get the biggest entertainment news stories delivered straight to your inbox with the kindjoe newsletter. Don't miss out!"
         subscribeEndpoint="/api/post-email-capture"
         subscribeTags={["kindjoe_posts_feed"]}

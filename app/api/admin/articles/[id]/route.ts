@@ -10,10 +10,17 @@ import {
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { ensureCmsUser } from "@/lib/cms/ensure-cms-user";
-import { slugify } from "@/lib/helpers/articles";
+import {
+  ARTICLE_MIN_WORDS_FOR_PUBLISH,
+  computeArticleWordCount,
+  countWordsFromHtml,
+  slugify,
+} from "@/lib/helpers/articles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const MIN_SUMMARY_WORDS_FOR_PUBLISH = 12;
+const MIN_META_DESCRIPTION_CHARS = 70;
 
 function emptyToNull(v: unknown): string | null {
   if (v === "" || v === undefined) return null;
@@ -33,6 +40,19 @@ function parsePredictionId(value: unknown): number | null | undefined {
     return undefined;
   }
   return value;
+}
+
+function normalizeSeoInput(seoInput: unknown): Record<string, unknown> {
+  if (!seoInput || typeof seoInput !== "object" || Array.isArray(seoInput)) {
+    return {};
+  }
+  return { ...(seoInput as Record<string, unknown>) };
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export async function GET(
@@ -118,6 +138,23 @@ export async function PUT(
     }
   }
 
+  const [existingArticle] = await db
+    .select({
+      id: articles.id,
+      isDraft: articles.isDraft,
+      excerpt: articles.excerpt,
+      content: articles.content,
+      contentHtml: articles.contentHtml,
+      seo: articles.seo,
+    })
+    .from(articles)
+    .where(and(eq(articles.id, id), isNull(articles.deletedAt)))
+    .limit(1);
+
+  if (!existingArticle) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
   const predictionId = parsePredictionId(body.predictionId);
   if (body.predictionId !== undefined && predictionId === undefined) {
     return new NextResponse("predictionId must be a positive integer or null", {
@@ -135,6 +172,86 @@ export async function PUT(
     }
   }
 
+  const existingSeo = normalizeSeoInput(existingArticle.seo);
+  const incomingSeo =
+    body.seo === undefined ? undefined : normalizeSeoInput(body.seo);
+  const mergedSeo =
+    incomingSeo === undefined
+      ? existingSeo
+      : {
+          ...existingSeo,
+          ...incomingSeo,
+        };
+  if (typeof mergedSeo.description === "string") {
+    mergedSeo.description = mergedSeo.description.trim();
+  }
+
+  const nextIsDraft =
+    body.isDraft === undefined ? existingArticle.isDraft : !!body.isDraft;
+  const requiresEditorialChecks =
+    !nextIsDraft ||
+    typeof body.publishAt === "string" ||
+    typeof body.publishedAt === "string";
+  const nextExcerpt =
+    emptyToNull(body.excerpt) ?? (existingArticle.excerpt ?? null);
+  const nextContentHtml =
+    emptyToNull(body.contentHtml) ?? (existingArticle.contentHtml ?? null);
+  const nextContent = content ?? existingArticle.content;
+  const seoDescription = asTrimmedString(mergedSeo.description);
+  const summaryWordCount = countWordsFromHtml(nextExcerpt);
+  const totalWordCount = computeArticleWordCount({
+    contentHtml: nextContentHtml,
+    content: nextContent,
+  });
+
+  if (requiresEditorialChecks) {
+    if (totalWordCount < ARTICLE_MIN_WORDS_FOR_PUBLISH) {
+      return NextResponse.json(
+        {
+          error: `Publishing requires at least ${ARTICLE_MIN_WORDS_FOR_PUBLISH} words of original content (article + analysis).`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!seoDescription || seoDescription.length < MIN_META_DESCRIPTION_CHARS) {
+      return NextResponse.json(
+        {
+          error: `Meta description is required and should be at least ${MIN_META_DESCRIPTION_CHARS} characters for publish/schedule.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!nextExcerpt?.trim() || summaryWordCount < MIN_SUMMARY_WORDS_FOR_PUBLISH) {
+      return NextResponse.json(
+        {
+          error: `Summary excerpt is required and should be at least ${MIN_SUMMARY_WORDS_FOR_PUBLISH} words for publish/schedule.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const duplicateMeta = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(
+        and(
+          isNull(articles.deletedAt),
+          ne(articles.id, id),
+          sql<boolean>`lower(trim(coalesce(${articles.seo}->>'description', ''))) = lower(${seoDescription})`,
+        ),
+      )
+      .limit(1);
+
+    if (duplicateMeta[0]) {
+      return NextResponse.json(
+        { error: "Meta description must be unique. Please write a distinct one." },
+        { status: 409 },
+      );
+    }
+  }
+
   const update: Record<string, unknown> = {
     title: body.title ?? "",
     slug: slug ?? undefined,
@@ -145,7 +262,7 @@ export async function PUT(
     updatedAt: new Date(),
     content,
     contentHtml: emptyToNull(body.contentHtml),
-    seo: body.seo ?? {},
+    seo: body.seo === undefined ? undefined : mergedSeo,
     readingMinutes:
       typeof body.readingMinutes === "number" ? body.readingMinutes : null,
     predictionId,

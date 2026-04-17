@@ -41,6 +41,9 @@ const PatchSchema = z.object({
   staffRole: InvitableStaffRoleSchema.optional(),
   adminPageAccess: z.array(PermissionSlug).optional().nullable(),
 });
+const DeleteSchema = z.object({
+  id: z.string().min(1),
+});
 
 function publicSiteBase(): string {
   return (
@@ -241,4 +244,42 @@ export async function PATCH(req: NextRequest) {
       createdAt: updated.createdAt.toISOString(),
     },
   });
+}
+
+/** Owner/admin: cancel pending invite */
+export async function DELETE(req: NextRequest) {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
+  if (!staff.ok) {
+    return NextResponse.json(
+      { error: staff.reason },
+      { status: staff.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const parsed = DeleteSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  const [removed] = await db
+    .delete(staffInvitation)
+    .where(
+      and(
+        eq(staffInvitation.id, parsed.data.id),
+        isNull(staffInvitation.acceptedAt),
+      ),
+    )
+    .returning({ id: staffInvitation.id, email: staffInvitation.email });
+
+  if (!removed) {
+    return NextResponse.json(
+      { error: "Pending invitation not found." },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({ ok: true, invitation: removed });
 }

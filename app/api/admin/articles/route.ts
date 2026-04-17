@@ -11,13 +11,22 @@ import {
   tags as tagsTable,
   users,
 } from "@/db/schema";
+import { user as authUser } from "@/db/auth-schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { ensureCmsUser } from "@/lib/cms/ensure-cms-user";
-import { calcReadingMinutesFromHtml, slugify } from "@/lib/helpers/articles";
+import {
+  ARTICLE_MIN_WORDS_FOR_PUBLISH,
+  calcReadingMinutesFromHtml,
+  computeArticleWordCount,
+  countWordsFromHtml,
+  slugify,
+} from "@/lib/helpers/articles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const MIN_SUMMARY_WORDS_FOR_PUBLISH = 12;
+const MIN_META_DESCRIPTION_CHARS = 70;
 
 const SubmitSchema = z.object({
   slug: z.string().min(1),
@@ -54,6 +63,35 @@ function parseListParams(request: NextRequest) {
   const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
   const q = searchParams.get("q")?.trim() || "";
   return { limit, offset, q };
+}
+
+function mergeSeoWithByline(
+  seoInput: unknown,
+  bylineName: string | null,
+): Record<string, unknown> | null {
+  const base =
+    seoInput && typeof seoInput === "object" && !Array.isArray(seoInput)
+      ? ({ ...seoInput } as Record<string, unknown>)
+      : {};
+
+  if (bylineName && bylineName.trim()) {
+    base.authorName = bylineName.trim();
+  }
+
+  return Object.keys(base).length > 0 ? base : null;
+}
+
+function normalizeSeoInput(seoInput: unknown): Record<string, unknown> {
+  if (!seoInput || typeof seoInput !== "object" || Array.isArray(seoInput)) {
+    return {};
+  }
+  return { ...(seoInput as Record<string, unknown>) };
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -131,6 +169,13 @@ export async function POST(req: NextRequest) {
   }
 
   const u = staff.user;
+  const [profile] = await db
+    .select({ aliasFullName: authUser.aliasFullName, name: authUser.name })
+    .from(authUser)
+    .where(eq(authUser.id, u.id))
+    .limit(1);
+  const bylineName =
+    (profile?.aliasFullName ?? "").trim() || (profile?.name ?? "").trim() || null;
   await ensureCmsUser({
     id: u.id,
     name: u.name || u.email || "Staff",
@@ -145,9 +190,65 @@ export async function POST(req: NextRequest) {
     );
   }
   const input = parsed.data;
+  const seoInput = normalizeSeoInput(input.seo);
+  const seoDescription = asTrimmedString(seoInput.description);
+  const summaryWordCount = countWordsFromHtml(input.excerpt);
 
   const wantsPublishedNow = !!input.publishedAt;
   const wantsScheduled = !!input.publishAt;
+  const requiresEditorialChecks = wantsPublishedNow || wantsScheduled;
+  const totalWordCount = computeArticleWordCount({
+    contentHtml: input.contentHtml,
+    content: input.blocks,
+  });
+
+  if (requiresEditorialChecks) {
+    if (totalWordCount < ARTICLE_MIN_WORDS_FOR_PUBLISH) {
+      return NextResponse.json(
+        {
+          error: `Publishing requires at least ${ARTICLE_MIN_WORDS_FOR_PUBLISH} words of original content (article + analysis).`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!seoDescription || seoDescription.length < MIN_META_DESCRIPTION_CHARS) {
+      return NextResponse.json(
+        {
+          error: `Meta description is required and should be at least ${MIN_META_DESCRIPTION_CHARS} characters for publish/schedule.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!input.excerpt?.trim() || summaryWordCount < MIN_SUMMARY_WORDS_FOR_PUBLISH) {
+      return NextResponse.json(
+        {
+          error: `Summary excerpt is required and should be at least ${MIN_SUMMARY_WORDS_FOR_PUBLISH} words for publish/schedule.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const duplicateMeta = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(
+        and(
+          isNull(articles.deletedAt),
+          sql<boolean>`lower(trim(coalesce(${articles.seo}->>'description', ''))) = lower(${seoDescription})`,
+        ),
+      )
+      .limit(1);
+
+    if (duplicateMeta[0]) {
+      return NextResponse.json(
+        { error: "Meta description must be unique. Please write a distinct one." },
+        { status: 409 },
+      );
+    }
+  }
+
   const normalizedSlug = slugify(input.slug);
   const id = newArticleId();
 
@@ -185,7 +286,7 @@ export async function POST(req: NextRequest) {
         publishedBy: publishedAtDate ? u.id : null,
         readingMinutes,
         isDraft: finalIsDraft,
-        seo: input.seo ?? null,
+        seo: mergeSeoWithByline(seoInput, bylineName),
         content: input.blocks as object,
         contentHtml: input.contentHtml ?? null,
       });

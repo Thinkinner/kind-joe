@@ -17,6 +17,15 @@ type AssistMode =
   | "title"
   | "predictionSuggestion";
 
+function sanitizeDraftHtml(raw: string): string {
+  const input = raw.trim();
+  if (!input) return "";
+  // Convert heading tags into normal paragraph tags so generated drafts stay paragraph-first.
+  return input
+    .replace(/<h[1-6]\b[^>]*>/gi, "<p>")
+    .replace(/<\/h[1-6]>/gi, "</p>");
+}
+
 export async function POST(req: Request) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
   if (!staff.ok) {
@@ -59,7 +68,23 @@ export async function POST(req: Request) {
             "category should map to one of: general, politics, economy, technology, science, sports, world, culture.",
             "Do not return markdown.",
           ].join("\n")
-        : "";
+        : mode === "all"
+          ? [
+              "When returning draftHtml, generate substantial original article content suitable for publication quality.",
+              "Target around 350 words of body content in draftHtml (roughly 320-380 words).",
+              "Use short paragraphs: 1-2 sentences per paragraph only.",
+              "Do not include headings or subheadings inside draftHtml.",
+              "Do not include section title lines like 'Future Outlook and Next Steps'.",
+              "Return clean HTML in draftHtml only (no markdown).",
+            ].join("\n")
+          : mode === "content"
+            ? [
+                "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
+                "Do not include headings or subheadings inside draftHtml.",
+                "Keep additions editorially useful, concise, and readable.",
+                "Return clean HTML in draftHtml only (no markdown).",
+              ].join("\n")
+            : "";
 
     const system = [
       "You are an SEO assistant for a news/blog CMS.",
@@ -117,7 +142,7 @@ export async function POST(req: Request) {
       suggestedCoverPrompt: String(data.suggestedCoverPrompt ?? ""),
       readingMinutes:
         typeof data.readingMinutes === "number" ? data.readingMinutes : undefined,
-      draftHtml: String(data.draftHtml ?? ""),
+      draftHtml: sanitizeDraftHtml(String(data.draftHtml ?? "")),
       draftBlocks: data.draftBlocks,
       title: String(data.title ?? ""),
     };

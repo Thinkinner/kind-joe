@@ -40,6 +40,7 @@ export function NewsletterAutomationClient() {
     count: number;
     freshHours: number;
   } | null>(null);
+  const [ingestError, setIngestError] = useState<string | null>(null);
   const [ingestReady, setIngestReady] = useState(false);
   const [personalization, setPersonalization] = useState<PersonalizationConfig>(
     { contentStrategy: "", writingStyle: "", exampleContent: "" },
@@ -52,10 +53,19 @@ export function NewsletterAutomationClient() {
     (async () => {
       try {
         const summary = await getNewsletterFreshIngestSummary();
-        if (!cancelled) setIngestSummary(summary);
-      } catch {
-        if (!cancelled)
-          setIngestSummary({ count: 0, freshHours: NEWSLETTER_INGEST_FRESH_HOURS });
+        if (!cancelled) {
+          setIngestSummary(summary);
+          setIngestError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setIngestSummary(null);
+          setIngestError(
+            error instanceof Error && error.message
+              ? error.message
+              : "Could not load ingest count.",
+          );
+        }
       } finally {
         if (!cancelled) setIngestReady(true);
       }
@@ -122,6 +132,12 @@ export function NewsletterAutomationClient() {
     ? "history"
     : "generator";
   const isGenerating = genStatus !== GenerationStatus.IDLE;
+  const ingestCount = ingestSummary?.count ?? null;
+  const ingestFreshHours =
+    ingestSummary?.freshHours ?? NEWSLETTER_INGEST_FRESH_HOURS;
+  const hasIngestCount = typeof ingestCount === "number";
+  const ingestCountIsZero = ingestCount === 0;
+  const ingestHasError = Boolean(ingestError);
   const statusLabel =
     genStatus === GenerationStatus.FETCHING_RSS
       ? "Collecting sources..."
@@ -204,8 +220,10 @@ export function NewsletterAutomationClient() {
               <div
                 className={cn(
                   "mb-8 rounded-xl border p-4 text-sm shadow-[0_10px_30px_-20px_rgb(15_23_42/0.18)]",
-                  (ingestSummary?.count ?? 0) === 0
-                    ? "border-slate-200 bg-slate-50 text-slate-800"
+                  ingestHasError
+                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                    : ingestCountIsZero
+                      ? "border-slate-200 bg-slate-50 text-slate-800"
                     : "border-slate-200/70 bg-white text-neutral-700",
                 )}
               >
@@ -213,8 +231,10 @@ export function NewsletterAutomationClient() {
                   <div
                     className={cn(
                       "mt-0.5 rounded-lg p-2",
-                      (ingestSummary?.count ?? 0) === 0
-                        ? "bg-slate-200/70 text-slate-600"
+                      ingestHasError
+                        ? "bg-amber-100 text-amber-700"
+                        : ingestCountIsZero
+                          ? "bg-slate-200/70 text-slate-600"
                         : "bg-indigo-100/80 text-indigo-600",
                     )}
                   >
@@ -222,24 +242,42 @@ export function NewsletterAutomationClient() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold tracking-tight text-slate-900">
-                      {ingestSummary?.count ?? 0} article
-                      {(ingestSummary?.count ?? 0) === 1 ? "" : "s"} in range
+                      {hasIngestCount
+                        ? `${ingestCount} article${ingestCount === 1 ? "" : "s"} in range`
+                        : "Count unavailable"}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                      Using rows where the article publish time (or ingest time if missing)
-                      is within the last{" "}
-                      <strong className="text-slate-800">
-                        {ingestSummary?.freshHours ?? NEWSLETTER_INGEST_FRESH_HOURS} hours
-                      </strong>
-                      . If this count is 0,{" "}
-                      <strong className="text-slate-800">Start generation</strong> still runs
-                      and pulls the built-in RSS feeds instead.
+                      {ingestHasError ? (
+                        <>
+                          Could not read the local ingest summary right now.{" "}
+                          <strong className="text-slate-800">Start generation</strong> still
+                          works and will fall back to built-in RSS feeds if needed.
+                        </>
+                      ) : (
+                        <>
+                          Using rows where the article publish time (or ingest time if missing)
+                          is within the last{" "}
+                          <strong className="text-slate-800">{ingestFreshHours} hours</strong>.
+                          If this count is 0,{" "}
+                          <strong className="text-slate-800">Start generation</strong> still
+                          runs and pulls the built-in RSS feeds instead.
+                        </>
+                      )}
                     </p>
+                    {ingestHasError ? (
+                      <p className="mt-1 text-[11px] text-amber-800/90">
+                        Error: {ingestError}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-3">
                   <Progress
-                    value={Math.min(100, ((ingestSummary?.count ?? 0) / 30) * 100)}
+                    value={
+                      hasIngestCount
+                        ? Math.min(100, ((ingestCount ?? 0) / 30) * 100)
+                        : 0
+                    }
                     className="h-1.5 bg-slate-200/70"
                   />
                 </div>

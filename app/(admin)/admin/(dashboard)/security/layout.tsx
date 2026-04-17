@@ -7,7 +7,7 @@ export default async function AdminSecurityLayout({
   children: React.ReactNode;
 }) {
   await requireStaffPermission(
-    PERMISSIONS.ADMIN_SECURITY,
+    PERMISSIONS.ADMIN_DASHBOARD,
     "/admin/login",
     "not_found",
   );

@@ -10,7 +10,8 @@ import {
   MousePointer2, 
   FileText, 
   BarChart3,
-  Calendar
+  Calendar,
+  type LucideIcon,
 } from "lucide-react";
 import {
   formatTrendState,
@@ -44,7 +45,7 @@ function MetricCard({
 }: { 
   label: string;
   value: number;
-  icon: any;
+  icon: LucideIcon;
   trendState?: TrendState;
 }) {
   return (
@@ -80,6 +81,21 @@ function MetricCard({
 }
 
 export const dynamic = "force-dynamic";
+
+function computeMeasuredDays(
+  minViewedAt: Date | null,
+  maxViewedAt: Date | null,
+  fallbackDays: number,
+) {
+  if (!minViewedAt || !maxViewedAt) return fallbackDays;
+  return Math.max(
+    1,
+    Math.ceil(
+      (new Date(maxViewedAt).getTime() - new Date(minViewedAt).getTime()) /
+        (1000 * 60 * 60 * 24),
+    ) + 1,
+  );
+}
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -121,6 +137,8 @@ export default async function AdminDashboardPage({
     previousStats,
     topArticles,
     currentBounds,
+    previousBounds,
+    deviceStats,
   ] = await Promise.all([
     db.select({
       visits: sql<number>`COUNT(*)`,
@@ -145,6 +163,44 @@ export default async function AdminDashboardPage({
       minViewedAt: sql<Date | null>`MIN(${visitorJourneyEvents.viewedAt})`,
       maxViewedAt: sql<Date | null>`MAX(${visitorJourneyEvents.viewedAt})`,
     }).from(visitorJourneyEvents).where(currentVisitorWhere),
+    db.select({
+      minViewedAt: sql<Date | null>`MIN(${visitorJourneyEvents.viewedAt})`,
+      maxViewedAt: sql<Date | null>`MAX(${visitorJourneyEvents.viewedAt})`,
+    }).from(visitorJourneyEvents).where(previousVisitorWhere),
+    db.select({
+      mobile: sql<number>`SUM(CASE
+        WHEN (
+          ${visitorJourneyEvents.userAgent} ILIKE '%mobile%' OR
+          ${visitorJourneyEvents.userAgent} ILIKE '%iphone%' OR
+          ${visitorJourneyEvents.userAgent} ILIKE '%android%'
+        )
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%ipad%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%tablet%'
+        THEN 1 ELSE 0 END)::int`,
+      tablet: sql<number>`SUM(CASE
+        WHEN (
+          ${visitorJourneyEvents.userAgent} ILIKE '%ipad%' OR
+          ${visitorJourneyEvents.userAgent} ILIKE '%tablet%' OR
+          ${visitorJourneyEvents.userAgent} ILIKE '%kindle%' OR
+          ${visitorJourneyEvents.userAgent} ILIKE '%sm-t%'
+        )
+        THEN 1 ELSE 0 END)::int`,
+      desktop: sql<number>`SUM(CASE
+        WHEN ${visitorJourneyEvents.userAgent} IS NOT NULL
+        AND ${visitorJourneyEvents.userAgent} <> ''
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%mobile%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%iphone%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%android%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%ipad%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%tablet%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%kindle%'
+        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%sm-t%'
+        THEN 1 ELSE 0 END)::int`,
+      other: sql<number>`SUM(CASE
+        WHEN ${visitorJourneyEvents.userAgent} IS NULL
+        OR ${visitorJourneyEvents.userAgent} = ''
+        THEN 1 ELSE 0 END)::int`,
+    }).from(visitorJourneyEvents).where(currentVisitorWhere),
   ]);
 
   const totalVisits = currentStats[0]?.visits ?? 0;
@@ -154,22 +210,24 @@ export default async function AdminDashboardPage({
   const previousVisitors = previousStats[0]?.visitors ?? 0;
   const previousSessions = previousStats[0]?.sessions ?? 0;
 
-  const minViewedAt = currentBounds[0]?.minViewedAt;
-  const maxViewedAt = currentBounds[0]?.maxViewedAt;
-  const measuredDays =
-    minViewedAt && maxViewedAt
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(maxViewedAt).getTime() - new Date(minViewedAt).getTime()) /
-              (1000 * 60 * 60 * 24),
-          ) + 1,
-        )
-      : chartDays;
-  const avgDaily = Math.round(totalVisits / measuredDays);
-  const previousAvgDaily = Math.round(previousVisits / measuredDays);
+  const currentMeasuredDays = computeMeasuredDays(
+    currentBounds[0]?.minViewedAt ?? null,
+    currentBounds[0]?.maxViewedAt ?? null,
+    chartDays,
+  );
+  const previousMeasuredDays = computeMeasuredDays(
+    previousBounds[0]?.minViewedAt ?? null,
+    previousBounds[0]?.maxViewedAt ?? null,
+    chartDays,
+  );
+  const avgDaily =
+    totalVisits > 0 ? Math.round(totalVisits / currentMeasuredDays) : 0;
+  const previousAvgDaily =
+    previousVisits > 0
+      ? Math.round(previousVisits / previousMeasuredDays)
+      : 0;
   const noComparison: TrendState = {
-    label: "N/A",
+    label: "No comparison",
     direction: "na",
     isAvailable: false,
     deltaPercent: null,
@@ -181,6 +239,27 @@ export default async function AdminDashboardPage({
     range === "all" ? noComparison : formatTrendState(totalSessions, previousSessions);
   const avgDailyTrend =
     range === "all" ? noComparison : formatTrendState(avgDaily, previousAvgDaily);
+  const deviceCounts = {
+    mobile: Math.max(0, Number(deviceStats[0]?.mobile ?? 0)),
+    desktop: Math.max(0, Number(deviceStats[0]?.desktop ?? 0)),
+    tablet: Math.max(0, Number(deviceStats[0]?.tablet ?? 0)),
+    other: Math.max(0, Number(deviceStats[0]?.other ?? 0)),
+  };
+  const deviceTotal =
+    deviceCounts.mobile +
+    deviceCounts.desktop +
+    deviceCounts.tablet +
+    deviceCounts.other;
+  const deviceRows = [
+    { key: "desktop", label: "Desktop", value: deviceCounts.desktop },
+    { key: "mobile", label: "Mobile", value: deviceCounts.mobile },
+    { key: "tablet", label: "Tablet", value: deviceCounts.tablet },
+    { key: "other", label: "Other/Unknown", value: deviceCounts.other },
+  ] as const;
+  const topArticleSharePercent =
+    topArticles.length > 0 && totalVisits > 0
+      ? Math.round((topArticles[0].views / totalVisits) * 100)
+      : 0;
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-10">
@@ -294,7 +373,7 @@ export default async function AdminDashboardPage({
              </div>
              <h2 className="text-xl font-bold">Content Strategy</h2>
              <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
-               Your top article accounts for {topArticles.length > 0 ? Math.round((topArticles[0].views / totalVisits) * 100) : 0}% of all traffic. 
+               Your top article accounts for {topArticleSharePercent}% of all traffic. 
                Consider updating related content to capitalize on this interest.
              </p>
              <button className="mt-6 w-full rounded-xl bg-white py-2.5 text-sm font-bold text-neutral-900 hover:bg-neutral-100 transition-colors">
@@ -304,12 +383,36 @@ export default async function AdminDashboardPage({
 
           <div className="rounded-xl border border-slate-200/60 bg-white p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
              <h2 className="font-bold text-neutral-900 mb-4">Device Distribution</h2>
-             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
-                <p className="text-sm font-medium text-slate-700">N/A</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Device metrics are collecting once client-side device tracking is enabled.
-                </p>
-             </div>
+             {deviceTotal > 0 ? (
+               <div className="space-y-3">
+                 {deviceRows.map((row) => {
+                   const pct = Math.round((row.value / deviceTotal) * 100);
+                   return (
+                     <div key={row.key} className="space-y-1">
+                       <div className="flex items-center justify-between text-xs text-slate-600">
+                         <span>{row.label}</span>
+                         <span className="font-medium">
+                           {row.value.toLocaleString()} ({pct}%)
+                         </span>
+                       </div>
+                       <div className="h-1.5 w-full rounded-full bg-slate-100">
+                         <div
+                           className="h-full rounded-full bg-indigo-500"
+                           style={{ width: `${pct}%` }}
+                         />
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             ) : (
+               <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
+                 <p className="text-sm font-medium text-slate-700">No device data yet</p>
+                 <p className="mt-1 text-xs text-slate-500">
+                   Device metrics will appear once traffic is tracked for this period.
+                 </p>
+               </div>
+             )}
           </div>
         </section>
 

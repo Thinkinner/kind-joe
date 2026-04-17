@@ -1,6 +1,5 @@
 import { desc, inArray } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { db } from "@/db";
 import { staffInvitation, user as authUser } from "@/db/auth-schema";
 import { articles, users as cmsUsers } from "@/db/schema";
@@ -191,8 +190,8 @@ export default async function ActivityLogPage({
         </p>
       </div>
 
-      <Card className="overflow-hidden border-slate-200/70">
-        <div className="grid grid-cols-[170px_190px_220px_minmax(0,1fr)] gap-4 border-b border-slate-200/70 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden border-t border-slate-200/70">
+        <div className="grid grid-cols-[170px_190px_220px_minmax(0,1fr)] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
           <p>When</p>
           <p>Action</p>
           <p>Actor</p>
@@ -225,7 +224,7 @@ export default async function ActivityLogPage({
             </li>
           ) : null}
         </ul>
-      </Card>
+      </div>
     </div>
   );
 }

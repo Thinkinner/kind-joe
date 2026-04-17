@@ -104,9 +104,8 @@ export default function Navbar({
 
   const links = [
     { name: "Home", href: "/" },
-    { name: "Featured", href: "/news", title: "KJ Featured Articles" },
+    { name: "News", href: "/news", title: "KindJoe News" },
     { name: "Ventura County", href: "/ventura-county" },
-    { name: "Predictions", href: "/predictions" },
   ] as const;
 
   useEffect(() => {
@@ -476,9 +475,8 @@ export default function Navbar({
               <nav className="flex-1 space-y-1 overflow-y-auto">
                 {[
                   { name: "Home", href: "/" },
-                  { name: "KJ Featured Articles", href: "/news" },
+                  { name: "News", href: "/news" },
                   { name: "Ventura County", href: "/ventura-county" },
-                  { name: "Predictions", href: "/predictions" },
                 ].map((item) => {
                   const isActive = pathname === item.href;
                   return (

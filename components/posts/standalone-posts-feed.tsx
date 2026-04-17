@@ -11,8 +11,6 @@ type StandalonePostsFeedProps = {
   allPosts: PostCard[];
   profileImageSrc: string;
   profileName: string;
-  featuredImageSrc?: string;
-  featuredDestinationUrl?: string;
   subscribeTitle: string;
   subscribeEndpoint: string;
   subscribeTags: string[];
@@ -26,17 +24,10 @@ function cloudinaryFourByFive(imageUrl: string) {
   return imageUrl.replace("/upload/", "/upload/ar_4:5,c_fill,g_auto,w_800/");
 }
 
-function cloudinaryWide(imageUrl: string) {
-  if (!imageUrl.includes("/upload/")) return imageUrl;
-  return imageUrl.replace("/upload/", "/upload/ar_16:9,c_fill,g_auto,w_1600/");
-}
-
 export function StandalonePostsFeed({
   allPosts,
   profileImageSrc,
   profileName,
-  featuredImageSrc,
-  featuredDestinationUrl,
   subscribeTitle,
   subscribeEndpoint,
   subscribeTags,
@@ -49,8 +40,7 @@ export function StandalonePostsFeed({
 
   const visiblePosts = allPosts.slice(0, visibleCount);
   const hasMore = visibleCount < allPosts.length;
-  const featuredPost = visiblePosts[0];
-  const gridPosts = featuredPost ? visiblePosts.slice(1) : visiblePosts;
+  const gridPosts = visiblePosts;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -98,29 +88,6 @@ export function StandalonePostsFeed({
         </div>
         <p className="text-[15px] text-neutral-600">Click on media to learn more</p>
       </header>
-
-      {featuredPost ? (
-        <Link
-          href={featuredDestinationUrl ?? featuredPost.destinationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group block overflow-hidden border-2 border-red-600 bg-black"
-        >
-          <div className="relative aspect-[16/9]">
-            <Image
-              src={
-                featuredImageSrc
-                  ? featuredImageSrc
-                  : cloudinaryWide(featuredPost.imageUrl)
-              }
-              fill
-              alt=""
-              className="object-cover transition duration-700 ease-in-out group-hover:scale-105"
-              sizes="(max-width: 1024px) 100vw, 1024px"
-            />
-          </div>
-        </Link>
-      ) : null}
 
       <InlineSubscribePanel
         title={subscribeTitle}
