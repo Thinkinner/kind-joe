@@ -16,9 +16,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { ensureCmsUser } from "@/lib/cms/ensure-cms-user";
 import {
-  ARTICLE_MIN_WORDS_FOR_PUBLISH,
   calcReadingMinutesFromHtml,
-  computeArticleWordCount,
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
@@ -200,21 +198,8 @@ export async function POST(req: NextRequest) {
   const wantsPublishedNow = !!input.publishedAt;
   const wantsScheduled = !!input.publishAt;
   const requiresEditorialChecks = wantsPublishedNow || wantsScheduled;
-  const totalWordCount = computeArticleWordCount({
-    contentHtml: input.contentHtml,
-    content: input.blocks,
-  });
 
   if (requiresEditorialChecks) {
-    if (totalWordCount < ARTICLE_MIN_WORDS_FOR_PUBLISH) {
-      return NextResponse.json(
-        {
-          error: `Publishing requires at least ${ARTICLE_MIN_WORDS_FOR_PUBLISH} words of original content (article + analysis).`,
-        },
-        { status: 400 },
-      );
-    }
-
     if (!seoDescription || seoDescription.length < MIN_META_DESCRIPTION_CHARS) {
       return NextResponse.json(
         {
@@ -233,23 +218,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const duplicateMeta = await db
-      .select({ id: articles.id })
-      .from(articles)
-      .where(
-        and(
-          isNull(articles.deletedAt),
-          sql<boolean>`lower(trim(coalesce(${articles.seo}->>'description', ''))) = lower(${seoDescription})`,
-        ),
-      )
-      .limit(1);
-
-    if (duplicateMeta[0]) {
-      return NextResponse.json(
-        { error: "Meta description must be unique. Please write a distinct one." },
-        { status: 409 },
-      );
-    }
   }
 
   const normalizedSlug = slugify(input.slug);

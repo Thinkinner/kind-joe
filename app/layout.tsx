@@ -93,8 +93,11 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        {/* ADSENSE_PAUSED_TOKEN_V1: Google AdSense loader temporarily disabled. */}
+        {/* ADSENSE_PAUSED_TOKEN_V1: Google AdSense tags temporarily disabled. */}
         {/*
+        {adsenseClient && (
+          <meta name="google-adsense-account" content={adsenseClient} />
+        )}
         {adsenseClient && (
           <Script
             async
