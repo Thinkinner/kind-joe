@@ -32,8 +32,8 @@ const googleSans = DM_Sans({
   variable: "--font-google-sans",
   display: "swap",
 });
-const inlineAdSlot = process.env.NEXT_PUBLIC_ADSENSE_INLINE_SLOT ?? "";
-const sidebarAdSlot = process.env.NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT ?? "";
+const inlineAdSlot = "8465535761";
+const sidebarAdSlot = "6300978111";
 
 export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
@@ -248,6 +248,9 @@ export default async function VenturaArticleBySlug(props: {
                 slot={inlineAdSlot}
                 label="In-article ad"
                 minHeightClassName="min-h-[140px]"
+                adFormat="fluid"
+                adLayout="in-article"
+                centered
               />
             </section>
 

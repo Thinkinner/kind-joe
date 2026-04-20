@@ -19,8 +19,11 @@ const poppins = Poppins({
 const SITE_URL =
   (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") as string) ||
   "http://localhost:3000";
-const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
-const fundingChoicesPubId = adsenseClient?.replace(/^ca-/, "");
+const ADSENSE_CLIENT = "ca-pub-2956404262281420";
+const ADSENSE_TEST_CLIENT = "ca-pub-3940256099942544";
+const isDev = process.env.NODE_ENV !== "production";
+const resolvedAdsenseClient = isDev ? ADSENSE_TEST_CLIENT : ADSENSE_CLIENT;
+const fundingChoicesPubId = ADSENSE_CLIENT.replace(/^ca-/, "");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -117,17 +120,13 @@ export default async function RootLayout({
             })();
           `}
         </Script>
-        {adsenseClient && (
-          <meta name="google-adsense-account" content={adsenseClient} />
-        )}
-        {adsenseClient && (
-          <Script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-        )}
+        <meta name="google-adsense-account" content={resolvedAdsenseClient} />
+        <Script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${resolvedAdsenseClient}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         {/* Subscribe with Google core script */}
         <Script
           src="https://news.google.com/swg/js/v1/swg-basic.js"

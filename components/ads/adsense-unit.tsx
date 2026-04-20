@@ -13,6 +13,10 @@ type AdsenseUnitProps = {
   className?: string;
   minHeightClassName?: string;
   label?: string;
+  adFormat?: "auto" | "fluid";
+  adLayout?: string;
+  adLayoutKey?: string;
+  centered?: boolean;
 };
 
 export default function AdsenseUnit({
@@ -20,16 +24,15 @@ export default function AdsenseUnit({
   className,
   minHeightClassName = "min-h-[120px]",
   label = "Sponsored",
+  adFormat = "auto",
+  adLayout,
+  adLayoutKey,
+  centered = false,
 }: AdsenseUnitProps) {
-  const adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
   const isDev = process.env.NODE_ENV !== "production";
-  // In local/dev, force Google's official test ad unit so rendering can be verified
-  // without requiring live publisher inventory or domain approval.
-  const resolvedClient = isDev
-    ? "ca-pub-3940256099942544"
-    : (adClient ?? "");
+  const adClient = isDev ? "ca-pub-3940256099942544" : "ca-pub-2956404262281420";
   const resolvedSlot = isDev ? "6300978111" : slot;
-  const shouldRenderPreview = !resolvedClient || !resolvedSlot;
+  const shouldRenderPreview = !adClient || !resolvedSlot;
 
   useEffect(() => {
     if (shouldRenderPreview) return;
@@ -53,10 +56,12 @@ export default function AdsenseUnit({
   return (
     <ins
       className={`adsbygoogle block ${className ?? ""}`}
-      style={{ display: "block" }}
-      data-ad-client={resolvedClient}
+      style={{ display: "block", textAlign: centered ? "center" : undefined }}
+      data-ad-client={adClient}
       data-ad-slot={resolvedSlot}
-      data-ad-format="auto"
+      data-ad-layout={adLayout}
+      data-ad-format={adFormat}
+      data-ad-layout-key={adLayoutKey}
       data-full-width-responsive="true"
       data-adtest={isDev ? "on" : undefined}
     />
