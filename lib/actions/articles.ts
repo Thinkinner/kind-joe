@@ -9,6 +9,7 @@ import {
   tags,
   articleTags,
 } from "@/db/schema";
+import { user as authUser } from "@/db/auth-schema";
 import {
   and,
   eq,
@@ -41,7 +42,13 @@ export async function getArticlesAction(limit: number, offset: number) {
         publishedAt: articles.publishedAt,
         // 🧠 These were missing:
         readingMinutes: articles.readingMinutes,
-        authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
+        authorName: sql<string | null>`coalesce(
+          nullif(${articles.seo}->>'authorName', ''),
+          nullif(${authUser.aliasFullName}, ''),
+          nullif(${authUser.name}, ''),
+          nullif(${users.aliasFullName}, ''),
+          ${users.name}
+        )`,
         authorAvatarUrl: users.avatarUrl,
         // Tags grouping
         tags: sql<any[]>`COALESCE(
@@ -54,6 +61,7 @@ export async function getArticlesAction(limit: number, offset: number) {
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id)) // 👈 Join the users table
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
       .where(and(eq(articles.isDraft, false), isNull(articles.deletedAt)))
       .orderBy(desc(articles.publishedAt))
       .limit(safeLimit)
@@ -94,7 +102,13 @@ export async function getFullArticleBySlug(slug: string) {
   const row = await db
     .select({
       article: articles,
-      authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
+      authorName: sql<string | null>`coalesce(
+        nullif(${articles.seo}->>'authorName', ''),
+        nullif(${authUser.aliasFullName}, ''),
+        nullif(${authUser.name}, ''),
+        nullif(${users.aliasFullName}, ''),
+        ${users.name}
+      )`,
       authorAvatar: users.avatarUrl,
       // 🧠 This MUST be inside the select object
       tags: sql<{ id: number; name: string; slug: string }[]>`COALESCE(
@@ -107,6 +121,7 @@ export async function getFullArticleBySlug(slug: string) {
     })
     .from(articles)
     .leftJoin(users, eq(users.id, articles.authorId))
+    .leftJoin(authUser, eq(authUser.id, articles.authorId))
     .where(
       and(
         eq(articles.slug, slug),
@@ -158,7 +173,13 @@ export async function getRecommendedArticles(
         category: articles.category,
         publishedAt: articles.publishedAt,
         readingMinutes: articles.readingMinutes,
-        authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
+        authorName: sql<string | null>`coalesce(
+          nullif(${articles.seo}->>'authorName', ''),
+          nullif(${authUser.aliasFullName}, ''),
+          nullif(${authUser.name}, ''),
+          nullif(${users.aliasFullName}, ''),
+          ${users.name}
+        )`,
         authorAvatarUrl: users.avatarUrl,
         // 🧠 Smart Branding: Fetch tags so the card knows if it's Ventura or KindJoe
         tags: sql<any[]>`COALESCE(
@@ -171,6 +192,7 @@ export async function getRecommendedArticles(
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
       .where(
         and(
           ne(articles.id, excludeId), // Don't recommend the current article
@@ -217,10 +239,17 @@ export async function getVenturaArticlesAction(
         category: articles.category,
         publishedAt: articles.publishedAt,
         readingMinutes: articles.readingMinutes,
-        authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
+        authorName: sql<string | null>`coalesce(
+          nullif(${articles.seo}->>'authorName', ''),
+          nullif(${authUser.aliasFullName}, ''),
+          nullif(${authUser.name}, ''),
+          nullif(${users.aliasFullName}, ''),
+          ${users.name}
+        )`,
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
       .where(
         and(
           eq(articles.isDraft, false),

@@ -67,15 +67,19 @@ function parseListParams(request: NextRequest) {
 
 function mergeSeoWithByline(
   seoInput: unknown,
-  bylineName: string | null,
+  bylineAlias: string | null,
 ): Record<string, unknown> | null {
   const base =
     seoInput && typeof seoInput === "object" && !Array.isArray(seoInput)
       ? ({ ...seoInput } as Record<string, unknown>)
       : {};
 
-  if (bylineName && bylineName.trim()) {
-    base.authorName = bylineName.trim();
+  // Enforce alias-only byline metadata for new articles.
+  delete base.authorName;
+  delete base.bylineSource;
+  if (bylineAlias && bylineAlias.trim()) {
+    base.authorName = bylineAlias.trim();
+    base.bylineSource = "alias";
   }
 
   return Object.keys(base).length > 0 ? base : null;
@@ -170,12 +174,11 @@ export async function POST(req: NextRequest) {
 
   const u = staff.user;
   const [profile] = await db
-    .select({ aliasFullName: authUser.aliasFullName, name: authUser.name })
+    .select({ aliasFullName: authUser.aliasFullName })
     .from(authUser)
     .where(eq(authUser.id, u.id))
     .limit(1);
-  const bylineName =
-    (profile?.aliasFullName ?? "").trim() || (profile?.name ?? "").trim() || null;
+  const bylineAlias = (profile?.aliasFullName ?? "").trim() || null;
   await ensureCmsUser({
     id: u.id,
     name: u.name || u.email || "Staff",
@@ -286,7 +289,7 @@ export async function POST(req: NextRequest) {
         publishedBy: publishedAtDate ? u.id : null,
         readingMinutes,
         isDraft: finalIsDraft,
-        seo: mergeSeoWithByline(seoInput, bylineName),
+        seo: mergeSeoWithByline(seoInput, bylineAlias),
         content: input.blocks as object,
         contentHtml: input.contentHtml ?? null,
       });

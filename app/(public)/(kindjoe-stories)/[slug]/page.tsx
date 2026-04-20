@@ -107,9 +107,10 @@ export default async function ArticleBySlug(props: {
   const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
   const seo =
     seoRaw && typeof seoRaw === "object"
-      ? (seoRaw as { authorName?: string })
+      ? (seoRaw as { authorName?: string; bylineSource?: string })
       : {};
-  const bylineAlias = seo.authorName?.trim() || "";
+  const bylineAlias =
+    seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
   const useAliasByline = bylineAlias.length > 0;
   const publisherName = useAliasByline ? bylineAlias : "KindJoe";
   const publisherInitials = publisherName

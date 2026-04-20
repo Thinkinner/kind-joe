@@ -200,10 +200,6 @@ export function AdminArticleForm({
   const [authorAlias, setAuthorAlias] = useState("");
   const [aliasLoading, setAliasLoading] = useState(true);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
-  const [publishModalOpen, setPublishModalOpen] = useState(false);
-  const [publishModalStage, setPublishModalStage] = useState<"publishing" | "success">(
-    "publishing",
-  );
   const postImageInputRef = useRef<HTMLInputElement | null>(null);
   const appliedInitialRef = useRef(false);
 
@@ -439,11 +435,6 @@ export function AdminArticleForm({
       return;
     }
     setSaving(true);
-    const shouldShowPublishFlow = !articleId && Boolean(opts.publishNow);
-    if (shouldShowPublishFlow) {
-      setPublishModalStage("publishing");
-      setPublishModalOpen(true);
-    }
     try {
       const meta = buildMeta(opts);
       if (articleId) {
@@ -490,10 +481,6 @@ export function AdminArticleForm({
 
       if (slug !== finalCreateSlug) setSlug(finalCreateSlug);
       toast.success("Created");
-      if (shouldShowPublishFlow) {
-        setPublishModalStage("success");
-        return;
-      }
       setPendingCreatedSlug(finalCreateSlug || String(data.slug ?? ""));
       setPendingCreatedArticleId(String(data.id ?? ""));
       setPredictionTitle(title.trim() ? `Will ${title.trim()}?` : "");
@@ -506,23 +493,10 @@ export function AdminArticleForm({
       setPredictionPromptContext("createFlow");
       setShowPostPrompt(true);
     } catch (e) {
-      if (shouldShowPublishFlow) {
-        setPublishModalOpen(false);
-      }
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
-  };
-
-  const finishPublishFlow = () => {
-    setPublishModalOpen(false);
-    if (assistantMode) {
-      router.refresh();
-      return;
-    }
-    router.replace(postCreateRedirectTo);
-    router.refresh();
   };
 
   const uploadPostImageFile = async (file: File) => {
@@ -1222,7 +1196,21 @@ export function AdminArticleForm({
         </aside>
       </div>
 
-      <Dialog open={showPostPrompt} onOpenChange={setShowPostPrompt}>
+      <Dialog
+        open={showPostPrompt}
+        onOpenChange={(open) => {
+          if (open) {
+            setShowPostPrompt(true);
+            return;
+          }
+          if (savingPostCard || postImageUploading) return;
+          if (postPromptContext === "createFlow") {
+            finishAfterCreate();
+            return;
+          }
+          setShowPostPrompt(false);
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add Post Image</DialogTitle>
@@ -1464,57 +1452,6 @@ export function AdminArticleForm({
               Create & Link Prediction
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={publishModalOpen}
-        onOpenChange={(open) => {
-          if (publishModalStage === "publishing") return;
-          setPublishModalOpen(open);
-        }}
-      >
-        <DialogContent
-          className="sm:max-w-md"
-          showCloseButton={publishModalStage !== "publishing"}
-        >
-          {publishModalStage === "publishing" ? (
-            <>
-              <DialogHeader className="sr-only">
-                <DialogTitle>Publishing article</DialogTitle>
-                <DialogDescription>
-                  Please wait while we save and publish your article.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex items-center gap-3 py-2">
-                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Publishing article...
-                  </p>
-                  <p className="text-xs text-slate-600">
-                    Please wait while we save and publish your article.
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>Article published</DialogTitle>
-                <DialogDescription>
-                  {assistantMode
-                    ? "Your article is published. We will refresh this page now."
-                    : "Your article is published. We will take you back to Articles."}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button onClick={finishPublishFlow}>
-                  {assistantMode ? "Refresh page" : "Go to articles"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
         </DialogContent>
       </Dialog>
 

@@ -65,13 +65,7 @@ export function NewArticleWithAssistant() {
   };
 
   if (started) {
-    return (
-      <AdminArticleForm
-        assistantMode
-        initialValues={prefill}
-        postCreateRedirectTo="/admin/articles/ai-assistant"
-      />
-    );
+    return <AdminArticleForm initialValues={prefill} />;
   }
 
   return (

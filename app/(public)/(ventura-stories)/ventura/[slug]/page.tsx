@@ -102,8 +102,22 @@ export default async function VenturaArticleBySlug(props: {
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
       : null;
-  const publisherName = "Joe Knows Ventura";
+  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seo =
+    seoRaw && typeof seoRaw === "object"
+      ? (seoRaw as { authorName?: string; bylineSource?: string })
+      : {};
+  const bylineAlias =
+    seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
+  const useAliasByline = bylineAlias.length > 0;
+  const publisherName = useAliasByline ? bylineAlias : "Joe Knows Ventura";
   const publisherAvatar = "/brand/ventura-profile.jpg";
+  const publisherInitials = publisherName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "JV";
 
   const content =
     typeof a.content === "string" ? JSON.parse(a.content) : a.content;
@@ -136,11 +150,20 @@ export default async function VenturaArticleBySlug(props: {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="relative h-12 w-12 flex-shrink-0">
-                        <img
-                          src={publisherAvatar}
-                          alt={publisherName}
-                          className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm border"
-                        />
+                        {useAliasByline ? (
+                          <div
+                            aria-label={publisherName}
+                            className="flex h-full w-full items-center justify-center rounded-full bg-neutral-900 text-sm font-bold tracking-wide text-white ring-2 ring-white shadow-sm"
+                          >
+                            {publisherInitials}
+                          </div>
+                        ) : (
+                          <img
+                            src={publisherAvatar}
+                            alt={publisherName}
+                            className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm border"
+                          />
+                        )}
                         <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
                           <svg
                             viewBox="0 0 20 20"
