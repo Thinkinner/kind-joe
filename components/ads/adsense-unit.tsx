@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -33,15 +33,52 @@ export default function AdsenseUnit({
   const adClient = isDev ? "ca-pub-3940256099942544" : "ca-pub-2956404262281420";
   const resolvedSlot = isDev ? "6300978111" : slot;
   const shouldRenderPreview = !adClient || !resolvedSlot;
+  const adRef = useRef<HTMLModElement | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     if (shouldRenderPreview) return;
+    setIsCollapsed(false);
+
+    const adElement = adRef.current;
+    if (!adElement) return;
+
+    const getAdStatus = () => adElement.getAttribute("data-ad-status");
+    const hasRenderedAd = () => getAdStatus() === "filled";
+    const isExplicitlyUnfilled = () => getAdStatus() === "unfilled";
+
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
       // Avoid crashing the page if AdSense has not finished bootstrapping yet.
     }
-  }, [shouldRenderPreview]);
+
+    const observer = new MutationObserver(() => {
+      if (isExplicitlyUnfilled()) {
+        setIsCollapsed(true);
+        return;
+      }
+      if (hasRenderedAd()) {
+        setIsCollapsed(false);
+      }
+    });
+    observer.observe(adElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+
+    const collapseTimer = window.setTimeout(() => {
+      if (!hasRenderedAd()) {
+        setIsCollapsed(true);
+      }
+    }, 4500);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(collapseTimer);
+    };
+  }, [shouldRenderPreview, resolvedSlot, adClient, adFormat, adLayout, adLayoutKey]);
 
   if (shouldRenderPreview) {
     return (
@@ -53,8 +90,13 @@ export default function AdsenseUnit({
     );
   }
 
+  if (isCollapsed) {
+    return null;
+  }
+
   return (
     <ins
+      ref={adRef}
       className={`adsbygoogle block ${className ?? ""}`}
       style={{ display: "block", textAlign: centered ? "center" : undefined }}
       data-ad-client={adClient}
