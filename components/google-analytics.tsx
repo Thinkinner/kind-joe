@@ -1,12 +1,12 @@
 'use client'
 
+import { Suspense, useEffect } from 'react'
 import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID
 
-export default function GoogleAnalytics() {
+function GoogleAnalyticsLogic() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -39,5 +39,13 @@ export default function GoogleAnalytics() {
         `}
       </Script>
     </>
+  )
+}
+
+export default function GoogleAnalytics() {
+  return (
+    <Suspense fallback={null}>
+      <GoogleAnalyticsLogic />
+    </Suspense>
   )
 }
