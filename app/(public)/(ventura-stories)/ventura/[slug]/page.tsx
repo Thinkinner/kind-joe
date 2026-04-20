@@ -22,6 +22,7 @@ import { RecommendedCard } from "@/components/cards/recommended-card"; // The ne
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
+import AdsenseUnit from "@/components/ads/adsense-unit";
 
 export const revalidate = 60;
 
@@ -31,6 +32,8 @@ const googleSans = DM_Sans({
   variable: "--font-google-sans",
   display: "swap",
 });
+const inlineAdSlot = process.env.NEXT_PUBLIC_ADSENSE_INLINE_SLOT ?? "";
+const sidebarAdSlot = process.env.NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT ?? "";
 
 export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
@@ -240,7 +243,6 @@ export default async function VenturaArticleBySlug(props: {
               </div>
             </div>
 
-            {/* ADSENSE_PAUSED_TOKEN_V1: In-article ad temporarily disabled.
             <section className="mt-6 px-4 lg:px-6">
               <AdsenseUnit
                 slot={inlineAdSlot}
@@ -248,7 +250,6 @@ export default async function VenturaArticleBySlug(props: {
                 minHeightClassName="min-h-[140px]"
               />
             </section>
-            */}
 
             {/* Content Area with Orange Links */}
             <div id="article-content" className="mt-7 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10">
@@ -269,7 +270,6 @@ export default async function VenturaArticleBySlug(props: {
           <aside className="space-y-6 self-start lg:sticky lg:top-24">
             <VenturaGetEmail />
 
-            {/* ADSENSE_PAUSED_TOKEN_V1: Sidebar ad temporarily disabled.
             <section className="px-4 lg:px-0">
               <AdsenseUnit
                 slot={sidebarAdSlot}
@@ -277,7 +277,6 @@ export default async function VenturaArticleBySlug(props: {
                 minHeightClassName="min-h-[280px]"
               />
             </section>
-            */}
 
             {/* Ventura Promo Box */}
             <section>

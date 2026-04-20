@@ -23,6 +23,7 @@ import { RecommendedCard } from "@/components/cards/recommended-card";
 import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
+import AdsenseUnit from "@/components/ads/adsense-unit";
 
 export const revalidate = 60;
 
@@ -32,6 +33,8 @@ const googleSans = DM_Sans({
   variable: "--font-google-sans",
   display: "swap",
 });
+const inlineAdSlot = process.env.NEXT_PUBLIC_ADSENSE_INLINE_SLOT ?? "";
+const sidebarAdSlot = process.env.NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT ?? "";
 
 export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
@@ -236,7 +239,6 @@ export default async function ArticleBySlug(props: {
               </div>
             </div>
 
-            {/* ADSENSE_PAUSED_TOKEN_V1: In-article ad temporarily disabled.
             <section className="mt-6 px-4 lg:px-6">
               <AdsenseUnit
                 slot={inlineAdSlot}
@@ -244,7 +246,6 @@ export default async function ArticleBySlug(props: {
                 minHeightClassName="min-h-[140px]"
               />
             </section>
-            */}
 
             <div id="article-content" className="mt-8 px-4 lg:px-6">
               <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
@@ -263,7 +264,6 @@ export default async function ArticleBySlug(props: {
           <aside className="mt-8 lg:mt-0 space-y-8 lg:sticky lg:top-24 self-start">
             <GetEmail />
 
-            {/* ADSENSE_PAUSED_TOKEN_V1: Sidebar ad temporarily disabled.
             <section className="px-4 lg:px-0">
               <AdsenseUnit
                 slot={sidebarAdSlot}
@@ -271,7 +271,6 @@ export default async function ArticleBySlug(props: {
                 minHeightClassName="min-h-[280px]"
               />
             </section>
-            */}
 
             <section className="px-4 lg:px-0">
               <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">

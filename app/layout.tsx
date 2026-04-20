@@ -6,8 +6,6 @@ import "./globals.css";
 import GoogleAnalytics from "@/components/google-analytics";
 import VisitorJourneyTracker from "@/components/visitor-journey-tracker";
 
-import CookieConsent from "@/components/modals/cookie-consent";
-import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -21,6 +19,8 @@ const poppins = Poppins({
 const SITE_URL =
   (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") as string) ||
   "http://localhost:3000";
+const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+const fundingChoicesPubId = adsenseClient?.replace(/^ca-/, "");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -87,14 +87,36 @@ export default async function RootLayout({
     },
   };
 
-  const cookieStore = await cookies();
-  const consent = cookieStore.get("cookie_consent")?.value === "accepted";
-
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        {/* ADSENSE_PAUSED_TOKEN_V1: Google AdSense tags temporarily disabled. */}
-        {/*
+        {/* Google Certified CMP (Funding Choices) for EEA/UK/CH consent messaging */}
+        {fundingChoicesPubId && (
+          <Script
+            async
+            src={`https://fundingchoicesmessages.google.com/i/${fundingChoicesPubId}?ers=1`}
+            strategy="afterInteractive"
+          />
+        )}
+        <Script id="googlefc-present" strategy="afterInteractive">
+          {`
+            (function() {
+              function signalGooglefcPresent() {
+                if (!window.frames["googlefcPresent"]) {
+                  if (document.body) {
+                    const iframe = document.createElement("iframe");
+                    iframe.style.cssText = "width: 0; height: 0; border: none; display: none;";
+                    iframe.name = "googlefcPresent";
+                    document.body.appendChild(iframe);
+                  } else {
+                    setTimeout(signalGooglefcPresent, 0);
+                  }
+                }
+              }
+              signalGooglefcPresent();
+            })();
+          `}
+        </Script>
         {adsenseClient && (
           <meta name="google-adsense-account" content={adsenseClient} />
         )}
@@ -106,7 +128,6 @@ export default async function RootLayout({
             strategy="afterInteractive"
           />
         )}
-        */}
         {/* Subscribe with Google core script */}
         <Script
           src="https://news.google.com/swg/js/v1/swg-basic.js"
@@ -135,7 +156,6 @@ export default async function RootLayout({
         <VisitorJourneyTracker />
         <main className="min-h-dvh min-w-0 overflow-x-hidden">{children}</main>
         <Toaster position="top-center" richColors closeButton />
-      <CookieConsent />
         <Analytics />
         <Script
           id="ld-website"
