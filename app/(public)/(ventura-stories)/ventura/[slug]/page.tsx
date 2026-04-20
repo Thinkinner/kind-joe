@@ -19,7 +19,7 @@ import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
 import ArticleTracker from "@/components/article-tracker";
 import { RecommendedCard } from "@/components/cards/recommended-card"; // The new horizontal card
-import { formatToLA } from "@/lib/format-date";
+import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 
@@ -186,11 +186,10 @@ export default async function VenturaArticleBySlug(props: {
                         <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                           <span>Official Publisher</span>
                           <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
-                          <time className="text-neutral-700 font-semibold">
-                            {formatToLA(
-                              a.publishedAt ?? a.publishAt ?? a.createdAt,
-                            )}
-                          </time>
+                          <LocalizedPublishTime
+                            value={a.publishedAt ?? a.publishAt ?? a.createdAt}
+                            className="text-neutral-700 font-semibold"
+                          />
                         </div>
                       </div>
                     </div>
