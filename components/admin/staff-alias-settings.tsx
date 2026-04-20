@@ -12,60 +12,224 @@ type ProfileResponse = {
 };
 
 const FIRST_NAMES = [
-  "Jordan",
-  "Alex",
-  "Taylor",
+  "Adrian",
+  "Aiden",
+  "Alec",
+  "Amelia",
+  "Ariana",
   "Avery",
-  "Cameron",
-  "Riley",
-  "Morgan",
-  "Casey",
-  "Drew",
-  "Logan",
+  "Bianca",
+  "Blake",
+  "Caleb",
+  "Camila",
+  "Carter",
+  "Charlotte",
+  "Chloe",
+  "Clara",
+  "Cole",
+  "Daisy",
+  "Daniel",
+  "Dylan",
+  "Elena",
+  "Elijah",
+  "Elliot",
+  "Emerson",
+  "Emma",
+  "Ethan",
+  "Eva",
+  "Gabriel",
+  "Grace",
+  "Hannah",
+  "Harper",
+  "Henry",
+  "Isla",
+  "Jasper",
+  "Julian",
+  "Kara",
+  "Liam",
+  "Lila",
+  "Lucas",
+  "Mason",
+  "Maya",
+  "Mia",
+  "Natalie",
+  "Noah",
+  "Nora",
+  "Oliver",
+  "Owen",
+  "Paige",
+  "Quinn",
+  "Reese",
+  "Roman",
+  "Sofia",
+  "Theo",
+  "Violet",
+  "Wesley",
+  "Zoe",
 ];
 
 const LAST_NAMES = [
-  "Coleman",
-  "Hayes",
-  "Parker",
-  "Monroe",
-  "Sinclair",
-  "Reed",
+  "Alvarez",
   "Bennett",
+  "Brooks",
+  "Campbell",
+  "Castillo",
+  "Coleman",
+  "Collins",
+  "Dawson",
+  "Diaz",
+  "Foster",
+  "Garcia",
+  "Graham",
+  "Griffin",
+  "Hall",
   "Harper",
+  "Hayes",
+  "Hughes",
+  "Jenkins",
+  "Kelly",
+  "King",
+  "Lane",
+  "Lawson",
+  "Lewis",
+  "Lopez",
+  "Marshall",
+  "Martinez",
+  "Mitchell",
+  "Monroe",
+  "Morgan",
+  "Morris",
+  "Nelson",
+  "Ortiz",
+  "Parker",
+  "Patel",
+  "Perry",
+  "Price",
+  "Ramirez",
+  "Reed",
+  "Rivera",
+  "Roberts",
+  "Rogers",
+  "Scott",
+  "Simmons",
   "Sullivan",
-  "Maddox",
+  "Taylor",
+  "Turner",
+  "Walker",
+  "Ward",
+  "Watson",
+  "Wright",
 ];
 
-function buildAliasSuggestion(seed: string): string {
+function normalizeWord(value: string): string {
+  return value[0]?.toUpperCase() + value.slice(1).toLowerCase();
+}
+
+function fromDisplayName(seed: string): string | null {
   const cleaned = seed.trim().replace(/\s+/g, " ");
   const tokens = cleaned
     .split(" ")
     .map((token) => token.replace(/[^a-zA-Z'-]/g, ""))
     .filter(Boolean);
-  if (tokens.length >= 2) {
-    const first = tokens[0][0]?.toUpperCase() + tokens[0].slice(1).toLowerCase();
-    const last = tokens[tokens.length - 1][0]?.toUpperCase() +
-      tokens[tokens.length - 1].slice(1).toLowerCase();
+  if (tokens.length < 2) return null;
+  return `${normalizeWord(tokens[0])} ${normalizeWord(tokens[tokens.length - 1])}`;
+}
+
+function hashSeed(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function buildAliasCandidate(seed: string, attempt: number): string {
+  const score = hashSeed(`${seed}:${attempt}`);
+  const first = FIRST_NAMES[score % FIRST_NAMES.length];
+  const last = LAST_NAMES[((score >>> 3) + attempt * 7) % LAST_NAMES.length];
+  const includeMiddleInitial = score % 6 === 0;
+  if (!includeMiddleInitial) {
     return `${first} ${last}`;
   }
+  const middleInitial = String.fromCharCode(65 + (score % 26));
+  return `${first} ${middleInitial}. ${last}`;
+}
 
-  const seedScore = Array.from(cleaned || `${Date.now()}`).reduce(
-    (sum, char) => sum + char.charCodeAt(0),
-    0,
+function buildUniqueAliasSuggestion(
+  seed: string,
+  used: string[],
+  excludeName?: string,
+): string {
+  const baseFromName = fromDisplayName(seed);
+  const blocked = new Set(
+    used
+      .concat(excludeName ? [excludeName] : [])
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
   );
-  const first = FIRST_NAMES[seedScore % FIRST_NAMES.length];
-  const last = LAST_NAMES[(seedScore * 3) % LAST_NAMES.length];
-  return `${first} ${last}`;
+
+  if (baseFromName && !blocked.has(baseFromName.toLowerCase())) {
+    return baseFromName;
+  }
+
+  const generatorSeed = seed.trim() || `${Date.now()}`;
+  for (let i = 0; i < 120; i += 1) {
+    const candidate = buildAliasCandidate(generatorSeed, i);
+    if (!blocked.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+
+  return buildAliasCandidate(`${generatorSeed}-${Math.random()}`, 0);
 }
 
 export function StaffAliasSettings() {
   const [aliasFullName, setAliasFullName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [savedDisplayName, setSavedDisplayName] = useState("");
+  const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
+  const [suggestedAlias, setSuggestedAlias] = useState("");
+  const [suggestingAlias, setSuggestingAlias] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [aliasLocked, setAliasLocked] = useState(false);
+
+  const applySuggestion = (nextSuggestion: string) => {
+    if (!nextSuggestion.trim()) return;
+    setSuggestedAlias(nextSuggestion);
+    setUsedSuggestions((prev) =>
+      prev.includes(nextSuggestion) ? prev : [...prev, nextSuggestion],
+    );
+  };
+
+  const requestGeminiSuggestion = async (
+    seedName: string,
+    usedList: string[],
+    fallback: string,
+  ) => {
+    setSuggestingAlias(true);
+    try {
+      const res = await fetch("/api/admin/profile/alias-suggestion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: seedName,
+          used: usedList,
+          seed: `${seedName}-${Date.now()}-${Math.random()}`,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Gemini alias suggestion unavailable.");
+      }
+      const data = (await res.json()) as { alias?: string | null };
+      const alias = (data.alias ?? "").trim();
+      applySuggestion(alias || fallback);
+    } catch {
+      applySuggestion(fallback);
+    } finally {
+      setSuggestingAlias(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -81,6 +245,11 @@ export function StaffAliasSettings() {
         setDisplayName(existingName);
         setSavedDisplayName(existingName);
         setAliasLocked(existingAlias.length > 0);
+        if (existingAlias.length === 0) {
+          const localSuggestion = buildUniqueAliasSuggestion(existingName, []);
+          applySuggestion(localSuggestion);
+          void requestGeminiSuggestion(existingName, [localSuggestion], localSuggestion);
+        }
       } catch (err) {
         if (!active) return;
         toast.error(err instanceof Error ? err.message : "Could not load alias settings.");
@@ -101,7 +270,7 @@ export function StaffAliasSettings() {
       return;
     }
 
-    const payload: { name: string; aliasFullName?: string } = {
+    const requestPayload: { name: string; aliasFullName?: string } = {
       name: trimmedName,
     };
 
@@ -111,7 +280,7 @@ export function StaffAliasSettings() {
         toast.error("Enter an alias full name.");
         return;
       }
-      payload.aliasFullName = trimmedAlias;
+      requestPayload.aliasFullName = trimmedAlias;
     }
 
     if (aliasLocked && trimmedName === savedDisplayName.trim()) {
@@ -119,7 +288,7 @@ export function StaffAliasSettings() {
       return;
     }
 
-    if (!aliasLocked && !payload.aliasFullName) {
+    if (!aliasLocked && !requestPayload.aliasFullName) {
       toast.error("Enter an alias full name.");
       return;
     }
@@ -128,24 +297,24 @@ export function StaffAliasSettings() {
       const res = await fetch("/api/admin/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       });
-      const payload = (await res.json().catch(() => ({}))) as {
+      const responsePayload = (await res.json().catch(() => ({}))) as {
         error?: string | Record<string, unknown>;
         aliasFullName?: string | null;
         name?: string | null;
       };
       if (!res.ok) {
         throw new Error(
-          typeof payload.error === "string"
-            ? payload.error
+          typeof responsePayload.error === "string"
+            ? responsePayload.error
             : "Could not save alias settings.",
         );
       }
-      setDisplayName((payload.name ?? trimmedName).trim());
-      setSavedDisplayName((payload.name ?? trimmedName).trim());
-      if (!aliasLocked && payload.aliasFullName) {
-        setAliasFullName(payload.aliasFullName.trim());
+      setDisplayName((responsePayload.name ?? trimmedName).trim());
+      setSavedDisplayName((responsePayload.name ?? trimmedName).trim());
+      if (!aliasLocked && responsePayload.aliasFullName) {
+        setAliasFullName(responsePayload.aliasFullName.trim());
         setAliasLocked(true);
       }
       toast.success("Profile settings saved.");
@@ -159,8 +328,6 @@ export function StaffAliasSettings() {
   if (loading) {
     return <p className="text-sm text-slate-600">Loading...</p>;
   }
-
-  const aiSuggestion = buildAliasSuggestion(aliasFullName);
 
   return (
     <form onSubmit={onSave} className="max-w-md space-y-3">
@@ -203,25 +370,41 @@ export function StaffAliasSettings() {
             </p>
             <p className="mt-1 text-sm text-neutral-700">
               Suggested realistic pen name:{" "}
-              <span className="font-semibold text-neutral-900">{aiSuggestion}</span>
+              <span className="font-semibold text-neutral-900">
+                {suggestedAlias || "Click below for a suggestion"}
+              </span>
             </p>
             <Button
               type="button"
               variant="outline"
               className="mt-2"
+              disabled={suggestingAlias}
               onClick={() => {
-                const randomSeed = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-                setAliasFullName(buildAliasSuggestion(randomSeed));
+                const randomSeed = `${displayName}-${Date.now()}-${Math.random()}`;
+                const localSuggestion = buildUniqueAliasSuggestion(
+                  randomSeed,
+                  usedSuggestions,
+                  displayName,
+                );
+                applySuggestion(localSuggestion);
+                void requestGeminiSuggestion(
+                  displayName || randomSeed,
+                  [...usedSuggestions, localSuggestion],
+                  localSuggestion,
+                );
               }}
             >
-              Try another suggestion
+              {suggestingAlias ? "Gemini thinking..." : "Try another suggestion"}
             </Button>
           </div>
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setAliasFullName(aiSuggestion)}
+              onClick={() => {
+                if (!suggestedAlias) return;
+                setAliasFullName(suggestedAlias);
+              }}
             >
               Use suggestion
             </Button>
