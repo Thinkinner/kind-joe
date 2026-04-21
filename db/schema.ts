@@ -173,6 +173,30 @@ export const articleTags = pgTable(
   }),
 );
 
+export const articleEmbeddings = pgTable(
+  "article_embeddings",
+  {
+    articleId: varchar("article_id", { length: 50 })
+      .primaryKey()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    model: varchar("model", { length: 120 }).notNull(),
+    embedding: jsonb("embedding").$type<number[]>().notNull().default([]),
+    sourceText: text("source_text").notNull(),
+    sourceTextHash: varchar("source_text_hash", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    modelIdx: index("article_embeddings_model_idx").on(t.model),
+    hashIdx: index("article_embeddings_source_hash_idx").on(t.sourceTextHash),
+    updatedIdx: index("article_embeddings_updated_at_idx").on(t.updatedAt),
+  }),
+);
+
 export const rssSources = pgTable("rss_sources", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 160 }).notNull(),

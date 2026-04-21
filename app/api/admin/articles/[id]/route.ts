@@ -14,6 +14,10 @@ import {
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
+import {
+  removeArticleEmbedding,
+  syncArticleEmbeddingByArticleId,
+} from "@/lib/recommendations/article-related";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -312,6 +316,12 @@ export async function PUT(
     await db.delete(articleTags).where(eq(articleTags.articleId, id));
   }
 
+  try {
+    await syncArticleEmbeddingByArticleId(id);
+  } catch (error) {
+    console.error("[articles.update] embedding sync failed", error);
+  }
+
   return NextResponse.json(updated);
 }
 
@@ -332,6 +342,12 @@ export async function DELETE(
     .update(articles)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(articles.id, id));
+
+  try {
+    await removeArticleEmbedding(id);
+  } catch (error) {
+    console.error("[articles.delete] embedding cleanup failed", error);
+  }
 
   return NextResponse.json({ ok: true });
 }

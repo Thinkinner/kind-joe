@@ -20,6 +20,7 @@ import {
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
+import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -307,6 +308,12 @@ export async function POST(req: NextRequest) {
         });
       }
     });
+
+    try {
+      await syncArticleEmbeddingByArticleId(id);
+    } catch (error) {
+      console.error("[articles.create] embedding sync failed", error);
+    }
 
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (err) {

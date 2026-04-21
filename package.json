@@ -11,8 +11,10 @@
     "seed": "tsx scripts/seed.ts",
     "db:migrate": "drizzle-kit migrate",
     "signals:backfill-enrichment": "tsx scripts/backfill-signal-enrichment.ts",
+    "articles:backfill-embeddings": "tsx scripts/backfill-article-embeddings.ts",
     "auth:promote-staff": "tsx scripts/promote-auth-staff.ts",
-    "db:seed-posts": "tsx scripts/seed-posts.ts"
+    "db:seed-posts": "tsx scripts/seed-posts.ts",
+    "test:related-chain": "tsx --test tests/article-related-score.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",

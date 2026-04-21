@@ -24,6 +24,7 @@ import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
+import ArticleRelatedChain from "@/components/stories/article-related-chain";
 
 export const revalidate = 60;
 
@@ -125,6 +126,9 @@ export default async function ArticleBySlug(props: {
 
   const content =
     typeof a.content === "string" ? JSON.parse(a.content) : a.content;
+  const chainEnabled =
+    process.env.NEXT_PUBLIC_ENABLE_RELATED_CHAIN_KINDJOE === "true" ||
+    process.env.NEXT_PUBLIC_ENABLE_ARTICLE_RELATED_CHAIN === "true";
 
   return (
     <main className={`py-8 ${googleSans.variable}`}>
@@ -261,6 +265,14 @@ export default async function ArticleBySlug(props: {
                   canCreate={Boolean(viewerId)}
                 />
               </div>
+              {chainEnabled && (
+                <ArticleRelatedChain
+                  slug={slug}
+                  articleId={a.id}
+                  className="mt-8"
+                  title="More on this topic"
+                />
+              )}
             </div>
           </article>
 
