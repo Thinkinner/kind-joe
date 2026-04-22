@@ -7,7 +7,6 @@ import { DM_Sans } from "next/font/google";
 import {
   getFullArticleBySlug,
   getArticleCategories,
-  getRecommendedArticles,
 } from "@/lib/actions/articles";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
@@ -18,7 +17,6 @@ import ShareButtons from "@/components/stories/share-buttons";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
 import ArticleTracker from "@/components/article-tracker";
-import { RecommendedCard } from "@/components/cards/recommended-card"; // The new horizontal card
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
@@ -98,10 +96,7 @@ export default async function VenturaArticleBySlug(props: {
   }
 
   // 3. Parallel fetch UI elements (Categories and Smart Recommendations)
-  const [cats, recommended] = await Promise.all([
-    getArticleCategories(a.id),
-    getRecommendedArticles(a.id, a.category, 5), // Priority to same category
-  ]);
+  const cats = await getArticleCategories(a.id);
   const linkedPrediction =
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
@@ -133,8 +128,8 @@ export default async function VenturaArticleBySlug(props: {
     <main className={`py-4 sm:py-6 lg:py-10 ${googleSans.variable}`}>
       <ArticleTracker articleId={a.id} />
 
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-5 lg:px-6">
+        <div className="grid gap-7 md:grid-cols-[minmax(0,1fr)_280px] md:items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
           {/* MAIN ARTICLE */}
           <article className="bg-white">
             <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
@@ -274,6 +269,7 @@ export default async function VenturaArticleBySlug(props: {
                 <ArticleRelatedChain
                   slug={slug}
                   articleId={a.id}
+                  canCreatePredictions={Boolean(viewerId)}
                   className="mt-8"
                   title="More Ventura coverage"
                 />
@@ -282,55 +278,42 @@ export default async function VenturaArticleBySlug(props: {
           </article>
 
           {/* SIDEBAR */}
-          <aside className="space-y-6 self-start lg:sticky lg:top-24">
-            <VenturaGetEmail />
+          <aside className="self-start md:sticky md:top-24">
+            <div className="space-y-6">
+              <VenturaGetEmail />
 
-            <section className="px-4 lg:px-0">
-              <AdsenseUnit
-                slot={sidebarAdSlot}
-                label="Sidebar ad"
-                minHeightClassName="min-h-[280px]"
-              />
-            </section>
+              <section className="px-4 lg:px-0">
+                <AdsenseUnit
+                  slot={sidebarAdSlot}
+                  label="Sidebar ad"
+                  minHeightClassName="min-h-[280px]"
+                />
+              </section>
 
-            {/* Ventura Promo Box */}
-            <section>
-              <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 to-orange-300 shadow-xl shadow-orange-500/20">
-                <div className="relative p-6 text-white sm:p-8">
-                  <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 sm:h-24 sm:w-24"></div>
-                  <div className="relative">
-                    <h3 className="text-xl font-black leading-tight sm:text-2xl">
-                      Joe Knows <br /> Ventura
-                    </h3>
-                    <p className="mt-3 text-sm font-medium text-orange-50">
-                      Local news and featured stories from the 805.
-                    </p>
-                    <a
-                      href="https://www.instagram.com/joeknowsventura/"
-                      target="_blank"
-                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-orange-600 shadow-md transition hover:bg-orange-50"
-                    >
-                      Watch Now
-                    </a>
+              {/* Ventura Promo Box */}
+              <section>
+                <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 to-orange-300 shadow-xl shadow-orange-500/20">
+                  <div className="relative p-6 text-white sm:p-8">
+                    <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 sm:h-24 sm:w-24"></div>
+                    <div className="relative">
+                      <h3 className="text-xl font-black leading-tight sm:text-2xl">
+                        Joe Knows <br /> Ventura
+                      </h3>
+                      <p className="mt-3 text-sm font-medium text-orange-50">
+                        Local news and featured stories from the 805.
+                      </p>
+                      <a
+                        href="https://www.instagram.com/joeknowsventura/"
+                        target="_blank"
+                        className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-orange-600 shadow-md transition hover:bg-orange-50"
+                      >
+                        Watch Now
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
-
-            {/* RECOMMENDED - Smart Horizontal Cards */}
-            <section className="border-t border-neutral-200 pt-4 sm:pt-5">
-              <h3 className="mb-4 border-b border-neutral-200 pb-2 text-xs font-black uppercase tracking-[0.2em] text-neutral-900">
-                Recommended
-              </h3>
-              <div className="flex flex-col gap-3">
-                {recommended.map((item) => (
-                  <RecommendedCard
-                    key={item.id}
-                    article={{ ...item, category: item.category ?? "General" }}
-                  />
-                ))}
-              </div>
-            </section>
+              </section>
+            </div>
           </aside>
         </div>
       </div>

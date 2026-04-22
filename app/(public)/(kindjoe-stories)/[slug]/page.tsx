@@ -7,7 +7,6 @@ import { DM_Sans } from "next/font/google";
 import {
   getFullArticleBySlug,
   getArticleCategories,
-  getRecommendedArticles,
 } from "@/lib/actions/articles";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
@@ -19,7 +18,6 @@ import GetEmail from "@/components/stories/kindjoe-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
 import ArticleTracker from "@/components/article-tracker";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
-import { RecommendedCard } from "@/components/cards/recommended-card";
 import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
@@ -100,10 +98,7 @@ export default async function ArticleBySlug(props: {
   }
 
   // 3. Parallel fetch remaining data if we are staying on this page
-  const [cats, recommended] = await Promise.all([
-    getArticleCategories(a.id),
-    getRecommendedArticles(a.id, a.category, 5),
-  ]);
+  const cats = await getArticleCategories(a.id);
   const linkedPrediction =
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
@@ -133,10 +128,10 @@ export default async function ArticleBySlug(props: {
   return (
     <main className={`py-8 ${googleSans.variable}`}>
       <ArticleTracker articleId={a.id} />
-      <div className="mx-auto max-w-6xl lg:px-4">
+      <div className="mx-auto max-w-6xl md:px-4">
         <BreakingLiveNewsCta />
-        <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] lg:gap-8">
-          <article className="lg:pb-8">
+        <div className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] md:items-start md:gap-8">
+          <article className="md:pb-8">
             <header className="px-4 lg:px-6 pt-4 pb-3">
               <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
                 <div className="flex flex-wrap items-center gap-2">
@@ -269,6 +264,7 @@ export default async function ArticleBySlug(props: {
                 <ArticleRelatedChain
                   slug={slug}
                   articleId={a.id}
+                  canCreatePredictions={Boolean(viewerId)}
                   className="mt-8"
                   title="More on this topic"
                 />
@@ -276,30 +272,18 @@ export default async function ArticleBySlug(props: {
             </div>
           </article>
 
-          <aside className="mt-8 lg:mt-0 space-y-8 lg:sticky lg:top-24 self-start">
-            <GetEmail />
+          <aside className="mt-8 self-start md:mt-0 md:sticky md:top-24">
+            <div className="space-y-8">
+              <GetEmail />
 
-            <section className="px-4 lg:px-0">
-              <AdsenseUnit
-                slot={sidebarAdSlot}
-                label="Sidebar ad"
-                minHeightClassName="min-h-[280px]"
-              />
-            </section>
-
-            <section className="px-4 lg:px-0">
-              <h3 className="mb-4 border-b border-neutral-200 pb-2 text-sm font-bold uppercase tracking-wide text-neutral-900">
-                Recommended
-              </h3>
-              <div className="flex flex-col gap-6">
-                {recommended.map((item) => (
-                  <RecommendedCard
-                    key={item.id}
-                    article={{ ...item, category: item.category ?? "General" }}
-                  />
-                ))}
-              </div>
-            </section>
+              <section className="px-4 lg:px-0">
+                <AdsenseUnit
+                  slot={sidebarAdSlot}
+                  label="Sidebar ad"
+                  minHeightClassName="min-h-[280px]"
+                />
+              </section>
+            </div>
           </aside>
         </div>
       </div>

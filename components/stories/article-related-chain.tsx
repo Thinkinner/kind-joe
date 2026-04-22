@@ -1,13 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ArticleContent from "@/components/stories/article-single-page-content";
+import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
+import LocalizedPublishTime from "@/components/stories/localized-publish-time";
+import ShareButtons from "@/components/stories/share-buttons";
+import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
+import type { PredictionMarketView } from "@/lib/predictions/queries";
 
 type RelatedChainItem = {
   id: string;
   slug: string;
   title: string;
   excerpt: string | null;
+  content: unknown;
+  seo: unknown;
+  predictionId: number | null;
+  authorAvatar: string | null;
+  hasVenturaTag: boolean;
   coverImageUrl: string | null;
   readingMinutes: number | null;
   publishedAt: string | null;
@@ -25,15 +35,87 @@ type ChainResponse = {
   source: "semantic" | "fallback";
 };
 
-function formatDate(input: string | null): string | null {
-  if (!input) return null;
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+const SESSION_SEEN_KEY = "related-chain-seen-ids";
+
+function readSessionSeenIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_SEEN_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string => typeof value === "string" && value.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function writeSessionSeenIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    // Keep only the latest chunk to avoid unbounded growth.
+    const payload = Array.from(ids).slice(-120);
+    window.sessionStorage.setItem(SESSION_SEEN_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+type JsonDoc = {
+  type: "doc";
+  content?: unknown[];
+};
+
+function parseJsonDoc(value: unknown): JsonDoc | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "type" in parsed &&
+        (parsed as { type?: unknown }).type === "doc"
+      ) {
+        return parsed as JsonDoc;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  if (
+    typeof value === "object" &&
+    "type" in value &&
+    (value as { type?: unknown }).type === "doc"
+  ) {
+    return value as JsonDoc;
+  }
+  return null;
+}
+
+function parseSeo(
+  value: unknown,
+): {
+  authorName?: string;
+  bylineSource?: string;
+} {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object") {
+        return parsed as { authorName?: string; bylineSource?: string };
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof value === "object") {
+    return value as { authorName?: string; bylineSource?: string };
+  }
+  return {};
 }
 
 function sendRelatedEvent(input: {
@@ -70,23 +152,36 @@ type Props = {
   articleId: string;
   className?: string;
   title?: string;
+  canCreatePredictions?: boolean;
 };
 
 export default function ArticleRelatedChain({
   slug,
   articleId,
   className,
-  title = "Continue Reading",
+  title: _title = "Continue Reading",
+  canCreatePredictions = false,
 }: Props) {
   const [items, setItems] = useState<RelatedChainItem[]>([]);
   const [cursor, setCursor] = useState<number>(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadedOnce, setLoadedOnce] = useState(false);
-  const [sourceType, setSourceType] = useState<"semantic" | "fallback" | null>(null);
+  const [origin, setOrigin] = useState("");
+  const [marketsByArticleId, setMarketsByArticleId] = useState<
+    Record<string, PredictionMarketView | null>
+  >({});
   const seenRef = useRef<Set<string>>(new Set([articleId]));
   const impressionRef = useRef<Set<string>>(new Set());
+  const loadingPredictionRef = useRef<Set<string>>(new Set());
+  const bottomHitRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const merged = new Set([...readSessionSeenIds(), articleId]);
+    seenRef.current = merged;
+    writeSessionSeenIds(merged);
+  }, [articleId]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
@@ -106,7 +201,6 @@ export default function ArticleRelatedChain({
       setLoadedOnce(true);
       setHasMore(payload.hasMore);
       setCursor(payload.nextCursor ?? cursor);
-      setSourceType(payload.source);
 
       if (payload.items.length > 0) {
         sendRelatedEvent({
@@ -125,6 +219,7 @@ export default function ArticleRelatedChain({
           merged.push(item);
           seenRef.current.add(item.id);
         }
+        writeSessionSeenIds(seenRef.current);
         return merged;
       });
     } catch (error) {
@@ -146,16 +241,60 @@ export default function ArticleRelatedChain({
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry?.isIntersecting) {
+        if (!entry) return;
+
+        // Trigger only once per "reach bottom" event.
+        // User must scroll away and reach the sentinel again for the next fetch.
+        if (entry.isIntersecting && !bottomHitRef.current) {
+          bottomHitRef.current = true;
           void loadMore();
+        } else if (!entry.isIntersecting) {
+          bottomHitRef.current = false;
         }
       },
-      { rootMargin: "220px 0px 220px 0px", threshold: 0.1 },
+      // Start loading the next batch before the user hits the very bottom.
+      // 50% bottom root margin means it can trigger when the sentinel is
+      // roughly within the lower half of the viewport.
+      { rootMargin: "0px 0px 50% 0px", threshold: 0 },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  useEffect(() => {
+    for (const item of items) {
+      if (typeof item.predictionId !== "number" || !Number.isFinite(item.predictionId)) {
+        if (!(item.id in marketsByArticleId)) {
+          setMarketsByArticleId((prev) => ({ ...prev, [item.id]: null }));
+        }
+        continue;
+      }
+      if (item.id in marketsByArticleId) continue;
+      if (loadingPredictionRef.current.has(item.id)) continue;
+      loadingPredictionRef.current.add(item.id);
+
+      void fetch(`/api/predictions/${item.predictionId}`, { cache: "no-store" })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const payload = (await res.json()) as { market?: PredictionMarketView | null };
+          return payload.market ?? null;
+        })
+        .catch(() => null)
+        .then((market) => {
+          setMarketsByArticleId((prev) => ({ ...prev, [item.id]: market }));
+        })
+        .finally(() => {
+          loadingPredictionRef.current.delete(item.id);
+        });
+    }
+  }, [items, marketsByArticleId]);
 
   useEffect(() => {
     for (const item of items) {
@@ -172,12 +311,9 @@ export default function ArticleRelatedChain({
   if (!loadedOnce && loading) {
     return (
       <section className={className}>
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-neutral-900">
-          {title}
-        </h3>
         <div className="space-y-3">
-          <div className="h-20 animate-pulse rounded-lg bg-neutral-100" />
-          <div className="h-20 animate-pulse rounded-lg bg-neutral-100" />
+          <div className="h-48 animate-pulse rounded-lg bg-neutral-100" />
+          <div className="h-48 animate-pulse rounded-lg bg-neutral-100" />
         </div>
       </section>
     );
@@ -187,64 +323,159 @@ export default function ArticleRelatedChain({
 
   return (
     <section className={className}>
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-neutral-200 pb-2">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-900">{title}</h3>
-        {sourceType && (
-          <span className="text-[11px] uppercase tracking-wide text-neutral-500">
-            {sourceType === "semantic" ? "AI picked" : "Latest picks"}
-          </span>
-        )}
-      </div>
-
-      <div className="space-y-3">
+      <div className="space-y-14">
         {items.map((item) => {
-          const date = formatDate(item.publishedAt ?? item.publishAt);
+          const contentDoc = parseJsonDoc(item.content);
+          const seo = parseSeo(item.seo);
+          const bylineAlias =
+            seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
+          const useAliasByline = bylineAlias.length > 0;
+          const isVenturaArticle = item.hasVenturaTag;
+          const defaultPublisherName = isVenturaArticle ? "Joe Knows Ventura" : "KindJoe";
+          const publisherName = useAliasByline ? bylineAlias : defaultPublisherName;
+          const publisherAvatar = isVenturaArticle
+            ? "/brand/ventura-profile.jpg"
+            : "/brand/kindjoe-profile.jpg";
+          const publisherInitials =
+            publisherName
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0]?.toUpperCase() ?? "")
+              .join("") || "KJ";
+          const predictionSectionId = `related-article-predictions-${item.id}`;
+          const shareUrl = origin ? `${origin}${item.href}` : item.href;
           return (
-            <Link
-              key={item.id}
-              href={item.href}
-              onClick={() =>
-                sendRelatedEvent({
-                  eventType: "click",
-                  articleId: item.id,
-                  sourceArticleId: articleId,
-                })
-              }
-              className="group flex gap-3 rounded-lg border border-neutral-200 p-3 transition hover:border-red-400 hover:bg-neutral-50"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.coverImageUrl ?? "/placeholder.jpg"}
-                alt={item.title}
-                className="h-20 w-20 flex-shrink-0 rounded-md object-cover"
-              />
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-900 group-hover:text-red-600">
+            <article key={item.id} className="border-t border-neutral-200 pt-8">
+              <header>
+                <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
                   {item.title}
-                </p>
-                {item.excerpt && (
-                  <p className="mt-1 line-clamp-2 text-xs text-neutral-600">{item.excerpt}</p>
-                )}
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-neutral-500">
-                  {date && <span>{date}</span>}
-                  {item.readingMinutes ? (
-                    <>
-                      <span>•</span>
-                      <span>{item.readingMinutes} min read</span>
-                    </>
-                  ) : null}
+                </h2>
+
+                <div className="mt-6 border-y border-neutral-200 py-4 sm:py-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-12 w-12 flex-shrink-0">
+                          {useAliasByline ? (
+                            <div
+                              aria-label={publisherName}
+                              className="flex h-full w-full items-center justify-center rounded-full bg-neutral-900 text-sm font-bold tracking-wide text-white ring-2 ring-white shadow-sm"
+                            >
+                              {publisherInitials}
+                            </div>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.authorAvatar || publisherAvatar}
+                              alt={publisherName}
+                              className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-sm"
+                            />
+                          )}
+                          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white ring-2 ring-white">
+                            <svg
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="w-3 h-3"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-neutral-900 leading-none">
+                            {publisherName}
+                          </span>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
+                            <span>Official Publisher</span>
+                            <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
+                            <LocalizedPublishTime
+                              value={item.publishedAt ?? item.publishAt}
+                              className="text-neutral-700 font-semibold"
+                            />
+                            {item.readingMinutes ? (
+                              <>
+                                <span className="h-1 w-1 rounded-full bg-neutral-300"></span>
+                                <span>{item.readingMinutes} min read</span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="hidden text-xs font-semibold uppercase tracking-wide text-neutral-400 sm:block">
+                        Community
+                      </p>
+                    </div>
+
+                    <div className="h-px w-full bg-neutral-200" />
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900">
+                          Join the conversation
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          React with your take and see what people think below.
+                        </p>
+                      </div>
+                      <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
+                        <ScrollToArticleCta
+                          targetId={predictionSectionId}
+                          label="Share your take"
+                          className="w-full sm:w-auto"
+                        />
+                        <ShareButtons
+                          url={shareUrl}
+                          showLabel={false}
+                          className="w-full justify-start sm:w-auto sm:justify-end"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {item.coverImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.coverImageUrl}
+                    alt={item.title}
+                    className="mt-5 w-full rounded-xl object-cover"
+                  />
+                )}
+              </header>
+
+              {item.excerpt && (
+                <p className="mt-4 text-sm leading-relaxed text-neutral-700">{item.excerpt}</p>
+              )}
+
+              {contentDoc ? (
+                <div className="mt-8 tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
+                  <ArticleContent value={contentDoc} />
+                </div>
+              ) : null}
+
+              <div id={predictionSectionId}>
+                <ArticlePredictionCta
+                  articleSlug={item.slug}
+                  market={marketsByArticleId[item.id] ?? null}
+                  canCreate={canCreatePredictions}
+                />
               </div>
-            </Link>
+            </article>
           );
         })}
       </div>
 
       <div ref={sentinelRef} className="h-12 pt-4">
         {loading ? (
-          <p className="text-xs text-neutral-500">Loading the next story...</p>
+          <p className="text-xs text-neutral-500">Loading the next full story...</p>
         ) : hasMore ? (
-          <p className="text-xs text-neutral-400">Scroll to load more related stories</p>
+          <p className="text-xs text-neutral-400">Scroll to load another full related story</p>
         ) : (
           <p className="text-xs text-neutral-400">You are all caught up.</p>
         )}

@@ -20,6 +20,7 @@ import {
   articles,
   categories,
   tags,
+  users,
 } from "@/db/schema";
 import {
   blendRelatedScore,
@@ -54,6 +55,10 @@ type CandidateRow = {
   slug: string;
   title: string;
   excerpt: string | null;
+  content: unknown;
+  seo: unknown;
+  predictionId: number | null;
+  authorAvatar: string | null;
   coverImageUrl: string | null;
   readingMinutes: number | null;
   publishedAt: Date | null;
@@ -70,6 +75,11 @@ export type RelatedChainItem = {
   slug: string;
   title: string;
   excerpt: string | null;
+  content: unknown;
+  seo: unknown;
+  predictionId: number | null;
+  authorAvatar: string | null;
+  hasVenturaTag: boolean;
   coverImageUrl: string | null;
   readingMinutes: number | null;
   publishedAt: string | null;
@@ -441,6 +451,10 @@ async function getSemanticCandidates(
       slug: articles.slug,
       title: articles.title,
       excerpt: articles.excerpt,
+      content: articles.content,
+      seo: articles.seo,
+      predictionId: articles.predictionId,
+      authorAvatar: users.avatarUrl,
       coverImageUrl: articles.coverImageUrl,
       readingMinutes: articles.readingMinutes,
       publishedAt: articles.publishedAt,
@@ -449,6 +463,7 @@ async function getSemanticCandidates(
       embedding: articleEmbeddings.embedding,
     })
     .from(articles)
+    .leftJoin(users, eq(users.id, articles.authorId))
     .leftJoin(articleEmbeddings, eq(articleEmbeddings.articleId, articles.id))
     .where(baseWhere)
     .orderBy(desc(articles.publishedAt), desc(articles.publishAt))
@@ -489,6 +504,10 @@ async function getFallbackArticles(
       slug: articles.slug,
       title: articles.title,
       excerpt: articles.excerpt,
+      content: articles.content,
+      seo: articles.seo,
+      predictionId: articles.predictionId,
+      authorAvatar: users.avatarUrl,
       coverImageUrl: articles.coverImageUrl,
       readingMinutes: articles.readingMinutes,
       category: articles.category,
@@ -496,6 +515,7 @@ async function getFallbackArticles(
       publishAt: articles.publishAt,
     })
     .from(articles)
+    .leftJoin(users, eq(users.id, articles.authorId))
     .where(baseWhere)
     .orderBy(
       sql`case when ${articles.category} = ${sourceArticle.category} then 0 else 1 end`,
@@ -510,6 +530,11 @@ async function getFallbackArticles(
     slug: row.slug,
     title: row.title,
     excerpt: row.excerpt,
+    content: row.content,
+    seo: row.seo,
+    predictionId: row.predictionId,
+    authorAvatar: row.authorAvatar,
+    hasVenturaTag: venturaSet.has(row.id),
     coverImageUrl: row.coverImageUrl,
     readingMinutes: row.readingMinutes,
     category: row.category,
@@ -555,6 +580,11 @@ function rankSemanticCandidates(
         slug: candidate.slug,
         title: candidate.title,
         excerpt: candidate.excerpt,
+        content: candidate.content,
+        seo: candidate.seo,
+        predictionId: candidate.predictionId,
+        authorAvatar: candidate.authorAvatar,
+        hasVenturaTag: candidate.hasVenturaTag,
         coverImageUrl: candidate.coverImageUrl,
         readingMinutes: candidate.readingMinutes,
         category: candidate.category,
@@ -615,26 +645,24 @@ export async function getRelatedChainBySlug(input: {
 
   const candidates = await getSemanticCandidates(sourceArticle, seenIds);
   const ranked = rankSemanticCandidates(sourceEmbedding, sourceArticle, candidates);
+  const fallbackItems = await getFallbackArticles(sourceArticle, seenIds);
 
-  if (ranked.length === 0) {
-    const fallbackItems = await getFallbackArticles(sourceArticle, seenIds);
-    const paged = fallbackItems.slice(cursor, cursor + limit);
-    const nextCursor = cursor + limit < fallbackItems.length ? cursor + limit : null;
-    return {
-      items: paged,
-      hasMore: nextCursor !== null,
-      nextCursor,
-      source: "fallback",
-    };
+  // After semantic related stories are consumed, continue with latest stories.
+  const merged = [...ranked];
+  const seenInMerged = new Set(merged.map((item) => item.id));
+  for (const item of fallbackItems) {
+    if (seenInMerged.has(item.id)) continue;
+    seenInMerged.add(item.id);
+    merged.push(item);
   }
 
-  const paged = ranked.slice(cursor, cursor + limit);
-  const nextCursor = cursor + limit < ranked.length ? cursor + limit : null;
+  const paged = merged.slice(cursor, cursor + limit);
+  const nextCursor = cursor + limit < merged.length ? cursor + limit : null;
   return {
     items: paged,
     hasMore: nextCursor !== null,
     nextCursor,
-    source: "semantic",
+    source: ranked.length > 0 ? "semantic" : "fallback",
   };
 }
 

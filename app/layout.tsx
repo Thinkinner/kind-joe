@@ -153,7 +153,7 @@ export default async function RootLayout({
       >
         <GoogleAnalytics />
         <VisitorJourneyTracker />
-        <main className="min-h-dvh min-w-0 overflow-x-hidden">{children}</main>
+        <main className="min-h-dvh min-w-0">{children}</main>
         <Toaster position="top-center" richColors closeButton />
         <Analytics />
         <Script

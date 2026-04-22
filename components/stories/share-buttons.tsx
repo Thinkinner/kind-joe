@@ -8,18 +8,22 @@ type ShareButtonsProps = {
   className?: string;
   showLabel?: boolean;
   label?: string;
+  url?: string;
 };
 
 export default function ShareButtons({
   className = "",
   showLabel = true,
   label = "Share",
+  url,
 }: ShareButtonsProps) {
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
   }, []);
+
+  const shareUrl = url ?? currentUrl;
 
   return (
     <div className={`flex items-center gap-3 ${className}`.trim()}>
@@ -32,7 +36,7 @@ export default function ShareButtons({
       {/* Facebook */}
       <a
         href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-          currentUrl
+          shareUrl
         )}`}
         target="_blank"
         rel="noopener noreferrer"
@@ -45,7 +49,7 @@ export default function ShareButtons({
       {/* Twitter/X */}
       <a
         href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(
-          currentUrl
+          shareUrl
         )}`}
         target="_blank"
         rel="noopener noreferrer"
@@ -58,7 +62,7 @@ export default function ShareButtons({
       {/* LinkedIn */}
       <a
         href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(
-          currentUrl
+          shareUrl
         )}`}
         target="_blank"
         rel="noopener noreferrer"
