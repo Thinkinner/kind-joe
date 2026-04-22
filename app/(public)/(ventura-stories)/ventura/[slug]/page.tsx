@@ -120,9 +120,7 @@ export default async function VenturaArticleBySlug(props: {
 
   const content =
     typeof a.content === "string" ? JSON.parse(a.content) : a.content;
-  const chainEnabled =
-    process.env.NEXT_PUBLIC_ENABLE_RELATED_CHAIN_VENTURA === "true" ||
-    process.env.NEXT_PUBLIC_ENABLE_ARTICLE_RELATED_CHAIN === "true";
+  const chainEnabled = true;
 
   return (
     <main className={`py-4 sm:py-6 lg:py-10 ${googleSans.variable}`}>
