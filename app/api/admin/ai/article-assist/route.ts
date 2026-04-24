@@ -65,6 +65,84 @@ function sanitizeDraftHtml(raw: string): string {
     .replace(/<\/h[1-6]>/gi, "</p>");
 }
 
+function cleanJson(text: string): string {
+  if (!text) return "{}";
+  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || start >= end) return cleaned.trim();
+  return cleaned.slice(start, end + 1).trim();
+}
+
+function extractBalancedJsonObject(text: string): string | null {
+  const source = (text || "").trim();
+  if (!source) return null;
+
+  const start = source.indexOf("{");
+  if (start < 0) return null;
+
+  let inString = false;
+  let escaped = false;
+  let depth = 0;
+
+  for (let i = start; i < source.length; i += 1) {
+    const ch = source[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(start, i + 1).trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseGeneratedJson<T>(rawText: string): T {
+  const candidates = [
+    rawText,
+    cleanJson(rawText),
+    extractBalancedJsonObject(rawText),
+    extractBalancedJsonObject(cleanJson(rawText)),
+  ].filter((value): value is string => Boolean(value && value.trim()));
+
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim();
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  throw new Error("AI returned malformed data. Please try again.");
+}
+
 export async function POST(req: Request) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
   if (!staff.ok) {
@@ -164,7 +242,7 @@ export async function POST(req: Request) {
     });
 
     const raw = response.text?.trim() || "{}";
-    const data = JSON.parse(raw) as Record<string, unknown>;
+    const data = parseGeneratedJson<Record<string, unknown>>(raw);
 
     const result = {
       slug: String(data.slug ?? ""),
