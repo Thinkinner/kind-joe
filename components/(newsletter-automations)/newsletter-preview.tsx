@@ -12,18 +12,21 @@ import {
 // Types
 import { NewsletterData, NewsletterStory } from "@/lib/(newsletter-automations)/types";
 import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
+import {
+  buildNewsletterStoryHref,
+  normalizeSiteBase,
+} from "@/lib/(newsletter-automations)/newsletter-links";
 import { cn } from "@/lib/utils";
 
 interface NewsletterPreviewProps {
   data: NewsletterData;
 }
 
-const publicSite =
-  (typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")) ||
-  "";
-
 const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ story, isLast }) => {
+  const publicSite = normalizeSiteBase(
+    typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SITE_URL : undefined,
+  );
+  const storyHref = buildNewsletterStoryHref(story, publicSite);
   const displayCategory = story.category || story.slotName.replace(/^Slot\s+\d+\s*[-—:]\s*/i, "");
 
   const cleanSummary = (story.summary || "").replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "•");
@@ -56,9 +59,9 @@ const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ sto
 
       {/* Headline */}
       <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3 leading-tight font-serif">
-        {story.slug && publicSite ? (
+        {storyHref ? (
           <a
-            href={`${publicSite}/${story.slug}`}
+            href={storyHref}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-blue-500 transition-colors no-underline"
@@ -90,9 +93,9 @@ const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ sto
 
       {/* Read More Link/Button */}
       <div>
-        {story.slug && publicSite ? (
+        {storyHref ? (
           <a
-            href={`${publicSite}/${story.slug}`}
+            href={storyHref}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center border border-sky-700 bg-[#0ea5e9] px-5 py-2.5 font-sans text-sm font-bold text-white no-underline transition-all hover:bg-[#0284c7]"

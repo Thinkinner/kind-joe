@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { NewsletterHistoryReviewClient } from "@/components/(newsletter-automations)/newsletter-history-review-client";
 import { loadNewsletterDraftById } from "@/lib/(newsletter-automations)/newsletter-draft-loader";
+import ReviewClientShell from "./review-client-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -18,5 +18,5 @@ export default async function NewsletterHistoryDraftPage({
   const draft = await loadNewsletterDraftById(id);
   if (!draft) notFound();
 
-  return <NewsletterHistoryReviewClient initialDraft={draft} />;
+  return <ReviewClientShell initialDraft={draft} />;
 }

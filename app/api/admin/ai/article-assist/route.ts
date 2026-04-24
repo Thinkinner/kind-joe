@@ -41,11 +41,140 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   predictionSuggestion: 260,
 };
 
+const ASSIST_FETCH_USER_AGENT =
+  "Mozilla/5.0 (compatible; KindJoeArticleAssistant/1.0)";
+const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
+
 function isAssistMode(value: unknown): value is AssistMode {
   return (
     typeof value === "string" &&
     Object.prototype.hasOwnProperty.call(INPUT_LIMITS, value)
   );
+}
+
+function isLoopbackOrPrivateHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (lower === "localhost" || lower.endsWith(".localhost")) return true;
+  if (lower === "127.0.0.1" || lower === "::1") return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(lower)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(lower)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(lower)) return true;
+  return false;
+}
+
+function maybeParseSourceUrl(input: string): URL | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\/\S+$/i.test(trimmed)) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) return null;
+    if (isLoopbackOrPrivateHost(parsed.hostname)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function extractTitleFromHtml(html: string): string {
+  const match = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+  if (!match) return "";
+  return stripHtml(match[1] || "").slice(0, 220);
+}
+
+function extractMainTextFromHtml(html: string): string {
+  const withoutNoise = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+
+  const articleMatch = withoutNoise.match(
+    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+  );
+  const bodyMatch = withoutNoise.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  const candidate = articleMatch?.[1] ?? bodyMatch?.[1] ?? withoutNoise;
+
+  const cleaned = stripHtml(candidate);
+  if (cleaned.length >= 500) return cleaned;
+  return stripHtml(withoutNoise);
+}
+
+async function fetchArticleFromUrl(url: URL): Promise<{
+  content: string;
+  sourceTitle: string;
+}> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const upstream = await fetch(url.toString(), {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      cache: "no-store",
+      headers: {
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7",
+        "User-Agent": ASSIST_FETCH_USER_AGENT,
+      },
+    });
+
+    if (!upstream.ok) {
+      throw new Error(`Upstream responded with ${upstream.status}`);
+    }
+
+    const html = await upstream.text();
+    const sourceTitle = extractTitleFromHtml(html);
+    const content = extractMainTextFromHtml(html);
+    if (!content.trim()) {
+      throw new Error("Fetched page had no readable content");
+    }
+    return { content, sourceTitle };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveAssistInput(rawInput: string): Promise<{
+  content: string;
+  sourceUrl: string;
+  sourceTitle: string;
+  wasScraped: boolean;
+}> {
+  const parsedUrl = maybeParseSourceUrl(rawInput);
+  if (!parsedUrl) {
+    return {
+      content: rawInput,
+      sourceUrl: "",
+      sourceTitle: "",
+      wasScraped: false,
+    };
+  }
+
+  try {
+    const fetched = await fetchArticleFromUrl(parsedUrl);
+    return {
+      content: fetched.content,
+      sourceUrl: parsedUrl.toString(),
+      sourceTitle: fetched.sourceTitle,
+      wasScraped: true,
+    };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "unknown fetch error";
+    console.warn("article-assist: source url fetch failed", {
+      sourceUrl: parsedUrl.toString(),
+      reason,
+    });
+    return {
+      content: rawInput,
+      sourceUrl: parsedUrl.toString(),
+      sourceTitle: "",
+      wasScraped: false,
+    };
+  }
 }
 
 function stripHtml(input: string): string {
@@ -172,10 +301,23 @@ export async function POST(req: Request) {
     const title = body.title;
     const html = body.html;
     const blocks = body.blocks;
+    const inspectOnly = body.inspectOnly === true;
     const customPrompt = String(body.customPrompt ?? "");
     const mode = isAssistMode(body.mode) ? body.mode : "all";
 
-    const rawHtml = String(html ?? "");
+    const resolvedInput = await resolveAssistInput(String(html ?? ""));
+    if (inspectOnly) {
+      return NextResponse.json({
+        inspectOnly: true,
+        scraped: resolvedInput.wasScraped,
+        sourceUrl: resolvedInput.sourceUrl,
+        sourceTitle: resolvedInput.sourceTitle,
+        previewText: summarizeForMode(stripHtml(resolvedInput.content), 1200),
+        charCount: resolvedInput.content.length,
+      });
+    }
+
+    const rawHtml = resolvedInput.content;
     const safeHtml = summarizeForMode(rawHtml, INPUT_LIMITS[mode]);
     const safeText = summarizeForMode(stripHtml(rawHtml), INPUT_LIMITS[mode]);
 
@@ -226,11 +368,15 @@ export async function POST(req: Request) {
         ? JSON.stringify({
             title: String(title ?? "").slice(0, 220),
             summary: safeText,
+            sourceUrl: resolvedInput.sourceUrl,
+            sourceTitle: resolvedInput.sourceTitle,
             mode,
           })
         : JSON.stringify({
             title: String(title ?? "").slice(0, 260),
             html: safeHtml,
+            sourceUrl: resolvedInput.sourceUrl,
+            sourceTitle: resolvedInput.sourceTitle,
             blocks,
             mode,
           });

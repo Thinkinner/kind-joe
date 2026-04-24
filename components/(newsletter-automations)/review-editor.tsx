@@ -34,6 +34,10 @@ import {
   DbArticle,
   WebhookPayload,
 } from "@/lib/(newsletter-automations)/types";
+import {
+  normalizeSiteBase,
+  normalizeStorySlug,
+} from "@/lib/(newsletter-automations)/newsletter-links";
 import NewsletterPreview from "./newsletter-preview";
 import {
   saveDraft,
@@ -76,8 +80,10 @@ function buildNewsletterDataWithFinalSlugs(
   const stories = (newsletterData.stories || []).map((story, idx) => {
     const article = draftArticles[idx];
     const slugFromArticleTitle = createSlug(article?.title || "");
-    const fallbackSlug = (story.slug || "").trim() || createSlug(story.headline || "");
-    const finalSlug = slugFromArticleTitle || fallbackSlug;
+    const manualSlug = normalizeStorySlug(story.slug);
+    const fallbackSlug = createSlug(story.headline || "");
+    // Manual slug should win so copied email links match what editors set.
+    const finalSlug = manualSlug || slugFromArticleTitle || fallbackSlug;
     return { ...story, slug: finalSlug };
   });
 
@@ -397,10 +403,10 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   const handleCopyPreviewLink = async () => {
     try {
       const path = `/kindjoe/newsletter/preview/${draft.id}`;
-      const previewUrl =
-        typeof window !== "undefined"
-          ? `${window.location.origin}${path}`
-          : path;
+      const publicBase = normalizeSiteBase(
+        typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SITE_URL : undefined,
+      );
+      const previewUrl = `${publicBase}${path}`;
       await navigator.clipboard.writeText(previewUrl);
       setSuccessMsg("Public preview link copied.");
       setTimeout(() => setSuccessMsg(""), 2000);
@@ -1111,6 +1117,19 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
                           onChange={(e) =>
                             updateStory(idx, "headline", e.target.value)
                           }
+                        />
+
+                        {/* NEWSLETTER LINK SLUG */}
+                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
+                          Link slug (for copied newsletter links)
+                        </label>
+                        <input
+                          className={`mb-4 w-full p-2.5 ${OVERVIEW_FIELD_CLASS}`}
+                          value={story.slug || ""}
+                          onChange={(e) =>
+                            updateStory(idx, "slug", normalizeStorySlug(e.target.value))
+                          }
+                          placeholder="e.g. trump-says-he-wont-run"
                         />
 
                         {/* IMAGE URL */}

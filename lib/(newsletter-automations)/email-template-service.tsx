@@ -1,10 +1,14 @@
 import { NewsletterData } from "@/lib/(newsletter-automations)/types";
 import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
+import {
+  buildNewsletterStoryHref,
+  normalizeSiteBase,
+} from "@/lib/(newsletter-automations)/newsletter-links";
 
 const siteBase =
-  (typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")) ||
-  "https://www.kindjoe.com";
+  normalizeSiteBase(
+    typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SITE_URL : undefined,
+  );
 
 const escapeHtml = (s: string) =>
   (s || "")
@@ -77,8 +81,9 @@ export const generateEmailHtml = (data: NewsletterData): string => {
     .map((story) => {
       const category = escapeHtml(story.category || "General");
       const headline = escapeHtml(story.headline || "");
-      const slug = safeUrl(story.slug || "");
-      const href = `${siteBase}/${slug}`;
+      const href = buildNewsletterStoryHref(story, siteBase, {
+        fallbackToHome: true,
+      });
       const imageUrl = story.imageUrl ? safeUrl(story.imageUrl) : "";
 
       const parts = (story.summary || "")
