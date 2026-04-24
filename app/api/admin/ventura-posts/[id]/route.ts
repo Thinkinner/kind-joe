@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -8,6 +9,14 @@ import { resolveStaffApi } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const PUBLIC_POST_FEED_PATHS = ["/posts", "/ventura/posts"] as const;
+
+function revalidatePublicPostFeeds() {
+  for (const path of PUBLIC_POST_FEED_PATHS) {
+    revalidatePath(path);
+  }
+}
 
 function isMissingVenturaPostsTable(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -62,6 +71,7 @@ export async function PATCH(
       .returning();
 
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidatePublicPostFeeds();
     return NextResponse.json(row);
   } catch (error) {
     if (isMissingVenturaPostsTable(error)) {
@@ -97,6 +107,7 @@ export async function DELETE(
 
   try {
     await db.delete(venturaPosts).where(eq(venturaPosts.id, postId));
+    revalidatePublicPostFeeds();
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (isMissingVenturaPostsTable(error)) {
