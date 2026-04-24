@@ -6,11 +6,9 @@ import {
   FaTiktok,
   FaInstagram,
   FaYoutube,
-  FaFacebook,
   FaLinkedin,
   FaMapMarkerAlt,
 } from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
 import KindJoeModalForm from "./modals/kindjoe-capture-modal";
 import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
@@ -191,7 +189,6 @@ export function Footer() {
               href="https://www.tiktok.com/@thekind.joe"
               icon={<FaTiktok />}
             />
-            <SocialLink href="https://x.com/TheKindJoe" icon={<FaXTwitter />} />
             <SocialLink
               href="https://www.instagram.com/thekindjoe/"
               icon={<FaInstagram />}
@@ -201,11 +198,7 @@ export function Footer() {
               icon={<FaYoutube />}
             />
             <SocialLink
-              href="https://www.facebook.com/thekindjoe"
-              icon={<FaFacebook />}
-            />
-            <SocialLink
-              href="https://www.linkedin.com/company/115174356/admin/dashboard/"
+              href="https://linkedin.com/company/the-kind-joe"
               icon={<FaLinkedin />}
             />
           </div>

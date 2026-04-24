@@ -225,7 +225,7 @@ export const generateEmailHtml = (data: NewsletterData): string => {
                         </td>
                         <td style="padding:0 10px;">
                           ${renderSocialIconLink(
-                            "https://www.linkedin.com/company/115174356/admin/dashboard/",
+                            "https://linkedin.com/company/the-kind-joe",
                             "LinkedIn",
                             "https://assets.cdn.filesafe.space/VPl4AjuzzxeZqlljHIdI/media/69eb86cddc89af9203232b83.png",
                           )}
