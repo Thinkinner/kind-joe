@@ -41,6 +41,13 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   predictionSuggestion: 260,
 };
 
+function isAssistMode(value: unknown): value is AssistMode {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(INPUT_LIMITS, value)
+  );
+}
+
 function stripHtml(input: string): string {
   return input
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
@@ -161,14 +168,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    const {
-      title = "",
-      html = "",
-      blocks,
-      mode = "all" as AssistMode,
-      customPrompt = "",
-    } = body;
+    const body = (await req.json()) as Record<string, unknown>;
+    const title = body.title;
+    const html = body.html;
+    const blocks = body.blocks;
+    const customPrompt = String(body.customPrompt ?? "");
+    const mode = isAssistMode(body.mode) ? body.mode : "all";
 
     const rawHtml = String(html ?? "");
     const safeHtml = summarizeForMode(rawHtml, INPUT_LIMITS[mode]);
@@ -232,7 +237,7 @@ export async function POST(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: `${system}\n\nINPUT:\n${userPayload}`,
       config: {
         responseMimeType: "application/json",
