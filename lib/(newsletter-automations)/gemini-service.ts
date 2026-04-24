@@ -141,7 +141,8 @@ function normalizeSubject(raw: string): string {
     .trim();
 }
 
-const SUBJECT_MAX_WORDS = 10;
+const SUBJECT_HARD_MAX_WORDS = 10;
+const SUBJECT_PREFERRED_MAX_WORDS = 6;
 
 function subjectWords(value: string): string[] {
   return value
@@ -157,14 +158,51 @@ function finalizeSubjectCandidate(raw: string): string {
 
   const words = subjectWords(cleaned);
   if (!words.length) return "";
-  if (words.length <= SUBJECT_MAX_WORDS) return cleaned;
+  if (words.length <= SUBJECT_HARD_MAX_WORDS) return cleaned;
 
-  const truncated = words.slice(0, SUBJECT_MAX_WORDS);
+  const truncated = words.slice(0, SUBJECT_HARD_MAX_WORDS);
   const trailingStopWords = new Set(["the", "a", "an", "and", "or", "of", "to", "for", "with", "from", "in", "on"]);
   while (truncated.length > 4 && trailingStopWords.has(truncated[truncated.length - 1].toLowerCase())) {
     truncated.pop();
   }
   return truncated.join(" ").trim();
+}
+
+function tightenSubjectForInbox(raw: string): string {
+  const normalized = finalizeSubjectCandidate(raw);
+  if (!normalized) return "";
+
+  const words = subjectWords(normalized);
+  if (words.length <= SUBJECT_PREFERRED_MAX_WORDS) return normalized;
+
+  const fillerWords = new Set([
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "to",
+    "for",
+    "with",
+    "from",
+    "in",
+    "on",
+    "at",
+    "as",
+    "amid",
+    "after",
+    "following",
+    "over",
+    "under",
+    "into",
+  ]);
+
+  const compact = words.filter(
+    (word, idx) => !(idx > 0 && fillerWords.has(word.toLowerCase())),
+  );
+  const candidateWords = compact.length >= 4 ? compact : words;
+  return candidateWords.slice(0, SUBJECT_PREFERRED_MAX_WORDS).join(" ").trim();
 }
 
 function isBoilerplateLine(value: string): boolean {
@@ -396,7 +434,7 @@ Summary: ${(leadStory.summary || "").slice(0, 1200)}
 
 Rules (follow strictly):
 - Base the hook ONLY on this story’s stakes, conflict, or surprise—not a generic digest title.
-- ≤6 words preferred; never more than 10 words.
+- Keep it short and direct: target 4-6 words (hard reject if over 6).
 - Punchy: curiosity, shock, value, power, money, or urgency. Credible; do not invent facts.
 - No emoji. No "Daily Brief", "Newsletter", "Recap", month/day/year dates, or ALL CAPS.
 - Output JSON only.`,
@@ -414,9 +452,9 @@ Rules (follow strictly):
         leadHeadline: leadStory.headline,
         fallback,
       });
-      return fallback;
+      return tightenSubjectForInbox(fallback);
     }
-    return s;
+    return tightenSubjectForInbox(s);
   });
 }
 

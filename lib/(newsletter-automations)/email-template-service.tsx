@@ -26,14 +26,20 @@ export const generateEmailHtml = (data: NewsletterData): string => {
   const intro = escapeHtml(leadPlain);
   const signOff = escapeHtml(data.signOff || "Stay sharp. We'll see you tomorrow.");
 
-  const renderButton = (href: string, label: string, bg: string) => {
+  const renderButton = (
+    href: string,
+    label: string,
+    bg: string,
+    align: "left" | "center" = "left",
+  ) => {
     const url = safeUrl(href);
     const text = escapeHtml(label);
 
     return `
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" ${align === "center" ? 'align="center"' : ""}
+  style="border-collapse:collapse;${align === "center" ? "margin:0 auto;" : ""}">
   <tr>
-    <td align="left">
+    <td align="${align}">
       <!--[if mso]>
       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
         href="${url}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="50%" stroke="f" fillcolor="${bg}">
@@ -55,6 +61,17 @@ export const generateEmailHtml = (data: NewsletterData): string => {
   </tr>
 </table>`;
   };
+
+  const renderSocialIconLink = (
+    href: string,
+    label: string,
+    imageUrl: string,
+  ) => `
+<a href="${safeUrl(href)}" target="_blank" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"
+  style="display:inline-block;padding:6px;line-height:1;text-align:center;color:#334155;text-decoration:none;">
+  <img src="${safeUrl(imageUrl)}" alt="${escapeHtml(label)}" width="22" height="22"
+    style="display:block;width:22px;height:22px;border:0;outline:none;text-decoration:none;" />
+</a>`;
 
   const storyHtml = (data.stories || [])
     .map((story) => {
@@ -193,18 +210,28 @@ export const generateEmailHtml = (data: NewsletterData): string => {
                   </div>
 
                   <div style="margin:40px 0 30px;">
-                    ${renderButton("https://www.youtube.com/@thekindjoe-w4d", "► Subscribe on YouTube", "#FF0000")}
+                    ${renderButton("https://www.youtube.com/@thekindjoe-w4d", "► Subscribe on YouTube", "#FF0000", "center")}
                   </div>
 
                   <div style="margin-bottom:40px;">
-                    <a href="https://www.instagram.com/thekindjoe/" target="_blank"
-                      style="display:inline-block;margin:0 15px;color:#475569;font-weight:bold;text-decoration:none;font-size:12px;text-transform:uppercase;font-family:Arial,sans-serif;">
-                      Instagram
-                    </a>
-                    <a href="https://x.com/TheKindJoe" target="_blank"
-                      style="display:inline-block;margin:0 15px;color:#475569;font-weight:bold;text-decoration:none;font-size:12px;text-transform:uppercase;font-family:Arial,sans-serif;">
-                      X (Twitter)
-                    </a>
+                    <table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td style="padding:0 10px;">
+                          ${renderSocialIconLink(
+                            "https://www.instagram.com/thekindjoe/",
+                            "Instagram",
+                            "https://assets.cdn.filesafe.space/VPl4AjuzzxeZqlljHIdI/media/69eb86cc6c819d3c6f5a0587.png",
+                          )}
+                        </td>
+                        <td style="padding:0 10px;">
+                          ${renderSocialIconLink(
+                            "https://www.linkedin.com/company/115174356/admin/dashboard/",
+                            "LinkedIn",
+                            "https://assets.cdn.filesafe.space/VPl4AjuzzxeZqlljHIdI/media/69eb86cddc89af9203232b83.png",
+                          )}
+                        </td>
+                      </tr>
+                    </table>
                   </div>
 
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"

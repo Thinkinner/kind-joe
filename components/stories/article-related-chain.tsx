@@ -189,7 +189,7 @@ export default function ArticleRelatedChain({
     try {
       const seenParam = Array.from(seenRef.current).join(",");
       const res = await fetch(
-        `/api/articles/${slug}/related-chain?cursor=${cursor}&limit=2&seen=${encodeURIComponent(seenParam)}`,
+        `/api/articles/${slug}/related-chain?cursor=${cursor}&limit=3&seen=${encodeURIComponent(seenParam)}`,
         { cache: "no-store" },
       );
 
@@ -252,10 +252,9 @@ export default function ArticleRelatedChain({
           bottomHitRef.current = false;
         }
       },
-      // Start loading the next batch before the user hits the very bottom.
-      // 50% bottom root margin means it can trigger when the sentinel is
-      // roughly within the lower half of the viewport.
-      { rootMargin: "0px 0px 50% 0px", threshold: 0 },
+      // Trigger closer to the bottom so loading feels slower and deliberate.
+      // This waits until the sentinel is near the viewport's lower edge.
+      { rootMargin: "0px 0px 120px 0px", threshold: 0.1 },
     );
 
     observer.observe(node);

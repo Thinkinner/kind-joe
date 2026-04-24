@@ -638,8 +638,7 @@ export function AdminArticleForm({
         body: JSON.stringify({
           mode: "predictionSuggestion",
           title: title.trim(),
-          html: sourceHtml || sourceExcerpt,
-          blocks,
+          html: (sourceHtml || sourceExcerpt).slice(0, 2200),
           customPrompt:
             "Provide one best suggestion for either a prediction market or a simple polling vote for this article. Keep options actionable and neutral.",
         }),

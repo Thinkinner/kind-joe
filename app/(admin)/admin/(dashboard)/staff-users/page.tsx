@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -60,6 +61,7 @@ import {
   formatStaffRolesForDisplay,
   STAFF_ROLE_PRECEDENCE,
 } from "@/lib/auth/staff-roles";
+import { buildUniqueAliasSuggestion } from "@/lib/auth/alias-name-suggestions";
 import {
   ALL_ADMIN_PERMISSIONS,
   PERMISSIONS,
@@ -69,6 +71,7 @@ import {
 type Row = {
   id: string;
   name: string;
+  aliasFullName?: string | null;
   email: string;
   accountType: string | null;
   staffRole: string | null;
@@ -232,6 +235,9 @@ export default function StaffUsersPage() {
   const [modalUser, setModalUser] = useState<Row | null>(null);
   const [draftRoles, setDraftRoles] = useState<string[]>([]);
   const [draftPageAccess, setDraftPageAccess] = useState<AppPermission[]>([]);
+  const [draftAliasFullName, setDraftAliasFullName] = useState("");
+  const [suggestedAlias, setSuggestedAlias] = useState("");
+  const [suggestingAlias, setSuggestingAlias] = useState(false);
   const [savingModal, setSavingModal] = useState(false);
   const [pendingRemoveUser, setPendingRemoveUser] = useState<Row | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
@@ -274,11 +280,16 @@ export default function StaffUsersPage() {
       (r.adminPageAccess as AppPermission[] | null) ??
         ((r.effectivePageAccess as AppPermission[] | null) ?? []),
     );
+    setDraftAliasFullName((r.aliasFullName ?? "").trim());
+    setSuggestedAlias("");
   };
 
   const closeModal = () => {
     if (savingModal) return;
     setModalUser(null);
+    setDraftAliasFullName("");
+    setSuggestedAlias("");
+    setSuggestingAlias(false);
   };
 
   const toggleDraftRole = (role: string, checked: boolean) => {
@@ -294,6 +305,33 @@ export default function StaffUsersPage() {
     setDraftPageAccess(permissionsForPreset(preset));
   };
 
+  const requestAliasSuggestion = async (
+    seedName: string,
+    usedList: string[],
+    fallback: string,
+  ) => {
+    setSuggestingAlias(true);
+    try {
+      const res = await fetch("/api/admin/profile/alias-suggestion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: seedName,
+          used: usedList,
+          seed: `${seedName}-${Date.now()}-${Math.random()}`,
+        }),
+      });
+      if (!res.ok) throw new Error("Alias suggestion unavailable.");
+      const data = (await res.json().catch(() => ({}))) as { alias?: string | null };
+      const next = (data.alias ?? "").trim() || fallback;
+      setSuggestedAlias(next);
+    } catch {
+      setSuggestedAlias(fallback);
+    } finally {
+      setSuggestingAlias(false);
+    }
+  };
+
   const saveModal = async () => {
     if (!modalUser) return;
     if (draftRoles.length === 0) {
@@ -306,6 +344,7 @@ export default function StaffUsersPage() {
         userId: string;
         staffRoles: string[];
         adminPageAccess?: AppPermission[] | null;
+        aliasFullName?: string | null;
       } = {
         userId: modalUser.id,
         staffRoles: draftRoles,
@@ -313,6 +352,8 @@ export default function StaffUsersPage() {
       if (modalUser.canEditPageAccess) {
         body.adminPageAccess = draftPageAccess;
       }
+      const normalizedDraftAlias = draftAliasFullName.trim();
+      body.aliasFullName = normalizedDraftAlias.length > 0 ? normalizedDraftAlias : null;
       const res = await fetch("/api/admin/staff-users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -685,6 +726,9 @@ export default function StaffUsersPage() {
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     return src.slice(0, 2).toUpperCase();
   };
+  const reservedAliasNames = rows
+    .map((row) => (row.aliasFullName ?? "").trim())
+    .filter(Boolean);
 
   return (
     <div className="space-y-8">
@@ -1353,6 +1397,62 @@ export default function StaffUsersPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
+            <div className="space-y-2">
+              <Label htmlFor="staff-member-alias-full-name">Alias full name</Label>
+              <Input
+                id="staff-member-alias-full-name"
+                value={draftAliasFullName}
+                onChange={(e) => setDraftAliasFullName(e.target.value)}
+                maxLength={120}
+                autoComplete="nickname"
+                placeholder="e.g. City Desk Reporter"
+                disabled={savingModal}
+              />
+              <p className="text-xs text-neutral-500">
+                This is the byline alias shown publicly for this staff member.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingModal || suggestingAlias || !modalUser}
+                  onClick={() => {
+                    if (!modalUser) return;
+                    const randomSeed = `${modalUser.name}-${Date.now()}-${Math.random()}`;
+                    const localSuggestion = buildUniqueAliasSuggestion(
+                      randomSeed,
+                      reservedAliasNames,
+                      modalUser.name,
+                    );
+                    setSuggestedAlias(localSuggestion);
+                    void requestAliasSuggestion(
+                      modalUser.name || randomSeed,
+                      [...reservedAliasNames, localSuggestion],
+                      localSuggestion,
+                    );
+                  }}
+                >
+                  {suggestingAlias ? "Generating..." : "Generate alias"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingModal || !suggestedAlias}
+                  onClick={() => {
+                    if (!suggestedAlias) return;
+                    setDraftAliasFullName(suggestedAlias);
+                  }}
+                >
+                  Use suggestion
+                </Button>
+              </div>
+              {suggestedAlias ? (
+                <p className="text-xs text-neutral-600">
+                  Suggested alias:{" "}
+                  <span className="font-semibold text-neutral-900">{suggestedAlias}</span>
+                </p>
+              ) : null}
+            </div>
             <div className="flex flex-col gap-3">
               {assignableRoleOptions.map((role) => (
                 <label

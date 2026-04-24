@@ -5,9 +5,25 @@ import {
   GHL_SIGNUP_ORIGIN_COOKIE,
 } from "@/lib/ghl/signup-origin";
 
+const DEVELOPER_HOSTS = new Set([
+  "developer.kindjoe.com",
+  "www.developer.kindjoe.com",
+  "developer.localhost",
+]);
+
 function hostNoPort(host: string | null): string {
   if (!host) return "";
   return host.split(":")[0] ?? "";
+}
+
+function shouldBypassDeveloperDocsRewrite(pathname: string): boolean {
+  if (pathname.startsWith("/_next")) return true;
+  if (pathname.startsWith("/api")) return true;
+  if (pathname === "/favicon.ico") return true;
+  if (pathname === "/robots.txt") return true;
+  if (pathname === "/sitemap.xml") return true;
+  if (pathname.includes(".")) return true;
+  return false;
 }
 
 function normalizeHostFromEnv(value: string | undefined): string | null {
@@ -41,6 +57,16 @@ export function proxy(request: NextRequest) {
   const host = hostNoPort(request.headers.get("host"));
   const path = request.nextUrl.pathname;
   const search = request.nextUrl.search;
+
+  if (DEVELOPER_HOSTS.has(host)) {
+    if (!shouldBypassDeveloperDocsRewrite(path)) {
+      if (path !== "/developers" && !path.startsWith("/developers/")) {
+        const docsUrl = request.nextUrl.clone();
+        docsUrl.pathname = path === "/" ? "/developers" : `/developers${path}`;
+        return NextResponse.rewrite(docsUrl);
+      }
+    }
+  }
 
   if (adminHost && host === adminHost) {
     if (path === "/") {

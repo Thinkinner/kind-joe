@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   icons: {
     icon: [
-      { url: "/fpublic/brand/logo.svgavicon.ico" },
+      { url: "/favicon.ico" },
       { url: "/icon.svg", sizes: "192x192", type: "image/png" },
       { url: "/icon.svg", sizes: "512x512", type: "image/png" },
     ],

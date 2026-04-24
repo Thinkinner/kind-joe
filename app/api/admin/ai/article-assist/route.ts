@@ -17,6 +17,45 @@ type AssistMode =
   | "title"
   | "predictionSuggestion";
 
+const INPUT_LIMITS: Record<AssistMode, number> = {
+  all: 7000,
+  slug: 700,
+  category: 1200,
+  tags: 1600,
+  excerpt: 1800,
+  seo: 2600,
+  content: 3000,
+  title: 900,
+  predictionSuggestion: 1600,
+};
+
+const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
+  all: 1200,
+  slug: 120,
+  category: 120,
+  tags: 220,
+  excerpt: 220,
+  seo: 380,
+  content: 700,
+  title: 120,
+  predictionSuggestion: 260,
+};
+
+function stripHtml(input: string): string {
+  return input
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function summarizeForMode(input: string, maxChars: number): string {
+  if (!input) return "";
+  if (input.length <= maxChars) return input;
+  return input.slice(0, maxChars);
+}
+
 function sanitizeDraftHtml(raw: string): string {
   const input = raw.trim();
   if (!input) return "";
@@ -53,20 +92,21 @@ export async function POST(req: Request) {
       customPrompt = "",
     } = body;
 
-    const safeHtml = String(html).slice(0, 8000);
+    const rawHtml = String(html ?? "");
+    const safeHtml = summarizeForMode(rawHtml, INPUT_LIMITS[mode]);
+    const safeText = summarizeForMode(stripHtml(rawHtml), INPUT_LIMITS[mode]);
 
     const modeGuidance =
       mode === "predictionSuggestion"
         ? [
-            "Generate a high-engagement prediction/poll suggestion from the article topic.",
-            "Return concise JSON fields: suggestionType, title, description, category, options, rationale.",
+            "Generate one concise high-engagement prediction or poll idea from the article topic.",
+            "Return JSON only with: suggestionType, title, description, category, options, rationale.",
             "suggestionType must be either 'prediction' or 'poll'.",
             "options must be 2-6 short options suitable for voting.",
-            "Do not default to Yes/No unless the question is truly binary.",
-            "For poll-style engagement questions, prefer 3-5 nuanced options.",
+            "Prefer 3-5 nuanced options; avoid default yes/no unless truly binary.",
             "If the topic is discussion-oriented, write an engaging audience question instead of a strict forecast.",
             "category should map to one of: general, politics, economy, technology, science, sports, world, culture.",
-            "Do not return markdown.",
+            "Keep description and rationale brief (1-2 sentences each).",
           ].join("\n")
         : mode === "all"
           ? [
@@ -98,12 +138,19 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("\n");
 
-    const userPayload = JSON.stringify({
-      title,
-      html: safeHtml,
-      blocks,
-      mode,
-    });
+    const userPayload =
+      mode === "predictionSuggestion"
+        ? JSON.stringify({
+            title: String(title ?? "").slice(0, 220),
+            summary: safeText,
+            mode,
+          })
+        : JSON.stringify({
+            title: String(title ?? "").slice(0, 260),
+            html: safeHtml,
+            blocks,
+            mode,
+          });
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
@@ -112,6 +159,7 @@ export async function POST(req: Request) {
       config: {
         responseMimeType: "application/json",
         temperature: 0.2,
+        maxOutputTokens: MAX_OUTPUT_TOKENS[mode],
       },
     });
 

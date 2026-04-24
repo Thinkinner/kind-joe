@@ -7,6 +7,7 @@ import {
   FaInstagram,
   FaYoutube,
   FaFacebook,
+  FaLinkedin,
   FaMapMarkerAlt,
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
@@ -202,6 +203,10 @@ export function Footer() {
             <SocialLink
               href="https://www.facebook.com/thekindjoe"
               icon={<FaFacebook />}
+            />
+            <SocialLink
+              href="https://www.linkedin.com/company/115174356/admin/dashboard/"
+              icon={<FaLinkedin />}
             />
           </div>
         </div>

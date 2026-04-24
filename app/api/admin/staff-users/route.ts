@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "@/db";
+import { articles } from "@/db/schema";
 import { account, user as authUser } from "@/db/auth-schema";
 import { getStaffRoles } from "@/lib/auth/account-type";
 import {
@@ -42,10 +43,14 @@ const PatchSchema = z
     userId: z.string().min(1),
     staffRoles: z.array(RoleSlug).min(1).max(5).optional(),
     adminPageAccess: z.union([z.array(PermissionSlug), z.null()]).optional(),
+    aliasFullName: z.union([z.string().trim().min(1).max(120), z.null()]).optional(),
   })
   .refine(
-    (d) => d.staffRoles !== undefined || d.adminPageAccess !== undefined,
-    { message: "Provide staffRoles and/or adminPageAccess." },
+    (d) =>
+      d.staffRoles !== undefined ||
+      d.adminPageAccess !== undefined ||
+      d.aliasFullName !== undefined,
+    { message: "Provide staffRoles, adminPageAccess, and/or aliasFullName." },
   );
 
 const DeleteSchema = z.object({
@@ -94,6 +99,7 @@ export async function GET() {
     .select({
       id: authUser.id,
       name: authUser.name,
+      aliasFullName: authUser.aliasFullName,
       email: authUser.email,
       accountType: authUser.accountType,
       staffRole: authUser.staffRole,
@@ -161,6 +167,7 @@ export async function GET() {
     return {
       id: row.id,
       name: row.name,
+      aliasFullName: row.aliasFullName,
       email: row.email,
       accountType: row.accountType,
       image: row.image,
@@ -209,7 +216,7 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const { userId, staffRoles: nextRoles, adminPageAccess } = parsed.data;
+  const { userId, staffRoles: nextRoles, adminPageAccess, aliasFullName } = parsed.data;
   if (adminPageAccess !== undefined && !callerSuperAdmin) {
     return NextResponse.json(
       { error: "Only superadmin can set page access." },
@@ -223,6 +230,7 @@ export async function PATCH(req: NextRequest) {
       staffRole: authUser.staffRole,
       staffRoles: authUser.staffRoles,
       accountType: authUser.accountType,
+      aliasFullName: authUser.aliasFullName,
     })
     .from(authUser)
     .where(eq(authUser.id, userId))
@@ -289,6 +297,10 @@ export async function PATCH(req: NextRequest) {
       adminPageAccess === null ? null : [...new Set(adminPageAccess)];
   }
 
+  if (aliasFullName !== undefined) {
+    setPayload.aliasFullName = aliasFullName === null ? null : aliasFullName.trim();
+  }
+
   if (Object.keys(setPayload).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
@@ -300,6 +312,7 @@ export async function PATCH(req: NextRequest) {
     .returning({
       id: authUser.id,
       email: authUser.email,
+      aliasFullName: authUser.aliasFullName,
       staffRole: authUser.staffRole,
       staffRoles: authUser.staffRoles,
       accountType: authUser.accountType,
@@ -309,6 +322,46 @@ export async function PATCH(req: NextRequest) {
 
   if (!updated) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const normalizedUpdatedAlias = (updated.aliasFullName ?? "").trim();
+  const aliasSyncRequested = aliasFullName !== undefined;
+  if (aliasSyncRequested) {
+    if (normalizedUpdatedAlias.length > 0) {
+      await db
+        .update(articles)
+        .set({
+          seo: sql`
+            jsonb_set(
+              jsonb_set(
+                CASE
+                  WHEN ${articles.seo} IS NULL OR jsonb_typeof(${articles.seo}) <> 'object' THEN '{}'::jsonb
+                  ELSE ${articles.seo}
+                END,
+                '{authorName}',
+                to_jsonb(${normalizedUpdatedAlias}::text),
+                true
+              ),
+              '{bylineSource}',
+              to_jsonb('alias'::text),
+              true
+            )
+          `,
+        })
+        .where(eq(articles.authorId, userId));
+    } else {
+      await db
+        .update(articles)
+        .set({
+          seo: sql`
+            CASE
+              WHEN ${articles.seo} IS NULL THEN NULL
+              ELSE (${articles.seo} - 'authorName' - 'bylineSource')
+            END
+          `,
+        })
+        .where(eq(articles.authorId, userId));
+    }
   }
 
   return NextResponse.json(updated);
