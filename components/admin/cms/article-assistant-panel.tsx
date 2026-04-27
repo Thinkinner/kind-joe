@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-type AiTab = "rewrite" | "write" | "analyze";
+type AiTab = "rewrite" | "write" | "analyze" | "comment";
 
 type AssistResult = {
   title: string;
@@ -32,6 +32,12 @@ type AssistResult = {
   tone?: string;
   bias?: string;
   suggestions?: string[];
+  commentDraft?: string;
+  commentPersona?: string;
+  commentEmotion?: string;
+  commentIntent?: string;
+  commentDelaySeconds?: number;
+  commentDelayLabel?: string;
 };
 
 const emptyResult: AssistResult = {
@@ -46,6 +52,12 @@ const emptyResult: AssistResult = {
   tone: "",
   bias: "",
   suggestions: [],
+  commentDraft: "",
+  commentPersona: "",
+  commentEmotion: "",
+  commentIntent: "",
+  commentDelaySeconds: undefined,
+  commentDelayLabel: "",
 };
 
 export function ArticleAssistantPanel() {
@@ -55,10 +67,11 @@ export function ArticleAssistantPanel() {
   const [isRewriting, setIsRewriting] = useState(false);
   const [isWriting, setIsWriting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingComment, setIsGeneratingComment] = useState(false);
   const [assistResult, setAssistResult] = useState<AssistResult>(emptyResult);
 
   const currentHtml = useMemo(() => assistResult.draftHtml.trim(), [assistResult.draftHtml]);
-  const isGenerating = isRewriting || isWriting || isAnalyzing;
+  const isGenerating = isRewriting || isWriting || isAnalyzing || isGeneratingComment;
 
   const copyText = async (value: string, label: string) => {
     if (!value.trim()) return toast.message(`No ${label.toLowerCase()} to copy`);
@@ -91,6 +104,13 @@ export function ArticleAssistantPanel() {
       assistResult.seoFeedback ? `SEO Feedback:\n${assistResult.seoFeedback}` : "",
       assistResult.suggestions?.length
         ? `Suggestions:\n${assistResult.suggestions.map((s) => `- ${s}`).join("\n")}`
+        : "",
+      assistResult.commentDraft ? `Human-like comment:\n${assistResult.commentDraft}` : "",
+      assistResult.commentPersona ? `Comment persona: ${assistResult.commentPersona}` : "",
+      assistResult.commentEmotion ? `Comment emotion: ${assistResult.commentEmotion}` : "",
+      assistResult.commentIntent ? `Comment intent: ${assistResult.commentIntent}` : "",
+      assistResult.commentDelayLabel
+        ? `Suggested posting delay: ${assistResult.commentDelayLabel}`
         : "",
     ].filter(Boolean);
 
@@ -211,6 +231,51 @@ export function ArticleAssistantPanel() {
     }
   };
 
+  const runCommentGenerator = async () => {
+    const sourceForComment = currentHtml || rewriteSource;
+    if (!assistResult.title.trim() && !sourceForComment.trim()) {
+      toast.message("Generate article content first");
+      return;
+    }
+    setIsGeneratingComment(true);
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "humanComment",
+          title: assistResult.title,
+          html: sourceForComment,
+          customPrompt:
+            "Write one realistic reader comment with emotion and natural human phrasing.",
+        }),
+      });
+      if (!res.ok) throw new Error("Comment generation failed");
+      const data = (await res.json()) as Partial<AssistResult>;
+      const commentDraft = String(data.commentDraft ?? "").trim();
+      if (!commentDraft) throw new Error("No comment generated");
+      setAssistResult((prev) => ({
+        ...prev,
+        commentDraft,
+        commentPersona: String(data.commentPersona ?? ""),
+        commentEmotion: String(data.commentEmotion ?? ""),
+        commentIntent: String(data.commentIntent ?? ""),
+        commentDelaySeconds:
+          typeof data.commentDelaySeconds === "number"
+            ? data.commentDelaySeconds
+            : undefined,
+        commentDelayLabel: String(data.commentDelayLabel ?? ""),
+      }));
+      toast.success("Human-like comment generated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Comment generation failed",
+      );
+    } finally {
+      setIsGeneratingComment(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
       <header className="flex items-center justify-between gap-3">
@@ -226,7 +291,7 @@ export function ArticleAssistantPanel() {
           </div>
 
           <div className="border-b border-slate-800/90 p-5 pb-4">
-            <div className="grid grid-cols-3 gap-1 rounded-full border border-violet-500/20 bg-slate-900/80 p-1 text-sm font-medium">
+            <div className="grid grid-cols-4 gap-1 rounded-full border border-violet-500/20 bg-slate-900/80 p-1 text-sm font-medium">
               <TabButton active={aiTab === "rewrite"} onClick={() => setAiTab("rewrite")}>
                 Auto-Rewrite
               </TabButton>
@@ -235,6 +300,9 @@ export function ArticleAssistantPanel() {
               </TabButton>
               <TabButton active={aiTab === "analyze"} onClick={() => setAiTab("analyze")}>
                 SEO Check
+              </TabButton>
+              <TabButton active={aiTab === "comment"} onClick={() => setAiTab("comment")}>
+                Human Comment
               </TabButton>
             </div>
           </div>
@@ -305,6 +373,27 @@ export function ArticleAssistantPanel() {
                 >
                   {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   {isAnalyzing ? "Analyzing..." : "Analyze Article"}
+                </Button>
+              </>
+            )}
+
+            {aiTab === "comment" && (
+              <>
+                <p className="text-sm text-slate-300">
+                  Generate a natural reader-style comment with emotion and a suggested delay before posting.
+                </p>
+                <Button
+                  type="button"
+                  onClick={runCommentGenerator}
+                  disabled={isGeneratingComment}
+                  className="w-full bg-indigo-500 text-white hover:bg-indigo-600"
+                >
+                  {isGeneratingComment ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isGeneratingComment ? "Generating..." : "Generate Human-like Comment"}
                 </Button>
               </>
             )}
@@ -398,6 +487,19 @@ export function ArticleAssistantPanel() {
               ))}
             </ul>
           ) : null}
+
+          <OutputRow
+            label="Human-like Comment"
+            value={assistResult.commentDraft ?? ""}
+            onCopy={() => copyText(assistResult.commentDraft ?? "", "Human-like Comment")}
+            multiline
+            isLoading={isGeneratingComment}
+          />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Metric title="Persona" value={assistResult.commentPersona || "—"} />
+            <Metric title="Emotion" value={assistResult.commentEmotion || "—"} />
+            <Metric title="Post after" value={assistResult.commentDelayLabel || "—"} />
+          </div>
         </Card>
       </div>
     </div>

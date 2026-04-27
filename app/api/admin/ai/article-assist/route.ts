@@ -15,7 +15,8 @@ type AssistMode =
   | "seo"
   | "content"
   | "title"
-  | "predictionSuggestion";
+  | "predictionSuggestion"
+  | "humanComment";
 
 const INPUT_LIMITS: Record<AssistMode, number> = {
   all: 7000,
@@ -27,6 +28,7 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
   content: 3000,
   title: 900,
   predictionSuggestion: 1600,
+  humanComment: 1800,
 };
 
 const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
@@ -39,6 +41,7 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   content: 700,
   title: 120,
   predictionSuggestion: 260,
+  humanComment: 220,
 };
 
 const ASSIST_FETCH_USER_AGENT =
@@ -201,6 +204,47 @@ function sanitizeDraftHtml(raw: string): string {
     .replace(/<\/h[1-6]>/gi, "</p>");
 }
 
+function sanitizeCommentDraft(raw: string): string {
+  const text = String(raw ?? "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  return text.slice(0, 260);
+}
+
+function randomIntInclusive(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function computeHumanCommentDelaySeconds(sourceTextLength: number): number {
+  const isLongRead = sourceTextLength >= 3200;
+  const roll = Math.random();
+
+  if (isLongRead) {
+    if (roll < 0.2) return randomIntInclusive(10 * 60, 28 * 60);
+    if (roll < 0.7) return randomIntInclusive(30 * 60, 110 * 60);
+    return randomIntInclusive(120 * 60, 5 * 60 * 60);
+  }
+
+  if (roll < 0.35) return randomIntInclusive(6 * 60, 20 * 60);
+  if (roll < 0.82) return randomIntInclusive(22 * 60, 85 * 60);
+  return randomIntInclusive(90 * 60, 4 * 60 * 60);
+}
+
+function formatDelayLabel(totalSeconds: number): string {
+  if (totalSeconds < 3600) {
+    const minutes = Math.max(1, Math.round(totalSeconds / 60));
+    return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  }
+  const hours = totalSeconds / 3600;
+  if (hours < 2) {
+    return `about ${Math.round(hours * 10) / 10} hours`;
+  }
+  const roundedHours = Math.round(hours);
+  return `about ${roundedHours} hours`;
+}
+
 function cleanJson(text: string): string {
   if (!text) return "{}";
   const cleaned = text.replace(/```json/gi, "").replace(/```/g, "");
@@ -333,6 +377,19 @@ export async function POST(req: Request) {
             "category should map to one of: general, politics, economy, technology, science, sports, world, culture.",
             "Keep description and rationale brief (1-2 sentences each).",
           ].join("\n")
+        : mode === "humanComment"
+          ? [
+              "Generate one human-like article comment as if from a normal reader.",
+              "Return JSON only with: comment, persona, emotion, engagementIntent.",
+              "comment must be 1-3 short sentences and <= 240 characters.",
+              "Sound natural, specific, and conversational; avoid robotic wording.",
+              "Reference one concrete point from the input article summary.",
+              "Do not use hashtags, promotional language, or CTA marketing phrases.",
+              "Do not claim firsthand events you cannot know; keep it as reader feedback/opinion.",
+              "persona should be one of: curious-reader, thoughtful-analyst, supportive-local, skeptical-observer, practical-voice.",
+              "emotion should be one of: curious, hopeful, concerned, skeptical, impressed, mixed.",
+              "engagementIntent should be one of: ask-question, share-reaction, add-context, cautious-take, encourage-discussion.",
+            ].join("\n")
         : mode === "all"
           ? [
               "When returning draftHtml, generate substantial original article content suitable for publication quality.",
@@ -372,6 +429,14 @@ export async function POST(req: Request) {
             sourceTitle: resolvedInput.sourceTitle,
             mode,
           })
+        : mode === "humanComment"
+          ? JSON.stringify({
+              title: String(title ?? "").slice(0, 220),
+              summary: safeText,
+              sourceUrl: resolvedInput.sourceUrl,
+              sourceTitle: resolvedInput.sourceTitle,
+              mode,
+            })
         : JSON.stringify({
             title: String(title ?? "").slice(0, 260),
             html: safeHtml,
@@ -394,6 +459,10 @@ export async function POST(req: Request) {
 
     const raw = response.text?.trim() || "{}";
     const data = parseGeneratedJson<Record<string, unknown>>(raw);
+    const commentDelaySeconds =
+      mode === "humanComment"
+        ? computeHumanCommentDelaySeconds(safeText.length)
+        : undefined;
 
     const result = {
       slug: String(data.slug ?? ""),
@@ -422,6 +491,15 @@ export async function POST(req: Request) {
       draftHtml: sanitizeDraftHtml(String(data.draftHtml ?? "")),
       draftBlocks: data.draftBlocks,
       title: String(data.title ?? ""),
+      commentDraft: sanitizeCommentDraft(String(data.comment ?? "")),
+      commentPersona: String(data.persona ?? ""),
+      commentEmotion: String(data.emotion ?? ""),
+      commentIntent: String(data.engagementIntent ?? ""),
+      commentDelaySeconds,
+      commentDelayLabel:
+        typeof commentDelaySeconds === "number"
+          ? formatDelayLabel(commentDelaySeconds)
+          : "",
     };
 
     return NextResponse.json(result);
