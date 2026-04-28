@@ -21,6 +21,7 @@ import {
   slugify,
 } from "@/lib/helpers/articles";
 import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
+import { enqueueArticleAutoCommentJobs } from "@/lib/automation/article-auto-comments-queue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -313,6 +314,30 @@ export async function POST(req: NextRequest) {
       await syncArticleEmbeddingByArticleId(id);
     } catch (error) {
       console.error("[articles.create] embedding sync failed", error);
+    }
+
+    try {
+      const [createdArticle] = await db
+        .select({
+          id: articles.id,
+          isDraft: articles.isDraft,
+          publishedAt: articles.publishedAt,
+          publishAt: articles.publishAt,
+          predictionId: articles.predictionId,
+        })
+        .from(articles)
+        .where(eq(articles.id, id))
+        .limit(1);
+      if (createdArticle) {
+        await enqueueArticleAutoCommentJobs({
+          articleId: createdArticle.id,
+          marketId: createdArticle.predictionId,
+          isDraft: createdArticle.isDraft,
+          publishedAt: createdArticle.publishedAt ?? createdArticle.publishAt,
+        });
+      }
+    } catch (error) {
+      console.error("[articles.create] auto-comment enqueue failed", error);
     }
 
     return NextResponse.json({ ok: true, id }, { status: 201 });
