@@ -18,7 +18,7 @@ import {
   removeArticleEmbedding,
   syncArticleEmbeddingByArticleId,
 } from "@/lib/recommendations/article-related";
-import { enqueueArticleAutoCommentJobs } from "@/lib/automation/article-auto-comments-queue";
+import { processQueuedArticleAutoComment } from "@/lib/automation/article-auto-comments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -325,14 +325,15 @@ export async function PUT(
 
   try {
     const publishedRef = updated.publishedAt ?? updated.publishAt;
-    await enqueueArticleAutoCommentJobs({
+    await processQueuedArticleAutoComment({
       articleId: updated.id,
-      marketId: updated.predictionId,
-      isDraft: updated.isDraft,
-      publishedAt: publishedRef,
+      slotIndex: 0,
+      marketId: updated.predictionId ?? undefined,
+      publishedAtIso: publishedRef?.toISOString(),
+      forceDue: true,
     });
   } catch (error) {
-    console.error("[articles.update] auto-comment enqueue failed", error);
+    console.error("[articles.update] immediate auto-comment failed", error);
   }
 
   return NextResponse.json(updated);

@@ -21,7 +21,7 @@ import {
   slugify,
 } from "@/lib/helpers/articles";
 import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
-import { enqueueArticleAutoCommentJobs } from "@/lib/automation/article-auto-comments-queue";
+import { processQueuedArticleAutoComment } from "@/lib/automation/article-auto-comments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -329,15 +329,17 @@ export async function POST(req: NextRequest) {
         .where(eq(articles.id, id))
         .limit(1);
       if (createdArticle) {
-        await enqueueArticleAutoCommentJobs({
+        const publishedRef = createdArticle.publishedAt ?? createdArticle.publishAt;
+        await processQueuedArticleAutoComment({
           articleId: createdArticle.id,
-          marketId: createdArticle.predictionId,
-          isDraft: createdArticle.isDraft,
-          publishedAt: createdArticle.publishedAt ?? createdArticle.publishAt,
+          slotIndex: 0,
+          marketId: createdArticle.predictionId ?? undefined,
+          publishedAtIso: publishedRef?.toISOString(),
+          forceDue: true,
         });
       }
     } catch (error) {
-      console.error("[articles.create] auto-comment enqueue failed", error);
+      console.error("[articles.create] immediate auto-comment failed", error);
     }
 
     return NextResponse.json({ ok: true, id }, { status: 201 });

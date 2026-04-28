@@ -21,7 +21,11 @@ function getQstashClient(): Client | null {
     process.env.UPSTASH_QSTASH_TOKEN?.trim() ||
     "";
   if (!token) return null;
-  if (!qstashClient) qstashClient = new Client({ token });
+  const baseUrl =
+    process.env.QSTASH_URL?.trim() ||
+    process.env.UPSTASH_QSTASH_URL?.trim() ||
+    undefined;
+  if (!qstashClient) qstashClient = new Client({ token, baseUrl });
   return qstashClient;
 }
 
