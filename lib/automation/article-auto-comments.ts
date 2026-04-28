@@ -1,5 +1,6 @@
+import { randomUUID } from "crypto";
 import { GoogleGenAI } from "@google/genai";
-import { and, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, like, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { user as authUser } from "@/db/auth-schema";
 import { articles, predictionComments } from "@/db/schema";
@@ -10,23 +11,31 @@ const AUTO_COMMENT_MAX_OUTPUT_TOKENS = 180;
 const MIN_DELAY_MINUTES = 8;
 const MAX_DELAY_MINUTES = 210;
 const CANDIDATE_LOOKBACK_HOURS = 72;
-const AUTO_COMMENT_BOTS = [
-  {
-    id: "ai-bot-curious-reader",
-    name: "Mia Carter",
-    email: "mia.carter+kindjoe-bot@kindjoe.local",
-  },
-  {
-    id: "ai-bot-thoughtful-voice",
-    name: "Noah Bennett",
-    email: "noah.bennett+kindjoe-bot@kindjoe.local",
-  },
-  {
-    id: "ai-bot-practical-local",
-    name: "Ava Reyes",
-    email: "ava.reyes+kindjoe-bot@kindjoe.local",
-  },
-] as const;
+const BOT_ID_PREFIX = "ai-bot-auto-";
+const BOT_FIRST_NAMES = [
+  "Mia",
+  "Noah",
+  "Ava",
+  "Liam",
+  "Sofia",
+  "Ethan",
+  "Chloe",
+  "Lucas",
+  "Nora",
+  "Elijah",
+];
+const BOT_LAST_NAMES = [
+  "Carter",
+  "Bennett",
+  "Reyes",
+  "Hayes",
+  "Turner",
+  "Brooks",
+  "Parker",
+  "Foster",
+  "Diaz",
+  "Warren",
+];
 
 export type AutoCommentRunResult = {
   enabled: boolean;
@@ -68,37 +77,35 @@ function deterministicDelayMinutes(articleId: string): number {
   return MIN_DELAY_MINUTES + (hash % span);
 }
 
-function deterministicIndex(seed: string, length: number): number {
-  if (length <= 1) return 0;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % length;
+function pickOne<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)] as T;
 }
 
-async function ensureAutoCommentBotUsers(): Promise<string[]> {
-  const ids = AUTO_COMMENT_BOTS.map((bot) => bot.id);
-  const existing = await db
-    .select({ id: authUser.id })
-    .from(authUser)
-    .where(inArray(authUser.id, ids));
-  const existingIds = new Set(existing.map((row) => row.id));
-
-  const missing = AUTO_COMMENT_BOTS.filter((bot) => !existingIds.has(bot.id));
-  if (missing.length > 0) {
-    await db.insert(authUser).values(
-      missing.map((bot) => ({
-        id: bot.id,
-        name: bot.name,
-        email: bot.email,
+async function createFreshAutoCommentBotUser(): Promise<{
+  id: string;
+  name: string;
+}> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const first = pickOne(BOT_FIRST_NAMES);
+    const last = pickOne(BOT_LAST_NAMES);
+    const short = randomUUID().replace(/-/g, "").slice(0, 10);
+    const id = `${BOT_ID_PREFIX}${short}`;
+    const name = `${first} ${last}`;
+    const email = `${id}@kindjoe.local`;
+    try {
+      await db.insert(authUser).values({
+        id,
+        name,
+        email,
         emailVerified: true,
         accountType: "reader",
-      })),
-    );
+      });
+      return { id, name };
+    } catch {
+      // Collision or transient insert issue; try again with a new id.
+    }
   }
-
-  return ids;
+  throw new Error("could_not_create_fresh_bot_user");
 }
 
 function parseGeneratedComment(raw: string): string {
@@ -162,18 +169,6 @@ export async function processScheduledArticleAutoComments(options?: {
   const forceDue = options?.forceDue === true;
   const latestOnly = options?.latestOnly === true;
 
-  const botUserIds = await ensureAutoCommentBotUsers();
-  if (botUserIds.length === 0) {
-    return {
-      enabled: false,
-      scanned: 0,
-      posted: 0,
-      skipped: 0,
-      reason: "no bot users available",
-      articles: [],
-    };
-  }
-
   const lookback = new Date(now.getTime() - CANDIDATE_LOOKBACK_HOURS * 60 * 60 * 1000);
   const fetchedCandidates = await db
     .select({
@@ -236,7 +231,7 @@ export async function processScheduledArticleAutoComments(options?: {
       .where(
         and(
           eq(predictionComments.marketId, marketId),
-          inArray(predictionComments.authorId, botUserIds),
+          like(predictionComments.authorId, `${BOT_ID_PREFIX}%`),
         ),
       )
       .limit(1);
@@ -319,8 +314,26 @@ export async function processScheduledArticleAutoComments(options?: {
       continue;
     }
 
-    const selectedBotUserId =
-      botUserIds[deterministicIndex(article.id, botUserIds.length)];
+    let selectedBotUserId = "";
+    try {
+      const newBotUser = await createFreshAutoCommentBotUser();
+      selectedBotUserId = newBotUser.id;
+    } catch {
+      skipped += 1;
+      articleResults.push({
+        articleId: article.id,
+        slug: article.slug,
+        title: article.title,
+        marketId,
+        status: "skipped",
+        reason: "create_bot_user_failed",
+        commentPreview: comment,
+        authorId: "",
+        delayMinutes,
+        dueAtIso,
+      });
+      continue;
+    }
 
     try {
       await createPredictionComment({
