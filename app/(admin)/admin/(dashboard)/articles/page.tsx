@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
@@ -291,7 +292,7 @@ export default function AdminArticlesPage() {
                 <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
                   {a.coverImageUrl ? (
                     <img
-                      src={a.coverImageUrl}
+                      src={optimizeCloudinaryUrl(a.coverImageUrl, { width: 240 })}
                       alt=""
                       className="h-full w-full object-cover"
                     />

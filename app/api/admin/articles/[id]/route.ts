@@ -18,6 +18,7 @@ import {
   removeArticleEmbedding,
   syncArticleEmbeddingByArticleId,
 } from "@/lib/recommendations/article-related";
+import { enqueueArticleAutoCommentJobs } from "@/lib/automation/article-auto-comments-queue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -320,6 +321,18 @@ export async function PUT(
     await syncArticleEmbeddingByArticleId(id);
   } catch (error) {
     console.error("[articles.update] embedding sync failed", error);
+  }
+
+  try {
+    const publishedRef = updated.publishedAt ?? updated.publishAt;
+    await enqueueArticleAutoCommentJobs({
+      articleId: updated.id,
+      marketId: updated.predictionId,
+      isDraft: updated.isDraft,
+      publishedAt: publishedRef,
+    });
+  } catch (error) {
+    console.error("[articles.update] auto-comment enqueue failed", error);
   }
 
   return NextResponse.json(updated);

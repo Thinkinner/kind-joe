@@ -19,6 +19,7 @@ import {
   parseTrendRange,
   type TrendState,
 } from "@/lib/analytics/trends";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 // --- Types & Constants ---
 type RangeKey = "today" | "week" | "month" | "all";
@@ -344,7 +345,12 @@ export default async function AdminDashboardPage({
                     <span className="text-sm font-bold text-neutral-300 w-4">{idx + 1}</span>
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-neutral-100">
                       {article.coverImageUrl && (
-                        <Image src={article.coverImageUrl} alt="" fill className="object-cover" />
+                        <Image
+                          src={optimizeCloudinaryUrl(article.coverImageUrl, { width: 256 })}
+                          alt=""
+                          fill
+                          className="object-cover"
+                        />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

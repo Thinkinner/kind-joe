@@ -2,6 +2,7 @@
 "use client";
 import Link from "next/link";
 import { ArticleSummary } from "@/types/article";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export function RecommendedCard({ article }: { article: ArticleSummary }) {
   // 🧠 Determine Branding based on tags or category
@@ -24,7 +25,9 @@ export function RecommendedCard({ article }: { article: ArticleSummary }) {
       {/* Small Horizontal Thumbnail */}
       <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-md bg-neutral-100 sm:w-28">
         <img
-          src={article.coverImageUrl ?? "/placeholder.jpg"}
+          src={optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
+            width: 320,
+          })}
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />

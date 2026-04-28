@@ -30,6 +30,7 @@ const MAX_LIST_PAGE = 50;
 export async function getArticlesAction(limit: number, offset: number) {
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
   const safeOffset = Math.max(offset, 0);
+  const now = new Date();
   try {
     const results = await db
       .select({
@@ -62,7 +63,20 @@ export async function getArticlesAction(limit: number, offset: number) {
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id)) // 👈 Join the users table
       .leftJoin(authUser, eq(articles.authorId, authUser.id))
-      .where(and(eq(articles.isDraft, false), isNull(articles.deletedAt)))
+      .where(
+        and(
+          eq(articles.isDraft, false),
+          isNull(articles.deletedAt),
+          or(
+            and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
+            and(
+              isNull(articles.publishedAt),
+              isNotNull(articles.publishAt),
+              lte(articles.publishAt, now),
+            ),
+          ),
+        ),
+      )
       .orderBy(desc(articles.publishedAt))
       .limit(safeLimit)
       .offset(safeOffset);

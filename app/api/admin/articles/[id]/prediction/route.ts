@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { articles, predictionMarkets } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { enqueueArticleAutoCommentJobs } from "@/lib/automation/article-auto-comments-queue";
 
 function parsePredictionId(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
@@ -61,11 +62,25 @@ export async function PATCH(
     .where(and(eq(articles.id, id), sql`${articles.deletedAt} IS NULL`))
     .returning({
       id: articles.id,
+      isDraft: articles.isDraft,
+      publishedAt: articles.publishedAt,
+      publishAt: articles.publishAt,
       predictionId: articles.predictionId,
     });
 
   if (!updated) {
     return NextResponse.json({ error: "article not found" }, { status: 404 });
+  }
+
+  try {
+    await enqueueArticleAutoCommentJobs({
+      articleId: updated.id,
+      marketId: updated.predictionId,
+      isDraft: updated.isDraft,
+      publishedAt: updated.publishedAt ?? updated.publishAt,
+    });
+  } catch (error) {
+    console.error("[articles.prediction.patch] auto-comment enqueue failed", error);
   }
 
   return NextResponse.json({ ok: true, article: updated });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export function VenturaArticleCard({ article }: { article: any }) {
   // Always route to the article slug
@@ -19,7 +20,9 @@ export function VenturaArticleCard({ article }: { article: any }) {
       */}
       <div className="relative aspect-[4/3] w-1/3 md:aspect-[16/9] md:w-full flex-shrink-0 overflow-hidden rounded-md">
         <img
-          src={article.coverImageUrl ?? "/placeholder.jpg"}
+          src={optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
+            width: 900,
+          })}
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />

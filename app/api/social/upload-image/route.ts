@@ -4,6 +4,7 @@ import streamifier from "streamifier";
 import { getClientIp } from "@/lib/auth/rate-limit";
 import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import { checkSocialRateLimit } from "@/lib/social/rate-limit";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export const runtime = "nodejs";
 
@@ -95,7 +96,9 @@ export async function POST(req: Request) {
       },
     );
 
-    return NextResponse.json({ url: uploadResult.secure_url });
+    return NextResponse.json({
+      url: optimizeCloudinaryUrl(uploadResult.secure_url),
+    });
   } catch (err: unknown) {
     console.error("social_image_upload_failed", err);
     const message = err instanceof Error ? err.message : "Upload failed";

@@ -3,6 +3,7 @@
 import { NewsletterData } from "./types";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 async function assertStaff() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
@@ -115,7 +116,7 @@ const uploadToCloudinary = async (
   }
 
   const data = (await response.json()) as { secure_url?: string };
-  return data.secure_url ?? null;
+  return data.secure_url ? optimizeCloudinaryUrl(data.secure_url) : null;
 };
 
 const downloadImageAsDataUri = async (imageUrl: string): Promise<string | null> => {
@@ -142,7 +143,9 @@ const downloadImageAsDataUri = async (imageUrl: string): Promise<string | null> 
 export const uploadImage = async (imageUrl: string): Promise<string> => {
   const cfg = resolveCloudinaryConfig();
   if (!imageUrl || !cfg.cloudName) return "";
-  if (imageUrl.includes("res.cloudinary.com")) return imageUrl;
+  if (imageUrl.includes("res.cloudinary.com")) {
+    return optimizeCloudinaryUrl(imageUrl);
+  }
 
   try {
     const candidates = normalizeImageUrlCandidates(imageUrl);
@@ -232,5 +235,5 @@ export async function uploadBase64ImageToCloudinary(
   }
   const data = (await response.json()) as { secure_url?: string };
   if (!data.secure_url) throw new Error("Cloudinary returned no URL");
-  return data.secure_url;
+  return optimizeCloudinaryUrl(data.secure_url);
 }

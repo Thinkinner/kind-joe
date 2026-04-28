@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 type FocusableImageProps = {
   src: string;
@@ -17,6 +18,7 @@ export default function FocusableImage({
   className = "",
 }: FocusableImageProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const optimizedSrc = optimizeCloudinaryUrl(src, { width: 1600 });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -43,7 +45,7 @@ export default function FocusableImage({
         className={`block w-full text-left ${className}`.trim()}
         aria-label="Open image in focus mode"
       >
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img src={optimizedSrc} alt={alt} className="h-full w-full object-cover" />
       </button>
 
       {isOpen ? (
@@ -65,7 +67,7 @@ export default function FocusableImage({
 
           <div className="flex h-full w-full items-center justify-center">
             <img
-              src={src}
+              src={optimizedSrc}
               alt={alt}
               className="max-h-[88vh] w-auto max-w-full object-contain"
               onClick={(event) => event.stopPropagation()}

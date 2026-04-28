@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { getArticleTrafficDetails } from "@/lib/actions/admin-traffic";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import {
   Select,
   SelectContent,
@@ -131,7 +132,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
                     <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
                       {a.coverImageUrl ? (
                         <img
-                          src={a.coverImageUrl}
+                          src={optimizeCloudinaryUrl(a.coverImageUrl, { width: 240 })}
                           alt=""
                           className="h-full w-full object-cover"
                         />

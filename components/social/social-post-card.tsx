@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import type { SocialPostView } from "@/lib/social/queries";
 
 function initials(name: string): string {
@@ -61,7 +62,7 @@ export function SocialPostCard({
       {imageAttachment ? (
         <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
           <Image
-            src={imageAttachment.url}
+            src={optimizeCloudinaryUrl(imageAttachment.url, { width: 1200 })}
             alt=""
             width={1200}
             height={675}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 type RelatedArticle = {
   id: string;
@@ -136,7 +137,7 @@ function RelatedArticleCard({ article }: { article: RelatedArticle }) {
       {article.coverImageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={article.coverImageUrl}
+          src={optimizeCloudinaryUrl(article.coverImageUrl, { width: 240 })}
           alt={article.title}
           className="h-20 w-20 flex-shrink-0 rounded-md object-cover"
         />

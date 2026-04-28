@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
-import { processScheduledArticleAutoComments } from "@/lib/automation/article-auto-comments";
+import {
+  listAutoCommentSchedules,
+  processScheduledArticleAutoComments,
+} from "@/lib/automation/article-auto-comments";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,6 +14,39 @@ const BodySchema = z.object({
   forceDue: z.boolean().optional(),
   latestOnly: z.boolean().optional(),
 });
+
+const QuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+export async function GET(req: Request) {
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
+  if (!staff.ok) {
+    return NextResponse.json(
+      { error: staff.reason },
+      { status: staff.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const parsed = QuerySchema.safeParse({
+    limit: searchParams.get("limit") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid query params." }, { status: 400 });
+  }
+
+  const schedules = await listAutoCommentSchedules({
+    limit: parsed.data.limit ?? 25,
+    now: new Date(),
+  });
+
+  return NextResponse.json({
+    ok: true,
+    schedules,
+    generatedAt: new Date().toISOString(),
+  });
+}
 
 export async function POST(req: Request) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
@@ -18,11 +19,6 @@ type StandalonePostsFeedProps = {
 };
 
 const PAGE_SIZE = 12;
-
-function cloudinaryFourByFive(imageUrl: string) {
-  if (!imageUrl.includes("/upload/")) return imageUrl;
-  return imageUrl.replace("/upload/", "/upload/ar_4:5,c_fill,g_auto,w_800/");
-}
 
 export function StandalonePostsFeed({
   allPosts,
@@ -106,7 +102,9 @@ export function StandalonePostsFeed({
             className="group relative aspect-[4/5] overflow-hidden bg-gray-50"
           >
             <Image
-              src={cloudinaryFourByFive(post.imageUrl)}
+              src={optimizeCloudinaryUrl(post.imageUrl, {
+                transforms: ["ar_4:5", "c_fill", "g_auto", "w_800"],
+              })}
               fill
               alt=""
               className="object-cover transition duration-500 ease-in-out group-hover:scale-105"

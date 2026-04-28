@@ -6,6 +6,7 @@ import { ArticlePredictionCta } from "@/components/stories/article-prediction-ct
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import ShareButtons from "@/components/stories/share-buttons";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
 
 type RelatedChainItem = {
@@ -441,7 +442,7 @@ export default function ArticleRelatedChain({
                 {item.coverImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={item.coverImageUrl}
+                    src={optimizeCloudinaryUrl(item.coverImageUrl, { width: 1400 })}
                     alt={item.title}
                     className="mt-5 w-full rounded-xl object-cover"
                   />

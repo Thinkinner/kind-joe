@@ -3,6 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,9 @@ export async function POST(req: Request) {
       },
     );
 
-    return NextResponse.json({ url: uploadResult.secure_url });
+    return NextResponse.json({
+      url: optimizeCloudinaryUrl(uploadResult.secure_url),
+    });
   } catch (err: unknown) {
     console.error("Cloudinary upload error:", err);
     const message = err instanceof Error ? err.message : "Upload failed";

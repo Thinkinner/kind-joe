@@ -4,16 +4,12 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
 const INITIAL_VISIBLE = 12;
 const LOAD_MORE_STEP = 9;
-
-function cloudinaryFourByFive(imageUrl: string) {
-  if (!imageUrl.includes("/upload/")) return imageUrl;
-  return imageUrl.replace("/upload/", "/upload/ar_4:5,c_fill,g_auto,w_800/");
-}
 
 export function StandalonePostsGrid({ allPosts }: { allPosts: PostCard[] }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
@@ -24,7 +20,9 @@ export function StandalonePostsGrid({ allPosts }: { allPosts: PostCard[] }) {
     <div className="space-y-6">
       <div className="grid grid-cols-3">
         {visiblePosts.map((post) => {
-          const optimizedImage = cloudinaryFourByFive(post.imageUrl);
+          const optimizedImage = optimizeCloudinaryUrl(post.imageUrl, {
+            transforms: ["ar_4:5", "c_fill", "g_auto", "w_800"],
+          });
           return (
             <Link
               key={post.id}

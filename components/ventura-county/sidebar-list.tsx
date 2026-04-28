@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArticleCard } from '@/types/article';
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 interface SidebarListProps {
   articles: ArticleCard[];
@@ -17,7 +18,7 @@ export const SidebarList: React.FC<SidebarListProps> = ({ articles }) => {
               <div className="flex-shrink-0 overflow-hidden rounded-md shadow-sm">
                   <img 
                     className="w-24 h-16 md:w-36 md:h-24 object-cover transform group-hover:scale-110 transition-transform duration-500" 
-                    src={article.imageUrl} 
+                    src={optimizeCloudinaryUrl(article.imageUrl, { width: 360 })} 
                     alt={article.headline} 
                   />
               </div>

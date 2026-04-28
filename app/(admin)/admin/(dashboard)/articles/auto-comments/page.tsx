@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,41 @@ type AutoCommentArticleRunEntry = {
   slug: string;
   title: string;
   marketId: number | null;
+  articleState: "draft" | "scheduled" | "published" | "unpublished";
   status: "posted" | "skipped";
   reason: string;
   commentPreview: string;
   authorId: string;
   delayMinutes: number;
   dueAtIso: string;
+};
+
+type AutoCommentScheduleSlot = {
+  slotIndex: number;
+  delayMinutes: number;
+  dueAtIso: string | null;
+  status:
+    | "posted"
+    | "pending"
+    | "due_now"
+    | "expired"
+    | "missing_publish_time"
+    | "blocked_previous_slot";
+  timeLeftSeconds: number | null;
+  postedCommentBody: string | null;
+  postedAtIso: string | null;
+};
+
+type AutoCommentScheduleRow = {
+  articleId: string;
+  slug: string;
+  title: string;
+  marketId: number | null;
+  articleState: "draft" | "scheduled" | "published" | "unpublished";
+  publishedAtIso: string | null;
+  commentTargetCount: number;
+  postedCount: number;
+  slots: AutoCommentScheduleSlot[];
 };
 
 type HumanCommentResult = {
@@ -52,6 +81,46 @@ export default function AdminAutoCommentsPage() {
   const [commentResult, setCommentResult] = useState<HumanCommentResult | null>(null);
   const [selectedArticle, setSelectedArticle] =
     useState<AutoCommentArticleRunEntry | null>(null);
+  const [scheduleRows, setScheduleRows] = useState<AutoCommentScheduleRow[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleGeneratedAt, setScheduleGeneratedAt] = useState<string | null>(null);
+
+  const loadSchedules = async (silent = false) => {
+    if (!silent) setScheduleLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai/auto-comments?limit=40", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        schedules?: AutoCommentScheduleRow[];
+        generatedAt?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(payload.error || "Could not load schedules");
+      setScheduleRows(payload.schedules ?? []);
+      setScheduleGeneratedAt(payload.generatedAt ?? null);
+    } catch (error) {
+      if (!silent) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not load schedules",
+        );
+      }
+    } finally {
+      if (!silent) setScheduleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSchedules();
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void loadSchedules(true);
+    }, 20_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const runAutoCommentsNow = async () => {
     setRunLoading(true);
@@ -77,6 +146,7 @@ export default function AdminAutoCommentsPage() {
         setSelectedArticle(null);
       }
       toast.success("Auto-comment cycle finished");
+      void loadSchedules(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not run auto-comments");
     } finally {
@@ -177,6 +247,125 @@ export default function AdminAutoCommentsPage() {
       </Card>
 
       <Card className="space-y-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Schedule monitor</h2>
+            <p className="text-sm text-slate-600">
+              Live slot schedule for latest articles. Refreshes every 20 seconds.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void loadSchedules()}
+              disabled={scheduleLoading}
+            >
+              {scheduleLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Refresh schedule"
+              )}
+            </Button>
+          </div>
+        </div>
+        {scheduleGeneratedAt ? (
+          <p className="text-xs text-slate-500">
+            Updated: {new Date(scheduleGeneratedAt).toLocaleString()}
+          </p>
+        ) : null}
+        {scheduleRows.length ? (
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="max-h-[480px] overflow-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-100 text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Article</th>
+                    <th className="px-3 py-2 font-semibold">State</th>
+                    <th className="px-3 py-2 font-semibold">Progress</th>
+                    <th className="px-3 py-2 font-semibold">Slots</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scheduleRows.map((row) => (
+                    <tr
+                      key={row.articleId}
+                      className="border-t border-slate-100 align-top hover:bg-slate-50"
+                    >
+                      <td className="px-3 py-2">
+                        <p className="max-w-[300px] truncate font-medium text-slate-800">
+                          {row.title}
+                        </p>
+                        <p className="text-slate-500">/{row.slug}</p>
+                        <p className="text-slate-500">
+                          {row.marketId != null ? `Market #${row.marketId}` : "No market"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="text-slate-700">{row.articleState}</p>
+                        <p className="text-slate-500">
+                          {row.publishedAtIso
+                            ? new Date(row.publishedAtIso).toLocaleString()
+                            : "No publish time"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="font-semibold text-slate-800">
+                          {row.postedCount}/{row.commentTargetCount} posted
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="space-y-2">
+                          {row.slots.map((slot) => (
+                            <div
+                              key={`${row.articleId}-slot-${slot.slotIndex}`}
+                              className="rounded border border-slate-200 bg-slate-50 p-2"
+                            >
+                              <p className="font-semibold text-slate-800">
+                                Slot {slot.slotIndex + 1} · {slot.delayMinutes} min
+                              </p>
+                              <p className="text-slate-600">
+                                Status:{" "}
+                                <span className="font-medium uppercase">{slot.status}</span>
+                              </p>
+                              <p className="text-slate-600">
+                                Due:{" "}
+                                {slot.dueAtIso
+                                  ? new Date(slot.dueAtIso).toLocaleString()
+                                  : "n/a"}
+                              </p>
+                              <p className="text-slate-600">
+                                {slot.status === "posted"
+                                  ? `Posted at ${slot.postedAtIso ? new Date(slot.postedAtIso).toLocaleString() : "unknown"}`
+                                  : slot.timeLeftSeconds != null
+                                    ? `Time left: ${Math.max(0, Math.floor(slot.timeLeftSeconds / 60))}m ${Math.max(0, slot.timeLeftSeconds % 60)}s`
+                                    : "Time left: n/a"}
+                              </p>
+                              <p className="text-slate-700">
+                                {slot.postedCommentBody
+                                  ? `Comment: ${slot.postedCommentBody}`
+                                  : "Comment: Will be generated at due time"}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            {scheduleLoading
+              ? "Loading schedule..."
+              : "No scheduled articles yet (publish and link predictions to see them)."}
+          </p>
+        )}
+      </Card>
+
+      <Card className="space-y-4 p-5">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Generate One Comment</h2>
           <p className="text-sm text-slate-600">
@@ -244,6 +433,7 @@ export default function AdminAutoCommentsPage() {
                   <thead className="sticky top-0 bg-slate-100 text-slate-600">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Article</th>
+                      <th className="px-3 py-2 font-semibold">Article state</th>
                       <th className="px-3 py-2 font-semibold">Status</th>
                       <th className="px-3 py-2 font-semibold">Reason</th>
                       <th className="px-3 py-2 font-semibold">Market</th>
@@ -270,6 +460,9 @@ export default function AdminAutoCommentsPage() {
                               </p>
                               <p className="truncate text-slate-500">/{item.slug}</p>
                             </div>
+                          </td>
+                          <td className="px-3 py-2 text-slate-700">
+                            {item.articleState}
                           </td>
                           <td className="px-3 py-2">
                             <span
@@ -299,6 +492,10 @@ export default function AdminAutoCommentsPage() {
                   Comment info for: {selectedArticle.title}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
+                  <p className="text-xs text-slate-700">
+                    <span className="font-semibold">Article state:</span>{" "}
+                    {selectedArticle.articleState}
+                  </p>
                   <p className="text-xs text-slate-700">
                     <span className="font-semibold">Reason:</span>{" "}
                     {selectedArticle.reason}

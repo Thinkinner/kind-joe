@@ -8,6 +8,7 @@ import {
   tags,
 } from "@/db/schema";
 import { and, eq, isNull, sql, desc } from "drizzle-orm";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export const revalidate = 60;
 
@@ -94,7 +95,7 @@ export default async function KindjoeTopStoriesPage() {
                   <div className="w-full h-40 bg-gray-100 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={article.coverImageUrl}
+                      src={optimizeCloudinaryUrl(article.coverImageUrl, { width: 960 })}
                       alt={article.title}
                       className="w-full h-full object-cover"
                     />

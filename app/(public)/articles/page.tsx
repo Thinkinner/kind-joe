@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { db } from '@/db';
 import { and, desc, eq, ilike, isNull, sql } from 'drizzle-orm';
 import { articles, categories, tags, articleCategories, articleTags } from '@/db/schema';
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export const revalidate = 60;
 
@@ -143,7 +144,7 @@ export default async function ArticlesPage({
                 {a.coverImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={a.coverImageUrl}
+                    src={optimizeCloudinaryUrl(a.coverImageUrl, { width: 1200 })}
                     alt={a.title}
                     className="w-full h-48 object-cover rounded-xl mt-3"
                   />

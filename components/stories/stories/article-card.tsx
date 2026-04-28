@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export function ArticleCard({ article }: { article: any }) {
   const hasVenturaTag = article.tags?.some(
@@ -25,7 +26,9 @@ export function ArticleCard({ article }: { article: any }) {
       */}
       <div className="relative aspect-[4/3] w-1/3 min-w-[100px] md:aspect-[16/9] md:w-full flex-shrink-0 overflow-hidden rounded-md">
         <img
-          src={article.coverImageUrl ?? "/placeholder.jpg"}
+          src={optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
+            width: 900,
+          })}
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />

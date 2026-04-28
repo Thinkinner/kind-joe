@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArticleCard } from "@/types/article";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 interface NewsCardProps {
   article: ArticleCard;
@@ -16,7 +17,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
       {/* IMAGE (EDGE TO EDGE, SCALE ON HOVER, GRADIENT OVERLAY) */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
         <Image
-          src={article.imageUrl}
+          src={optimizeCloudinaryUrl(article.imageUrl, { width: 1200 })}
           alt={article.headline}
           fill
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
