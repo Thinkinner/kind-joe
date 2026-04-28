@@ -84,6 +84,7 @@ export default function AdminAutoCommentsPage() {
   const [scheduleRows, setScheduleRows] = useState<AutoCommentScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleGeneratedAt, setScheduleGeneratedAt] = useState<string | null>(null);
+  const [slotRunLoadingKey, setSlotRunLoadingKey] = useState<string | null>(null);
 
   const loadSchedules = async (silent = false) => {
     if (!silent) setScheduleLoading(true);
@@ -178,6 +179,42 @@ export default function AdminAutoCommentsPage() {
       toast.error(error instanceof Error ? error.message : "Could not generate comment");
     } finally {
       setCommentLoading(false);
+    }
+  };
+
+  const runSlotNow = async (row: AutoCommentScheduleRow, slot: AutoCommentScheduleSlot) => {
+    if (row.marketId == null) {
+      toast.error("Cannot run slot: missing market id.");
+      return;
+    }
+    const key = `${row.articleId}-${slot.slotIndex}`;
+    setSlotRunLoadingKey(key);
+    try {
+      const res = await fetch("/api/admin/ai/auto-comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "runSlotNow",
+          articleId: row.articleId,
+          marketId: row.marketId,
+          slotIndex: slot.slotIndex,
+          publishedAtIso: row.publishedAtIso ?? undefined,
+          forceDue: true,
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        slotResult?: { status?: string; reason?: string };
+        error?: string;
+      };
+      if (!res.ok) throw new Error(payload.error || "Could not run slot");
+      const status = payload.slotResult?.status || "unknown";
+      const reason = payload.slotResult?.reason || "";
+      toast.success(`Slot run finished (${status}${reason ? `: ${reason}` : ""})`);
+      void loadSchedules(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not run slot");
+    } finally {
+      setSlotRunLoadingKey(null);
     }
   };
 
@@ -346,6 +383,27 @@ export default function AdminAutoCommentsPage() {
                                   ? `Comment: ${slot.postedCommentBody}`
                                   : "Comment: Will be generated at due time"}
                               </p>
+                              {slot.status !== "posted" ? (
+                                <div className="pt-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => void runSlotNow(row, slot)}
+                                    disabled={
+                                      slotRunLoadingKey ===
+                                      `${row.articleId}-${slot.slotIndex}`
+                                    }
+                                  >
+                                    {slotRunLoadingKey ===
+                                    `${row.articleId}-${slot.slotIndex}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      "Run Slot Now"
+                                    )}
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           ))}
                         </div>
