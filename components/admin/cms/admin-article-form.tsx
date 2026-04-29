@@ -837,7 +837,7 @@ export function AdminArticleForm({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-neutral-600">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading…
       </div>
@@ -846,7 +846,7 @@ export function AdminArticleForm({
 
   return (
     <div className="space-y-8">
-      <div className="fixed left-0 right-0 top-11 z-50 border-y border-slate-200/70 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:left-52 lg:top-0 lg:px-8 xl:left-56 xl:px-10">
+      <div className="fixed left-0 right-0 top-11 z-50 border-y border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6 lg:left-52 lg:top-0 lg:px-8 xl:left-56 xl:px-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
@@ -855,7 +855,7 @@ export function AdminArticleForm({
                 Back
               </Link>
             </Button>
-            <h1 className="text-sm font-medium tracking-tight text-slate-900">
+            <h1 className="text-sm font-medium tracking-tight text-foreground">
               {articleId ? "Edit Article" : "New Article"}
             </h1>
           </div>
@@ -897,7 +897,7 @@ export function AdminArticleForm({
               value={title}
               onChange={(e) => onTitle(e.target.value)}
               placeholder="Untitled article"
-              className="h-auto border-x-0 border-t-0 border-b border-slate-200 px-0 pb-3 text-4xl font-bold tracking-tight placeholder:text-slate-400 focus-visible:ring-0"
+              className="h-auto border-x-0 border-t-0 border-b border-border px-0 pb-3 text-4xl font-bold tracking-tight placeholder:text-muted-foreground focus-visible:ring-0"
             />
 
             <Textarea
@@ -906,11 +906,11 @@ export function AdminArticleForm({
               onChange={(e) => setExcerpt(e.target.value)}
               rows={4}
               placeholder="Write a concise excerpt..."
-              className="rounded-none border-slate-200/70 bg-white text-base leading-relaxed"
+              className="rounded-none border-border bg-card text-base leading-relaxed"
             />
 
             <div className="space-y-2">
-              <Label className="text-sm font-semibold tracking-tight text-slate-800">
+              <Label className="text-sm font-semibold tracking-tight text-foreground">
                 Main editor
               </Label>
               <AdminBlockEditor
@@ -920,14 +920,14 @@ export function AdminArticleForm({
                 onEditorReady={(ed) => {
                   editorRef.current = ed;
                 }}
-                className="rounded-none border-slate-200/70"
+                className="rounded-none border-border"
               />
             </div>
           </div>
         </div>
 
         <aside className="space-y-4 lg:col-span-4 lg:sticky lg:top-20 lg:self-start xl:col-span-3">
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-2">
               <Label htmlFor="slug" className="text-xs tracking-tight text-muted-foreground">
                 Slug
@@ -941,7 +941,7 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-2">
               <Label htmlFor="category" className="text-xs tracking-tight text-muted-foreground">
                 Category
@@ -954,7 +954,7 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-2">
               <Label className="text-xs tracking-tight text-muted-foreground">Tags</Label>
               <div className="flex flex-wrap gap-2">
@@ -963,7 +963,7 @@ export function AdminArticleForm({
                     key={tag}
                     type="button"
                     onClick={() => removeTag(tag)}
-                    className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                    className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-foreground hover:bg-muted/80"
                     title="Remove tag"
                   >
                     {tag} ×
@@ -1002,7 +1002,7 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Cover image
@@ -1011,7 +1011,7 @@ export function AdminArticleForm({
                 <img
                   src={coverImageUrl}
                   alt="Cover preview"
-                  className="aspect-[16/10] w-full rounded-lg border border-slate-200/60 object-cover"
+                  className="aspect-[16/10] w-full rounded-lg border border-border object-cover"
                 />
               ) : null}
               <Input
@@ -1019,27 +1019,27 @@ export function AdminArticleForm({
                 onChange={(e) => setCoverImageUrl(e.target.value)}
                 placeholder="https://..."
               />
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={onUploadCover}
                 />
-                <span className="inline-flex min-w-[120px] items-center justify-center border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50">
+                <span className="inline-flex min-w-[120px] items-center justify-center border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
                   {uploading ? "Uploading..." : "Upload image"}
                 </span>
               </label>
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Publishing
               </Label>
-              <div className="flex items-center justify-between rounded-lg border border-slate-200/70 px-3 py-2">
-                <span className="text-sm text-slate-700">Draft mode</span>
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <span className="text-sm text-foreground">Draft mode</span>
                 <Switch checked={isDraft} onCheckedChange={setIsDraft} />
               </div>
               <div className="space-y-1">
@@ -1056,7 +1056,7 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label htmlFor="meta-description" className="text-xs tracking-tight text-muted-foreground">
                 Meta description
@@ -1068,14 +1068,14 @@ export function AdminArticleForm({
                 rows={3}
                 placeholder="Write a unique search description in your own voice (70+ chars)."
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-muted-foreground">
                 {seoDescription.trim().length} chars - required when publishing/scheduling.
               </p>
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
-            <div className="space-y-1 text-[11px] text-slate-500">
+          <div className="border-t border-border pt-5">
+            <div className="space-y-1 text-[11px] text-muted-foreground">
               <p>Summary words: {excerptWordCount}</p>
               <p>
                 For publish/schedule: add a unique meta description, a strong summary, and enough original body content.
@@ -1083,13 +1083,13 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Linked prediction
               </Label>
               {!articleId ? (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Save the article first, then link a prediction from Edit mode.
                 </p>
               ) : (
@@ -1103,23 +1103,23 @@ export function AdminArticleForm({
                     placeholder="Search prediction by title or slug"
                   />
                   {selectedPrediction ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="text-sm font-medium text-slate-900">
+                    <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                      <p className="text-sm font-medium text-foreground">
                         {selectedPrediction.title}
                       </p>
-                      <p className="text-xs text-slate-600">
+                      <p className="text-xs text-muted-foreground">
                         #{selectedPrediction.id} · {selectedPrediction.slug || "no-slug"} ·{" "}
                         {selectedPrediction.status}
                       </p>
                     </div>
                   ) : predictionId != null ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-600">Linked prediction #{predictionId}</p>
+                    <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                      <p className="text-xs text-muted-foreground">Linked prediction #{predictionId}</p>
                     </div>
                   ) : null}
-                  <div className="max-h-44 space-y-2 overflow-auto rounded-lg border border-slate-200 bg-white p-2">
+                  <div className="max-h-44 space-y-2 overflow-auto rounded-lg border border-border bg-card p-2">
                     {predictionLoading ? (
-                      <p className="px-1 py-1 text-xs text-slate-500">Loading predictions...</p>
+                      <p className="px-1 py-1 text-xs text-muted-foreground">Loading predictions...</p>
                     ) : filteredPredictionOptions.length > 0 ? (
                       filteredPredictionOptions.slice(0, 25).map((option) => (
                         <button
@@ -1130,17 +1130,17 @@ export function AdminArticleForm({
                             "block w-full rounded px-2 py-1.5 text-left text-xs transition",
                             predictionId === option.id
                               ? "bg-indigo-50 text-indigo-900"
-                              : "text-slate-700 hover:bg-slate-100",
+                              : "text-foreground hover:bg-muted",
                           )}
                         >
                           <div className="font-medium">{option.title}</div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-muted-foreground">
                             #{option.id} · {option.slug || "no-slug"} · {option.status}
                           </div>
                         </button>
                       ))
                     ) : (
-                      <p className="px-1 py-1 text-xs text-slate-500">No predictions found.</p>
+                      <p className="px-1 py-1 text-xs text-muted-foreground">No predictions found.</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -1166,18 +1166,18 @@ export function AdminArticleForm({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-5">
+          <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
                 Post & prediction modals
               </Label>
               {!articleId ? (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Save this article first. Then you can open the post card modal and prediction modal any time.
                 </p>
               ) : (
                 <>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-xs text-muted-foreground">
                     Use these tools directly from the article editor. AI suggestion is available inside the prediction modal.
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -1235,7 +1235,7 @@ export function AdminArticleForm({
 
             {postImageUrl ? (
               <div className="space-y-3">
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div className="overflow-hidden rounded-xl border border-border bg-muted">
                   <img
                     src={postImageUrl}
                     alt="Post preview"
@@ -1282,7 +1282,7 @@ export function AdminArticleForm({
                   "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-8 text-sm transition-colors",
                   postImageDragging
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
+                    : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-muted/80",
                 )}
               >
                 {postImageUploading ? (
@@ -1332,7 +1332,7 @@ export function AdminArticleForm({
               <Button
                 type="button"
                 variant="outline"
-                className="border-indigo-300 bg-white text-indigo-900 hover:bg-indigo-100"
+                className="border-indigo-300 bg-card text-indigo-900 hover:bg-indigo-100"
                 disabled={suggestingPrediction}
                 onClick={() => void suggestPredictionPrompt()}
               >
@@ -1388,7 +1388,7 @@ export function AdminArticleForm({
 
             <div className="space-y-2">
               <Label>Category</Label>
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
                 Linked to article category:{" "}
                 <span className="font-semibold">
                   {PREDICTION_CATEGORY_LABELS[predictionCategory]}

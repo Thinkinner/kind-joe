@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { AdminShell } from "@/components/domains/admin/admin-shell";
+import { AdminThemeProvider } from "@/components/admin/admin-theme-provider";
 import { db } from "@/db";
 import { user as authUser } from "@/db/auth-schema";
 import { getServerSession } from "@/lib/auth/server";
@@ -87,5 +88,9 @@ export default async function AdminLayout({
     ),
   } as const;
 
-  return <AdminShell navPermissions={navPermissions}>{children}</AdminShell>;
+  return (
+    <AdminThemeProvider>
+      <AdminShell navPermissions={navPermissions}>{children}</AdminShell>
+    </AdminThemeProvider>
+  );
 }

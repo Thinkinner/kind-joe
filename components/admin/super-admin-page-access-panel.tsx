@@ -135,17 +135,17 @@ export function SuperAdminPageAccessPanel() {
   };
 
   return (
-    <Card className="space-y-5 border-slate-200/70 p-5">
+    <Card className="space-y-5 border-border p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700">
             <Shield className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
               Admin & Owner Page Access
             </h2>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-muted-foreground">
               Superadmin can disable specific admin pages for owner/admin
               accounts.
             </p>
@@ -167,22 +167,22 @@ export function SuperAdminPageAccessPanel() {
       </div>
 
       {!isOpen ? null : loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading page access controls...
         </div>
       ) : targetRows.length === 0 ? (
-        <p className="text-sm text-slate-500">No owner/admin accounts available.</p>
+        <p className="text-sm text-muted-foreground">No owner/admin accounts available.</p>
       ) : (
         <div className="space-y-4">
           {targetRows.map((row) => (
             <div
               key={row.id}
-              className="space-y-3 rounded-xl border border-slate-200/70 bg-slate-50/50 p-4"
+              className="space-y-3 rounded-xl border border-border bg-muted/50 p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-900">
-                  {row.name} <span className="text-slate-500">({row.email})</span>
+                <p className="text-sm font-medium text-foreground">
+                  {row.name} <span className="text-muted-foreground">({row.email})</span>
                 </p>
                 <Button
                   size="sm"
@@ -207,7 +207,7 @@ export function SuperAdminPageAccessPanel() {
                         togglePermission(row.id, perm, checked === true)
                       }
                     />
-                    <span className="text-slate-700">
+                    <span className="text-foreground">
                       {PERMISSION_LABELS[perm] ?? perm}
                     </span>
                   </label>

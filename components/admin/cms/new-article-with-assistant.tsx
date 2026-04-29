@@ -130,14 +130,14 @@ export function NewArticleWithAssistant() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <Card className="space-y-5 border border-violet-500/20 bg-slate-950 p-6 text-slate-100 shadow-[0_0_28px_rgba(99,102,241,0.12)]">
+      <Card className="space-y-5 border border-violet-500/20 bg-foreground p-6 text-background shadow-[0_0_28px_rgba(99,102,241,0.12)]">
         <div className="flex items-center gap-3">
           <Sparkles className="h-5 w-5 text-indigo-300" />
           <h1 className="text-2xl font-semibold tracking-tight">
             Start with Gemini Assistant
           </h1>
         </div>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-background/80">
           Paste a source URL or raw article text first. Gemini prepares your
           draft, then opens the same article form with fields prefilled.
         </p>
@@ -148,7 +148,7 @@ export function NewArticleWithAssistant() {
             value={source}
             onChange={(e) => setSource(e.target.value)}
             placeholder="Paste article URL or raw text content here..."
-            className="border-slate-700 bg-slate-950 pl-10 text-slate-100 placeholder:text-slate-500"
+            className="border-border bg-foreground pl-10 text-background placeholder:text-background/60"
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -169,21 +169,21 @@ export function NewArticleWithAssistant() {
           </Button>
         </div>
         {scrapePreview ? (
-          <div className="space-y-3 rounded-xl border border-indigo-400/40 bg-slate-900/80 p-4">
+          <div className="space-y-3 rounded-xl border border-indigo-400/40 bg-foreground/80 p-4">
             <p className="text-sm font-medium text-indigo-200">
               Scraped article preview
             </p>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-background/80">
               Source: {scrapePreview.sourceTitle || scrapePreview.sourceUrl || "Unknown"}
             </p>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-background/80">
               Extracted length: {scrapePreview.charCount ?? 0} characters
             </p>
             <Textarea
               readOnly
               rows={7}
               value={scrapePreview.previewText || ""}
-              className="border-slate-700 bg-slate-950 text-slate-200"
+              className="border-border bg-foreground text-background"
             />
             <div className="flex flex-wrap gap-2">
               <Button

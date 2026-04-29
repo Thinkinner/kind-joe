@@ -108,13 +108,13 @@ export function StaffTwoFactorSettings() {
   }
 
   if (isPending) {
-    return <p className="text-sm text-slate-600">Loading…</p>;
+    return <p className="text-sm text-muted-foreground">Loading...</p>;
   }
 
   if (enabled && step !== "showQr") {
     return (
       <div className="max-w-md space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Two-factor authentication is enabled on your account. Sign-in will ask
           for an authenticator code after your password.
         </p>
@@ -140,12 +140,12 @@ export function StaffTwoFactorSettings() {
   if (step === "showQr" && totpUri) {
     return (
       <div className="max-w-md space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Add this account to your authenticator app, then enter a 6-digit code
           to confirm.
         </p>
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mx-auto w-fit bg-white p-2">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mx-auto w-fit bg-card p-2">
             <QRCode value={totpUri} size={180} />
           </div>
         </div>
@@ -198,7 +198,7 @@ export function StaffTwoFactorSettings() {
 
   return (
     <div className="max-w-md space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Use an authenticator app (1Password, Google Authenticator, etc.) for a
         second step when signing in to admin.
       </p>

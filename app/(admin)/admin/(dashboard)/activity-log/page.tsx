@@ -178,33 +178,33 @@ export default async function ActivityLogPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Activity Log
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Unified stream of admin movements, including staff onboarding and
           article actions.
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Showing latest {sorted.length} events (limit: {limit}, max: 200).
         </p>
       </div>
 
-      <div className="overflow-hidden border-t border-slate-200/70">
-        <div className="grid grid-cols-[170px_190px_220px_minmax(0,1fr)] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden border-t border-border">
+        <div className="grid grid-cols-[170px_190px_220px_minmax(0,1fr)] gap-4 border-b border-border px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <p>When</p>
           <p>Action</p>
           <p>Actor</p>
           <p>Details</p>
         </div>
 
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {sorted.map((item) => (
             <li
               key={item.id}
               className="grid grid-cols-[170px_190px_220px_minmax(0,1fr)] gap-4 px-5 py-3 text-sm"
             >
-              <p className="text-xs text-slate-500">{formatWhen(item.at)}</p>
+              <p className="text-xs text-muted-foreground">{formatWhen(item.at)}</p>
               <div>
                 <Badge
                   variant="outline"
@@ -213,13 +213,13 @@ export default async function ActivityLogPage({
                   {item.action}
                 </Badge>
               </div>
-              <p className="truncate font-medium text-slate-700">{item.actor}</p>
-              <p className="truncate text-slate-600">{item.detail}</p>
+              <p className="truncate font-medium text-foreground">{item.actor}</p>
+              <p className="truncate text-muted-foreground">{item.detail}</p>
             </li>
           ))}
 
           {sorted.length === 0 ? (
-            <li className="px-5 py-8 text-center text-sm text-slate-500">
+            <li className="px-5 py-8 text-center text-sm text-muted-foreground">
               No activity recorded yet.
             </li>
           ) : null}

@@ -61,7 +61,7 @@ export function ArticleAnalyticsDashboard({
             <p className="text-sm font-medium tracking-tight text-muted-foreground">
               Total Views
             </p>
-            <p className="text-3xl font-medium tracking-tight text-slate-900">
+            <p className="text-3xl font-medium tracking-tight text-foreground">
               {new Intl.NumberFormat("en", {
                 notation: "compact",
                 maximumFractionDigits: 1,
@@ -75,7 +75,7 @@ export function ArticleAnalyticsDashboard({
                     : totalViewsTrend.direction === "down"
                       ? "bg-rose-100 text-rose-700"
                       : totalViewsTrend.direction === "flat"
-                        ? "bg-slate-100 text-slate-700"
+                        ? "bg-muted text-muted-foreground"
                         : "bg-amber-100 text-amber-700"
                 }`}
               >
@@ -96,7 +96,7 @@ export function ArticleAnalyticsDashboard({
             </p>
             <div className="flex items-center gap-2">
               <Clock3 className="h-4 w-4 text-indigo-500" />
-              <p className="text-3xl font-medium tracking-tight text-slate-900">
+              <p className="text-3xl font-medium tracking-tight text-foreground">
                 {avgReadTimeLabel}
               </p>
             </div>
@@ -110,7 +110,7 @@ export function ArticleAnalyticsDashboard({
             </p>
             <div className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-rose-500" />
-              <p className="text-3xl font-medium tracking-tight text-slate-900">
+              <p className="text-3xl font-medium tracking-tight text-foreground">
                 {topCategory}
               </p>
             </div>
@@ -122,7 +122,7 @@ export function ArticleAnalyticsDashboard({
             <p className="text-sm font-medium tracking-tight text-muted-foreground">
               Sources Today
             </p>
-            <div className="space-y-2 text-sm text-slate-700">
+            <div className="space-y-2 text-sm text-foreground">
               <p className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2">
                   <Search className="h-3.5 w-3.5 text-indigo-500" />
@@ -156,8 +156,8 @@ export function ArticleAnalyticsDashboard({
       </div>
 
       <Card className="gap-0">
-        <div className="border-b border-slate-200/60 px-6 py-4">
-          <h3 className="text-base font-medium tracking-tight text-slate-900">
+        <div className="border-b border-border px-6 py-4">
+          <h3 className="text-base font-medium tracking-tight text-foreground">
             Views over the last 30 days
           </h3>
         </div>
@@ -192,7 +192,7 @@ export function ArticleAnalyticsDashboard({
                         : ""
                     }
                     formatter={(value) => (
-                      <span className="font-medium tracking-tight text-slate-900">
+                      <span className="font-medium tracking-tight text-foreground">
                         {(value as number).toLocaleString()} views
                       </span>
                     )}

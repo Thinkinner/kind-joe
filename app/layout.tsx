@@ -149,7 +149,7 @@ export default async function RootLayout({
       </head>
 
       <body
-        className={`${poppins.variable} antialiased h-full bg-white text-slate-900`}
+        className={`${poppins.variable} antialiased h-full bg-background text-foreground`}
       >
         <GoogleAnalytics />
         <VisitorJourneyTracker />

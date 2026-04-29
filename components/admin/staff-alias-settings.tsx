@@ -155,12 +155,12 @@ export function StaffAliasSettings() {
   };
 
   if (loading) {
-    return <p className="text-sm text-slate-600">Loading...</p>;
+    return <p className="text-sm text-muted-foreground">Loading...</p>;
   }
 
   return (
     <form onSubmit={onSave} className="max-w-md space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Set your profile name and public alias for article bylines.
       </p>
       <div className="space-y-2">
@@ -193,13 +193,13 @@ export function StaffAliasSettings() {
       </div>
       {!aliasLocked ? (
         <>
-          <div className="border-l-2 border-neutral-300 pl-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-600">
+          <div className="border-l-2 border-border pl-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               AI alias assistant
             </p>
-            <p className="mt-1 text-sm text-neutral-700">
+            <p className="mt-1 text-sm text-foreground">
               Suggested realistic pen name:{" "}
-              <span className="font-semibold text-neutral-900">
+              <span className="font-semibold text-foreground">
                 {suggestedAlias || "Click below for a suggestion"}
               </span>
             </p>

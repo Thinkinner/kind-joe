@@ -279,19 +279,19 @@ export function ArticleAssistantPanel() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Article Assistant</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Article Assistant</h1>
         <Button variant="ghost" onClick={clearAll}>Clear All</Button>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        <Card className="overflow-hidden border border-violet-500/20 bg-slate-950 text-slate-100 shadow-[0_0_28px_rgba(99,102,241,0.12)] lg:col-span-5">
-          <div className="flex items-center gap-3 border-b border-slate-800/90 p-5">
+        <Card className="overflow-hidden border border-violet-500/20 bg-foreground text-background shadow-[0_0_28px_rgba(99,102,241,0.12)] lg:col-span-5">
+          <div className="flex items-center gap-3 border-b border-foreground/70 p-5">
             <Sparkles className="h-5 w-5 text-indigo-400" />
             <h2 className="text-3xl font-semibold tracking-tight">Gemini AI Assistant</h2>
           </div>
 
-          <div className="border-b border-slate-800/90 p-5 pb-4">
-            <div className="grid grid-cols-4 gap-1 rounded-full border border-violet-500/20 bg-slate-900/80 p-1 text-sm font-medium">
+          <div className="border-b border-foreground/70 p-5 pb-4">
+            <div className="grid grid-cols-4 gap-1 rounded-full border border-violet-500/20 bg-foreground/80 p-1 text-sm font-medium">
               <TabButton active={aiTab === "rewrite"} onClick={() => setAiTab("rewrite")}>
                 Auto-Rewrite
               </TabButton>
@@ -310,7 +310,7 @@ export function ArticleAssistantPanel() {
           <div className="space-y-4 p-5">
             {aiTab === "rewrite" && (
               <>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-background/80">
                   Paste an article link or raw text. Gemini rewrites it and auto-fills title, excerpt, tags, and category.
                 </p>
                 <div className="relative">
@@ -320,7 +320,7 @@ export function ArticleAssistantPanel() {
                     value={rewriteSource}
                     onChange={(e) => setRewriteSource(e.target.value)}
                     placeholder="Paste article URL or raw text content here..."
-                    className="border-slate-700 bg-slate-950 pl-10 text-slate-100 placeholder:text-slate-500"
+                    className="border-border bg-foreground pl-10 text-background placeholder:text-background/60"
                   />
                 </div>
                 <Button
@@ -338,7 +338,7 @@ export function ArticleAssistantPanel() {
 
             {aiTab === "write" && (
               <>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-background/80">
                   Ask Gemini to expand or refine content. It appends to the current draft output.
                 </p>
                 <Textarea
@@ -346,13 +346,13 @@ export function ArticleAssistantPanel() {
                   value={writePrompt}
                   onChange={(e) => setWritePrompt(e.target.value)}
                   placeholder="e.g. Add a conclusion with key takeaways..."
-                  className="border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500"
+                  className="border-border bg-foreground text-background placeholder:text-background/60"
                 />
                 <Button
                   type="button"
                   onClick={runWriter}
                   disabled={isWriting || !writePrompt.trim()}
-                  className="w-full bg-slate-100 text-slate-900 hover:bg-white"
+                  className="w-full bg-card text-foreground hover:bg-muted"
                 >
                   {isWriting ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenTool className="h-4 w-4" />}
                   {isWriting ? "Generating..." : "Generate & Insert"}
@@ -362,7 +362,7 @@ export function ArticleAssistantPanel() {
 
             {aiTab === "analyze" && (
               <>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-background/80">
                   Analyze SEO strength, tone, and potential bias before publishing.
                 </p>
                 <Button
@@ -379,7 +379,7 @@ export function ArticleAssistantPanel() {
 
             {aiTab === "comment" && (
               <>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-background/80">
                   Generate a natural reader-style comment with emotion and a suggested delay before posting.
                 </p>
                 <Button
@@ -402,7 +402,7 @@ export function ArticleAssistantPanel() {
 
         <Card className="space-y-4 p-5 lg:col-span-7">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold tracking-tight text-slate-900">Assistant Output</h3>
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">Assistant Output</h3>
             <Button onClick={copyAllOutput} className="bg-indigo-600 text-white hover:bg-indigo-700">
               <Copy className="h-4 w-4" />
               Copy All to Clipboard
@@ -429,12 +429,12 @@ export function ArticleAssistantPanel() {
           />
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold uppercase tracking-widest text-slate-400">Tags</Label>
+              <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tags</Label>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyText(assistResult.tags.join(", "), "Tags")}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <div className="flex min-h-10 flex-wrap gap-2 rounded-xl border-b border-slate-200 bg-slate-50/80 p-3">
+            <div className="flex min-h-10 flex-wrap gap-2 rounded-xl border-b border-border bg-muted/80 p-3">
               {assistResult.tags.length ? (
                 assistResult.tags.map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)
               ) : (
@@ -453,17 +453,17 @@ export function ArticleAssistantPanel() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold uppercase tracking-widest text-slate-400">Draft HTML</Label>
+              <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Draft HTML</Label>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyText(assistResult.draftHtml, "Draft HTML")}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
             </div>
             {assistResult.draftHtml ? (
-              <AnimatedSurface className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-100">
+              <AnimatedSurface className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-foreground p-3 text-xs text-background">
                 {assistResult.draftHtml}
               </AnimatedSurface>
             ) : (
-              <div className="rounded-xl border-b border-slate-200 bg-slate-50/80 p-3">
+              <div className="rounded-xl border-b border-border bg-muted/80 p-3">
                 <SkeletonBars bars={5} isLoading={isGenerating} />
               </div>
             )}
@@ -475,10 +475,10 @@ export function ArticleAssistantPanel() {
             <Metric title="Bias" value={assistResult.bias || "—"} />
           </div>
           {assistResult.seoFeedback ? (
-            <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{assistResult.seoFeedback}</p>
+            <p className="rounded-xl border border-border bg-muted p-3 text-sm text-foreground">{assistResult.seoFeedback}</p>
           ) : null}
           {assistResult.suggestions?.length ? (
-            <ul className="space-y-1 text-sm text-slate-700">
+            <ul className="space-y-1 text-sm text-foreground">
               {assistResult.suggestions.map((s, i) => (
                 <li key={`${s}-${i}`} className="flex items-start gap-2">
                   <Activity className="mt-0.5 h-4 w-4 text-indigo-500" />
@@ -522,7 +522,7 @@ function TabButton({
       className={`rounded-full px-3 py-2 text-center transition-colors ${
         active
           ? "bg-indigo-500/20 text-indigo-200 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.4)]"
-          : "text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+          : "text-background/80 hover:bg-foreground/80 hover:text-background"
       }`}
     >
       {children}
@@ -547,8 +547,8 @@ function OutputRow({
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</Label>
-      <AnimatedSurface className={`relative rounded-xl border-b border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-700 ${multiline ? "min-h-20" : "min-h-11"}`}>
+      <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</Label>
+      <AnimatedSurface className={`relative rounded-xl border-b border-border bg-muted/80 p-3 text-sm text-foreground ${multiline ? "min-h-20" : "min-h-11"}`}>
         {hasValue ? (
           <p className={`pr-10 ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>{value}</p>
         ) : (
@@ -557,7 +557,7 @@ function OutputRow({
         <Button
           size="icon"
           variant="ghost"
-          className={`absolute right-2 ${multiline ? "top-2.5" : "top-1/2 -translate-y-1/2"} h-7 w-7 text-slate-500 hover:text-slate-800`}
+          className={`absolute right-2 ${multiline ? "top-2.5" : "top-1/2 -translate-y-1/2"} h-7 w-7 text-muted-foreground hover:text-foreground`}
           onClick={onCopy}
           disabled={!hasValue}
         >
@@ -570,9 +570,9 @@ function OutputRow({
 
 function Metric({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-xs font-bold uppercase text-slate-500">{title}</p>
-      <p className="mt-1 text-base font-semibold text-slate-900">{value}</p>
+    <div className="rounded-xl border border-border bg-muted p-3">
+      <p className="text-xs font-bold uppercase text-muted-foreground">{title}</p>
+      <p className="mt-1 text-base font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -583,7 +583,7 @@ function SkeletonBars({ bars, isLoading }: { bars: number; isLoading?: boolean }
       {Array.from({ length: bars }).map((_, index) => (
         <div
           key={index}
-          className={`h-3 rounded-md bg-slate-300/65 ${isLoading ? "animate-pulse" : ""}`}
+          className={`h-3 rounded-md bg-muted-foreground/40 ${isLoading ? "animate-pulse" : ""}`}
           style={{ width: `${100 - index * 12}%` }}
         />
       ))}

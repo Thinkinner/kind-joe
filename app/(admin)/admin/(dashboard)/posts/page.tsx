@@ -182,7 +182,7 @@ export default function AdminPostsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading {feedType === "ventura" ? "ventura posts" : "posts"}...
         </div>
@@ -201,14 +201,14 @@ export default function AdminPostsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-medium tracking-tight text-foreground">
             {feedLabel}
           </h1>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Link-in-bio tiles for social landing pages.
           </p>
           <Tabs value={feedType} className="mt-3">
-            <TabsList className="h-10 rounded-full border border-slate-200/70 bg-slate-100/70 p-1">
+            <TabsList className="h-10 rounded-full border border-border bg-muted/70 p-1">
               <TabsTrigger
                 value="kindjoe"
                 className="rounded-full px-4 text-xs"
@@ -236,12 +236,12 @@ export default function AdminPostsPage() {
         </div>
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           <div className="relative w-full min-w-[14rem] sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts..."
-              className="rounded-xl border-slate-200/70 bg-white pl-9"
+              className="rounded-xl border-border bg-card pl-9"
             />
           </div>
           <Dialog
@@ -282,7 +282,7 @@ export default function AdminPostsPage() {
                 />
                 {imageUrl.trim() ? (
                   <div className="mt-2 space-y-3">
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="overflow-hidden rounded-xl border border-border bg-muted">
                       <img
                         src={imageUrl}
                         alt="Selected post media"
@@ -332,7 +332,7 @@ export default function AdminPostsPage() {
                         "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-5 text-sm transition-colors",
                         draggingImage
                           ? "border-primary bg-primary/5 text-primary"
-                          : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100/70",
+                          : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-muted/80",
                       )}
                     >
                       {uploadingImage ? (
@@ -362,7 +362,7 @@ export default function AdminPostsPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end border-t border-slate-200 px-8 py-5">
+            <div className="flex justify-end border-t border-border px-8 py-5">
               <Button
                 disabled={
                   saving ||
@@ -387,7 +387,7 @@ export default function AdminPostsPage() {
         {visiblePosts.map((p) => (
           <div
             key={p.id}
-            className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-slate-200/60 bg-neutral-100 transition-transform duration-200 hover:scale-[1.02]"
+            className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-muted transition-transform duration-200 hover:scale-[1.02]"
           >
             <Image
               src={p.imageUrl}
@@ -397,7 +397,7 @@ export default function AdminPostsPage() {
               sizes="(max-width: 768px) 50vw, 25vw"
             />
             {p.isPinned && (
-              <div className="absolute left-2 top-2 rounded-md bg-black/70 p-1 text-white">
+              <div className="absolute left-2 top-2 rounded-md bg-foreground/70 p-1 text-white">
                 <Pin className="h-3.5 w-3.5" />
               </div>
             )}
@@ -406,7 +406,7 @@ export default function AdminPostsPage() {
                 Scheduled
               </div>
             )}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-black/45 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-foreground/45 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
               <MousePointerClick className="h-3 w-3" />
               {new Intl.NumberFormat("en", {
                 notation: "compact",
@@ -414,7 +414,7 @@ export default function AdminPostsPage() {
               }).format(p.clickCount ?? 0)}{" "}
               clicks
             </div>
-            <div className="absolute inset-0 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 bg-foreground/45 opacity-0 transition-opacity group-hover:opacity-100">
               <div className="absolute right-2 top-2 flex gap-1">
                 <Button
                   type="button"
@@ -462,7 +462,7 @@ export default function AdminPostsPage() {
                 href={p.destinationUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-xs text-neutral-900"
+                className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-1 text-xs text-foreground"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open
@@ -481,14 +481,14 @@ export default function AdminPostsPage() {
         ))}
       </div>
       ) : (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-8 text-center">
-          <div className="mb-3 rounded-full bg-white p-3 shadow-sm">
-            <Layout className="h-6 w-6 text-slate-400" />
+        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/60 p-8 text-center">
+          <div className="mb-3 rounded-full bg-card p-3 shadow-sm">
+            <Layout className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h3 className="text-base font-medium tracking-tight text-slate-800">
+          <h3 className="text-base font-medium tracking-tight text-foreground">
             No posts found
           </h3>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Create your first post to start building your studio grid.
           </p>
           <Button

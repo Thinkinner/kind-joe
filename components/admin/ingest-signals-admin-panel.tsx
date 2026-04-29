@@ -88,7 +88,7 @@ function syntaxHighlightJson(value: unknown) {
       let cls = "text-emerald-300";
       if (/^".*":$/.test(match)) cls = "text-sky-300";
       else if (/true|false/.test(match)) cls = "text-violet-300";
-      else if (/null/.test(match)) cls = "text-slate-400";
+      else if (/null/.test(match)) cls = "text-muted-foreground";
       else if (/^-?\d/.test(match)) cls = "text-orange-300";
       return `<span class="${cls}">${match}</span>`;
     },
@@ -242,13 +242,13 @@ export function IngestSignalsAdminPanel() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-foreground">
               Incoming webhook events
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Raw rows from <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">incoming_events</code> including stored{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">payload</code> and{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">meta</code>.
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Raw rows from <code className="rounded bg-muted px-1 py-0.5 text-xs">incoming_events</code> including stored{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">payload</code> and{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">meta</code>.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -262,34 +262,34 @@ export function IngestSignalsAdminPanel() {
               <RotateCw className="h-3.5 w-3.5" />
               Refresh
             </Button>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               Last updated: {lastUpdated ? relativeTime(lastUpdated) : "just now"}
             </span>
           </div>
         </div>
         <div className="relative max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter events..."
-            className="border-slate-200/70 bg-white pl-9"
+            className="border-border bg-card pl-9"
           />
         </div>
 
         {loading ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
-            Loading…
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            Loading...
           </div>
         ) : filteredIncomingEvents.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
             No incoming events yet.
           </div>
         ) : (
           <>
-            <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-muted">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>ID</TableHead>
                     <TableHead>Source</TableHead>
@@ -303,25 +303,25 @@ export function IngestSignalsAdminPanel() {
                   {filteredIncomingEvents.map((evt, idx) => (
                     <TableRow
                       key={evt.id}
-                      className="text-sm even:bg-slate-50/50 hover:bg-slate-50/80"
+                      className="text-sm even:bg-muted/40 hover:bg-muted/70"
                     >
                       <TableCell>
                         <div className="min-w-0">
-                          <p className="font-mono text-xs text-slate-700">{evt.id}</p>
-                          <p className="max-w-[120px] truncate font-mono text-[11px] text-slate-400">
+                          <p className="font-mono text-xs text-foreground">{evt.id}</p>
+                          <p className="max-w-[120px] truncate font-mono text-[11px] text-muted-foreground">
                             {evt.externalEventId ?? "—"}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <Badge className="rounded-md border-0 bg-slate-900 text-white">
+                        <Badge className="rounded-md border-0 bg-foreground text-background">
                           {evt.source}
                         </Badge>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-slate-600">
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {relativeTime(evt.receivedAt)}
                       </TableCell>
-                      <TableCell className="max-w-md text-sm font-medium text-slate-700">
+                      <TableCell className="max-w-md text-sm font-medium text-foreground">
                         <span className="line-clamp-1">{evt.text}</span>
                       </TableCell>
                       <TableCell>
@@ -369,7 +369,7 @@ export function IngestSignalsAdminPanel() {
                 {loadingMoreIncoming ? "Loading…" : "Load more events"}
               </Button>
             ) : (
-              <p className="text-xs text-slate-500">End of incoming events.</p>
+              <p className="text-xs text-muted-foreground">End of incoming events.</p>
             )}
           </>
         )}
@@ -378,9 +378,9 @@ export function IngestSignalsAdminPanel() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Signals</h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Persisted rows in <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">signals</code> after ingest.
+            <h2 className="text-lg font-semibold text-foreground">Signals</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Persisted rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">signals</code> after ingest.
             </p>
           </div>
           <Button
@@ -398,14 +398,14 @@ export function IngestSignalsAdminPanel() {
         </div>
 
         {loading ? null : signals.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
             No signals in the database.
           </div>
         ) : (
           <>
-            <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-muted">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="max-w-[100px]">ID</TableHead>
                     <TableHead>Headline</TableHead>
@@ -418,7 +418,7 @@ export function IngestSignalsAdminPanel() {
                 </TableHeader>
                 <TableBody>
                   {signals.map((s) => (
-                    <TableRow key={s.id} className="text-sm even:bg-slate-50/50 hover:bg-slate-50/80">
+                    <TableRow key={s.id} className="text-sm even:bg-muted/40 hover:bg-muted/70">
                       <TableCell className="max-w-[100px] truncate font-mono text-[11px]">
                         {clip(s.id, 24)}
                       </TableCell>
@@ -430,12 +430,12 @@ export function IngestSignalsAdminPanel() {
                       <TableCell className="text-xs tabular-nums">
                         {s.impactScore ?? "—"}
                       </TableCell>
-                      <TableCell className="max-w-[180px] text-xs text-slate-600">
+                      <TableCell className="max-w-[180px] text-xs text-muted-foreground">
                         {[s.enrichmentProvider, s.enrichmentModel]
                           .filter(Boolean)
                           .join(" · ") || "—"}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-slate-600">
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {s.timestamp
                           ? new Date(s.timestamp).toLocaleString()
                           : "—"}
@@ -455,7 +455,7 @@ export function IngestSignalsAdminPanel() {
                 {loadingMoreSignals ? "Loading…" : "Load more signals"}
               </Button>
             ) : (
-              <p className="text-xs text-slate-500">End of signals.</p>
+              <p className="text-xs text-muted-foreground">End of signals.</p>
             )}
           </>
         )}
@@ -464,13 +464,13 @@ export function IngestSignalsAdminPanel() {
       <Dialog open={detailEvent != null} onOpenChange={(o) => !o && setDetailEvent(null)}>
         <DialogContent className="max-h-[88vh] max-w-3xl overflow-x-hidden overflow-y-auto p-0">
           <DialogHeader>
-            <DialogTitle className="border-b border-slate-200/70 px-6 py-5">
+            <DialogTitle className="border-b border-border px-6 py-5">
               <div className="flex flex-wrap items-center gap-2 text-xl tracking-tight">
                 <span>Event details</span>
-                <Badge className="rounded-md border-0 bg-slate-900 text-white">
+                <Badge className="rounded-md border-0 bg-foreground text-background">
                   {detailEvent?.source ?? "Unknown"}
                 </Badge>
-                <Badge variant="outline" className="rounded-md border-slate-300 font-mono">
+                <Badge variant="outline" className="rounded-md border-border font-mono">
                   #{detailEvent?.id ?? "—"}
                 </Badge>
               </div>
@@ -479,7 +479,7 @@ export function IngestSignalsAdminPanel() {
           {detailEvent ? (
             <div className="space-y-4 px-6 pb-5 pt-1">
               <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as "payload" | "meta" | "raw")}>
-                <TabsList className="rounded-lg border border-slate-200/80 bg-slate-50 p-1">
+                <TabsList className="rounded-lg border border-border bg-muted p-1">
                   <TabsTrigger value="payload" className="rounded-md">
                     Payload
                   </TabsTrigger>
@@ -493,16 +493,16 @@ export function IngestSignalsAdminPanel() {
               </Tabs>
 
               <div>
-                <p className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+                <p className="mb-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
                   {detailTab}
                 </p>
-                <div className="relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950 shadow-[0_0_0_1px_rgba(99,102,241,0.1),0_16px_30px_-22px_rgba(15,23,42,0.8)]">
+                <div className="relative overflow-hidden rounded-xl border border-foreground/40 bg-foreground shadow-[0_0_0_1px_rgba(99,102,241,0.1),0_16px_30px_-22px_rgba(15,23,42,0.8)]">
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-indigo-500/10 to-transparent" />
                   <Button
                     type="button"
                     size="sm"
                     variant="secondary"
-                    className="absolute right-3 top-3 z-10 h-8 gap-1 rounded-md border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                    className="absolute right-3 top-3 z-10 h-8 gap-1 rounded-md border border-border bg-card text-foreground hover:bg-muted"
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(activeJsonString);
@@ -518,7 +518,7 @@ export function IngestSignalsAdminPanel() {
                   </Button>
                   <div className="max-h-[50vh] overflow-x-hidden overflow-y-auto p-6 pt-11">
                     <pre
-                      className="m-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-sm leading-relaxed text-slate-100"
+                      className="m-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-mono text-sm leading-relaxed text-background"
                     >
                       <code
                         dangerouslySetInnerHTML={{
@@ -531,7 +531,7 @@ export function IngestSignalsAdminPanel() {
               </div>
             </div>
           ) : null}
-          <DialogFooter className="border-t border-slate-200/70 px-6 py-4">
+          <DialogFooter className="border-t border-border px-6 py-4">
             <Button type="button" variant="outline" onClick={() => setDetailEvent(null)}>
               Close
             </Button>

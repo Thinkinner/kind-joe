@@ -193,7 +193,7 @@ export default function AdminArticlesPage() {
   if (initialLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading articles...
         </div>
@@ -205,22 +205,22 @@ export default function AdminArticlesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Articles
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Create, edit, and publish stories. Loads {PAGE_SIZE} at a time;
             search runs on the server.
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="relative w-full min-w-[14rem] sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search title or excerpt..."
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
-              className="w-full rounded-xl border-slate-200/60 bg-white pl-9 shadow-sm"
+              className="w-full rounded-xl border-border bg-card pl-9 shadow-sm"
             />
           </div>
 
@@ -228,7 +228,7 @@ export default function AdminArticlesPage() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="rounded-xl border border-slate-200/60 bg-white text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-border bg-card text-foreground hover:bg-muted"
               >
                 <Filter className="h-4 w-4" />
                 Filter
@@ -273,23 +273,23 @@ export default function AdminArticlesPage() {
         </div>
       </div>
 
-      <section className="overflow-hidden border-t border-slate-200/60">
-        <div className="hidden grid-cols-[minmax(0,1fr)_190px_90px] items-center gap-4 border-b border-slate-200/60 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
+      <section className="overflow-hidden border-t border-border">
+        <div className="hidden grid-cols-[minmax(0,1fr)_190px_90px] items-center gap-4 border-b border-border px-6 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid">
           <p>Title</p>
           <p>Status</p>
           <p className="text-right">Actions</p>
         </div>
 
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {visibleRows.map((a) => {
             const status = getStatusMeta(a);
             return (
             <li
               key={a.id}
-              className="group grid grid-cols-1 gap-3 px-6 py-4 transition-colors hover:bg-slate-50/50 md:grid-cols-[minmax(0,1fr)_190px_90px] md:items-center md:gap-4"
+              className="group grid grid-cols-1 gap-3 px-6 py-4 transition-colors hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)_190px_90px] md:items-center md:gap-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
+                <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                   {a.coverImageUrl ? (
                     <img
                       src={optimizeCloudinaryUrl(a.coverImageUrl, { width: 240 })}
@@ -297,30 +297,30 @@ export default function AdminArticlesPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-400">
+                    <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-muted-foreground">
                       No img
                     </div>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold text-slate-900">
+                  <p className="truncate text-[15px] font-semibold text-foreground">
                     {a.title}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <Badge
                       variant="secondary"
-                      className="rounded-md border-0 bg-slate-100 text-[11px] text-slate-600"
+                      className="rounded-md border-0 bg-muted text-[11px] text-muted-foreground"
                     >
                       {a.category ?? "General"}
                     </Badge>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-muted-foreground">
                       Added by {a.authorName || "Unknown"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-1 text-xs text-slate-500">
+              <div className="space-y-1 text-xs text-muted-foreground">
                 <Badge
                   variant="outline"
                   className={`w-fit rounded-md border ${status.tone}`}
@@ -329,7 +329,7 @@ export default function AdminArticlesPage() {
                   {status.label !== "Published" && <Clock3 className="h-3 w-3" />}
                   {status.label}
                 </Badge>
-                <p className="text-[11px] text-slate-500">{status.detail}</p>
+                <p className="text-[11px] text-muted-foreground">{status.detail}</p>
               </div>
 
               <div className="flex shrink-0 justify-start md:justify-end">
@@ -338,7 +338,7 @@ export default function AdminArticlesPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="rounded-lg text-slate-500 opacity-100 transition-opacity hover:bg-slate-100 hover:text-slate-700 md:opacity-40 md:group-hover:opacity-100"
+                      className="rounded-lg text-muted-foreground opacity-100 transition-opacity hover:bg-muted hover:text-foreground md:opacity-40 md:group-hover:opacity-100"
                       aria-label="Open article actions"
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -367,13 +367,13 @@ export default function AdminArticlesPage() {
           })}
 
           {visibleRows.length === 0 && (
-            <li className="p-8 text-center text-sm text-neutral-500">
+            <li className="p-8 text-center text-sm text-muted-foreground">
               No articles match.
             </li>
           )}
         </ul>
 
-        <Separator className="bg-slate-200/60" />
+        <Separator className="bg-border" />
 
         <div className="flex flex-col items-center justify-center px-6 py-10">
           {hasMore ? (
@@ -383,7 +383,7 @@ export default function AdminArticlesPage() {
                 variant="outline"
                 onClick={loadMore}
                 disabled={loadingMore || searching}
-                className="my-8 w-full max-w-64 rounded-xl border-slate-200/70 bg-white text-slate-800 hover:bg-slate-50"
+                className="my-8 w-full max-w-64 rounded-xl border-border bg-card text-foreground hover:bg-muted"
               >
                 {loadingMore ? (
                   <>

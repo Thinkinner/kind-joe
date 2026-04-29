@@ -623,7 +623,7 @@ export default function StaffUsersPage() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading staff users...
         </div>
@@ -718,7 +718,7 @@ export default function StaffUsersPage() {
     if (role === "admin") {
       return "rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700";
     }
-    return "rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700";
+    return "rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground";
   };
   const initials = (name: string, email: string) => {
     const src = name.trim() || email;
@@ -733,20 +733,20 @@ export default function StaffUsersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Staff &amp; roles
         </h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           This table shows only people with staff roles. Add people safely via
           invite link or by selecting an existing user from the directory.
         </p>
       </div>
 
-      <div className="border-y border-slate-200/70 py-4">
+      <div className="border-y border-border py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Team management</h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-foreground">Team management</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
               Manage invites and control member permissions from one place.
             </p>
           </div>
@@ -760,17 +760,17 @@ export default function StaffUsersPage() {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="w-full overflow-y-auto border-l border-slate-200 bg-white sm:max-w-2xl"
+                className="w-full overflow-y-auto border-l border-border bg-card sm:max-w-2xl"
               >
-                <SheetHeader className="border-b border-slate-100 px-6 py-5">
+                <SheetHeader className="border-b border-border px-6 py-5">
                   <SheetTitle className="text-xl">Add team member</SheetTitle>
                   <SheetDescription>
                     Invite flow with identity, role, access, and review.
                   </SheetDescription>
                 </SheetHeader>
                 <div className="space-y-4 px-6 py-5">
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="rounded-xl border border-border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Step 1 - Identity
                     </p>
                     <label className="sr-only" htmlFor="lookup-email">
@@ -782,9 +782,9 @@ export default function StaffUsersPage() {
                       placeholder="colleague@company.com"
                       value={lookupEmail}
                       onChange={(e) => setLookupEmail(e.target.value)}
-                      className="mt-2 bg-white"
+                      className="mt-2 bg-card"
                     />
-                    <p className="mt-2 text-xs text-slate-600">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       {identityStatus === "already_staff"
                         ? "Status: already staff"
                         : identityStatus === "existing_user"
@@ -794,26 +794,26 @@ export default function StaffUsersPage() {
                             : "Status: enter an email to check"}
                     </p>
                     {lookupMatches.length > 0 && !exactExistingMatch && (
-                      <div className="mt-2 rounded-lg border border-neutral-200 bg-white">
+                      <div className="mt-2 rounded-lg border border-border bg-card">
                         {lookupMatches.map((u) => (
                           <button
                             key={u.id}
                             type="button"
-                            className="flex w-full items-center justify-between border-b border-neutral-100 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-neutral-50"
+                            className="flex w-full items-center justify-between border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
                             onClick={() => setLookupEmail(u.email)}
                           >
-                            <span className="font-medium text-neutral-900">
+                            <span className="font-medium text-foreground">
                               {u.name}
                             </span>
-                            <span className="text-neutral-600">{u.email}</span>
+                            <span className="text-muted-foreground">{u.email}</span>
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="rounded-xl border border-border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Step 2 - Role
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -831,14 +831,14 @@ export default function StaffUsersPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="rounded-xl border border-border p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Step 3 - Access
                     </p>
                     {viewerCanSeeSuperadmin ? (
                       <div className="mt-2 space-y-3">
                         <div className="flex flex-col gap-2">
-                          <label className="flex items-center gap-2 text-sm text-slate-800">
+                          <label className="flex items-center gap-2 text-sm text-foreground">
                             <Checkbox
                               checked={lookupAccessMode === "role_default"}
                               onCheckedChange={(checked) => {
@@ -849,7 +849,7 @@ export default function StaffUsersPage() {
                             />
                             Use role default
                           </label>
-                          <label className="flex items-center gap-2 text-sm text-slate-800">
+                          <label className="flex items-center gap-2 text-sm text-foreground">
                             <Checkbox
                               checked={lookupAccessMode === "custom"}
                               onCheckedChange={(checked) => {
@@ -862,17 +862,17 @@ export default function StaffUsersPage() {
                           </label>
                         </div>
                         {lookupAccessMode === "custom" && (
-                          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <div className="space-y-3 rounded-lg border border-border bg-muted p-3">
                             {INVITE_PERMISSION_GROUPS.map((group) => (
                               <div key={group.label} className="space-y-2">
-                                <p className="text-xs font-semibold text-slate-700">
+                                <p className="text-xs font-semibold text-foreground">
                                   {group.label}
                                 </p>
                                 <div className="grid gap-2 sm:grid-cols-2">
                                   {group.permissions.map((perm) => (
                                     <label
                                       key={perm}
-                                      className="flex items-center gap-2 text-sm text-slate-800"
+                                      className="flex items-center gap-2 text-sm text-foreground"
                                     >
                                       <Checkbox
                                         checked={lookupCustomAccess.includes(perm)}
@@ -895,32 +895,32 @@ export default function StaffUsersPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-slate-600">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         Access follows role defaults.
                       </p>
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="rounded-xl border border-border bg-muted p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Step 4 - Review before invite
                     </p>
-                    <div className="mt-2 space-y-1.5 text-sm text-slate-700">
+                    <div className="mt-2 space-y-1.5 text-sm text-foreground">
                       <p>
                         Email:{" "}
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-foreground">
                           {normalizedLookupEmail || "—"}
                         </span>
                       </p>
                       <p>
                         Role:{" "}
-                        <span className="font-medium capitalize text-slate-900">
+                        <span className="font-medium capitalize text-foreground">
                           {lookupRole}
                         </span>
                       </p>
                       <p>
                         Access level:{" "}
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-foreground">
                           {viewerCanSeeSuperadmin && lookupAccessMode === "custom"
                             ? "Customize page access"
                             : "Use role default"}
@@ -931,7 +931,7 @@ export default function StaffUsersPage() {
                         {reviewPermissionLabels.map((label) => (
                           <Badge
                             key={label}
-                            className="border border-slate-200 bg-white text-slate-700"
+                            className="border border-border bg-card text-foreground"
                           >
                             {label}
                           </Badge>
@@ -939,7 +939,7 @@ export default function StaffUsersPage() {
                       </div>
                       <p>
                         Invite expiry:{" "}
-                        <span className="font-medium text-slate-900">7 days</span>
+                        <span className="font-medium text-foreground">7 days</span>
                       </p>
                     </div>
                     {identityStatus === "already_staff" && (
@@ -949,7 +949,7 @@ export default function StaffUsersPage() {
                     )}
                   </div>
                 </div>
-                <SheetFooter className="sticky bottom-0 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+                <SheetFooter className="sticky bottom-0 border-t border-border bg-card px-6 py-4 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -991,7 +991,7 @@ export default function StaffUsersPage() {
                     </DialogDescription>
                   </DialogHeader>
                   {ownerAdminRows.length === 0 ? (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       No owner/admin members available.
                     </p>
                   ) : (
@@ -999,11 +999,11 @@ export default function StaffUsersPage() {
                       {ownerAdminRows.map((row) => (
                         <div
                           key={row.id}
-                          className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3"
+                          className="flex items-center justify-between rounded-lg border border-border bg-muted p-3"
                         >
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{row.name}</p>
-                            <p className="text-xs text-slate-600">{row.email}</p>
+                            <p className="text-sm font-medium text-foreground">{row.name}</p>
+                            <p className="text-xs text-muted-foreground">{row.email}</p>
                           </div>
                           <Button
                             type="button"
@@ -1036,8 +1036,8 @@ export default function StaffUsersPage() {
                 className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/70 px-2 py-2 last:border-b-0"
               >
                 <div>
-                  <p className="font-medium text-neutral-900">{inv.email}</p>
-                  <p className="text-neutral-600">
+                  <p className="font-medium text-foreground">{inv.email}</p>
+                  <p className="text-muted-foreground">
                     {inv.staffRole} · expires{" "}
                     {new Date(inv.expiresAt).toLocaleDateString()} ·{" "}
                     {labelForInviteAccess(inv.adminPageAccess)}
@@ -1094,13 +1094,13 @@ export default function StaffUsersPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search member by name or email"
-          className="max-w-sm bg-white"
+          className="max-w-sm bg-card"
         />
       </div>
 
-      <div className="overflow-x-auto border-t border-slate-200/70">
+      <div className="overflow-x-auto border-t border-border">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-muted text-muted-foreground">
             <tr>
               <th className="p-3 font-medium">Name</th>
               <th className="p-3 font-medium">Email</th>
@@ -1118,21 +1118,21 @@ export default function StaffUsersPage() {
               return (
                 <tr
                   key={r.id}
-                  className="border-t border-slate-100 align-top transition-colors hover:bg-slate-50/50"
+                  className="border-t border-border align-top transition-colors hover:bg-muted/50"
                 >
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 border border-slate-200 bg-slate-100">
-                        <AvatarFallback className="bg-slate-100 text-xs font-medium text-slate-600">
+                      <Avatar className="h-8 w-8 border border-border bg-muted">
+                        <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
                           {initials(r.name, r.email)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-semibold text-slate-900">{r.name}</span>
+                      <span className="font-semibold text-foreground">{r.name}</span>
                     </div>
                   </td>
-                  <td className="p-3 text-slate-500">{r.email}</td>
+                  <td className="p-3 text-muted-foreground">{r.email}</td>
                   <td className="p-3">
-                    <span className="inline-flex items-center gap-1.5 text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 text-foreground">
                       <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                       Active
                     </span>
@@ -1192,7 +1192,7 @@ export default function StaffUsersPage() {
             })}
             {visibleStaffRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-neutral-500">
+                <td colSpan={5} className="p-8 text-center text-muted-foreground">
                   {staffRows.length === 0
                     ? "No staff users with roles yet."
                     : "No members match your search."}
@@ -1211,7 +1211,7 @@ export default function StaffUsersPage() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-l border-slate-200 bg-white sm:max-w-xl"
+          className="w-full overflow-y-auto border-l border-border bg-card sm:max-w-xl"
           onPointerDownOutside={(e) => {
             if (savingInviteChanges) e.preventDefault();
           }}
@@ -1219,7 +1219,7 @@ export default function StaffUsersPage() {
             if (savingInviteChanges) e.preventDefault();
           }}
         >
-          <SheetHeader className="border-b border-slate-100 px-6 py-5">
+          <SheetHeader className="border-b border-border px-6 py-5">
             <SheetTitle className="text-xl">Manage pending invite access</SheetTitle>
             <SheetDescription>
               Update role and access before this invitation is accepted.
@@ -1228,15 +1228,15 @@ export default function StaffUsersPage() {
 
           {editingInvite ? (
             <div className="space-y-4 px-6 py-5">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                <p className="font-medium text-slate-900">{editingInvite.email}</p>
-                <p className="mt-1 text-xs text-slate-600">
+              <div className="rounded-lg border border-border bg-muted p-3 text-sm">
+                <p className="font-medium text-foreground">{editingInvite.email}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Expires {new Date(editingInvite.expiresAt).toLocaleDateString()}
                 </p>
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Role
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -1257,11 +1257,11 @@ export default function StaffUsersPage() {
 
               {viewerCanSeeSuperadmin ? (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Access
                   </p>
                   <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm text-slate-800">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
                       <Checkbox
                         checked={editingInviteAccessMode === "role_default"}
                         onCheckedChange={(checked) => {
@@ -1271,7 +1271,7 @@ export default function StaffUsersPage() {
                       />
                       Use role default
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-slate-800">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
                       <Checkbox
                         checked={editingInviteAccessMode === "custom"}
                         onCheckedChange={(checked) => {
@@ -1283,17 +1283,17 @@ export default function StaffUsersPage() {
                     </label>
                   </div>
                   {editingInviteAccessMode === "custom" && (
-                    <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="mt-3 space-y-3 rounded-lg border border-border bg-muted p-3">
                       {INVITE_PERMISSION_GROUPS.map((group) => (
                         <div key={group.label} className="space-y-2">
-                          <p className="text-xs font-semibold text-slate-700">
+                          <p className="text-xs font-semibold text-foreground">
                             {group.label}
                           </p>
                           <div className="grid gap-2 sm:grid-cols-2">
                             {group.permissions.map((perm) => (
                               <label
                                 key={perm}
-                                className="flex items-center gap-2 text-sm text-slate-800"
+                                className="flex items-center gap-2 text-sm text-foreground"
                               >
                                 <Checkbox
                                   checked={editingInviteCustomAccess.includes(perm)}
@@ -1317,14 +1317,14 @@ export default function StaffUsersPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   Access follows role defaults for non-superadmin users.
                 </p>
               )}
             </div>
           ) : null}
 
-          <SheetFooter className="sticky bottom-0 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+          <SheetFooter className="sticky bottom-0 border-t border-border bg-card px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -1376,10 +1376,10 @@ export default function StaffUsersPage() {
                 <p>
                   {modalUser ? (
                     <>
-                      <span className="font-medium text-neutral-900">
+                      <span className="font-medium text-foreground">
                         {modalUser.name}
                       </span>
-                      <span className="text-neutral-600">
+                      <span className="text-muted-foreground">
                         {" "}
                         ({modalUser.email})
                       </span>
@@ -1408,7 +1408,7 @@ export default function StaffUsersPage() {
                 placeholder="e.g. City Desk Reporter"
                 disabled={savingModal}
               />
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-muted-foreground">
                 This is the byline alias shown publicly for this staff member.
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -1447,9 +1447,9 @@ export default function StaffUsersPage() {
                 </Button>
               </div>
               {suggestedAlias ? (
-                <p className="text-xs text-neutral-600">
+                <p className="text-xs text-muted-foreground">
                   Suggested alias:{" "}
-                  <span className="font-semibold text-neutral-900">{suggestedAlias}</span>
+                  <span className="font-semibold text-foreground">{suggestedAlias}</span>
                 </p>
               ) : null}
             </div>
@@ -1457,7 +1457,7 @@ export default function StaffUsersPage() {
               {assignableRoleOptions.map((role) => (
                 <label
                   key={role}
-                  className="flex cursor-pointer items-center gap-3 text-neutral-900"
+                  className="flex cursor-pointer items-center gap-3 text-foreground"
                 >
                   <Checkbox
                     checked={draftRoles.includes(role)}
@@ -1472,8 +1472,8 @@ export default function StaffUsersPage() {
             </div>
 
             {modalUser?.canEditPageAccess && (
-              <div className="border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-xs text-neutral-500">
+              <div className="border-t border-border pt-4">
+                <p className="mb-2 text-xs text-muted-foreground">
                   Page access (superadmin only): controls which admin pages appear
                   in sidebar and are accessible for this user.
                 </p>
@@ -1482,7 +1482,7 @@ export default function StaffUsersPage() {
                     onValueChange={(value) => applyAccessPreset(value as AccessPreset)}
                     disabled={savingModal}
                   >
-                    <SelectTrigger className="w-full bg-white sm:w-[220px]">
+                    <SelectTrigger className="w-full bg-card sm:w-[220px]">
                       <SelectValue placeholder="Apply permission preset" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1499,7 +1499,7 @@ export default function StaffUsersPage() {
                   {ALL_ADMIN_PERMISSIONS.map((perm) => (
                     <label
                       key={perm}
-                      className="flex cursor-pointer items-center gap-3 text-neutral-900"
+                      className="flex cursor-pointer items-center gap-3 text-foreground"
                     >
                       <Checkbox
                         checked={draftPageAccess.includes(perm)}
@@ -1609,11 +1609,11 @@ export default function StaffUsersPage() {
           </DialogHeader>
           {tempPasswordResult ? (
             <div className="space-y-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-500">
+              <div className="rounded-lg border border-border bg-muted p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Temporary password
                 </p>
-                <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">
+                <p className="mt-1 break-all font-mono text-sm font-semibold text-foreground">
                   {tempPasswordResult.temporaryPassword}
                 </p>
               </div>

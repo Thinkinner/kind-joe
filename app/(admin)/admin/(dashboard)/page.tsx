@@ -50,9 +50,9 @@ function MetricCard({
   trendState?: TrendState;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)] transition-all hover:shadow-[0_14px_34px_-20px_rgb(15_23_42/0.24)]">
+    <div className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)] transition-all hover:shadow-[0_14px_34px_-20px_rgb(15_23_42/0.24)]">
       <div className="flex items-center justify-between">
-        <div className="rounded-lg bg-neutral-50 p-2 text-neutral-600 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
+        <div className="rounded-lg bg-muted p-2 text-muted-foreground transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
           <Icon size={18} />
         </div>
         {trendState && (
@@ -63,7 +63,7 @@ function MetricCard({
                 : trendState.direction === "down"
                   ? "text-rose-600"
                   : trendState.direction === "flat"
-                    ? "text-slate-600"
+                    ? "text-muted-foreground"
                     : "text-amber-600"
             }`}
           >
@@ -74,8 +74,8 @@ function MetricCard({
         )}
       </div>
       <div className="mt-4">
-        <p className="text-sm font-medium text-neutral-500">{label}</p>
-        <p className="text-2xl font-bold tracking-tight text-neutral-900">{value.toLocaleString()}</p>
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
       </div>
     </div>
   );
@@ -267,11 +267,11 @@ export default async function AdminDashboardPage({
       {/* Header Section */}
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Analytics</h1>
-          <p className="text-neutral-500">Overview of your platform performance.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Analytics</h1>
+          <p className="text-muted-foreground">Overview of your platform performance.</p>
         </div>
         
-        <div className="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-white p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
           {RANGE_OPTIONS.map((opt) => (
             <Link
               key={opt.key}
@@ -279,7 +279,7 @@ export default async function AdminDashboardPage({
               className={`px-4 py-1.5 text-sm font-medium transition-all ${
                 range === opt.key 
                   ? "rounded-lg bg-primary text-primary-foreground shadow-sm" 
-                  : "text-neutral-600 hover:text-neutral-900"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -320,30 +320,30 @@ export default async function AdminDashboardPage({
       <div className="grid gap-8 lg:grid-cols-3">
         
         <section className="lg:col-span-2 space-y-6">
-          <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
-             <div className="flex items-center justify-between border-b border-slate-200/60 p-6">
-                <h2 className="text-lg font-bold text-neutral-900">Popular Content</h2>
-                <div className="flex gap-1 rounded-lg bg-neutral-50 p-1">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
+             <div className="flex items-center justify-between border-b border-border p-6">
+                <h2 className="text-lg font-bold text-foreground">Popular Content</h2>
+                <div className="flex gap-1 rounded-lg bg-muted p-1">
                     {[5, 10, 20].map(n => (
                         <Link 
                             key={n} 
                             href={`?range=${range}&top=${n}`}
-                            className={`rounded-md px-3 py-1 text-xs font-bold ${top === n ? "bg-white text-primary shadow-sm" : "text-neutral-500"}`}
+                            className={`rounded-md px-3 py-1 text-xs font-bold ${top === n ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}
                         >
                             {n}
                         </Link>
                     ))}
                 </div>
              </div>
-             <div className="divide-y divide-neutral-100">
+             <div className="divide-y divide-border">
                 {topArticles.map((article, idx) => (
                   <Link 
                     key={article.id} 
                     href={`/admin/articles/${article.id}/edit`}
-                    className="flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors"
+                    className="flex items-center gap-4 p-4 hover:bg-muted/60 transition-colors"
                   >
-                    <span className="text-sm font-bold text-neutral-300 w-4">{idx + 1}</span>
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-neutral-100">
+                    <span className="text-sm font-bold text-muted-foreground w-4">{idx + 1}</span>
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                       {article.coverImageUrl && (
                         <Image
                           src={optimizeCloudinaryUrl(article.coverImageUrl, { width: 256 })}
@@ -354,11 +354,11 @@ export default async function AdminDashboardPage({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="truncate font-semibold text-neutral-900 group-hover:text-primary">{article.title}</h3>
-                      <p className="text-xs text-neutral-500">{article.views.toLocaleString()} views this period</p>
+                      <h3 className="truncate font-semibold text-foreground group-hover:text-primary">{article.title}</h3>
+                      <p className="text-xs text-muted-foreground">{article.views.toLocaleString()} views this period</p>
                     </div>
                     <div className="text-right">
-                       <div className="h-1.5 w-24 rounded-full bg-neutral-100 overflow-hidden">
+                       <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
                           <div 
                             className="h-full bg-primary" 
                             style={{ width: `${(article.views / (topArticles[0]?.views || 1)) * 100}%` }} 
@@ -373,35 +373,35 @@ export default async function AdminDashboardPage({
 
         {/* Sidebar / Secondary Stats */}
         <section className="space-y-6">
-          <div className="rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-900 p-6 text-white shadow-[0_20px_40px_-26px_rgb(15_23_42/0.55)]">
-             <div className="mb-4 w-fit rounded-full bg-white/10 p-2 text-indigo-300">
+          <div className="rounded-xl border border-border bg-gradient-to-br from-foreground/95 via-foreground/95 to-primary/80 p-6 text-white shadow-[0_20px_40px_-26px_rgb(15_23_42/0.55)]">
+             <div className="mb-4 w-fit rounded-full bg-primary-foreground/10 p-2 text-indigo-300">
                 <FileText size={20} />
              </div>
              <h2 className="text-xl font-bold">Content Strategy</h2>
-             <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
+             <p className="mt-2 text-sm text-white/80 leading-relaxed">
                Your top article accounts for {topArticleSharePercent}% of all traffic. 
                Consider updating related content to capitalize on this interest.
              </p>
-             <button className="mt-6 w-full rounded-xl bg-white py-2.5 text-sm font-bold text-neutral-900 hover:bg-neutral-100 transition-colors">
+             <button className="mt-6 w-full rounded-xl bg-card py-2.5 text-sm font-bold text-foreground hover:bg-card/90 transition-colors">
                 Generate Report
              </button>
           </div>
 
-          <div className="rounded-xl border border-slate-200/60 bg-white p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
-             <h2 className="font-bold text-neutral-900 mb-4">Device Distribution</h2>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
+             <h2 className="font-bold text-foreground mb-4">Device Distribution</h2>
              {deviceTotal > 0 ? (
                <div className="space-y-3">
                  {deviceRows.map((row) => {
                    const pct = Math.round((row.value / deviceTotal) * 100);
                    return (
                      <div key={row.key} className="space-y-1">
-                       <div className="flex items-center justify-between text-xs text-slate-600">
+                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                          <span>{row.label}</span>
                          <span className="font-medium">
                            {row.value.toLocaleString()} ({pct}%)
                          </span>
                        </div>
-                       <div className="h-1.5 w-full rounded-full bg-slate-100">
+                       <div className="h-1.5 w-full rounded-full bg-muted">
                          <div
                            className="h-full rounded-full bg-indigo-500"
                            style={{ width: `${pct}%` }}
@@ -412,9 +412,9 @@ export default async function AdminDashboardPage({
                  })}
                </div>
              ) : (
-               <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
-                 <p className="text-sm font-medium text-slate-700">No device data yet</p>
-                 <p className="mt-1 text-xs text-slate-500">
+               <div className="rounded-lg border border-dashed border-border bg-muted px-4 py-5">
+                 <p className="text-sm font-medium text-foreground">No device data yet</p>
+                 <p className="mt-1 text-xs text-muted-foreground">
                    Device metrics will appear once traffic is tracked for this period.
                  </p>
                </div>

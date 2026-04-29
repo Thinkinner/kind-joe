@@ -169,42 +169,42 @@ export default async function VisitorJourneysPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
           Visitor journeys
         </h1>
-        <p className="mt-1 text-sm font-normal tracking-tight text-neutral-600">
+        <p className="mt-1 text-sm font-normal tracking-tight text-muted-foreground">
           Footstep trail of page navigation (all public pages, admin excluded).
         </p>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Showing latest {JOURNEY_DISPLAY_LIMIT} journeys.
         </p>
       </div>
 
-      <section className="rounded-xl border border-slate-200/60 bg-white p-5 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
+      <section className="rounded-xl border border-border bg-card p-5 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
         <div className="mb-3 flex items-center gap-2">
-          <DoorOpen className="h-4 w-4 text-slate-500" />
-          <h2 className="text-sm font-medium tracking-tight text-slate-700">
+          <DoorOpen className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-medium tracking-tight text-foreground">
             Top exit pages
           </h2>
         </div>
         {topExitPages.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">No visitor events yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">No visitor events yet.</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {topExitPages.map(([path, count]) => (
               <li
                 key={path}
-                className="relative overflow-hidden rounded-lg border border-slate-200/60 bg-slate-50/60 px-3 py-2.5 text-sm"
+                className="relative overflow-hidden rounded-lg border border-border bg-muted/60 px-3 py-2.5 text-sm"
               >
                 <div
                   className="absolute inset-y-0 left-0 bg-indigo-100/70"
                   style={{ width: `${(count / maxExitCount) * 100}%` }}
                 />
                 <div className="relative z-10 flex items-center justify-between gap-3">
-                  <span className="truncate font-medium tracking-tight text-slate-700">
+                  <span className="truncate font-medium tracking-tight text-foreground">
                     {path}
                   </span>
-                  <span className="tabular-nums text-slate-600">{count}</span>
+                  <span className="tabular-nums text-muted-foreground">{count}</span>
                 </div>
               </li>
             ))}
@@ -214,20 +214,20 @@ export default async function VisitorJourneysPage({
 
       <section className="space-y-3">
         {journeys.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-500">
+          <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
             No visitor journey data yet.
           </div>
         ) : (
           journeys.map((journey) => (
             <article
               key={journey.sessionId}
-              className="rounded-xl border border-slate-200/60 bg-white p-5 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]"
+              className="rounded-xl border border-border bg-card p-5 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <UserCircle2 className="h-5 w-5 shrink-0 text-slate-500" />
+                  <UserCircle2 className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium tracking-tight text-slate-800">
+                    <p className="text-sm font-medium tracking-tight text-foreground">
                       Duration:{" "}
                       {formatDuration(
                         journey.startedAt,
@@ -235,7 +235,7 @@ export default async function VisitorJourneysPage({
                         journey.steps.length,
                       )}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-muted-foreground">
                       Started {journey.startedAt.toLocaleString()} · Last seen{" "}
                       {journey.lastSeenAt.toLocaleString()}
                     </p>
@@ -254,20 +254,20 @@ export default async function VisitorJourneysPage({
                   )}
                   <Badge
                     variant="outline"
-                    className="rounded-md border-slate-200/70 text-slate-600"
+                    className="rounded-md border-border text-muted-foreground"
                   >
                     {journey.steps.length} steps
                   </Badge>
                 </div>
               </div>
 
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-slate-400">
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
                 <span>session: {journey.sessionId}</span>
                 <span>visitor: {journey.visitorId ?? "unknown"}</span>
               </div>
 
-              <div className="mt-4 rounded-xl bg-slate-50/50 p-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div className="mt-4 rounded-xl bg-muted/50 p-4">
+                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Path
                 </p>
                 <ol className="space-y-3 text-sm">
@@ -284,33 +284,33 @@ export default async function VisitorJourneysPage({
                     return (
                       <li key={`${journey.sessionId}_${idx}`} className="relative pl-8">
                         {idx < journey.steps.length - 1 && (
-                          <span className="absolute left-[11px] top-5 h-[calc(100%+8px)] w-px bg-slate-200" />
+                          <span className="absolute left-[11px] top-5 h-[calc(100%+8px)] w-px bg-border" />
                         )}
                         <span
                           className={`absolute left-0 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border ${
                             isLast
                               ? "border-rose-200 bg-rose-50 text-rose-600"
-                              : "border-slate-200 bg-white text-slate-500"
+                              : "border-border bg-card text-muted-foreground"
                           }`}
                         >
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         <div className="space-y-0.5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="break-all font-medium tracking-tight text-slate-700">
+                            <span className="break-all font-medium tracking-tight text-foreground">
                               {fullPath}
                             </span>
                             {step.count > 1 && (
                               <Badge
                                 variant="secondary"
-                                className="rounded-md border-0 bg-slate-200/80 text-slate-700"
+                                className="rounded-md border-0 bg-muted text-foreground"
                               >
                                 x{step.count}
                               </Badge>
                             )}
                             <Badge
                               variant="outline"
-                              className="rounded-md border-slate-200/70 text-slate-600"
+                              className="rounded-md border-border text-muted-foreground"
                             >
                               stayed {stepDuration}
                             </Badge>
@@ -324,7 +324,7 @@ export default async function VisitorJourneysPage({
                               </Badge>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-muted-foreground">
                             {step.viewedAt.toLocaleTimeString([], {
                               hour: "numeric",
                               minute: "2-digit",

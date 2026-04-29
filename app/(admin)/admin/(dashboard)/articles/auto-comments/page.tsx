@@ -221,10 +221,10 @@ export default function AdminAutoCommentsPage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Auto Comment Tester
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Run the auto-comment scheduler manually and preview human-like comments.
         </p>
       </div>
@@ -232,8 +232,8 @@ export default function AdminAutoCommentsPage() {
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Run Scheduler</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-base font-semibold text-foreground">Run Scheduler</h2>
+            <p className="text-sm text-muted-foreground">
               Processes published/scheduled articles and posts due auto-comments.
             </p>
           </div>
@@ -247,24 +247,24 @@ export default function AdminAutoCommentsPage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
           <Switch checked={forceDue} onCheckedChange={setForceDue} />
           <div>
-            <Label className="text-sm font-medium text-slate-800">
+            <Label className="text-sm font-medium text-foreground">
               Force due now (ignore random delay)
             </Label>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Useful for immediate testing.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
           <Switch checked={latestOnly} onCheckedChange={setLatestOnly} />
           <div>
-            <Label className="text-sm font-medium text-slate-800">
+            <Label className="text-sm font-medium text-foreground">
               Target latest article only
             </Label>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Focus run on the newest eligible published article.
             </p>
           </div>
@@ -286,8 +286,8 @@ export default function AdminAutoCommentsPage() {
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Schedule monitor</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-base font-semibold text-foreground">Schedule monitor</h2>
+            <p className="text-sm text-muted-foreground">
               Live slot schedule for latest articles. Refreshes every 20 seconds.
             </p>
           </div>
@@ -307,15 +307,15 @@ export default function AdminAutoCommentsPage() {
           </div>
         </div>
         {scheduleGeneratedAt ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Updated: {new Date(scheduleGeneratedAt).toLocaleString()}
           </p>
         ) : null}
         {scheduleRows.length ? (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="max-h-[480px] overflow-auto">
               <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 bg-slate-100 text-slate-600">
+                <thead className="sticky top-0 bg-muted text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Article</th>
                     <th className="px-3 py-2 font-semibold">State</th>
@@ -327,27 +327,27 @@ export default function AdminAutoCommentsPage() {
                   {scheduleRows.map((row) => (
                     <tr
                       key={row.articleId}
-                      className="border-t border-slate-100 align-top hover:bg-slate-50"
+                      className="border-t border-border align-top hover:bg-muted/60"
                     >
                       <td className="px-3 py-2">
-                        <p className="max-w-[300px] truncate font-medium text-slate-800">
+                        <p className="max-w-[300px] truncate font-medium text-foreground">
                           {row.title}
                         </p>
-                        <p className="text-slate-500">/{row.slug}</p>
-                        <p className="text-slate-500">
+                        <p className="text-muted-foreground">/{row.slug}</p>
+                        <p className="text-muted-foreground">
                           {row.marketId != null ? `Market #${row.marketId}` : "No market"}
                         </p>
                       </td>
                       <td className="px-3 py-2">
-                        <p className="text-slate-700">{row.articleState}</p>
-                        <p className="text-slate-500">
+                        <p className="text-foreground">{row.articleState}</p>
+                        <p className="text-muted-foreground">
                           {row.publishedAtIso
                             ? new Date(row.publishedAtIso).toLocaleString()
                             : "No publish time"}
                         </p>
                       </td>
                       <td className="px-3 py-2">
-                        <p className="font-semibold text-slate-800">
+                        <p className="font-semibold text-foreground">
                           {row.postedCount}/{row.commentTargetCount} posted
                         </p>
                       </td>
@@ -356,29 +356,29 @@ export default function AdminAutoCommentsPage() {
                           {row.slots.map((slot) => (
                             <div
                               key={`${row.articleId}-slot-${slot.slotIndex}`}
-                              className="rounded border border-slate-200 bg-slate-50 p-2"
+                              className="rounded border border-border bg-muted p-2"
                             >
-                              <p className="font-semibold text-slate-800">
+                              <p className="font-semibold text-foreground">
                                 Slot {slot.slotIndex + 1} · {slot.delayMinutes} min
                               </p>
-                              <p className="text-slate-600">
+                              <p className="text-muted-foreground">
                                 Status:{" "}
                                 <span className="font-medium uppercase">{slot.status}</span>
                               </p>
-                              <p className="text-slate-600">
+                              <p className="text-muted-foreground">
                                 Due:{" "}
                                 {slot.dueAtIso
                                   ? new Date(slot.dueAtIso).toLocaleString()
                                   : "n/a"}
                               </p>
-                              <p className="text-slate-600">
+                              <p className="text-muted-foreground">
                                 {slot.status === "posted"
                                   ? `Posted at ${slot.postedAtIso ? new Date(slot.postedAtIso).toLocaleString() : "unknown"}`
                                   : slot.timeLeftSeconds != null
                                     ? `Time left: ${Math.max(0, Math.floor(slot.timeLeftSeconds / 60))}m ${Math.max(0, slot.timeLeftSeconds % 60)}s`
                                     : "Time left: n/a"}
                               </p>
-                              <p className="text-slate-700">
+                              <p className="text-foreground">
                                 {slot.postedCommentBody
                                   ? `Comment: ${slot.postedCommentBody}`
                                   : "Comment: Will be generated at due time"}
@@ -415,7 +415,7 @@ export default function AdminAutoCommentsPage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {scheduleLoading
               ? "Loading schedule..."
               : "No scheduled articles yet (publish and link predictions to see them)."}
@@ -425,8 +425,8 @@ export default function AdminAutoCommentsPage() {
 
       <Card className="space-y-4 p-5">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Generate One Comment</h2>
-          <p className="text-sm text-slate-600">
+          <h2 className="text-base font-semibold text-foreground">Generate One Comment</h2>
+          <p className="text-sm text-muted-foreground">
             Quick check for how the AI comment voice looks before running scheduler.
           </p>
         </div>
@@ -464,9 +464,9 @@ export default function AdminAutoCommentsPage() {
         </Button>
 
         {commentResult?.commentDraft ? (
-          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">Comment draft</p>
-            <p className="text-sm text-slate-700">{commentResult.commentDraft}</p>
+          <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+            <p className="text-sm font-medium text-foreground">Comment draft</p>
+            <p className="text-sm text-foreground">{commentResult.commentDraft}</p>
             <div className="grid gap-2 sm:grid-cols-3">
               <Metric title="Persona" value={commentResult.commentPersona || "—"} />
               <Metric title="Emotion" value={commentResult.commentEmotion || "—"} />
@@ -478,17 +478,17 @@ export default function AdminAutoCommentsPage() {
 
       <Card className="space-y-4 p-5">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Article run details</h2>
-          <p className="text-sm text-slate-600">
+          <h2 className="text-base font-semibold text-foreground">Article run details</h2>
+          <p className="text-sm text-muted-foreground">
             Click a row to view detailed comment info.
           </p>
         </div>
         {runResult?.articles?.length ? (
           <div className="space-y-2">
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="max-h-80 overflow-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-slate-100 text-slate-600">
+                  <thead className="sticky top-0 bg-muted text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Article</th>
                       <th className="px-3 py-2 font-semibold">Article state</th>
@@ -506,20 +506,20 @@ export default function AdminAutoCommentsPage() {
                       return (
                         <tr
                           key={`${item.articleId}-${item.status}-${item.reason}`}
-                          className={`cursor-pointer border-t border-slate-100 ${
-                            isSelected ? "bg-indigo-50" : "hover:bg-slate-50"
+                          className={`cursor-pointer border-t border-border ${
+                            isSelected ? "bg-primary/10" : "hover:bg-muted/60"
                           }`}
                           onClick={() => setSelectedArticle(item)}
                         >
                           <td className="px-3 py-2">
                             <div className="max-w-[360px]">
-                              <p className="truncate font-medium text-slate-800">
+                              <p className="truncate font-medium text-foreground">
                                 {item.title}
                               </p>
-                              <p className="truncate text-slate-500">/{item.slug}</p>
+                              <p className="truncate text-muted-foreground">/{item.slug}</p>
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-slate-700">
+                          <td className="px-3 py-2 text-foreground">
                             {item.articleState}
                           </td>
                           <td className="px-3 py-2">
@@ -527,14 +527,14 @@ export default function AdminAutoCommentsPage() {
                               className={`rounded px-2 py-0.5 font-semibold ${
                                 item.status === "posted"
                                   ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-200 text-slate-700"
+                                  : "bg-muted text-muted-foreground"
                               }`}
                             >
                               {item.status}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-slate-700">{item.reason}</td>
-                          <td className="px-3 py-2 text-slate-700">
+                          <td className="px-3 py-2 text-foreground">{item.reason}</td>
+                          <td className="px-3 py-2 text-foreground">
                             {item.marketId != null ? `#${item.marketId}` : "n/a"}
                           </td>
                         </tr>
@@ -545,51 +545,51 @@ export default function AdminAutoCommentsPage() {
               </div>
             </div>
             {selectedArticle ? (
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-sm font-medium text-slate-900">
+              <div className="space-y-2 rounded-lg border border-border bg-muted p-3">
+                <p className="text-sm font-medium text-foreground">
                   Comment info for: {selectedArticle.title}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Article state:</span>{" "}
                     {selectedArticle.articleState}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Reason:</span>{" "}
                     {selectedArticle.reason}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Status:</span>{" "}
                     {selectedArticle.status}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Delay:</span>{" "}
                     {selectedArticle.delayMinutes
                       ? `${selectedArticle.delayMinutes} min`
                       : "n/a"}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Due at:</span>{" "}
                     {selectedArticle.dueAtIso
                       ? new Date(selectedArticle.dueAtIso).toLocaleString()
                       : "n/a"}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Bot:</span>{" "}
                     {selectedArticle.authorId || "n/a"}
                   </p>
-                  <p className="text-xs text-slate-700">
+                  <p className="text-xs text-foreground">
                     <span className="font-semibold">Market:</span>{" "}
                     {selectedArticle.marketId != null
                       ? `#${selectedArticle.marketId}`
                       : "n/a"}
                   </p>
                 </div>
-                <div className="rounded border border-slate-200 bg-white p-2">
-                  <p className="mb-1 text-xs font-semibold text-slate-600">
+                <div className="rounded border border-border bg-card p-2">
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">
                     Comment Preview
                   </p>
-                  <p className="text-sm text-slate-700">
+                  <p className="text-sm text-foreground">
                     {selectedArticle.commentPreview || "No comment text for this row."}
                   </p>
                 </div>
@@ -597,7 +597,7 @@ export default function AdminAutoCommentsPage() {
             ) : null}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             No run data yet. Run the scheduler to populate this table.
           </p>
         )}
@@ -608,11 +608,11 @@ export default function AdminAutoCommentsPage() {
 
 function Metric({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-lg border border-border bg-card p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

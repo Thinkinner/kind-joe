@@ -239,14 +239,14 @@ export default async function ArticleAnalyticsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight text-neutral-900">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
           Article analytics
         </h1>
-        <p className="mt-1 text-sm font-normal tracking-tight text-neutral-600">
+        <p className="mt-1 text-sm font-normal tracking-tight text-muted-foreground">
           Pageviews by article (latest 80). Click a row for traffic sources.
         </p>
       </div>
-      <div className="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-white p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
+      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
         {RANGE_OPTIONS.map((opt) => (
           <Link
             key={opt.key}
@@ -254,7 +254,7 @@ export default async function ArticleAnalyticsPage({
             className={`px-4 py-1.5 text-sm font-medium transition-all ${
               range === opt.key
                 ? "rounded-lg bg-primary text-primary-foreground shadow-sm"
-                : "text-neutral-600 hover:text-neutral-900"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {opt.label}

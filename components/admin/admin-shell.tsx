@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import {
   Home,
   Sparkles,
@@ -23,6 +24,8 @@ import {
   LogOut,
   History,
   MessageCircle,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -63,6 +66,20 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
     pathname === "/admin/newsletter" || pathname.startsWith("/admin/newsletter/");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const root = document.documentElement;
+    root.classList.toggle("dark", isDark);
+    root.style.colorScheme = isDark ? "dark" : "light";
+  }, [mounted, isDark]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -81,13 +98,19 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
   };
 
   return (
-    <div className="admin-root min-h-dvh bg-background text-foreground antialiased">
+    <div
+      suppressHydrationWarning
+      className={cn(
+        "admin-root min-h-dvh bg-background text-foreground antialiased",
+        isDark && "dark",
+      )}
+    >
       {/* Mobile overlay */}
       <button
         type="button"
         aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
         className={cn(
-          "fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-[2px] transition-opacity lg:hidden",
+          "fixed inset-0 z-40 bg-foreground/40 backdrop-blur-[2px] transition-opacity lg:hidden",
           mobileNavOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setMobileNavOpen(false)}
@@ -148,8 +171,8 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
                     className={cn(
                       "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors",
                       active
-                        ? "border-primary/20 bg-white text-primary"
-                        : "border-border/70 bg-muted/70 text-muted-foreground group-hover:border-border group-hover:bg-white group-hover:text-foreground",
+                        ? "border-primary/20 bg-card text-primary"
+                        : "border-border/70 bg-muted/70 text-muted-foreground group-hover:border-border group-hover:bg-card group-hover:text-foreground",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -180,6 +203,21 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
                     </Link>
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setTheme(isDark ? "light" : "dark");
+                  }}
+                >
+                  {mounted && isDark ? (
+                    <Sun className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Moon className="h-4 w-4" aria-hidden />
+                  )}
+                  <span>
+                    {mounted && isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  </span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => void handleSignOut()}
                   disabled={signingOut}
@@ -217,7 +255,7 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
             <div
               className={cn(
                 isNewsletterRoute
-                  ? "flex min-h-0 w-full min-w-0 flex-1 flex-col bg-white"
+                  ? "flex min-h-0 w-full min-w-0 flex-1 flex-col bg-background"
                   : "w-full",
               )}
             >

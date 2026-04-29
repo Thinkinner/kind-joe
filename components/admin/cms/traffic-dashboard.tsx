@@ -74,7 +74,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
     <div className="w-full">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-lg font-medium tracking-tight text-neutral-900">
+          <h2 className="text-lg font-medium tracking-tight text-foreground">
             Article traffic
           </h2>
           <p className="text-xs font-normal tracking-tight text-muted-foreground">
@@ -84,7 +84,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
         </div>
         <div className="flex items-center gap-2">
           <Select value={topLimit} onValueChange={setTopLimit}>
-            <SelectTrigger className="w-36 rounded-xl border-slate-200/70 bg-white">
+            <SelectTrigger className="w-36 rounded-xl border-border bg-card">
               <SelectValue placeholder="Top rows" />
             </SelectTrigger>
             <SelectContent>
@@ -95,7 +95,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-44 rounded-xl border-slate-200/70 bg-white">
+            <SelectTrigger className="w-44 rounded-xl border-border bg-card">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -109,13 +109,13 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
           </Select>
         </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/60">
-              <th className="p-3 font-medium tracking-tight text-neutral-600">Title</th>
-              <th className="p-3 font-medium tracking-tight text-neutral-600">Published</th>
-              <th className="p-3 text-right font-medium tracking-tight text-neutral-600">
+            <tr className="border-b border-border bg-muted/60">
+              <th className="p-3 font-medium tracking-tight text-muted-foreground">Title</th>
+              <th className="p-3 font-medium tracking-tight text-muted-foreground">Published</th>
+              <th className="p-3 text-right font-medium tracking-tight text-muted-foreground">
                 Views
               </th>
             </tr>
@@ -124,12 +124,12 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
             {filteredArticles.map((a) => (
               <tr
                 key={a.id}
-                className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/30"
+                className="cursor-pointer border-b border-border transition-colors hover:bg-primary/10"
                 onClick={() => open(a)}
               >
                 <td className="p-3">
                   <div className="flex items-center gap-3">
-                    <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-slate-200/50 bg-slate-100">
+                    <div className="aspect-[16/10] w-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                       {a.coverImageUrl ? (
                         <img
                           src={optimizeCloudinaryUrl(a.coverImageUrl, { width: 240 })}
@@ -137,32 +137,32 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium tracking-tight text-slate-400">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium tracking-tight text-muted-foreground">
                           No image
                         </div>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-medium tracking-tight text-neutral-900">
+                      <p className="truncate font-medium tracking-tight text-foreground">
                         {a.title}
                       </p>
                       <Badge
                         variant="secondary"
-                        className="mt-1 rounded-md border-0 bg-slate-100 text-[11px] font-normal tracking-tight text-slate-600"
+                        className="mt-1 rounded-md border-0 bg-muted text-[11px] font-normal tracking-tight text-muted-foreground"
                       >
                         {a.category ?? "General"}
                       </Badge>
                     </div>
                   </div>
                 </td>
-                <td className="p-3 font-normal tracking-tight text-neutral-600">
+                <td className="p-3 font-normal tracking-tight text-muted-foreground">
                   {a.publishedAt
                     ? new Date(a.publishedAt).toLocaleDateString()
                     : "—"}
                 </td>
                 <td className="p-3 text-right">
                   <div className="ml-auto w-28 space-y-1.5">
-                    <p className="tabular-nums font-normal tracking-tight text-neutral-800">
+                    <p className="tabular-nums font-normal tracking-tight text-foreground">
                       {a.totalViews.toLocaleString()}
                     </p>
                     <Progress
@@ -175,7 +175,7 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
             ))}
             {filteredArticles.length === 0 && (
               <tr>
-                <td colSpan={3} className="p-8 text-center text-neutral-500">
+                <td colSpan={3} className="p-8 text-center text-muted-foreground">
                   No articles match the current filters.
                 </td>
               </tr>
@@ -185,15 +185,15 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-5 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-2">
-              <h3 className="font-semibold text-neutral-900 line-clamp-2">
+              <h3 className="font-semibold text-foreground line-clamp-2">
                 {selected.title}
               </h3>
               <button
                 type="button"
-                className="shrink-0 text-neutral-400 hover:text-neutral-700"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 onClick={close}
                 aria-label="Close"
               >
@@ -201,27 +201,27 @@ export function TrafficDashboard({ articles }: { articles: ArticleTrafficRow[] }
               </button>
             </div>
             {loading ? (
-              <p className="text-sm text-neutral-500">Loading…</p>
+              <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {details.map((d) => (
                   <li
                     key={d.source}
-                    className="flex justify-between gap-4 border-b border-neutral-100 py-2 last:border-0"
+                    className="flex justify-between gap-4 border-b border-border py-2 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-neutral-800">{d.source}</p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-foreground">{d.source}</p>
+                      <p className="text-xs text-muted-foreground">
                         {d.share.toFixed(1)}% of article traffic
                       </p>
                     </div>
-                    <span className="tabular-nums font-medium text-neutral-900">
+                    <span className="tabular-nums font-medium text-foreground">
                       {d.views.toLocaleString()}
                     </span>
                   </li>
                 ))}
                 {details.length === 0 && (
-                  <li className="text-neutral-500">No view events recorded.</li>
+                  <li className="text-muted-foreground">No view events recorded.</li>
                 )}
               </ul>
             )}

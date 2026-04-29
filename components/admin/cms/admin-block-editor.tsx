@@ -57,7 +57,7 @@ export function AdminBlockEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-neutral max-w-none min-h-[320px] leading-relaxed focus:outline-none px-3 py-2",
+          "prose max-w-none min-h-[320px] leading-relaxed focus:outline-none px-3 py-2",
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -92,15 +92,15 @@ export function AdminBlockEditor({
 
   if (!editor) {
     return (
-      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-8 text-sm text-neutral-500">
+      <div className="rounded-xl border border-border bg-muted p-8 text-sm text-muted-foreground">
         Loading editor…
       </div>
     );
   }
 
   return (
-    <div className={cn("rounded-xl border border-neutral-200 bg-white", className)}>
-      <div className="flex flex-wrap gap-1 border-b border-neutral-100 bg-neutral-50/80 px-2 py-2">
+    <div className={cn("rounded-xl border border-border bg-card", className)}>
+      <div className="flex flex-wrap gap-1 border-b border-border bg-muted/80 px-2 py-2">
         <ToolbarBtn
           pressed={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -129,7 +129,7 @@ export function AdminBlockEditor({
         >
           <Strikethrough className="h-4 w-4" />
         </ToolbarBtn>
-        <span className="mx-1 w-px self-stretch bg-neutral-200" />
+        <span className="mx-1 w-px self-stretch bg-border" />
         <ToolbarBtn
           pressed={editor.isActive("heading", { level: 2 })}
           onClick={() =>
@@ -169,7 +169,7 @@ export function AdminBlockEditor({
         >
           <Quote className="h-4 w-4" />
         </ToolbarBtn>
-        <span className="mx-1 w-px self-stretch bg-neutral-200" />
+        <span className="mx-1 w-px self-stretch bg-border" />
         <Button
           type="button"
           variant="ghost"
@@ -190,7 +190,7 @@ export function AdminBlockEditor({
           <ImageIcon className="h-4 w-4" />
           Image
         </Button>
-        <span className="mx-1 w-px self-stretch bg-neutral-200" />
+        <span className="mx-1 w-px self-stretch bg-border" />
         <ToolbarBtn
           onClick={() => editor.chain().focus().undo().run()}
           label="Undo"

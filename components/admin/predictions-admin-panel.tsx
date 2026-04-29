@@ -176,7 +176,7 @@ export function PredictionsAdminPanel() {
       );
     }
     return (
-      <Badge className="rounded-md border-0 bg-slate-200 text-slate-700">Closed</Badge>
+      <Badge className="rounded-md border-0 bg-muted text-muted-foreground">Closed</Badge>
     );
   };
 
@@ -190,15 +190,15 @@ export function PredictionsAdminPanel() {
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Create prediction question</h2>
+        <h2 className="text-lg font-semibold text-foreground">Create prediction question</h2>
         <div className="grid gap-4">
           <Card className="gap-0 p-4">
-            <h3 className="mb-3 text-sm font-medium text-slate-700">Question setup</h3>
+            <h3 className="mb-3 text-sm font-medium text-foreground">Question setup</h3>
             <div className="grid gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Title</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">Title</label>
                 <div className="relative">
-                  <Type className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Type className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -209,7 +209,7 @@ export function PredictionsAdminPanel() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
+                <label className="mb-1 block text-sm font-medium text-foreground">
                   Description (optional)
                 </label>
                 <textarea
@@ -217,16 +217,16 @@ export function PredictionsAdminPanel() {
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={1200}
                   rows={3}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
                   placeholder="Context, rules, and what counts as outcome."
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as PredictionCategory)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
                 >
                   {PREDICTION_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
@@ -240,12 +240,12 @@ export function PredictionsAdminPanel() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="gap-0 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Timing</h3>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <h3 className="mb-3 text-sm font-medium text-foreground">Timing</h3>
+              <label className="mb-1 block text-sm font-medium text-foreground">
                 Lock at (optional)
               </label>
               <div className="relative">
-                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="datetime-local"
                   value={locksAt}
@@ -256,7 +256,7 @@ export function PredictionsAdminPanel() {
             </Card>
 
             <Card className="gap-0 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Options</h3>
+              <h3 className="mb-3 text-sm font-medium text-foreground">Options</h3>
               <div className="space-y-2">
                 {options.map((option, idx) => (
                   <Input
@@ -294,13 +294,13 @@ export function PredictionsAdminPanel() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Existing questions</h2>
+        <h2 className="text-lg font-semibold text-foreground">Existing questions</h2>
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-border bg-card p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
@@ -317,7 +317,7 @@ export function PredictionsAdminPanel() {
             ))}
           </div>
         ) : sorted.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
             No questions yet.
           </div>
         ) : (
@@ -325,16 +325,16 @@ export function PredictionsAdminPanel() {
             {sorted.map((m) => (
               <article
                 key={m.id}
-                className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]"
+                className="rounded-xl border border-border bg-card p-4 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.2)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="mb-2">{getStatusBadge(m.status)}</div>
-                    <h3 className="text-base font-semibold text-slate-900">{m.title}</h3>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <h3 className="text-base font-semibold text-foreground">{m.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {PREDICTION_CATEGORY_LABELS[m.category]} • {m.totalVotes.toLocaleString()} votes
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       /predictions/{m.slug}
                       {m.locksAt ? ` · Locks ${toDatetimeLocalValue(m.locksAt)}` : ""}
                     </p>
@@ -385,7 +385,7 @@ export function PredictionsAdminPanel() {
                     </Button>
                     {m.options.length > 0 ? (
                       <select
-                        className="rounded-md border border-slate-300 px-2 text-xs"
+                        className="rounded-md border border-border bg-card px-2 text-xs"
                         defaultValue={m.winningOptionId ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
