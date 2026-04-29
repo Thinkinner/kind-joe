@@ -7,7 +7,9 @@ The integration is read-only. Partners can fetch content and render it on their 
 ## Host and base path
 
 - Production host: `https://kindjoe.com`
-- API base path: `/api/articles`
+- API base paths:
+  - `/api/ventura` for Ventura posts feed cards
+  - `/api/articles` for Ventura article content
 
 If you publish docs on `developers.kindjoe.com`, keep this page as your canonical API reference.
 
@@ -16,6 +18,54 @@ If you publish docs on `developers.kindjoe.com`, keep this page as your canonica
 - Public read access
 - No authentication required for read endpoints
 - No write methods exposed for partners
+
+## Endpoint: list Ventura posts feed cards
+
+`GET /api/ventura/posts`
+
+Returns the same Ventura post cards shown on `/ventura/posts`.
+
+### Example request
+
+```bash
+curl "https://kindjoe.com/api/ventura/posts"
+```
+
+### Example response
+
+```json
+[
+  {
+    "id": 101,
+    "imageUrl": "https://cdn.example.com/ventura-post-1.jpg",
+    "destinationUrl": "https://kindjoe.com/ventura/some-story",
+    "caption": "Optional caption text",
+    "isPinned": true,
+    "order": 0,
+    "isActive": true,
+    "createdAt": "2026-04-20T14:55:00.000Z"
+  }
+]
+```
+
+### Response fields
+
+- `id`: stable Ventura post identifier
+- `imageUrl`: card image URL
+- `destinationUrl`: URL opened when card is clicked
+- `caption`: optional caption text
+- `isPinned`: pin flag used for feed ordering
+- `order`: manual ordering value
+- `isActive`: whether the post is active
+- `createdAt`: creation timestamp
+
+### Content selection and ordering
+
+Only posts with `isActive = true` (or `null`) are returned, ordered by:
+
+1. `isPinned` descending
+2. `order` ascending
+3. `id` descending
 
 ## Endpoint: list Ventura stories
 
@@ -118,11 +168,10 @@ For `GET /api/articles/:slug/related`:
 
 ## Partner implementation checklist
 
-1. Fetch stories from `GET /api/articles/ventura-county`.
-2. Cache responses for better performance and fewer requests.
-3. Render the list using `title`, `excerpt`, `slug`, and `coverImageUrl`.
-4. Link back to the KindJoe source URL using `https://kindjoe.com/ventura/{slug}` (or your canonical story route).
-5. Treat this API as read-only; do not attempt `POST`, `PUT`, `PATCH`, or `DELETE`.
+1. Fetch Ventura feed cards from `GET /api/ventura/posts` for `/ventura/posts` style integrations.
+2. Fetch article lists from `GET /api/articles/ventura-county` when article metadata is needed.
+3. Cache responses for better performance and fewer requests.
+4. Treat this API as read-only; do not attempt `POST`, `PUT`, `PATCH`, or `DELETE`.
 
 ## Versioning guidance
 
@@ -130,5 +179,6 @@ Current routes are unversioned. If you need stronger compatibility guarantees fo
 
 - `GET /api/v1/articles/ventura-county`
 - `GET /api/v1/articles/:slug/related`
+- `GET /api/v1/ventura/posts`
 
 and keep `v1` stable as integrations grow.
