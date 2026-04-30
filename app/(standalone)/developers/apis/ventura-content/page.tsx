@@ -14,7 +14,7 @@ export default function VenturaContentApiDocsPage() {
 
       <h2>Endpoint: list Ventura stories</h2>
       <pre>
-        <code>GET /api/articles/ventura-county</code>
+        <code>GET /api/ventura/articles</code>
       </pre>
       <p>
         Returns published Ventura-tagged stories, ordered newest first by publish timestamp.
@@ -22,7 +22,7 @@ export default function VenturaContentApiDocsPage() {
 
       <h3>Example request</h3>
       <pre>
-        <code>{`curl "https://kindjoe.com/api/articles/ventura-county"`}</code>
+        <code>{`curl "https://kindjoe.com/api/ventura/articles"`}</code>
       </pre>
 
       <h3>Example response</h3>
@@ -78,6 +78,7 @@ export default function VenturaContentApiDocsPage() {
       <ul>
         <li>Only non-draft, non-deleted, published articles are returned.</li>
         <li>Ventura list endpoint filters to posts tagged with `ventura-county`.</li>
+        <li>`GET /api/articles/ventura-county` remains available as a compatibility alias.</li>
         <li>Related endpoint returns HTTP 404 if the source slug is not published.</li>
       </ul>
 
@@ -89,7 +90,7 @@ export default function VenturaContentApiDocsPage() {
 
       <h2>Integration checklist</h2>
       <ul>
-        <li>Fetch from `GET /api/articles/ventura-county` for Ventura lists.</li>
+        <li>Fetch from `GET /api/ventura/articles` for Ventura lists.</li>
         <li>Link users to canonical story URLs using each article slug.</li>
         <li>Cache API responses and avoid aggressive request polling.</li>
       </ul>

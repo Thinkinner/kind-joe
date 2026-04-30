@@ -9,7 +9,8 @@ The integration is read-only. Partners can fetch content and render it on their 
 - Production host: `https://kindjoe.com`
 - API base paths:
   - `/api/ventura` for Ventura posts feed cards
-  - `/api/articles` for Ventura article content
+  - `/api/ventura` for Ventura article and posts feeds
+  - `/api/articles` for Ventura article compatibility routes
 
 If you publish docs on `developers.kindjoe.com`, keep this page as your canonical API reference.
 
@@ -69,9 +70,21 @@ Only posts with `isActive = true` (or `null`) are returned, ordered by:
 
 ## Endpoint: list Ventura stories
 
+`GET /api/ventura/articles`
+
+Primary endpoint for Ventura article list integrations.
+
+### Example request
+
+```bash
+curl "https://kindjoe.com/api/ventura/articles"
+```
+
+### Backward-compatible alias
+
 `GET /api/articles/ventura-county`
 
-Returns published stories tagged for Ventura County.
+Returns the same published Ventura-tagged article list.
 
 ### Example request
 
@@ -170,6 +183,8 @@ For `GET /api/articles/:slug/related`:
 
 1. Fetch Ventura feed cards from `GET /api/ventura/posts` for `/ventura/posts` style integrations.
 2. Fetch article lists from `GET /api/articles/ventura-county` when article metadata is needed.
+   - Preferred: `GET /api/ventura/articles`
+   - Compatible alias: `GET /api/articles/ventura-county`
 3. Cache responses for better performance and fewer requests.
 4. Treat this API as read-only; do not attempt `POST`, `PUT`, `PATCH`, or `DELETE`.
 
@@ -178,6 +193,7 @@ For `GET /api/articles/:slug/related`:
 Current routes are unversioned. If you need stronger compatibility guarantees for external partners, introduce:
 
 - `GET /api/v1/articles/ventura-county`
+- `GET /api/v1/ventura/articles`
 - `GET /api/v1/articles/:slug/related`
 - `GET /api/v1/ventura/posts`
 
