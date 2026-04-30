@@ -18,12 +18,12 @@ const SYMBOLS: { label: string; symbol: string }[] = [
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
-if (!FINNHUB_API_KEY) {
-  throw new Error("FINNHUB_API_KEY is not set in .env.local");
-}
-
 // Fetch % change from Finnhub API
 async function fetchPercentChange(symbol: string): Promise<number> {
+  if (!FINNHUB_API_KEY) {
+    return 0;
+  }
+
   const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`;
 
   const res = await fetch(url, {
@@ -51,12 +51,16 @@ async function fetchPercentChange(symbol: string): Promise<number> {
 
 // THIS is your main function your UI calls
 export async function getStocksFromFinnhub(): Promise<StockItem[]> {
-  const stocks = await Promise.all(
-    SYMBOLS.map(async ({ label, symbol }) => {
-      const changePct = await fetchPercentChange(symbol);
-      return { label, changePct };
-    })
-  );
-
-  return stocks;
+  try {
+    const stocks = await Promise.all(
+      SYMBOLS.map(async ({ label, symbol }) => {
+        const changePct = await fetchPercentChange(symbol);
+        return { label, changePct };
+      })
+    );
+    return stocks;
+  } catch (error) {
+    console.error("stocks_fetch_failed", error);
+    return SYMBOLS.map(({ label }) => ({ label, changePct: 0 }));
+  }
 }
