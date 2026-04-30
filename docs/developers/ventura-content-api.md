@@ -107,6 +107,7 @@ curl "https://kindjoe.com/api/articles/ventura-county"
     "publishAt": null,
     "createdAt": "2026-04-20T14:55:00.000Z",
     "readingMinutes": 4,
+    "authorAlias": "Joe Ventura",
     "authorName": "KindJoe Editorial",
     "authorAvatarUrl": "https://cdn.example.com/avatar.png"
   }
@@ -125,8 +126,48 @@ curl "https://kindjoe.com/api/articles/ventura-county"
 - `publishAt`: fallback scheduled timestamp
 - `createdAt`: creation timestamp
 - `readingMinutes`: estimated read time
-- `authorName`: author display name
+- `authorAlias`: current author alias from staff profile (`users.aliasFullName`)
+- `authorName`: current author name from staff profile (`users.name`)
 - `authorAvatarUrl`: author avatar image URL
+
+## Endpoint: Ventura article detail by slug
+
+`GET /api/ventura/articles/:slug`
+
+Returns a full Ventura article payload for rendering editorial pages.
+
+### Example request
+
+```bash
+curl "https://kindjoe.com/api/ventura/articles/ventura-housing-update"
+```
+
+### Example response
+
+```json
+{
+  "id": "9c32b8e6-24e7-4f88-9b0f-8d3901f4e881",
+  "slug": "ventura-housing-update",
+  "title": "Ventura Housing Update",
+  "excerpt": "What changed this week in Ventura County housing.",
+  "coverImageUrl": "https://cdn.example.com/ventura.jpg",
+  "category": "local-news",
+  "authorId": "staff_123",
+  "authorAlias": "Joe Ventura",
+  "authorName": "Joseph Smith",
+  "authorAvatar": "https://cdn.example.com/avatar.png",
+  "contentHtml": "<p>...</p>",
+  "content": {},
+  "publishedAt": "2026-04-20T15:40:00.000Z",
+  "publishAt": null,
+  "createdAt": "2026-04-20T14:55:00.000Z",
+  "updatedAt": "2026-04-20T15:41:00.000Z",
+  "readingMinutes": 4,
+  "categories": [{ "id": 1, "name": "Local News", "slug": "local-news" }],
+  "tags": [{ "id": 12, "name": "Ventura County", "slug": "ventura-county" }],
+  "linkedPrediction": null
+}
+```
 
 ### Content selection rules
 
@@ -185,8 +226,9 @@ For `GET /api/articles/:slug/related`:
 2. Fetch article lists from `GET /api/articles/ventura-county` when article metadata is needed.
    - Preferred: `GET /api/ventura/articles`
    - Compatible alias: `GET /api/articles/ventura-county`
-3. Cache responses for better performance and fewer requests.
-4. Treat this API as read-only; do not attempt `POST`, `PUT`, `PATCH`, or `DELETE`.
+3. Fetch full editorial content from `GET /api/ventura/articles/:slug` for article detail pages.
+4. Cache responses for better performance and fewer requests.
+5. Treat this API as read-only; do not attempt `POST`, `PUT`, `PATCH`, or `DELETE`.
 
 ## Versioning guidance
 
@@ -194,6 +236,7 @@ Current routes are unversioned. If you need stronger compatibility guarantees fo
 
 - `GET /api/v1/articles/ventura-county`
 - `GET /api/v1/ventura/articles`
+- `GET /api/v1/ventura/articles/:slug`
 - `GET /api/v1/articles/:slug/related`
 - `GET /api/v1/ventura/posts`
 

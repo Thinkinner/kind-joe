@@ -39,10 +39,48 @@ export default function VenturaContentApiDocsPage() {
     "publishAt": null,
     "createdAt": "2026-04-20T14:55:00.000Z",
     "readingMinutes": 4,
-    "authorName": "KindJoe Editorial",
+    "authorAlias": "Joe Ventura",
+    "authorName": "Joseph Smith",
     "authorAvatarUrl": "https://cdn.example.com/avatar.png"
   }
 ]`}</code>
+      </pre>
+
+      <h2>Endpoint: Ventura article detail by slug</h2>
+      <pre>
+        <code>GET /api/ventura/articles/:slug</code>
+      </pre>
+      <p>Returns full article payload for rendering editorial pages.</p>
+
+      <h3>Example request</h3>
+      <pre>
+        <code>{`curl "https://kindjoe.com/api/ventura/articles/ventura-housing-update"`}</code>
+      </pre>
+
+      <h3>Example response</h3>
+      <pre>
+        <code>{`{
+  "id": "9c32b8e6-24e7-4f88-9b0f-8d3901f4e881",
+  "slug": "ventura-housing-update",
+  "title": "Ventura Housing Update",
+  "excerpt": "What changed this week in Ventura County housing.",
+  "coverImageUrl": "https://cdn.example.com/ventura.jpg",
+  "category": "local-news",
+  "authorId": "staff_123",
+  "authorAlias": "Joe Ventura",
+  "authorName": "Joseph Smith",
+  "authorAvatar": "https://cdn.example.com/avatar.png",
+  "contentHtml": "<p>...</p>",
+  "content": {},
+  "publishedAt": "2026-04-20T15:40:00.000Z",
+  "publishAt": null,
+  "createdAt": "2026-04-20T14:55:00.000Z",
+  "updatedAt": "2026-04-20T15:41:00.000Z",
+  "readingMinutes": 4,
+  "categories": [{ "id": 1, "name": "Local News", "slug": "local-news" }],
+  "tags": [{ "id": 12, "name": "Ventura County", "slug": "ventura-county" }],
+  "linkedPrediction": null
+}`}</code>
       </pre>
 
       <h2>Endpoint: related stories by slug</h2>
@@ -79,6 +117,7 @@ export default function VenturaContentApiDocsPage() {
         <li>Only non-draft, non-deleted, published articles are returned.</li>
         <li>Ventura list endpoint filters to posts tagged with `ventura-county`.</li>
         <li>`GET /api/articles/ventura-county` remains available as a compatibility alias.</li>
+        <li>Author fields come from the current writer profile (`authorName` + `authorAlias`).</li>
         <li>Related endpoint returns HTTP 404 if the source slug is not published.</li>
       </ul>
 
@@ -91,6 +130,7 @@ export default function VenturaContentApiDocsPage() {
       <h2>Integration checklist</h2>
       <ul>
         <li>Fetch from `GET /api/ventura/articles` for Ventura lists.</li>
+        <li>Fetch full editorial body from `GET /api/ventura/articles/:slug`.</li>
         <li>Link users to canonical story URLs using each article slug.</li>
         <li>Cache API responses and avoid aggressive request polling.</li>
       </ul>
