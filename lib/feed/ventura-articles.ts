@@ -46,6 +46,14 @@ export type VenturaArticleSummary = {
   authorAvatarUrl: string | null;
 };
 
+export type VenturaPage<T> = {
+  items: T[];
+  hasMore: boolean;
+  nextOffset: number;
+  limit: number;
+  offset: number;
+};
+
 export async function listVenturaArticleSummaries(): Promise<VenturaArticleSummary[]> {
   const now = new Date();
 
@@ -73,6 +81,51 @@ export async function listVenturaArticleSummaries(): Promise<VenturaArticleSumma
     .orderBy(desc(articles.publishedAt));
 
   return rows;
+}
+
+export async function listVenturaArticleSummariesPage(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<VenturaPage<VenturaArticleSummary>> {
+  const now = new Date();
+  const limit = Math.max(1, Math.min(100, params?.limit ?? 20));
+  const offset = Math.max(0, params?.offset ?? 0);
+
+  const rows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      category: articles.category,
+      coverImageUrl: articles.coverImageUrl,
+      publishedAt: articles.publishedAt,
+      publishAt: articles.publishAt,
+      createdAt: articles.createdAt,
+      readingMinutes: articles.readingMinutes,
+      authorAlias: sql<string | null>`nullif(${users.aliasFullName}, '')`,
+      authorName: users.name,
+      authorAvatarUrl: users.avatarUrl,
+    })
+    .from(articles)
+    .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
+    .innerJoin(tags, eq(tags.id, articleTags.tagId))
+    .leftJoin(users, eq(users.id, articles.authorId))
+    .where(and(eq(tags.slug, FEATURED_TAG_SLUG), publishedFilter(now)))
+    .orderBy(desc(articles.publishedAt))
+    .limit(limit + 1)
+    .offset(offset);
+
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+
+  return {
+    items,
+    hasMore,
+    nextOffset: offset + items.length,
+    limit,
+    offset,
+  };
 }
 
 export type VenturaArticleDetail = {

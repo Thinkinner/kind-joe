@@ -26,6 +26,31 @@ If you publish docs on `developers.kindjoe.com`, keep this page as your canonica
 
 Returns the same Ventura post cards shown on `/ventura/posts`.
 
+### Pagination (recommended)
+
+Use query params for incremental loading:
+
+- `limit` (1-100)
+- `offset` (0+)
+
+Example:
+
+```bash
+curl "https://kindjoe.com/api/ventura/posts?limit=20&offset=0"
+```
+
+Paginated response shape:
+
+```json
+{
+  "items": [],
+  "hasMore": true,
+  "nextOffset": 20,
+  "limit": 20,
+  "offset": 0
+}
+```
+
 ### Example request
 
 ```bash
@@ -74,6 +99,31 @@ Only posts with `isActive = true` (or `null`) are returned, ordered by:
 
 Primary endpoint for Ventura article list integrations.
 
+### Pagination (recommended)
+
+Use query params for incremental loading:
+
+- `limit` (1-100)
+- `offset` (0+)
+
+Example:
+
+```bash
+curl "https://kindjoe.com/api/ventura/articles?limit=20&offset=0"
+```
+
+Paginated response shape:
+
+```json
+{
+  "items": [],
+  "hasMore": true,
+  "nextOffset": 20,
+  "limit": 20,
+  "offset": 0
+}
+```
+
 ### Example request
 
 ```bash
@@ -85,6 +135,7 @@ curl "https://kindjoe.com/api/ventura/articles"
 `GET /api/articles/ventura-county`
 
 Returns the same published Ventura-tagged article list.
+Supports the same optional `limit` and `offset` query params.
 
 ### Example request
 

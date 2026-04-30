@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
-import { listVenturaPosts } from "@/lib/feed/ventura-posts";
+import { listVenturaPosts, listVenturaPostsPage } from "@/lib/feed/ventura-posts";
 
 export const revalidate = 60;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const hasPagination =
+    searchParams.has("limit") || searchParams.has("offset");
+
+  if (hasPagination) {
+    const rawLimit = Number(searchParams.get("limit") ?? "20");
+    const rawOffset = Number(searchParams.get("offset") ?? "0");
+    const page = await listVenturaPostsPage({
+      limit: Number.isFinite(rawLimit) ? rawLimit : 20,
+      offset: Number.isFinite(rawOffset) ? rawOffset : 0,
+    });
+    return NextResponse.json(page);
+  }
+
   const posts = await listVenturaPosts();
   return NextResponse.json(posts);
 }

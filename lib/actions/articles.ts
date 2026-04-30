@@ -116,6 +116,14 @@ export async function getFullArticleBySlug(slug: string) {
   const row = await db
     .select({
       article: articles,
+      authorAlias: sql<string | null>`coalesce(
+        nullif(${authUser.aliasFullName}, ''),
+        nullif(${users.aliasFullName}, '')
+      )`,
+      authorProfileName: sql<string | null>`coalesce(
+        nullif(${authUser.name}, ''),
+        ${users.name}
+      )`,
       authorName: sql<string | null>`coalesce(
         nullif(${articles.seo}->>'authorName', ''),
         nullif(${authUser.aliasFullName}, ''),
@@ -157,6 +165,8 @@ export async function getFullArticleBySlug(slug: string) {
 
   return {
     article: row[0].article,
+    authorAlias: row[0].authorAlias,
+    authorProfileName: row[0].authorProfileName,
     authorName: row[0].authorName,
     authorAvatar: row[0].authorAvatar,
     tags: row[0].tags, // Now explicitly returned
