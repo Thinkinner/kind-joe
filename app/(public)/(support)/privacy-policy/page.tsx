@@ -32,12 +32,6 @@ export default function PrivacyPolicy() {
               <p className="text-gray-700">
                 This Privacy Policy explains how <strong>Kind Joe</strong> (<a className="underline" href="https://www.kindjoe.com" target="_blank" rel="noopener noreferrer">kindjoe.com</a>) collects, uses, and safeguards your information when you visit our site and when you subscribe to our newsletter (“Kind Joe Top Stories”). If you do not agree with this Policy, please do not use the Services.
               </p>
-              <p className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-800 text-base">
-                Our editorial content may reference or summarize publicly available information.{" "}
-                <span className="font-medium">Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources.</span>{" "}
-                For how we handle <em>your</em> personal data, see the sections below. See also our{" "}
-                <a className="underline" href="/disclaimer">Disclaimer</a>.
-              </p>
             </div>
 
             <Divider />
@@ -109,10 +103,6 @@ export default function PrivacyPolicy() {
             <Section id="contact" title="12. Contact Us">
               <p>
                 If you have questions or requests about this Privacy Policy, contact us at{" "}
-                <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>.
-              </p>
-              <p className="mt-4">
-                If you are a content owner and want material reviewed or removed, contact us at{" "}
                 <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>.
               </p>
             </Section>

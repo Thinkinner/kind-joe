@@ -14,7 +14,9 @@
     "articles:backfill-embeddings": "tsx scripts/backfill-article-embeddings.ts",
     "auth:promote-staff": "tsx scripts/promote-auth-staff.ts",
     "db:seed-posts": "tsx scripts/seed-posts.ts",
-    "test:related-chain": "tsx --test tests/article-related-score.test.ts"
+    "test:related-chain": "tsx --test tests/article-related-score.test.ts",
+    "check:public-links": "tsx scripts/check-public-links.ts",
+    "verify:adsense-readiness": "npm run lint && npm run check:public-links"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
@@ -111,7 +113,7 @@
     "@types/probe-image-size": "^7.2.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "baseline-browser-mapping": "^2.10.20",
+    "baseline-browser-mapping": "^2.10.27",
     "drizzle-kit": "^0.31.6",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",

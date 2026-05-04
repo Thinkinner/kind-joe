@@ -13,6 +13,7 @@ import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
 import { authClient } from "@/lib/auth-client";
 import { getAccountType } from "@/lib/auth/account-type";
+import { TOPIC_LABELS, TOPIC_SLUGS } from "@/lib/content/topics";
 import {
   clearNavSessionHint,
   peekNavSessionHint,
@@ -104,6 +105,10 @@ export default function Navbar({
 
   const links = [
     { name: "Home", href: "/" },
+    ...TOPIC_SLUGS.map((topic) => ({
+      name: TOPIC_LABELS[topic],
+      href: `/${topic}`,
+    })),
     { name: "News", href: "/news", title: "KindJoe News" },
     { name: "Ventura County", href: "/ventura-county" },
   ] as const;
@@ -473,15 +478,11 @@ export default function Navbar({
               </div>
 
               <nav className="flex-1 space-y-1 overflow-y-auto">
-                {[
-                  { name: "Home", href: "/" },
-                  { name: "News", href: "/news" },
-                  { name: "Ventura County", href: "/ventura-county" },
-                ].map((item) => {
+                {links.map((item) => {
                   const isActive = pathname === item.href;
                   return (
                     <Link
-                      key={item.name}
+                      key={item.href}
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className={`flex items-center rounded-xl px-3 py-3.5 text-base font-semibold transition-colors ${

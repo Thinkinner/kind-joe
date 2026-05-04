@@ -16,9 +16,19 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const SITE_URL =
-  (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") as string) ||
-  "http://localhost:3000";
+const FALLBACK_SITE_URL = "http://localhost:3000";
+
+function resolveSiteUrl(raw: string | undefined): string {
+  const value = raw?.trim();
+  if (!value) return FALLBACK_SITE_URL;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return FALLBACK_SITE_URL;
+  }
+}
+
+const SITE_URL = resolveSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 const ADSENSE_CLIENT = "ca-pub-2956404262281420";
 const ADSENSE_TEST_CLIENT = "ca-pub-3940256099942544";
 const isDev = process.env.NODE_ENV !== "production";

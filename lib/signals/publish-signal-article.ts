@@ -9,6 +9,20 @@ import {
   buildTiptapDocFromBrief,
   estimateReadingMinutesFromBrief,
 } from "@/lib/signals/tiptap-doc-from-brief";
+import type { SignalDeepDiveArticle } from "@/lib/aggregator/signal-deep-dive-types";
+
+const MIN_SIGNAL_TAKE_WORDS_WARN = 300;
+
+function countWords(text: string): number {
+  const normalized = text.trim().replace(/\s+/g, " ");
+  if (!normalized) return 0;
+  return normalized.split(" ").length;
+}
+
+function countSignalBriefWords(brief: SignalDeepDiveArticle): number {
+  const body = brief.sections.map((section) => section.body).join(" ");
+  return countWords(`${brief.dek} ${body}`);
+}
 
 function slugifyTitle(title: string): string {
   const s = title
@@ -102,6 +116,14 @@ export async function publishArticleFromSignal(
   const content = buildTiptapDocFromBrief(brief);
   const readingMinutes = estimateReadingMinutesFromBrief(brief);
   const category = signal.category.slice(0, 50);
+  const takeWordCount = countSignalBriefWords(brief);
+  const lowTakeQuality = takeWordCount < MIN_SIGNAL_TAKE_WORDS_WARN;
+
+  if (lowTakeQuality) {
+    console.warn(
+      `[signals.publish] low original-take word count for signal ${signal.id}: ${takeWordCount} words`,
+    );
+  }
 
   await db.insert(articles).values({
     id: randomUUID(),
@@ -116,7 +138,15 @@ export async function publishArticleFromSignal(
     readingMinutes,
     content: content as unknown as Record<string, unknown>,
     contentHtml: null,
-    seo: { sourceSignalId: signal.id },
+    seo: {
+      sourceSignalId: signal.id,
+      contentQuality: {
+        flaggedAt: new Date().toISOString(),
+        lowTakeQuality,
+        takeWordCount,
+        threshold: MIN_SIGNAL_TAKE_WORDS_WARN,
+      },
+    },
   });
 
   return { slug, created: true };

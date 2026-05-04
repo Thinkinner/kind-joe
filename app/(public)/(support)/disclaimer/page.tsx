@@ -23,15 +23,6 @@ export default function DisclaimerPage() {
       <div id="content" className="mx-auto max-w-6xl px-6 py-10 text-[17px] md:text-[18px] lg:text-[19px] leading-8">
         <div className="grid gap-10 lg:grid-cols-[1fr_20rem]">
           <section className="space-y-10">
-            <div
-              className="rounded-xl border border-gray-200 bg-gray-50 p-5 md:p-6 text-gray-800 shadow-sm"
-              role="note"
-            >
-              <p className="text-base md:text-lg font-medium text-gray-900 leading-relaxed">
-                Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources.
-              </p>
-            </div>
-
             <div className="space-y-5">
               <p className="text-gray-700">
                 This Disclaimer explains important limits on how you should use <strong>Kind Joe</strong> (
@@ -46,8 +37,8 @@ export default function DisclaimerPage() {
 
             <Divider />
 
-            <Section id="sources" title="1. Sources & curation">
-              We may organize, summarize, excerpt, or link to information from newspapers, broadcasters, government releases, and other public materials. Presentation on Kind Joe does not imply endorsement of any third party, and we do not represent that we control or own third-party content. Where we provide links, you are subject to the destination site&apos;s own terms and policies.
+            <Section id="sources" title="1. Original content and sources">
+              Kind Joe publishes original reporting, analysis, and commentary created by our team. We may reference, quote, summarize, or link to publicly available materials to provide context and attribution. Third-party names, trademarks, and source materials remain the property of their respective owners, and links to external websites are governed by those sites&apos; own terms and policies.
             </Section>
 
             <Section id="informational" title="2. Informational use only">
@@ -60,12 +51,7 @@ export default function DisclaimerPage() {
               for additional legal limitations.
             </Section>
 
-            <Section id="takedown" title="4. Content owners">
-              If you are a content owner and want material reviewed or removed, contact us at{" "}
-              <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
-            </Section>
-
-            <Section id="contact" title="5. Contact">
+            <Section id="contact" title="4. Contact">
               Other questions about this Disclaimer:{" "}
               <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
             </Section>
@@ -76,10 +62,9 @@ export default function DisclaimerPage() {
               <h2 className="text-base font-medium text-gray-900 mb-3">On this page</h2>
               <nav aria-label="Table of contents" className="text-sm leading-6">
                 <ul className="space-y-2 text-gray-700">
-                  <TOCLink href="#sources">Sources & curation</TOCLink>
+                  <TOCLink href="#sources">Original content and sources</TOCLink>
                   <TOCLink href="#informational">Informational use</TOCLink>
                   <TOCLink href="#accuracy">Accuracy & timeliness</TOCLink>
-                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>
@@ -89,10 +74,9 @@ export default function DisclaimerPage() {
               <summary className="cursor-pointer text-base font-medium">Table of contents</summary>
               <nav aria-label="Table of contents" className="mt-3 text-sm leading-6">
                 <ul className="space-y-2 text-gray-700">
-                  <TOCLink href="#sources">Sources & curation</TOCLink>
+                  <TOCLink href="#sources">Original content and sources</TOCLink>
                   <TOCLink href="#informational">Informational use</TOCLink>
                   <TOCLink href="#accuracy">Accuracy & timeliness</TOCLink>
-                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>

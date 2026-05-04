@@ -24,8 +24,52 @@ import {
   sql,
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
+import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
 
 const MAX_LIST_PAGE = 50;
+const TOPIC_KEYWORDS: Record<TopicSlug, string[]> = {
+  tech: ["tech", "technology", "ai", "crypto", "web3"],
+  politics: ["politic", "government", "election", "policy"],
+  business: ["business", "finance", "econom", "market"],
+  opinion: ["opinion", "analysis", "editorial", "commentary"],
+};
+
+function topicFilter(topic: TopicSlug) {
+  const keywords = TOPIC_KEYWORDS[topic];
+  return or(
+    ...keywords.map((kw) => ilike(articles.category, `%${kw}%`)),
+    exists(
+      db
+        .select()
+        .from(articleCategories)
+        .innerJoin(categories, eq(articleCategories.categoryId, categories.id))
+        .where(
+          and(
+            eq(articleCategories.articleId, articles.id),
+            or(
+              ...keywords.map((kw) => ilike(categories.name, `%${kw}%`)),
+              ...keywords.map((kw) => ilike(categories.slug, `%${kw}%`)),
+            ),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select()
+        .from(articleTags)
+        .innerJoin(tags, eq(articleTags.tagId, tags.id))
+        .where(
+          and(
+            eq(articleTags.articleId, articles.id),
+            or(
+              ...keywords.map((kw) => ilike(tags.name, `%${kw}%`)),
+              ...keywords.map((kw) => ilike(tags.slug, `%${kw}%`)),
+            ),
+          ),
+        ),
+    ),
+  );
+}
 
 export async function getArticlesAction(limit: number, offset: number) {
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
@@ -52,7 +96,7 @@ export async function getArticlesAction(limit: number, offset: number) {
         )`,
         authorAvatarUrl: users.avatarUrl,
         // Tags grouping
-        tags: sql<any[]>`COALESCE(
+        tags: sql<unknown[]>`COALESCE(
           (SELECT json_agg(t.*) 
            FROM ${articleTags} at 
            INNER JOIN ${tags} t ON at.tag_id = t.id 
@@ -91,6 +135,78 @@ export async function getArticlesAction(limit: number, offset: number) {
     }));
   } catch (error) {
     console.error("Action Error:", error);
+    return [];
+  }
+}
+
+export async function getArticlesByTopicAction(
+  limit: number,
+  offset: number,
+  topic: TopicSlug,
+): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const safeOffset = Math.max(offset, 0);
+  const now = new Date();
+  if (!TOPIC_SLUGS.includes(topic)) return [];
+
+  try {
+    const results = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        title: articles.title,
+        excerpt: articles.excerpt,
+        coverImageUrl: articles.coverImageUrl,
+        category: articles.category,
+        publishedAt: articles.publishedAt,
+        readingMinutes: articles.readingMinutes,
+        authorName: sql<string | null>`coalesce(
+          nullif(${articles.seo}->>'authorName', ''),
+          nullif(${authUser.aliasFullName}, ''),
+          nullif(${authUser.name}, ''),
+          nullif(${users.aliasFullName}, ''),
+          ${users.name}
+        )`,
+        authorAvatarUrl: users.avatarUrl,
+        tags: sql<unknown[]>`COALESCE(
+          (SELECT json_agg(t.*)
+           FROM ${articleTags} at
+           INNER JOIN ${tags} t ON at.tag_id = t.id
+           WHERE at.article_id = ${articles.id}),
+          '[]'
+        )`,
+      })
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
+      .where(
+        and(
+          eq(articles.isDraft, false),
+          isNull(articles.deletedAt),
+          or(
+            and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
+            and(
+              isNull(articles.publishedAt),
+              isNotNull(articles.publishAt),
+              lte(articles.publishAt, now),
+            ),
+          ),
+          topicFilter(topic),
+        ),
+      )
+      .orderBy(desc(articles.publishedAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    return results.map((a) => ({
+      ...a,
+      publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+      authorName: a.authorName ?? "KindJoe Staff",
+      authorAvatarUrl: a.authorAvatarUrl ?? null,
+      readingMinutes: a.readingMinutes ?? 0,
+    }));
+  } catch (error) {
+    console.error("Topic Action Error:", error);
     return [];
   }
 }
@@ -206,7 +322,7 @@ export async function getRecommendedArticles(
         )`,
         authorAvatarUrl: users.avatarUrl,
         // 🧠 Smart Branding: Fetch tags so the card knows if it's Ventura or KindJoe
-        tags: sql<any[]>`COALESCE(
+        tags: sql<unknown[]>`COALESCE(
           (SELECT json_agg(t.*) 
            FROM ${articleTags} at 
            INNER JOIN ${tags} t ON at.tag_id = t.id 
@@ -330,7 +446,10 @@ export async function getVenturaArticlesAction(
       ...a,
       publishedAt: a.publishedAt?.toISOString() || null,
       authorName: a.authorName ?? "Joe Knows Staff",
-    })) as any;
+      authorAvatarUrl: null,
+      tags: [],
+      readingMinutes: a.readingMinutes ?? 0,
+    }));
   } catch (error) {
     console.error("Error fetching Ventura articles:", error);
     return [];

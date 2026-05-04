@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, FormEvent } from "react";
+import Link from "next/link";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
@@ -7,13 +8,11 @@ import {
   FaInstagram,
   FaYoutube,
   FaLinkedin,
-  FaMapMarkerAlt,
 } from "react-icons/fa";
 import KindJoeModalForm from "./modals/kindjoe-capture-modal";
 import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 export function Footer() {
-  const year = new Date().getFullYear();
   const [email, setEmail] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -79,20 +78,68 @@ export function Footer() {
               </h3>
               <ul className="space-y-3 text-sm text-gray-400">
                 <li>
-                  <a
+                  <Link
                     href="/"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Home
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
+                    href="/news"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    News
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/tech"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Tech
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/politics"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Politics
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/business"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Business
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/opinion"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Opinion
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/ventura-county"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    Ventura County
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/newsletter"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Newsletters
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -104,27 +151,29 @@ export function Footer() {
               </h3>
               <ul className="space-y-3 text-sm text-gray-400">
                 <li>
-                  <a
+                  <Link
                     href="/contact"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Contact Us
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
                     href="/advertise"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Advertise
-                  </a>
+                  </Link>
                 </li>
-                {/* <li className="pt-2">
-                   <div className="flex items-start gap-2 text-gray-500 text-xs leading-tight">
-                    <FaMapMarkerAlt className="flex-shrink-0 mt-0.5 text-red-800" />
-                    <span>Based in<br/>Ventura County, CA</span>
-                   </div>
-                </li> */}
+                <li>
+                  <Link
+                    href="/about"
+                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                  >
+                    About
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -135,48 +184,38 @@ export function Footer() {
               </h3>
               <ul className="space-y-3 text-sm text-gray-400">
                 <li>
-                  <a
+                  <Link
                     href="/terms-of-service"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Terms of Service
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
                     href="/privacy-policy"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
                     href="/disclaimer"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Disclaimer
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
                     href="/editorial-policy"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
                     Editorial Policy
-                  </a>
+                  </Link>
                 </li>
               </ul>
-              <p className="text-xs text-gray-500 leading-relaxed pt-3 max-w-[16rem]">
-                If you are a content owner and want material reviewed or removed, contact us at{" "}
-                <a
-                  href={`mailto:${PUBLIC_CONTACT_EMAIL}`}
-                  className="text-gray-400 hover:text-red-400 underline-offset-2 hover:underline"
-                >
-                  {PUBLIC_CONTACT_EMAIL}
-                </a>
-                .
-              </p>
             </div>
           </div>
         </div>

@@ -32,10 +32,6 @@ export default function TermsOfService() {
               <p className="text-gray-700">
                 Welcome to <strong>Kind Joe</strong> (<a className="underline" href="https://www.kindjoe.com" target="_blank" rel="noopener noreferrer">kindjoe.com</a>), a platform providing daily, unbiased news and related content (the “Services”). By accessing or using the Services, you agree to these Terms of Service (the “Terms”). If you do not agree, do not use the Services.
               </p>
-              <p className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-800 text-base">
-                <span className="font-medium text-gray-900">Notice:</span> Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources. See our{" "}
-                <a className="underline" href="/disclaimer">Disclaimer</a> for more detail.
-              </p>
             </div>
 
             <Divider />
@@ -59,7 +55,6 @@ export default function TermsOfService() {
 
             <Section id="ip" title="5. Content & Intellectual Property">
               Kind Joe may curate, summarize, or present information drawn from publicly available sources (for example, news reporting, official releases, or other materials that are already public).{" "}
-              <span className="font-medium">Content is curated and summarized from publicly available sources. This platform does not claim ownership of external sources.</span>{" "}
               Third-party names, marks, and materials remain the property of their respective owners.
               We and our licensors own rights in the selection, arrangement, presentation, original writing, design, software, branding, and other proprietary aspects of the Services, subject to those third-party rights. No rights are granted except as expressly set out in these Terms. You may not reproduce, distribute, or modify our content without prior written permission.
             </Section>
@@ -100,12 +95,7 @@ export default function TermsOfService() {
               Your use of the Services is also governed by our Privacy Policy, which explains how we collect, use, and protect personal information (including names, emails, ZIP codes, and news preferences) and our use of cookies and analytics.
             </Section>
 
-            <Section id="takedown" title="15. Content owners">
-              If you are a content owner and want material reviewed or removed, contact us at{" "}
-              <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
-            </Section>
-
-            <Section id="contact" title="16. Contact">
+            <Section id="contact" title="15. Contact">
               If you have questions about these Terms, contact us at{" "}
               <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="underline">{PUBLIC_CONTACT_EMAIL}</a>.
             </Section>
@@ -131,7 +121,6 @@ export default function TermsOfService() {
                   <TOCLink href="#termination">Suspension/Termination</TOCLink>
                   <TOCLink href="#governing-law">Governing Law</TOCLink>
                   <TOCLink href="#privacy">Privacy</TOCLink>
-                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>
@@ -156,7 +145,6 @@ export default function TermsOfService() {
                   <TOCLink href="#termination">Suspension/Termination</TOCLink>
                   <TOCLink href="#governing-law">Governing Law</TOCLink>
                   <TOCLink href="#privacy">Privacy</TOCLink>
-                  <TOCLink href="#takedown">Content owners</TOCLink>
                   <TOCLink href="#contact">Contact</TOCLink>
                 </ul>
               </nav>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type RecapType = "Republican" | "Democratic" | "American Party" | "All" | "";
@@ -140,7 +141,17 @@ export default function KindJoeModalForm({ onBack, onSuccess }: { onBack: () => 
             onChange={handleChange}
             required
           />
-          I agree to the Terms & Privacy Policy.
+          <span>
+            I agree to the{" "}
+            <Link href="/terms-of-service" className="underline">
+              Terms
+            </Link>{" "}
+            &{" "}
+            <Link href="/privacy-policy" className="underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
         </label>
 
         <ShimmerButton type="submit" disabled={!canSubmit}>

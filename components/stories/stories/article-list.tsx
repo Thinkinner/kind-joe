@@ -1,35 +1,57 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { ArticleSummary } from "@/types/article";
 import { ArticleCard } from "./article-card";
-import { getArticlesAction } from "@/lib/actions/articles"; // Import the action
+import {
+  getArticlesAction,
+  getArticlesByTopicAction,
+} from "@/lib/actions/articles";
 import { Loader2, Plus } from "lucide-react";
+import type { TopicSlug } from "@/lib/content/topics";
 
 const BATCH_SIZE = 9; // 3x3 grid looks nice
 
-export function ArticleList() {
+type ArticleListProps = {
+  topic?: TopicSlug;
+  emptyMessage?: string;
+};
+
+export function ArticleList({
+  topic,
+  emptyMessage = "No articles found.",
+}: ArticleListProps = {}) {
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [hasMore, setHasMore] = useState(true);
 
+  const loadBatch = useCallback(
+    async (offset: number) => {
+      if (topic) {
+        return getArticlesByTopicAction(BATCH_SIZE, offset, topic);
+      }
+      return getArticlesAction(BATCH_SIZE, offset);
+    },
+    [topic],
+  );
+
   // Initial Load using the Action
   useEffect(() => {
     async function initLoad() {
-      const data = await getArticlesAction(BATCH_SIZE, 0);
+      const data = await loadBatch(0);
       setArticles(data);
       if (data.length < BATCH_SIZE) setHasMore(false);
       setLoadingInitial(false);
     }
     initLoad();
-  }, []);
+  }, [loadBatch]);
 
   const handleLoadMore = () => {
     // startTransition keeps the UI responsive while fetching
     startTransition(async () => {
       const currentOffset = articles.length;
-      const newData = await getArticlesAction(BATCH_SIZE, currentOffset);
+      const newData = await loadBatch(currentOffset);
 
       if (newData.length === 0 || newData.length < BATCH_SIZE) {
         setHasMore(false);
@@ -44,7 +66,7 @@ export function ArticleList() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="animate-spin text-red-600" size={40} />
         <p className="text-sm text-gray-500 font-medium animate-pulse">
-          Loading latest stories...
+          Loading stories...
         </p>
       </div>
     );
@@ -53,7 +75,7 @@ export function ArticleList() {
   if (articles.length === 0) {
     return (
       <div className="text-center py-20 border-2 border-dashed rounded-xl">
-        <p className="text-gray-500">No articles found.</p>
+        <p className="text-gray-500">{emptyMessage}</p>
       </div>
     );
   }

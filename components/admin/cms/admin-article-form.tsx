@@ -72,6 +72,15 @@ function countWords(text: string) {
   return normalized.split(" ").length;
 }
 
+function countWordsFromHtmlText(html: string) {
+  if (!html.trim()) return 0;
+  const plain = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return countWords(plain);
+}
+
 function isLikelyOpenEndedPrompt(question: string): boolean {
   const q = question.trim().toLowerCase();
   if (!q) return false;
@@ -421,6 +430,8 @@ export function AdminArticleForm({
     predictionId == null ? null : predictionOptions.find((item) => item.id === predictionId) ?? null;
   const aliasMissing = !authorAlias.trim();
   const excerptWordCount = countWords(excerpt);
+  const bodyWordCount = countWordsFromHtmlText(contentHtml);
+  const kindJoeTakeReady = bodyWordCount >= 300;
 
   useEffect(() => {
     if (aliasLoading) return;
@@ -1077,9 +1088,15 @@ export function AdminArticleForm({
           <div className="border-t border-border pt-5">
             <div className="space-y-1 text-[11px] text-muted-foreground">
               <p>Summary words: {excerptWordCount}</p>
+              <p>Kind Joe take words: {bodyWordCount}</p>
               <p>
                 For publish/schedule: add a unique meta description, a strong summary, and enough original body content.
               </p>
+              {!kindJoeTakeReady ? (
+                <p className="text-amber-600">
+                  Publish/schedule requires at least 300 words of original analysis in the article body.
+                </p>
+              ) : null}
             </div>
           </div>
 
