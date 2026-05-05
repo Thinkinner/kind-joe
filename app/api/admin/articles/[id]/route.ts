@@ -11,8 +11,6 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { ensureCmsUser } from "@/lib/cms/ensure-cms-user";
 import {
-  ARTICLE_MIN_WORDS_FOR_PUBLISH,
-  computeArticleWordCount,
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
@@ -26,7 +24,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const MIN_SUMMARY_WORDS_FOR_PUBLISH = 12;
 const MIN_META_DESCRIPTION_CHARS = 70;
-const MIN_KIND_JOE_TAKE_WORDS_FOR_PUBLISH = 300;
 
 function emptyToNull(v: unknown): string | null {
   if (v === "" || v === undefined) return null;
@@ -205,10 +202,6 @@ export async function PUT(
   const nextContent = content ?? existingArticle.content;
   const seoDescription = asTrimmedString(mergedSeo.description);
   const summaryWordCount = countWordsFromHtml(nextExcerpt);
-  const articleWordCount = computeArticleWordCount({
-    contentHtml: nextContentHtml,
-    content: nextContent,
-  });
 
   if (requiresEditorialChecks) {
     if (!seoDescription || seoDescription.length < MIN_META_DESCRIPTION_CHARS) {
@@ -224,24 +217,6 @@ export async function PUT(
       return NextResponse.json(
         {
           error: `Summary excerpt is required and should be at least ${MIN_SUMMARY_WORDS_FOR_PUBLISH} words for publish/schedule.`,
-        },
-        { status: 400 },
-      );
-    }
-
-    if (articleWordCount < MIN_KIND_JOE_TAKE_WORDS_FOR_PUBLISH) {
-      return NextResponse.json(
-        {
-          error: `Original Kind Joe take must be at least ${MIN_KIND_JOE_TAKE_WORDS_FOR_PUBLISH} words in the article body for publish/schedule.`,
-        },
-        { status: 400 },
-      );
-    }
-
-    if (articleWordCount < ARTICLE_MIN_WORDS_FOR_PUBLISH) {
-      return NextResponse.json(
-        {
-          error: `Published articles should be at least ${ARTICLE_MIN_WORDS_FOR_PUBLISH} words for editorial quality.`,
         },
         { status: 400 },
       );
