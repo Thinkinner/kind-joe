@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Sparkles, WandSparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Loader2, Sparkles, WandSparkles } from "lucide-react";
 import { AdminArticleForm } from "@/components/admin/cms/admin-article-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
@@ -27,12 +35,68 @@ type InspectResult = {
   charCount?: number;
 };
 
+type RecentArticle = {
+  id: string;
+  title: string;
+  category?: string | null;
+  updatedAt?: string;
+};
+
+type SocialCopyPayload = {
+  socialHeadlines?: string[];
+  socialTightHeadline?: string;
+  socialCaption?: string;
+  error?: string;
+};
+
 export function NewArticleWithAssistant() {
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [prefill, setPrefill] = useState<PrefillData | undefined>(undefined);
   const [scrapePreview, setScrapePreview] = useState<InspectResult | null>(null);
+  const [recentArticles, setRecentArticles] = useState<RecentArticle[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+  const [generatingForId, setGeneratingForId] = useState<string | null>(null);
+  const [generatedFromId, setGeneratedFromId] = useState<string | null>(null);
+  const [socialHeadlines, setSocialHeadlines] = useState<string[]>([]);
+  const [socialTightHeadline, setSocialTightHeadline] = useState("");
+  const [socialCaption, setSocialCaption] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRecentLoading(true);
+      try {
+        const res = await fetch("/api/admin/articles?mine=1&limit=5&offset=0", {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("Could not load your recent articles");
+        const payload = (await res.json()) as { articles?: RecentArticle[] };
+        if (cancelled) return;
+        setRecentArticles(Array.isArray(payload.articles) ? payload.articles : []);
+      } catch {
+        if (cancelled) return;
+        setRecentArticles([]);
+      } finally {
+        if (!cancelled) setRecentLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const copyText = async (value: string) => {
+    const text = value.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied");
+    } catch {
+      toast.error("Could not copy");
+    }
+  };
 
   const generateWithGemini = async (sourceInput: string): Promise<PrefillData> => {
     const res = await fetch("/api/admin/ai/article-assist", {
@@ -124,6 +188,62 @@ export function NewArticleWithAssistant() {
     }
   };
 
+  const generateSocialFromArticle = async (article: RecentArticle) => {
+    setGeneratingForId(article.id);
+    try {
+      const articleRes = await fetch(`/api/admin/articles/${article.id}`, {
+        cache: "no-store",
+      });
+      if (!articleRes.ok) throw new Error("Could not load article details");
+      const articlePayload = (await articleRes.json()) as {
+        title?: string;
+        excerpt?: string;
+        contentHtml?: string;
+      };
+
+      const sourceText = [
+        String(articlePayload.excerpt ?? ""),
+        String(articlePayload.contentHtml ?? ""),
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, 2600);
+
+      const socialRes = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "socialCopy",
+          title: String(articlePayload.title ?? article.title ?? ""),
+          html: sourceText,
+        }),
+      });
+      const socialPayload = (await socialRes.json().catch(() => ({}))) as SocialCopyPayload;
+      if (!socialRes.ok) {
+        throw new Error(socialPayload.error ?? "Could not generate social copy");
+      }
+
+      const headlines = Array.isArray(socialPayload.socialHeadlines)
+        ? socialPayload.socialHeadlines
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 5)
+        : [];
+
+      setGeneratedFromId(article.id);
+      setSocialHeadlines(headlines);
+      setSocialTightHeadline(String(socialPayload.socialTightHeadline ?? "").trim());
+      setSocialCaption(String(socialPayload.socialCaption ?? "").trim());
+      toast.success("Headlines and caption generated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not generate social copy",
+      );
+    } finally {
+      setGeneratingForId(null);
+    }
+  };
+
   if (started) {
     return <AdminArticleForm initialValues={prefill} assistantMode />;
   }
@@ -205,6 +325,142 @@ export function NewArticleWithAssistant() {
               >
                 Cancel preview
               </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card className="space-y-4 border border-border bg-card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
+            Your latest 5 articles
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Click Generate to create 5 headlines + caption.
+          </p>
+        </div>
+
+        {recentLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading your articles...
+          </div>
+        ) : recentArticles.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent articles found for your user.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentArticles.map((article) => (
+                <TableRow key={article.id}>
+                  <TableCell className="max-w-[320px] truncate">{article.title}</TableCell>
+                  <TableCell>{article.category || "General"}</TableCell>
+                  <TableCell>
+                    {article.updatedAt
+                      ? new Date(article.updatedAt).toLocaleString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={generatingForId === article.id}
+                      onClick={() => void generateSocialFromArticle(article)}
+                    >
+                      {generatingForId === article.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      Generate
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        {generatedFromId ? (
+          <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium text-foreground">
+              Generated from selected article
+            </p>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                5 Headlines
+              </p>
+              {socialHeadlines.length ? (
+                socialHeadlines.map((line, idx) => (
+                  <div
+                    key={`${line}-${idx}`}
+                    className="flex items-start justify-between gap-3 rounded-md border border-border bg-background px-3 py-2"
+                  >
+                    <p className="text-sm text-foreground">{line}</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      aria-label={`Copy headline ${idx + 1}`}
+                      onClick={() => void copyText(line)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No headlines generated.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Tight Headline
+              </p>
+              {socialTightHeadline ? (
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
+                  <p className="text-sm text-foreground">{socialTightHeadline}</p>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0"
+                    aria-label="Copy tight headline"
+                    onClick={() => void copyText(socialTightHeadline)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tight headline generated.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Caption
+              </p>
+              {socialCaption ? (
+                <>
+                  <Textarea readOnly rows={5} value={socialCaption} className="bg-background" />
+                  <div className="flex justify-end">
+                    <Button type="button" variant="outline" onClick={() => void copyText(socialCaption)}>
+                      <Copy className="h-4 w-4" />
+                      Copy caption
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No caption generated.</p>
+              )}
             </div>
           </div>
         ) : null}

@@ -62,7 +62,8 @@ function parseListParams(request: NextRequest) {
   const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 25, 1), 100);
   const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
   const q = searchParams.get("q")?.trim() || "";
-  return { limit, offset, q };
+  const mine = searchParams.get("mine") === "1";
+  return { limit, offset, q, mine };
 }
 
 function mergeSeoWithByline(
@@ -107,16 +108,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { limit, offset, q } = parseListParams(request);
+  const { limit, offset, q, mine } = parseListParams(request);
 
   const searchCond =
     q.length > 0
       ? or(ilike(articles.title, `%${q}%`), ilike(articles.excerpt, `%${q}%`))
       : undefined;
 
-  const whereClause = searchCond
-    ? and(isNull(articles.deletedAt), searchCond)
-    : isNull(articles.deletedAt);
+  const ownershipCond = mine ? eq(articles.authorId, staff.user.id) : undefined;
+  const whereClause = and(
+    isNull(articles.deletedAt),
+    searchCond,
+    ownershipCond,
+  );
 
   const [countRow] = await db
     .select({ n: sql<number>`count(*)::int` })
