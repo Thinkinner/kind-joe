@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowLeft, ImagePlus, Loader2, WandSparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Copy,
+  ImagePlus,
+  Loader2,
+  WandSparkles,
+} from "lucide-react";
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +65,13 @@ type PredictionSuggestionPayload = {
   rationale?: string;
 };
 
+type SocialCopyPayload = {
+  socialHeadlines?: string[];
+  socialTightHeadline?: string;
+  socialCaption?: string;
+  error?: string;
+};
+
 type AdminProfileResponse = {
   aliasFullName?: string | null;
 };
@@ -70,6 +84,15 @@ function countWords(text: string) {
   const normalized = text.trim().replace(/\s+/g, " ");
   if (!normalized) return 0;
   return normalized.split(" ").length;
+}
+
+function countWordsFromHtmlText(html: string) {
+  if (!html.trim()) return 0;
+  const plain = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return countWords(plain);
 }
 
 function isLikelyOpenEndedPrompt(question: string): boolean {
@@ -167,6 +190,11 @@ export function AdminArticleForm({
   const [postImageUploading, setPostImageUploading] = useState(false);
   const [postImageDragging, setPostImageDragging] = useState(false);
   const [showPostPrompt, setShowPostPrompt] = useState(false);
+  const [showSocialCopyPrompt, setShowSocialCopyPrompt] = useState(false);
+  const [socialCopyLoading, setSocialCopyLoading] = useState(false);
+  const [socialHeadlines, setSocialHeadlines] = useState<string[]>([]);
+  const [socialTightHeadline, setSocialTightHeadline] = useState("");
+  const [socialCaption, setSocialCaption] = useState("");
   const [postPromptContext, setPostPromptContext] = useState<"createFlow" | "manual">(
     "createFlow",
   );
@@ -200,6 +228,11 @@ export function AdminArticleForm({
   const [authorAlias, setAuthorAlias] = useState("");
   const [aliasLoading, setAliasLoading] = useState(true);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
+  const [qualityConfirmOpen, setQualityConfirmOpen] = useState(false);
+  const [pendingPublishOpts, setPendingPublishOpts] = useState<{
+    publishNow?: boolean;
+    schedule?: boolean;
+  } | null>(null);
   const postImageInputRef = useRef<HTMLInputElement | null>(null);
   const appliedInitialRef = useRef(false);
 
@@ -421,11 +454,124 @@ export function AdminArticleForm({
     predictionId == null ? null : predictionOptions.find((item) => item.id === predictionId) ?? null;
   const aliasMissing = !authorAlias.trim();
   const excerptWordCount = countWords(excerpt);
+  const titleWordCount = countWords(title);
+  const bodyWordCount = countWordsFromHtmlText(contentHtml);
+  const metaCharCount = seoDescription.trim().length;
+  const qualityChecks = [
+    {
+      id: "title",
+      label: "Headline has enough detail",
+      pass: titleWordCount >= 6,
+      weight: 15,
+    },
+    {
+      id: "excerpt",
+      label: "Summary is substantial",
+      pass: excerptWordCount >= 12,
+      weight: 20,
+    },
+    {
+      id: "body",
+      label: "Body has enough depth",
+      pass: bodyWordCount >= 180,
+      weight: 35,
+    },
+    {
+      id: "meta",
+      label: "Meta description is ready",
+      pass: metaCharCount >= 70,
+      weight: 20,
+    },
+    {
+      id: "tags",
+      label: "Tags added for discoverability",
+      pass: tags.length >= 2,
+      weight: 10,
+    },
+  ] as const;
+  const qualityScore = qualityChecks.reduce(
+    (total, check) => total + (check.pass ? check.weight : 0),
+    0,
+  );
+  const qualityIssues = qualityChecks
+    .filter((check) => !check.pass)
+    .map((check) => check.label);
+  const qualityTier =
+    qualityScore >= 85 ? "Strong" : qualityScore >= 70 ? "Okay" : "Needs Review";
+  const shouldWarnBeforePublish = qualityScore < 70;
 
   useEffect(() => {
     if (aliasLoading) return;
     setAliasModalOpen(aliasMissing);
   }, [aliasLoading, aliasMissing]);
+
+  const copySocialText = async (value: string) => {
+    const text = value.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied");
+    } catch {
+      toast.error("Could not copy");
+    }
+  };
+
+  const prepareSocialCopyPrompt = async () => {
+    const sourceExcerpt = excerpt.trim();
+    const sourceHtml = contentHtml?.trim() || "";
+    const sourceTitle = title.trim();
+    if (!sourceTitle && !sourceExcerpt && !sourceHtml) {
+      setShowPostPrompt(true);
+      return;
+    }
+
+    setSocialCopyLoading(true);
+    setSocialHeadlines([]);
+    setSocialTightHeadline("");
+    setSocialCaption("");
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "socialCopy",
+          title: sourceTitle,
+          html: [sourceExcerpt, sourceHtml].filter(Boolean).join("\n\n").slice(0, 2600),
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as SocialCopyPayload;
+      if (!res.ok) {
+        toast.error(payload.error ?? "Could not generate social copy");
+        setShowPostPrompt(true);
+        return;
+      }
+
+      const nextHeadlines = Array.isArray(payload.socialHeadlines)
+        ? payload.socialHeadlines
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 5)
+        : [];
+      const tight = String(payload.socialTightHeadline ?? "").trim();
+      const caption = String(payload.socialCaption ?? "").trim();
+
+      if (!nextHeadlines.length && !tight && !caption) {
+        toast.error("Social copy came back empty");
+        setShowPostPrompt(true);
+        return;
+      }
+
+      setSocialHeadlines(nextHeadlines);
+      setSocialTightHeadline(tight);
+      setSocialCaption(caption);
+      setShowSocialCopyPrompt(true);
+    } catch {
+      toast.error("Could not generate social copy");
+      setShowPostPrompt(true);
+    } finally {
+      setSocialCopyLoading(false);
+    }
+  };
 
   const save = async (opts: { publishNow?: boolean; schedule?: boolean }) => {
     if (aliasMissing) {
@@ -491,12 +637,26 @@ export function AdminArticleForm({
       setPredictionSuggestionRationale("");
       setPostPromptContext("createFlow");
       setPredictionPromptContext("createFlow");
-      setShowPostPrompt(true);
+      if (assistantMode) {
+        await prepareSocialCopyPrompt();
+      } else {
+        setShowPostPrompt(true);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
+  };
+
+  const requestSave = (opts: { publishNow?: boolean; schedule?: boolean }) => {
+    const isPublishAction = Boolean(opts.publishNow || opts.schedule);
+    if (!isPublishAction || !shouldWarnBeforePublish) {
+      void save(opts);
+      return;
+    }
+    setPendingPublishOpts(opts);
+    setQualityConfirmOpen(true);
   };
 
   const uploadPostImageFile = async (file: File) => {
@@ -858,13 +1018,25 @@ export function AdminArticleForm({
             <h1 className="text-sm font-medium tracking-tight text-foreground">
               {articleId ? "Edit Article" : "New Article"}
             </h1>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                qualityScore >= 85
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : qualityScore >= 70
+                    ? "border-amber-300 bg-amber-50 text-amber-700"
+                    : "border-rose-300 bg-rose-50 text-rose-700",
+              )}
+            >
+              Quality {qualityScore}/100
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
               disabled={saving || !publishAt || aliasLoading || aliasMissing}
-              onClick={() => save({ schedule: true })}
+              onClick={() => requestSave({ schedule: true })}
             >
               Schedule
             </Button>
@@ -880,7 +1052,7 @@ export function AdminArticleForm({
             <Button
               type="button"
               disabled={saving || aliasLoading || aliasMissing}
-              onClick={() => save({ publishNow: true })}
+              onClick={() => requestSave({ publishNow: true })}
             >
               Publish now
             </Button>
@@ -1076,10 +1248,19 @@ export function AdminArticleForm({
 
           <div className="border-t border-border pt-5">
             <div className="space-y-1 text-[11px] text-muted-foreground">
+              <p>
+                Quality score:{" "}
+                <span className="font-semibold text-foreground">{qualityScore}/100</span>{" "}
+                ({qualityTier})
+              </p>
+              <p>Body words: {bodyWordCount}</p>
               <p>Summary words: {excerptWordCount}</p>
               <p>
-                For publish/schedule: add a unique meta description, a strong summary, and enough original body content.
+                Publish/schedule is allowed at any score, but low-scoring drafts will trigger a confirmation.
               </p>
+              {qualityIssues.length > 0 ? (
+                <p className="text-amber-600">Improve: {qualityIssues.join(" • ")}</p>
+              ) : null}
             </div>
           </div>
 
@@ -1194,6 +1375,120 @@ export function AdminArticleForm({
           </div>
         </aside>
       </div>
+
+      <Dialog
+        open={showSocialCopyPrompt}
+        onOpenChange={(open) => {
+          if (open) {
+            setShowSocialCopyPrompt(true);
+            return;
+          }
+          if (socialCopyLoading) return;
+          setShowSocialCopyPrompt(false);
+          setShowPostPrompt(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Carousel Headlines & Caption</DialogTitle>
+            <DialogDescription>
+              Review and copy these generated lines before creating the post card.
+            </DialogDescription>
+          </DialogHeader>
+
+          {socialCopyLoading ? (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating headlines and caption...
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">5 headline options</Label>
+                {socialHeadlines.length ? (
+                  <div className="space-y-2">
+                    {socialHeadlines.map((line, idx) => (
+                      <div
+                        key={`${line}-${idx}`}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted px-3 py-2"
+                      >
+                        <p className="text-sm text-foreground">{line}</p>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          aria-label={`Copy headline ${idx + 1}`}
+                          onClick={() => void copySocialText(line)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No headline options generated.</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tight headline</Label>
+                {socialTightHeadline ? (
+                  <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted px-3 py-2">
+                    <p className="text-sm text-foreground">{socialTightHeadline}</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      aria-label="Copy tight headline"
+                      onClick={() => void copySocialText(socialTightHeadline)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No tight headline generated.</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Caption</Label>
+                {socialCaption ? (
+                  <div className="space-y-2">
+                    <Textarea readOnly rows={6} value={socialCaption} className="bg-muted" />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void copySocialText(socialCaption)}
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy caption
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No caption generated.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setShowSocialCopyPrompt(false);
+                setShowPostPrompt(true);
+              }}
+            >
+              Continue to post modal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={showPostPrompt}
@@ -1471,6 +1766,50 @@ export function AdminArticleForm({
             </Button>
             <Button type="button" asChild>
               <Link href="/admin/security">Go to profile settings</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qualityConfirmOpen} onOpenChange={setQualityConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Publish with low quality score?</DialogTitle>
+            <DialogDescription>
+              This article is currently scored at {qualityScore}/100. You can still continue, but
+              consider improving the flagged items first.
+            </DialogDescription>
+          </DialogHeader>
+          {qualityIssues.length > 0 ? (
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {qualityIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPendingPublishOpts(null);
+                setQualityConfirmOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const opts = pendingPublishOpts;
+                setPendingPublishOpts(null);
+                setQualityConfirmOpen(false);
+                if (opts) {
+                  void save(opts);
+                }
+              }}
+            >
+              Yes, continue
             </Button>
           </DialogFooter>
         </DialogContent>

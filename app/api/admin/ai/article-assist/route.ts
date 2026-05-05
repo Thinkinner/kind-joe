@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { NextResponse } from "next/server";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
@@ -15,8 +15,157 @@ type AssistMode =
   | "seo"
   | "content"
   | "title"
+  | "socialCopy"
   | "predictionSuggestion"
   | "humanComment";
+
+const ARTICLE_ALL_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING },
+    slug: { type: Type.STRING },
+    category: { type: Type.STRING },
+    tags: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    excerpt: { type: Type.STRING },
+    draftHtml: { type: Type.STRING },
+    seoDescription: { type: Type.STRING },
+  },
+  required: ["title", "slug", "category", "tags", "excerpt", "draftHtml"],
+};
+
+const PREDICTION_SUGGESTION_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    suggestionType: { type: Type.STRING },
+    title: { type: Type.STRING },
+    description: { type: Type.STRING },
+    category: { type: Type.STRING },
+    options: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    rationale: { type: Type.STRING },
+  },
+  required: [
+    "suggestionType",
+    "title",
+    "description",
+    "category",
+    "options",
+    "rationale",
+  ],
+};
+
+const HUMAN_COMMENT_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    comment: { type: Type.STRING },
+    persona: { type: Type.STRING },
+    emotion: { type: Type.STRING },
+    engagementIntent: { type: Type.STRING },
+  },
+  required: ["comment", "persona", "emotion", "engagementIntent"],
+};
+
+const SLUG_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: { slug: { type: Type.STRING } },
+  required: ["slug"],
+};
+
+const CATEGORY_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: { category: { type: Type.STRING } },
+  required: ["category"],
+};
+
+const TAGS_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    tags: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+  },
+  required: ["tags"],
+};
+
+const EXCERPT_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: { excerpt: { type: Type.STRING } },
+  required: ["excerpt"],
+};
+
+const SEO_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    seoTitle: { type: Type.STRING },
+    seoDescription: { type: Type.STRING },
+    seoScore: { type: Type.NUMBER },
+    seoFeedback: { type: Type.STRING },
+    suggestions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+  },
+  required: ["seoTitle", "seoDescription"],
+};
+
+const CONTENT_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: { draftHtml: { type: Type.STRING } },
+  required: ["draftHtml"],
+};
+
+const TITLE_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: { title: { type: Type.STRING } },
+  required: ["title"],
+};
+
+const SOCIAL_COPY_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    headlines: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    tightHeadline: { type: Type.STRING },
+    caption: { type: Type.STRING },
+  },
+  required: ["headlines", "tightHeadline", "caption"],
+};
+
+function schemaForMode(mode: AssistMode): Schema {
+  switch (mode) {
+    case "predictionSuggestion":
+      return PREDICTION_SUGGESTION_SCHEMA;
+    case "humanComment":
+      return HUMAN_COMMENT_SCHEMA;
+    case "slug":
+      return SLUG_SCHEMA;
+    case "category":
+      return CATEGORY_SCHEMA;
+    case "tags":
+      return TAGS_SCHEMA;
+    case "excerpt":
+      return EXCERPT_SCHEMA;
+    case "seo":
+      return SEO_SCHEMA;
+    case "content":
+      return CONTENT_SCHEMA;
+    case "title":
+      return TITLE_SCHEMA;
+    case "socialCopy":
+      return SOCIAL_COPY_SCHEMA;
+    case "all":
+    default:
+      return ARTICLE_ALL_SCHEMA;
+  }
+}
 
 const INPUT_LIMITS: Record<AssistMode, number> = {
   all: 7000,
@@ -27,6 +176,7 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
   seo: 2600,
   content: 3000,
   title: 900,
+  socialCopy: 2200,
   predictionSuggestion: 1600,
   humanComment: 1800,
 };
@@ -40,6 +190,7 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   seo: 380,
   content: 700,
   title: 120,
+  socialCopy: 420,
   predictionSuggestion: 260,
   humanComment: 220,
 };
@@ -390,6 +541,20 @@ export async function POST(req: Request) {
               "emotion should be one of: curious, hopeful, concerned, skeptical, impressed, mixed.",
               "engagementIntent should be one of: ask-question, share-reaction, add-context, cautious-take, encourage-discussion.",
             ].join("\n")
+          : mode === "socialCopy"
+            ? [
+                "Return JSON only with keys: headlines, tightHeadline, caption.",
+                "headlines must contain exactly 5 different short news-style headline options.",
+                "Keep each headline neutral, factual, concise, and non-sensational.",
+                "Avoid exaggeration, speculation, and emotionally loaded language.",
+                "Use clear attribution when needed (e.g., allegedly, reports say, officials say).",
+                "1-2 relevant emojis at the start are optional, but preferred when natural.",
+                "tightHeadline must be the shortest accurate version.",
+                "caption must start as one short teasing sentence and include the exact phrase: Details in bio.",
+                "After that sentence, include a horizontal divider line: ---",
+                "Then include this exact bold CTA line:",
+                "**Comment JOE to follow updates on this story and join our uncensored newsletter recap, always free.**",
+              ].join("\n")
         : mode === "all"
           ? [
               "When returning draftHtml, generate substantial original article content suitable for publication quality.",
@@ -429,6 +594,14 @@ export async function POST(req: Request) {
             sourceTitle: resolvedInput.sourceTitle,
             mode,
           })
+        : mode === "socialCopy"
+          ? JSON.stringify({
+              title: String(title ?? "").slice(0, 220),
+              summary: safeText,
+              sourceUrl: resolvedInput.sourceUrl,
+              sourceTitle: resolvedInput.sourceTitle,
+              mode,
+            })
         : mode === "humanComment"
           ? JSON.stringify({
               title: String(title ?? "").slice(0, 220),
@@ -447,18 +620,33 @@ export async function POST(req: Request) {
           });
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite-preview",
-      contents: `${system}\n\nINPUT:\n${userPayload}`,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.2,
-        maxOutputTokens: MAX_OUTPUT_TOKENS[mode],
-      },
-    });
+    const requestContents = `${system}\n\nINPUT:\n${userPayload}`;
+    const responseSchema = schemaForMode(mode);
 
-    const raw = response.text?.trim() || "{}";
-    const data = parseGeneratedJson<Record<string, unknown>>(raw);
+    const runModel = async (contents: string) =>
+      ai.models.generateContent({
+        model: "gemini-3.1-flash-lite-preview",
+        contents,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema,
+          temperature: 0.1,
+          maxOutputTokens: MAX_OUTPUT_TOKENS[mode],
+        },
+      });
+
+    const response = await runModel(requestContents);
+    let raw = response.text?.trim() || "{}";
+    let data: Record<string, unknown>;
+    try {
+      data = parseGeneratedJson<Record<string, unknown>>(raw);
+    } catch {
+      const retryResponse = await runModel(
+        `${requestContents}\n\nIMPORTANT: Return valid JSON only. No markdown, code fences, or commentary.`,
+      );
+      raw = retryResponse.text?.trim() || "{}";
+      data = parseGeneratedJson<Record<string, unknown>>(raw);
+    }
     const commentDelaySeconds =
       mode === "humanComment"
         ? computeHumanCommentDelaySeconds(safeText.length)
@@ -491,6 +679,11 @@ export async function POST(req: Request) {
       draftHtml: sanitizeDraftHtml(String(data.draftHtml ?? "")),
       draftBlocks: data.draftBlocks,
       title: String(data.title ?? ""),
+      socialHeadlines: Array.isArray(data.headlines)
+        ? data.headlines.map(String).slice(0, 5)
+        : [],
+      socialTightHeadline: String(data.tightHeadline ?? ""),
+      socialCaption: String(data.caption ?? ""),
       commentDraft: sanitizeCommentDraft(String(data.comment ?? "")),
       commentPersona: String(data.persona ?? ""),
       commentEmotion: String(data.emotion ?? ""),

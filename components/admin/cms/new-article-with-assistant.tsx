@@ -125,7 +125,7 @@ export function NewArticleWithAssistant() {
   };
 
   if (started) {
-    return <AdminArticleForm initialValues={prefill} />;
+    return <AdminArticleForm initialValues={prefill} assistantMode />;
   }
 
   return (
@@ -140,6 +140,10 @@ export function NewArticleWithAssistant() {
         <p className="text-sm text-background/80">
           Paste a source URL or raw article text first. Gemini prepares your
           draft, then opens the same article form with fields prefilled.
+        </p>
+        <p className="text-xs text-background/70">
+          The article editor includes a live quality score and a non-blocking
+          publish confirmation when quality is low.
         </p>
         <div className="relative">
           <WandSparkles className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-violet-300" />
