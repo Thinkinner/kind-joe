@@ -169,6 +169,13 @@
       "when": 1777200000000,
       "tag": "0024_article_embeddings",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1777300000000,
+      "tag": "0025_joeknowsla_posts",
+      "breakpoints": true
     }
   ]
 }

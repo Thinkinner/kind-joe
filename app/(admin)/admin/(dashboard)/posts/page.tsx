@@ -41,7 +41,7 @@ type Post = {
   clickCount?: number | null;
 };
 
-type FeedType = "kindjoe" | "ventura";
+type FeedType = "kindjoe" | "ventura" | "joeknowsla";
 const INITIAL_VISIBLE = 8;
 const LOAD_MORE_STEP = 4;
 
@@ -64,15 +64,37 @@ export default function AdminPostsPage() {
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const apiBase =
-    feedType === "ventura" ? "/api/admin/ventura-posts" : "/api/admin/posts";
-  const feedLabel = feedType === "ventura" ? "Ventura posts" : "Posts";
+    feedType === "ventura"
+      ? "/api/admin/ventura-posts"
+      : feedType === "joeknowsla"
+        ? "/api/admin/joeknowsla-posts"
+        : "/api/admin/posts";
+  const feedLabel =
+    feedType === "ventura"
+      ? "Ventura posts"
+      : feedType === "joeknowsla"
+        ? "JoeKnowsLA posts"
+        : "Posts";
   const addButtonLabel =
-    feedType === "ventura" ? "Add Ventura post" : "Add post";
-  const singularPostLabel = feedType === "ventura" ? "Ventura post" : "post";
+    feedType === "ventura"
+      ? "Add Ventura post"
+      : feedType === "joeknowsla"
+        ? "Add JoeKnowsLA post"
+        : "Add post";
+  const singularPostLabel =
+    feedType === "ventura"
+      ? "Ventura post"
+      : feedType === "joeknowsla"
+        ? "JoeKnowsLA post"
+        : "post";
 
   useEffect(() => {
     const queryFeed = searchParams.get("feed");
-    setFeedType(queryFeed === "ventura" ? "ventura" : "kindjoe");
+    if (queryFeed === "ventura" || queryFeed === "joeknowsla") {
+      setFeedType(queryFeed);
+    } else {
+      setFeedType("kindjoe");
+    }
     setVisibleCount(INITIAL_VISIBLE);
   }, [searchParams]);
 
@@ -87,7 +109,13 @@ export default function AdminPostsPage() {
     load()
       .catch(() =>
         toast.error(
-          `Could not load ${feedType === "ventura" ? "ventura posts" : "posts"}`,
+          `Could not load ${
+            feedType === "ventura"
+              ? "ventura posts"
+              : feedType === "joeknowsla"
+                ? "JoeKnowsLA posts"
+                : "posts"
+          }`,
         ),
       )
       .finally(() => setLoading(false));
@@ -184,7 +212,13 @@ export default function AdminPostsPage() {
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading {feedType === "ventura" ? "ventura posts" : "posts"}...
+          Loading{" "}
+          {feedType === "ventura"
+            ? "ventura posts"
+            : feedType === "joeknowsla"
+              ? "JoeKnowsLA posts"
+              : "posts"}
+          ...
         </div>
       </div>
     );
@@ -231,6 +265,17 @@ export default function AdminPostsPage() {
               >
                 Ventura posts
               </TabsTrigger>
+              <TabsTrigger
+                value="joeknowsla"
+                className="rounded-full px-4 text-xs"
+                onClick={() => {
+                  const nextFeed: FeedType = "joeknowsla";
+                  setFeedType(nextFeed);
+                  router.replace(`${pathname}?feed=${nextFeed}`, { scroll: false });
+                }}
+              >
+                JoeKnowsLA posts
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -261,7 +306,13 @@ export default function AdminPostsPage() {
             <DialogHeader>
               <DialogTitle className="px-8 pt-7">
                 {editingPost
-                  ? `Edit ${feedType === "ventura" ? "Ventura post" : "post"}`
+                  ? `Edit ${
+                      feedType === "ventura"
+                        ? "Ventura post"
+                        : feedType === "joeknowsla"
+                          ? "JoeKnowsLA post"
+                          : "post"
+                    }`
                   : "Create Post"}
               </DialogTitle>
             </DialogHeader>
