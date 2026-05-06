@@ -2,8 +2,11 @@
 
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
+  ChevronDown,
+  ChevronRight,
   CheckCircle2,
   ExternalLink,
+  GripVertical,
   Loader2,
   Pencil,
   Plus,
@@ -160,10 +163,10 @@ const LINK_PRESETS: LinkPreset[] = [
   },
   {
     id: "latest-posts",
-    label: "Latest Posts",
+    label: "Uncensorces Post",
     description: "Main content feed card",
     build: (_profileHandle, nextOrder) => ({
-      label: "Latest Posts",
+      label: "Uncensorces Post",
       href: "/posts",
       description: "Read the latest stories, clips, and viral updates.",
       order: String(nextOrder),
@@ -279,6 +282,41 @@ function TogglePill({
   );
 }
 
+function SectionToggle({
+  title,
+  subtitle,
+  isOpen,
+  onToggle,
+  rightContent,
+}: {
+  title: string;
+  subtitle?: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  rightContent?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="inline-flex items-center gap-2 text-left"
+      >
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span>
+          <span className="block text-base font-semibold text-foreground">{title}</span>
+          {subtitle ? <span className="block text-xs text-muted-foreground">{subtitle}</span> : null}
+        </span>
+      </button>
+      {rightContent}
+    </div>
+  );
+}
+
 export default function AdminSocialProfilesPage() {
   const [publicSiteOrigin, setPublicSiteOrigin] = useState<string | null>(() =>
     normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL),
@@ -300,6 +338,9 @@ export default function AdminSocialProfilesPage() {
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
   const [linkForm, setLinkForm] = useState<ProfileLinkForm>(initialLinkForm);
   const [selectedLinkPresetIds, setSelectedLinkPresetIds] = useState<string[]>([]);
+  const [draggingLinkId, setDraggingLinkId] = useState<number | null>(null);
+  const [dragOverLinkId, setDragOverLinkId] = useState<number | null>(null);
+  const [reorderingLinks, setReorderingLinks] = useState(false);
 
   const [socialLinks, setSocialLinks] = useState<SocialIconLink[]>([]);
   const [socialLinksLoading, setSocialLinksLoading] = useState(false);
@@ -308,6 +349,10 @@ export default function AdminSocialProfilesPage() {
   const [editingSocialLinkId, setEditingSocialLinkId] = useState<number | null>(null);
   const [socialIconForm, setSocialIconForm] = useState<SocialIconLinkForm>(initialSocialIconForm);
   const [selectedSocialPresetIds, setSelectedSocialPresetIds] = useState<string[]>([]);
+  const [socialSectionOpen, setSocialSectionOpen] = useState(false);
+  const [linkSectionOpen, setLinkSectionOpen] = useState(true);
+  const [showSocialPresets, setShowSocialPresets] = useState(false);
+  const [showLinkPresets, setShowLinkPresets] = useState(false);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedProfileId) ?? null,
@@ -425,9 +470,13 @@ export default function AdminSocialProfilesPage() {
     setEditingLinkId(null);
     setLinkForm(initialLinkForm);
     setSelectedLinkPresetIds([]);
+    setDraggingLinkId(null);
+    setDragOverLinkId(null);
     setEditingSocialLinkId(null);
     setSocialIconForm(initialSocialIconForm);
     setSelectedSocialPresetIds([]);
+    setShowSocialPresets(false);
+    setShowLinkPresets(false);
 
     setLinksLoading(true);
     setSocialLinksLoading(true);
@@ -530,6 +579,64 @@ export default function AdminSocialProfilesPage() {
     } finally {
       setSavingSelectedProfile(false);
     }
+  };
+
+  const persistLinkOrder = async (orderedLinks: ProfileLink[], previousLinks: ProfileLink[]) => {
+    if (!selectedProfile) return;
+
+    const changed = orderedLinks
+      .map((link, nextOrder) => ({ id: link.id, nextOrder }))
+      .filter(({ id, nextOrder }) => {
+        const prev = previousLinks.find((item) => item.id === id);
+        return !!prev && prev.order !== nextOrder;
+      });
+
+    if (changed.length === 0) return;
+
+    setReorderingLinks(true);
+    try {
+      for (const item of changed) {
+        const res = await fetch(
+          `/api/admin/social-profiles/${selectedProfile.id}/links/${item.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order: item.nextOrder }),
+          },
+        );
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (!res.ok) {
+          throw new Error(data?.error || "Could not save reordered links");
+        }
+      }
+
+      setLinks((prev) =>
+        prev.map((link) => {
+          const changedLink = changed.find((item) => item.id === link.id);
+          return changedLink ? { ...link, order: changedLink.nextOrder } : link;
+        }),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not reorder links");
+      await loadLinks(selectedProfile.id);
+    } finally {
+      setReorderingLinks(false);
+    }
+  };
+
+  const reorderLinks = (sourceId: number, targetId: number) => {
+    if (sourceId === targetId) return;
+    const sourceIndex = links.findIndex((item) => item.id === sourceId);
+    const targetIndex = links.findIndex((item) => item.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const previousLinks = [...links];
+    const next = [...links];
+    const [moved] = next.splice(sourceIndex, 1);
+    if (!moved) return;
+    next.splice(targetIndex, 0, moved);
+    setLinks(next);
+    void persistLinkOrder(next, previousLinks);
   };
 
   const saveLink = async () => {
@@ -981,13 +1088,13 @@ export default function AdminSocialProfilesPage() {
         <div className="space-y-6">
           {selectedProfile && selectedProfileDraft ? (
             <>
-              <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-foreground">
                       {selectedProfile.displayName}
                     </h2>
-                    <p className="text-sm text-muted-foreground">Profile settings and branding</p>
+                    <p className="text-xs text-muted-foreground">Profile settings</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusPill active={selectedProfileDraft.isActive}>
@@ -1007,7 +1114,7 @@ export default function AdminSocialProfilesPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Handle</Label>
                     <Input
@@ -1070,7 +1177,7 @@ export default function AdminSocialProfilesPage() {
                   />
                 </div>
 
-                <div className="mt-5">
+                <div className="mt-4">
                   <Button onClick={saveSelectedProfile} disabled={savingSelectedProfile} className="rounded-xl">
                     {savingSelectedProfile ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1082,31 +1189,38 @@ export default function AdminSocialProfilesPage() {
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-foreground">Social Icons</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Manage icon links shown under the profile bio
-                    </p>
-                  </div>
-                  <StatusPill active>Per Handle</StatusPill>
-                </div>
+              <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <SectionToggle
+                  title="Social Icons"
+                  subtitle="Profile icon links"
+                  isOpen={socialSectionOpen}
+                  onToggle={() => setSocialSectionOpen((prev) => !prev)}
+                  rightContent={<StatusPill active>Per Handle</StatusPill>}
+                />
 
-                {socialLinksError ? (
-                  <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {socialLinksError}
-                  </p>
-                ) : null}
+                {socialSectionOpen ? (
+                  <>
 
-                <div className="mb-4 space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Quick presets
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Select presets below, then add/remove in bulk. You can edit any added card below.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+                    {socialLinksError ? (
+                      <p className="mb-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {socialLinksError}
+                      </p>
+                    ) : null}
+
+                <div className="mt-4 mb-4 space-y-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 rounded-lg px-2 text-xs text-muted-foreground"
+                    onClick={() => setShowSocialPresets((prev) => !prev)}
+                  >
+                    {showSocialPresets ? "Hide presets" : "Show presets"}
+                  </Button>
+
+                  {showSocialPresets ? (
+                    <>
+                      <div className="flex flex-wrap gap-2">
                     {SOCIAL_PRESETS.map((preset) => (
                       <Button
                         key={preset.id}
@@ -1122,9 +1236,9 @@ export default function AdminSocialProfilesPage() {
                       >
                         {preset.label}
                       </Button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-1">
+                      ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
                     <Button
                       type="button"
                       size="sm"
@@ -1134,7 +1248,7 @@ export default function AdminSocialProfilesPage() {
                     >
                       Add Selected
                     </Button>
-                    <Button
+                      <Button
                       type="button"
                       size="sm"
                       variant="outline"
@@ -1144,7 +1258,7 @@ export default function AdminSocialProfilesPage() {
                     >
                       Remove Selected
                     </Button>
-                    <Button
+                      <Button
                       type="button"
                       size="sm"
                       variant="ghost"
@@ -1153,8 +1267,10 @@ export default function AdminSocialProfilesPage() {
                       disabled={selectedSocialPresetIds.length === 0}
                     >
                       Clear
-                    </Button>
-                  </div>
+                      </Button>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1221,7 +1337,7 @@ export default function AdminSocialProfilesPage() {
                   />
                 </div>
 
-                <div className="mt-5 flex items-center gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
                   <Button onClick={saveSocialLink} disabled={savingSocialLink} className="rounded-xl">
                     {savingSocialLink ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1231,20 +1347,20 @@ export default function AdminSocialProfilesPage() {
                     {editingSocialLinkId === null ? "Add Social Icon" : "Update Social Icon"}
                   </Button>
                   {editingSocialLinkId !== null ? (
-                    <Button
-                      variant="outline"
-                      className="rounded-xl"
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         setEditingSocialLinkId(null);
                         setSocialIconForm(initialSocialIconForm);
                       }}
                     >
-                      Cancel Edit
-                    </Button>
+                      Cancel edit
+                    </button>
                   ) : null}
                 </div>
 
-                <div className="mt-5 space-y-2">
+                <div className="mt-4 space-y-2">
                   {socialLinksLoading ? (
                     <div className="rounded-xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
                       <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
@@ -1258,7 +1374,7 @@ export default function AdminSocialProfilesPage() {
                     socialLinks.map((link) => (
                       <div
                         key={link.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">
@@ -1266,14 +1382,14 @@ export default function AdminSocialProfilesPage() {
                           </p>
                           <p className="truncate text-xs text-muted-foreground">{link.href}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <StatusPill active={link.isActive}>
                             {link.isActive ? "Active" : "Inactive"}
                           </StatusPill>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg"
+                            className="rounded-lg px-2"
                             onClick={() => {
                               setEditingSocialLinkId(link.id);
                               setSocialIconForm({
@@ -1287,101 +1403,112 @@ export default function AdminSocialProfilesPage() {
                             }}
                           >
                             <Pencil className="h-3.5 w-3.5" />
-                            Edit
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
-                            className="rounded-lg"
+                            className="rounded-lg px-2"
                             onClick={() => removeSocialLink(link.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Delete
                           </Button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
+                  </>
+                ) : null}
               </section>
 
-              <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-foreground">Link Composer</h2>
-                    <p className="text-sm text-muted-foreground">Add and update links for this profile</p>
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-primary">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Linktree inspired
-                  </div>
-                </div>
+              <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <SectionToggle
+                  title="Link Editor"
+                  subtitle="Manage primary profile links"
+                  isOpen={linkSectionOpen}
+                  onToggle={() => setLinkSectionOpen((prev) => !prev)}
+                  rightContent={
+                    <div className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-primary">
+                      <Sparkles className="h-3 w-3" />
+                      Linktree style
+                    </div>
+                  }
+                />
 
-                {linksError ? (
-                  <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {linksError}
-                  </p>
-                ) : null}
+                {linkSectionOpen ? (
+                  <>
+                    {linksError ? (
+                      <p className="mb-3 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {linksError}
+                      </p>
+                    ) : null}
 
-                <div className="mb-4 space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Quick presets
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Select presets below, then add/remove in bulk. You can edit any added card below.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {LINK_PRESETS.map((preset) => (
+                    <div className="mt-4 mb-4 space-y-2">
                       <Button
-                        key={preset.id}
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className={cn(
-                          "rounded-full",
-                          selectedLinkPresetIds.includes(preset.id) &&
-                            "border-primary/40 bg-primary/10 text-primary",
-                        )}
-                        onClick={() => toggleLinkPresetSelection(preset.id)}
+                        className="h-7 rounded-lg px-2 text-xs text-muted-foreground"
+                        onClick={() => setShowLinkPresets((prev) => !prev)}
                       >
-                        {preset.label}
+                        {showLinkPresets ? "Hide presets" : "Show presets"}
                       </Button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="rounded-lg"
-                      onClick={addSelectedLinkPresets}
-                      disabled={selectedLinkPresetIds.length === 0}
-                    >
-                      Add Selected
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="rounded-lg"
-                      onClick={removeSelectedLinkPresets}
-                      disabled={selectedLinkPresetIds.length === 0}
-                    >
-                      Remove Selected
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-lg"
-                      onClick={() => setSelectedLinkPresetIds([])}
-                      disabled={selectedLinkPresetIds.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
+                      {showLinkPresets ? (
+                        <>
+                          <div className="flex flex-wrap gap-2">
+                            {LINK_PRESETS.map((preset) => (
+                              <Button
+                                key={preset.id}
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "rounded-full",
+                                  selectedLinkPresetIds.includes(preset.id) &&
+                                    "border-primary/40 bg-primary/10 text-primary",
+                                )}
+                                onClick={() => toggleLinkPresetSelection(preset.id)}
+                              >
+                                {preset.label}
+                              </Button>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="rounded-lg"
+                              onClick={addSelectedLinkPresets}
+                              disabled={selectedLinkPresetIds.length === 0}
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg"
+                              onClick={removeSelectedLinkPresets}
+                              disabled={selectedLinkPresetIds.length === 0}
+                            >
+                              Remove
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="rounded-lg"
+                              onClick={() => setSelectedLinkPresetIds([])}
+                              disabled={selectedLinkPresetIds.length === 0}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Link Label</Label>
                     <Input
@@ -1427,7 +1554,7 @@ export default function AdminSocialProfilesPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                   <TogglePill
                     label="Active"
                     checked={linkForm.isActive}
@@ -1451,99 +1578,145 @@ export default function AdminSocialProfilesPage() {
                   />
                 </div>
 
-                <div className="mt-5 flex items-center gap-2">
-                  <Button onClick={saveLink} disabled={savingLink} className="rounded-xl">
-                    {savingLink ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    {editingLinkId === null ? "Add Link" : "Update Link"}
-                  </Button>
-                  {editingLinkId !== null ? (
-                    <Button
-                      variant="outline"
-                      className="rounded-xl"
-                      onClick={() => {
-                        setEditingLinkId(null);
-                        setLinkForm(initialLinkForm);
-                      }}
-                    >
-                      Cancel Edit
-                    </Button>
-                  ) : null}
-                </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Button onClick={saveLink} disabled={savingLink} className="rounded-xl">
+                        {savingLink ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                        {editingLinkId === null ? "Add Link" : "Update Link"}
+                      </Button>
+                      {editingLinkId !== null ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingLinkId(null);
+                            setLinkForm(initialLinkForm);
+                          }}
+                        >
+                          Cancel edit
+                        </button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
               </section>
 
-              <section className="space-y-3">
+              <section className="space-y-2">
+                {reorderingLinks ? (
+                  <div className="rounded-lg border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
+                    Saving new link order...
+                  </div>
+                ) : null}
                 {linksLoading ? (
-                  <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-border/70 bg-card p-3 text-sm text-muted-foreground">
                     <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                     Loading links...
                   </div>
                 ) : links.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-dashed border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                     No links yet for this profile.
                   </div>
                 ) : (
                   links.map((link) => (
                     <article
                       key={link.id}
-                      className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        setDraggingLinkId(link.id);
+                        setDragOverLinkId(link.id);
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        if (dragOverLinkId !== link.id) {
+                          setDragOverLinkId(link.id);
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (draggingLinkId !== null) {
+                          reorderLinks(draggingLinkId, link.id);
+                        }
+                        setDraggingLinkId(null);
+                        setDragOverLinkId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingLinkId(null);
+                        setDragOverLinkId(null);
+                      }}
+                      className={cn(
+                        "group rounded-xl border bg-card p-3 transition",
+                        draggingLinkId === link.id ? "opacity-70" : "opacity-100",
+                        dragOverLinkId === link.id
+                          ? "border-primary/50 ring-1 ring-primary/40"
+                          : "border-border/70",
+                      )}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">{link.label}</p>
-                          <p className="truncate text-xs text-muted-foreground">{link.href}</p>
-                          {link.description ? (
-                            <p className="mt-1 truncate text-xs text-muted-foreground">
-                              {link.description}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <StatusPill active={link.isActive}>
-                            {link.isActive ? "Active" : "Inactive"}
-                          </StatusPill>
-                          {link.isFeatured ? <StatusPill active>Featured</StatusPill> : null}
-                        </div>
-                      </div>
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          aria-label={`Drag to reorder ${link.label}`}
+                          className="mt-0.5 inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded-md border border-border/70 bg-muted/40 text-muted-foreground active:cursor-grabbing"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </button>
 
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Order {link.order} · {link.openInNewTab ? "New tab" : "Same tab"}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => {
-                              setEditingLinkId(link.id);
-                              setLinkForm({
-                                label: link.label,
-                                href: link.href,
-                                description: link.description ?? "",
-                                order: String(link.order ?? 0),
-                                isActive: !!link.isActive,
-                                isFeatured: !!link.isFeatured,
-                                openInNewTab: !!link.openInNewTab,
-                              });
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => removeLink(link.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </Button>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground">{link.label}</p>
+                              <p className="truncate text-xs text-muted-foreground">{link.href}</p>
+                              {link.description ? (
+                                <p className="mt-1 truncate text-xs text-muted-foreground">
+                                  {link.description}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <span>{link.isActive ? "On" : "Off"}</span>
+                              {link.isFeatured ? <span>Featured</span> : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Position {link.order} · {link.openInNewTab ? "New tab" : "Same tab"}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-md px-2 opacity-85 group-hover:opacity-100"
+                                onClick={() => {
+                                  setEditingLinkId(link.id);
+                                  setLinkForm({
+                                    label: link.label,
+                                    href: link.href,
+                                    description: link.description ?? "",
+                                    order: String(link.order ?? 0),
+                                    isActive: !!link.isActive,
+                                    isFeatured: !!link.isFeatured,
+                                    openInNewTab: !!link.openInNewTab,
+                                  });
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="rounded-md px-2 opacity-85 group-hover:opacity-100"
+                                onClick={() => removeLink(link.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </article>

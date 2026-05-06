@@ -79,6 +79,9 @@ export async function PATCH(
   const patch = Object.fromEntries(
     Object.entries(parsed.data).filter(([, v]) => v !== undefined),
   ) as Partial<typeof socialProfileLinks.$inferInsert>;
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+  }
 
   try {
     const handle = await resolveProfileHandle(profileId);
