@@ -375,6 +375,128 @@ export const joeknowslaPosts = pgTable("joeknowsla_posts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const kindjoeClipSubmissions = pgTable(
+  "kindjoe_clip_submissions",
+  {
+    id: serial("id").primaryKey(),
+    ageGroup: varchar("age_group", { length: 20 }).notNull(),
+    firstName: varchar("first_name", { length: 120 }).notNull(),
+    lastName: varchar("last_name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    clipUrl: text("clip_url").notNull(),
+    filmedLocation: text("filmed_location").notNull(),
+    hasDescription: boolean("has_description").notNull().default(false),
+    clipDescription: text("clip_description"),
+    recordedBySubmitter: boolean("recorded_by_submitter").notNull(),
+    wantsClipCredit: boolean("wants_clip_credit").notNull().default(false),
+    paypalEmail: varchar("paypal_email", { length: 255 }),
+    digitalSignature: varchar("digital_signature", { length: 255 }).notNull(),
+    acceptsSubmissionTerms: boolean("accepts_submission_terms").notNull(),
+    confirmsNoExclusiveAgreement: boolean("confirms_no_exclusive_agreement").notNull(),
+    confirmsClipGuidelines: boolean("confirms_clip_guidelines").notNull(),
+    marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("kindjoe_clip_submissions_created_at_idx").on(t.createdAt),
+    emailIdx: index("kindjoe_clip_submissions_email_idx").on(t.email),
+  }),
+);
+
+export const kindjoeProfileLinks = pgTable(
+  "kindjoe_profile_links",
+  {
+    id: serial("id").primaryKey(),
+    label: varchar("label", { length: 140 }).notNull(),
+    href: text("href").notNull(),
+    description: text("description"),
+    order: integer("order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    openInNewTab: boolean("open_in_new_tab").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    orderIdx: index("kindjoe_profile_links_order_idx").on(t.order),
+    activeIdx: index("kindjoe_profile_links_active_idx").on(t.isActive),
+    createdAtIdx: index("kindjoe_profile_links_created_at_idx").on(t.createdAt),
+  }),
+);
+
+export const socialProfiles = pgTable(
+  "social_profiles",
+  {
+    id: serial("id").primaryKey(),
+    handle: varchar("handle", { length: 80 }).notNull(),
+    displayName: varchar("display_name", { length: 140 }).notNull(),
+    bio: text("bio"),
+    avatarUrl: text("avatar_url"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    handleUnique: uniqueIndex("social_profiles_handle_unique").on(t.handle),
+    activeIdx: index("social_profiles_active_idx").on(t.isActive),
+    createdAtIdx: index("social_profiles_created_at_idx").on(t.createdAt),
+  }),
+);
+
+export const socialProfileLinks = pgTable(
+  "social_profile_links",
+  {
+    id: serial("id").primaryKey(),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => socialProfiles.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 140 }).notNull(),
+    href: text("href").notNull(),
+    description: text("description"),
+    order: integer("order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    openInNewTab: boolean("open_in_new_tab").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    profileOrderIdx: index("social_profile_links_profile_order_idx").on(t.profileId, t.order),
+    profileActiveIdx: index("social_profile_links_profile_active_idx").on(
+      t.profileId,
+      t.isActive,
+    ),
+    profileCreatedAtIdx: index("social_profile_links_profile_created_at_idx").on(
+      t.profileId,
+      t.createdAt,
+    ),
+  }),
+);
+
+export const socialProfileSocialLinks = pgTable(
+  "social_profile_social_links",
+  {
+    id: serial("id").primaryKey(),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => socialProfiles.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 40 }).notNull(),
+    label: varchar("label", { length: 80 }).notNull(),
+    href: text("href").notNull(),
+    order: integer("order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    openInNewTab: boolean("open_in_new_tab").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    profileOrderIdx: index("social_profile_social_links_profile_order_idx").on(
+      t.profileId,
+      t.order,
+    ),
+    profileActiveIdx: index("social_profile_social_links_profile_active_idx").on(
+      t.profileId,
+      t.isActive,
+    ),
+  }),
+);
+
 export const clicks = pgTable("clicks", {
   id: serial("id").primaryKey(),
   postId: integer("post_id")

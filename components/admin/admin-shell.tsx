@@ -24,6 +24,8 @@ import {
   LogOut,
   History,
   MessageCircle,
+  ClipboardList,
+  Link2,
   Moon,
   Sun,
 } from "lucide-react";
@@ -50,6 +52,18 @@ const baseNav = [
   { href: "/admin/article-analytics", label: "Article analytics", icon: BarChart2, permission: PERMISSIONS.ADMIN_ANALYTICS },
   { href: "/admin/visitor-journeys", label: "Visitor journeys", icon: Route, permission: PERMISSIONS.ADMIN_VISITOR_JOURNEYS },
   { href: "/admin/posts", label: "Posts", icon: ImageIcon, permission: PERMISSIONS.ADMIN_POSTS },
+  {
+    href: "/admin/kindjoe-clip-submissions",
+    label: "Clip submissions",
+    icon: ClipboardList,
+    permission: PERMISSIONS.ADMIN_POSTS,
+  },
+  {
+    href: "/admin/social-profiles",
+    label: "Link Tree Profiles",
+    icon: Link2,
+    permission: PERMISSIONS.ADMIN_POSTS,
+  },
   { href: "/admin/newsletter", label: "Newsletter", icon: Mail, permission: PERMISSIONS.ADMIN_NEWSLETTER },
   { href: "/admin/predictions", label: "News Predictions", icon: Sparkles, permission: PERMISSIONS.ADMIN_PREDICTIONS },
   { href: "/admin/webhooks", label: "Webhooks", icon: Webhook, permission: PERMISSIONS.ADMIN_WEBHOOKS },
