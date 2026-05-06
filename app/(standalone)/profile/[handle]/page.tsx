@@ -114,7 +114,7 @@ function defaultLinksForHandle(handle: string): ProfileLink[] {
     },
     {
       id: -2,
-      label: "Uncensorces Post",
+      label: "Uncensored Posts",
       href: "/posts",
       description: "Read the latest stories, clips, and viral updates.",
       isFeatured: false,

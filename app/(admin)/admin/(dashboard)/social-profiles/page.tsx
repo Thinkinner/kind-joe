@@ -163,10 +163,10 @@ const LINK_PRESETS: LinkPreset[] = [
   },
   {
     id: "latest-posts",
-    label: "Uncensorces Post",
+    label: "Uncensored Posts",
     description: "Main content feed card",
     build: (_profileHandle, nextOrder) => ({
-      label: "Uncensorces Post",
+      label: "Uncensored Posts",
       href: "/posts",
       description: "Read the latest stories, clips, and viral updates.",
       order: String(nextOrder),

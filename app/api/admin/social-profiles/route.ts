@@ -26,7 +26,7 @@ function defaultLinksForHandle(handle: string) {
       openInNewTab: false,
     },
     {
-      label: "Uncensorces Post",
+      label: "Uncensored Posts",
       href: "/posts",
       description: "Read the latest stories, clips, and viral updates.",
       order: 1,
