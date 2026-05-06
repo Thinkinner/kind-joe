@@ -79,6 +79,11 @@ export default async function ArticleBySlug(props: {
 }) {
   const { slug } = await props.params;
 
+  // Guard reserved feed routes in case this dynamic slug route is matched first.
+  if (slug === "ventura-county") {
+    redirect("/ventura/articles");
+  }
+
   // 1. Fetch Primary Data
   const data = await getFullArticleBySlug(slug);
   if (!data) notFound();
