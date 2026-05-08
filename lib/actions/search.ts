@@ -2,10 +2,11 @@
 
 import { db } from "@/db"; // adjust path to your db folder
 import { articles, users } from "@/db/schema";
-import { ilike, or, and, isNull, eq } from "drizzle-orm";
+import { ilike, or, and, isNull, eq, isNotNull, lte } from "drizzle-orm";
 
 export async function searchArticles(query: string) {
   if (!query || query.length < 2) return [];
+  const now = new Date();
 
   const results = await db
     .select({
@@ -22,6 +23,14 @@ export async function searchArticles(query: string) {
       and(
         eq(articles.isDraft, false),
         isNull(articles.deletedAt),
+        or(
+          and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
+          and(
+            isNull(articles.publishedAt),
+            isNotNull(articles.publishAt),
+            lte(articles.publishAt, now)
+          )
+        ),
         or(
           ilike(articles.title, `%${query}%`),
           ilike(articles.excerpt, `%${query}%`),

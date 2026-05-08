@@ -289,10 +289,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const seenTagSlugs = new Set<string>();
       for (const raw of input.tags ?? []) {
         const name = raw.trim();
         if (!name) continue;
         const tgSlug = slugify(name);
+        if (seenTagSlugs.has(tgSlug)) continue;
+        seenTagSlugs.add(tgSlug);
 
         let t = await tx
           .select({ id: tagsTable.id })
@@ -307,10 +310,13 @@ export async function POST(req: NextRequest) {
           t = created;
         }
 
-        await tx.insert(articleTags).values({
-          articleId: id,
-          tagId: t[0].id,
-        });
+        await tx
+          .insert(articleTags)
+          .values({
+            articleId: id,
+            tagId: t[0].id,
+          })
+          .onConflictDoNothing();
       }
     });
 
