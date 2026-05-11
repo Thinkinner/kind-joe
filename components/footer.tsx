@@ -188,7 +188,7 @@ export function Footer() {
                     href="/terms-of-service"
                     className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
                   >
-                    Terms of Service
+                    Terms of Use
                   </Link>
                 </li>
                 <li>
@@ -221,25 +221,60 @@ export function Footer() {
         </div>
 
         {/* Bottom Section: Socials & Copyright */}
-        <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6">
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-400">
+            <Link
+              href="/privacy-policy"
+              className="hover:text-red-500 transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms-of-service"
+              className="hover:text-red-500 transition-colors"
+            >
+              Terms of Use
+            </Link>
+            <Link
+              href="/about"
+              className="hover:text-red-500 transition-colors"
+            >
+              About
+            </Link>
+            <Link
+              href="/contact"
+              className="hover:text-red-500 transition-colors"
+            >
+              Contact
+            </Link>
+            <Link
+              href="/editorial-policy"
+              className="hover:text-red-500 transition-colors"
+            >
+              Editorial Policy
+            </Link>
+          </div>
 
-          <div className="flex gap-4">
-            <SocialLink
-              href="https://www.tiktok.com/@thekind.joe"
-              icon={<FaTiktok />}
-            />
-            <SocialLink
-              href="https://www.instagram.com/thekindjoe/"
-              icon={<FaInstagram />}
-            />
-            <SocialLink
-              href="https://www.youtube.com/@thekindjoe-w4d"
-              icon={<FaYoutube />}
-            />
-            <SocialLink
-              href="https://linkedin.com/company/the-kind-joe"
-              icon={<FaLinkedin />}
-            />
+          <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-6">
+
+            <div className="flex gap-4">
+              <SocialLink
+                href="https://www.tiktok.com/@thekind.joe"
+                icon={<FaTiktok />}
+              />
+              <SocialLink
+                href="https://www.instagram.com/thekindjoe/"
+                icon={<FaInstagram />}
+              />
+              <SocialLink
+                href="https://www.youtube.com/@thekindjoe-w4d"
+                icon={<FaYoutube />}
+              />
+              <SocialLink
+                href="https://linkedin.com/company/the-kind-joe"
+                icon={<FaLinkedin />}
+              />
+            </div>
           </div>
         </div>
       </div>

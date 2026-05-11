@@ -5,6 +5,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Cookie as CookieIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  COOKIE_CONSENT_EVENT,
+  COOKIE_CONSENT_KEY,
+  COOKIE_DISMISSED_SESSION_KEY,
+} from "@/lib/consent";
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
 
 type CookieConsentProps = {
   cookieName?: string;
@@ -14,7 +25,7 @@ type CookieConsentProps = {
 };
 
 export default function CookieConsent({
-  cookieName = "cookie_consent_status",
+  cookieName = COOKIE_CONSENT_KEY,
   policyHref = "/privacy-policy",
   className,
   delayMs = 2000, // Reduced delay for better UX
@@ -24,7 +35,7 @@ export default function CookieConsent({
   React.useEffect(() => {
     // Check if user has already responded
     const consent = localStorage.getItem(cookieName);
-    const dismissedSession = sessionStorage.getItem("cookie_dismissed");
+    const dismissedSession = sessionStorage.getItem(COOKIE_DISMISSED_SESSION_KEY);
 
     if (!consent && !dismissedSession) {
       const timer = setTimeout(() => {
@@ -39,12 +50,33 @@ export default function CookieConsent({
     localStorage.setItem(cookieName, "accepted");
     // Also set actual cookie for server-side if needed
     document.cookie = `${cookieName}=accepted; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax`;
+    sessionStorage.removeItem(COOKIE_DISMISSED_SESSION_KEY);
+    window.dispatchEvent(
+      new CustomEvent(COOKIE_CONSENT_EVENT, { detail: { status: "accepted" } }),
+    );
+    window.gtag?.("consent", "update", {
+      ad_storage: "granted",
+      ad_user_data: "granted",
+      ad_personalization: "granted",
+      analytics_storage: "granted",
+    });
     setIsVisible(false);
   };
 
   const declineCookies = () => {
-    // Dismiss for this session only
-    sessionStorage.setItem("cookie_dismissed", "1");
+    // Persist declined preference to avoid re-prompting on every page load.
+    localStorage.setItem(cookieName, "rejected");
+    document.cookie = `${cookieName}=rejected; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax`;
+    sessionStorage.setItem(COOKIE_DISMISSED_SESSION_KEY, "1");
+    window.dispatchEvent(
+      new CustomEvent(COOKIE_CONSENT_EVENT, { detail: { status: "rejected" } }),
+    );
+    window.gtag?.("consent", "update", {
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      analytics_storage: "denied",
+    });
     setIsVisible(false);
   };
 

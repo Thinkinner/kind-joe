@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Faqs from "@/components/sections/faqs";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 const Contact: React.FC = () => {
   const [formState, setFormState] = useState({
@@ -126,7 +127,7 @@ const Contact: React.FC = () => {
                     {/* <Mail className="w-6 h-6 text-blue-300 mt-1" /> */}
                     <div>
                       <p className="font-medium">Email</p>
-                      <p className="text-blue-100">hello@kindjoe.com</p>
+                      <p className="text-blue-100">{PUBLIC_CONTACT_EMAIL}</p>
                     </div>
                   </div>
 

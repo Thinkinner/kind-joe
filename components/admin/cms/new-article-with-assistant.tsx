@@ -107,7 +107,7 @@ export function NewArticleWithAssistant() {
         title: "",
         html: sourceInput,
         customPrompt:
-          "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. The draftHtml should target about 350 words (roughly 320-380) and be formatted in short paragraphs (1-2 sentences per paragraph). Return title, slug, category, tags (about 20), excerpt (at least 12 words), draftHtml, and seoDescription (70-160 chars).",
+          "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. The draftHtml should target about 350 words (roughly 320-380) and be formatted in short paragraphs (1-2 sentences per paragraph). Use this exact flow in draftHtml: Hook, Quick recap, Your analysis (3-5 key points), Actionable takeaway, Sources (Fox/X links clearly attributed). Return title, slug, category, tags (about 20), excerpt (at least 12 words), draftHtml, and seoDescription (70-160 chars).",
       }),
     });
     if (!res.ok) {

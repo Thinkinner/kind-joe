@@ -68,19 +68,46 @@ export default function PrivacyPolicy() {
               You can manage cookies in your browser settings. Some features may not function properly if certain cookies are disabled.
             </Section>
 
-            <Section id="sharing" title="5. How We Share Information">
+            <Section id="adsense" title="5. Advertising & Google AdSense">
+              We use Google AdSense to display ads on parts of our site. Google and its partners may use cookies and similar identifiers to show ads based on your prior visits to this or other websites.
+              <ul className="list-disc pl-6 mt-2">
+                <li><span className="font-medium">Personalized ads:</span> ads can be tailored using browsing activity and inferred interests where allowed by law and consent settings.</li>
+                <li><span className="font-medium">Non-personalized ads:</span> ads are shown based on context and general signals rather than personalized behavioral profiles.</li>
+                <li><span className="font-medium">Your controls:</span> you can manage ad personalization in Google Ad Settings and can also control cookies through browser settings.</li>
+              </ul>
+              For more information, see{" "}
+              <a
+                className="underline"
+                href="https://policies.google.com/technologies/ads"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                How Google uses information from sites or apps that use its services
+              </a>{" "}
+              and{" "}
+              <a
+                className="underline"
+                href="https://adssettings.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Ad Settings
+              </a>.
+            </Section>
+
+            <Section id="sharing" title="6. How We Share Information">
               We do <span className="font-medium">not sell</span> your personal data. We may share limited data with service providers (e.g., email delivery, analytics) who act on our instructions and are bound by confidentiality and data protection terms. We may also disclose information if required by law or to protect rights, safety, and security.
             </Section>
 
-            <Section id="security" title="6. Data Security">
+            <Section id="security" title="7. Data Security">
               We use reasonable technical and organizational measures to protect your information, including SSL (HTTPS) in transit and internal safeguards in our systems. However, no method of transmission or storage is 100% secure, and we cannot guarantee absolute security.
             </Section>
 
-            <Section id="retention" title="7. Data Retention">
+            <Section id="retention" title="8. Data Retention">
               We retain personal information for as long as needed to provide the Services (e.g., to send you newsletters) and for legitimate business or legal purposes. If you unsubscribe, we will stop sending emails and may retain limited records as permitted by law (e.g., to honor your opt-out).
             </Section>
 
-            <Section id="your-rights" title="8. Your Choices & Rights">
+            <Section id="your-rights" title="9. Your Choices & Rights">
               <ul className="list-disc pl-6 mt-2">
                 <li><span className="font-medium">Unsubscribe:</span> use the link in our emails to stop receiving newsletters.</li>
                 <li><span className="font-medium">Cookies:</span> manage or block cookies via your browser settings.</li>
@@ -88,26 +115,26 @@ export default function PrivacyPolicy() {
               </ul>
             </Section>
 
-            <Section id="children" title="9. Children’s Privacy">
+            <Section id="children" title="10. Children’s Privacy">
               Our Services are intended for a general audience and are not directed to children under 18. We do not knowingly collect personal information from children under 18. If you believe a child has provided us data, contact us and we will take appropriate steps to remove it.
             </Section>
 
-            <Section id="international" title="10. International Visitors">
+            <Section id="international" title="11. International Visitors">
               Our Services are operated in the United States. If you access the Services from outside the U.S., you understand that your information may be processed in the U.S., where laws may differ from those in your country.
             </Section>
 
-            <Section id="changes" title="11. Changes to This Policy">
+            <Section id="changes" title="12. Changes to This Policy">
               We may update this Privacy Policy from time to time. When we do, we will revise the “Last updated” date above. Material changes will be highlighted on this page. Your continued use of the Services after changes take effect means you accept the updated Policy.
             </Section>
 
-            <Section id="contact" title="12. Contact Us">
+            <Section id="contact" title="13. Contact Us">
               <p>
                 If you have questions or requests about this Privacy Policy, contact us at{" "}
                 <a className="underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>.
               </p>
             </Section>
 
-            <Section id="jurisdiction" title="13. Jurisdiction">
+            <Section id="jurisdiction" title="14. Jurisdiction">
               This Privacy Policy is governed by the laws of the United States.
             </Section>
           </section>
@@ -122,6 +149,7 @@ export default function PrivacyPolicy() {
                   <TOCLink href="#how-we-use">How We Use Your Info</TOCLink>
                   <TOCLink href="#legal-bases">Legal Bases</TOCLink>
                   <TOCLink href="#cookies">Cookies & Analytics</TOCLink>
+                  <TOCLink href="#adsense">Advertising & Google AdSense</TOCLink>
                   <TOCLink href="#sharing">How We Share</TOCLink>
                   <TOCLink href="#security">Data Security</TOCLink>
                   <TOCLink href="#retention">Data Retention</TOCLink>
@@ -144,6 +172,7 @@ export default function PrivacyPolicy() {
                   <TOCLink href="#how-we-use">How We Use Your Info</TOCLink>
                   <TOCLink href="#legal-bases">Legal Bases</TOCLink>
                   <TOCLink href="#cookies">Cookies & Analytics</TOCLink>
+                  <TOCLink href="#adsense">Advertising & Google AdSense</TOCLink>
                   <TOCLink href="#sharing">How We Share</TOCLink>
                   <TOCLink href="#security">Data Security</TOCLink>
                   <TOCLink href="#retention">Data Retention</TOCLink>

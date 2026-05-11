@@ -5,6 +5,8 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/google-analytics";
 import VisitorJourneyTracker from "@/components/visitor-journey-tracker";
+import CookieConsent from "@/components/modals/cookie-consent";
+import AdsenseScriptLoader from "@/components/ads/adsense-script-loader";
 
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
@@ -130,13 +132,19 @@ export default async function RootLayout({
             })();
           `}
         </Script>
+        <Script id="google-consent-default" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              analytics_storage: 'denied'
+            });
+          `}
+        </Script>
         <meta name="google-adsense-account" content={resolvedAdsenseClient} />
-        <Script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${resolvedAdsenseClient}`}
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
         {/* Subscribe with Google core script */}
         <Script
           src="https://news.google.com/swg/js/v1/swg-basic.js"
@@ -162,8 +170,10 @@ export default async function RootLayout({
         className={`${poppins.variable} antialiased h-full bg-background text-foreground`}
       >
         <GoogleAnalytics />
+        <AdsenseScriptLoader client={resolvedAdsenseClient} />
         <VisitorJourneyTracker />
         <main className="min-h-dvh min-w-0">{children}</main>
+        <CookieConsent />
         <Toaster position="top-center" richColors closeButton />
         <Analytics />
         <Script

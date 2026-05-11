@@ -22,6 +22,7 @@ import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
+import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 
 export const revalidate = 60;
 
@@ -256,6 +257,16 @@ export default async function VenturaArticleBySlug(props: {
               <div className="tiptap prose prose-base sm:prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-orange-600">
                 <ArticleContent value={content} />
               </div>
+              <ArticleTransparencyPanel
+                publishedAt={a.publishedAt}
+                publishAt={a.publishAt}
+                createdAt={a.createdAt}
+                updatedAt={a.updatedAt}
+                seo={seoRaw}
+                contentHtml={a.contentHtml}
+                content={content}
+                sourceLinkClassName="text-orange-600 hover:underline"
+              />
               <div id="article-predictions" className="mt-8">
                 <ArticlePredictionCta
                   articleSlug={slug}

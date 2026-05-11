@@ -38,14 +38,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from(articles)
     .where(publishedWhereForSitemap(now));
 
-  return [
+  const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: now,
-      changeFrequency: "daily", // Optional: tells Google you update often
-      priority: 1, // Optional: tells Google this is the most important page
+      changeFrequency: "daily",
+      priority: 1,
     },
-    // I REMOVED THE DUPLICATE OBJECT HERE
+    {
+      url: `${baseUrl}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/privacy-policy`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/terms-of-service`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/editorial-policy`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.5,
+    },
+  ];
+
+  return [
+    ...staticPages,
     ...rows.map((a) => ({
       url: `${baseUrl}/${a.slug}`,
       lastModified: a.updatedAt ?? a.publishedAt ?? a.createdAt ?? now,

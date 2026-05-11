@@ -139,7 +139,7 @@ export function ArticleAssistantPanel() {
           title: "",
           html: rewriteSource,
           customPrompt:
-            "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. Target draftHtml around 350 words (roughly 320-380) and keep paragraphs short (1-2 sentences each). Return title, slug, category, tags (about 20), excerpt, and draftHtml.",
+            "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. Target draftHtml around 350 words (roughly 320-380) and keep paragraphs short (1-2 sentences each). Use this exact flow in draftHtml: Hook, Quick recap, Your analysis (3-5 key points), Actionable takeaway, Sources (Fox/X links clearly attributed). Return title, slug, category, tags (about 20), excerpt, and draftHtml.",
         }),
       });
       if (!res.ok) throw new Error("Rewrite failed");

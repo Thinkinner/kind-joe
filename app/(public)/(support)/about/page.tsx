@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Faqs from "@/components/sections/faqs"; // Faqs component is imported but not used, consider removing if not needed.
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 const About: React.FC = () => {
   // --- STATE AND HANDLERS ARE NOW INSIDE THE COMPONENT ---
@@ -212,7 +213,7 @@ const About: React.FC = () => {
                       <Mail className="w-6 h-6 text-blue-300 mt-1" />
                       <div>
                         <p className="font-medium">Email</p>
-                        <p className="text-blue-100">hello@kindjoe.com</p>
+                        <p className="text-blue-100">{PUBLIC_CONTACT_EMAIL}</p>
                       </div>
                     </div>
 

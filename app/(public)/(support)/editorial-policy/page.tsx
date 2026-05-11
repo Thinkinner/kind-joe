@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Scale, FileText, AlertCircle } from 'lucide-react';
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
 
 const EditorialPolicy: React.FC = () => {
   return (
@@ -130,8 +131,8 @@ const EditorialPolicy: React.FC = () => {
               <h2 className="text-2xl font-bold text-slate-900 mb-4">Contact</h2>
               <p className="text-slate-600">
                 For questions, corrections, or concerns, please reach us at{" "}
-                <a href="mailto:hi@kindjoe.com" className="text-indigo-600 underline underline-offset-2">
-                  hi@kindjoe.com
+                <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} className="text-indigo-600 underline underline-offset-2">
+                  {PUBLIC_CONTACT_EMAIL}
                 </a>.
               </p>
             </section>

@@ -560,13 +560,20 @@ export async function POST(req: Request) {
               "When returning draftHtml, generate substantial original article content suitable for publication quality.",
               "Target around 350 words of body content in draftHtml (roughly 320-380 words).",
               "Use short paragraphs: 1-2 sentences per paragraph only.",
-              "Do not include headings or subheadings inside draftHtml.",
-              "Do not include section title lines like 'Future Outlook and Next Steps'.",
+              "Follow this exact article flow in draftHtml: Hook (2-3 lines on why topic matters), Quick recap (in your own words), Your analysis (3-5 key points), Actionable takeaway (what reader should do/think next), Sources (Fox/X links clearly attributed).",
+              "Use paragraph labels in plain HTML like: <p><strong>Hook:</strong> ...</p> and the same pattern for Quick recap, Your analysis, Actionable takeaway, and Sources.",
+              "The analysis section must include 3-5 concise bullet-like points written as separate <p> paragraphs beginning with '- '.",
+              "Sources must include attribution language (for example: 'Source: Fox News ...', 'Source: X post ...').",
+              "Do not include headings/subheadings tags; use paragraph-only HTML.",
               "Return clean HTML in draftHtml only (no markdown).",
             ].join("\n")
           : mode === "content"
             ? [
                 "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
+                "When expanding an article, preserve or improve this structure: Hook, Quick recap, Your analysis (3-5 key points), Actionable takeaway, Sources.",
+                "If the structure is missing, add content so the final draft follows that structure.",
+                "For analysis, include 3-5 concise bullet-like points as separate <p> paragraphs beginning with '- '.",
+                "Keep sources clearly attributed (Fox/X links or references).",
                 "Do not include headings or subheadings inside draftHtml.",
                 "Keep additions editorially useful, concise, and readable.",
                 "Return clean HTML in draftHtml only (no markdown).",
