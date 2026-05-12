@@ -637,6 +637,13 @@ export function AdminArticleForm({
     failsAttributionGate ||
     failsBalanceGate ||
     failsTemplateGate;
+  const strictPublishIssues: string[] = [];
+  if (failsWordGate) strictPublishIssues.push("Body has fewer than 600 words");
+  if (failsQuoteGate) strictPublishIssues.push("Fewer than 2 direct quotes");
+  if (failsAttributionGate) strictPublishIssues.push("Fewer than 3 in-body attributions");
+  if (failsBalanceGate) strictPublishIssues.push("Missing opposing-view paragraph");
+  if (failsTemplateGate)
+    strictPublishIssues.push("Template labels detected (Hook/Quick recap/etc.)");
 
   useEffect(() => {
     if (aliasLoading) return;
@@ -856,22 +863,21 @@ export function AdminArticleForm({
     opts: { publishNow?: boolean; schedule?: boolean },
   ) => {
     const isPublishAction = Boolean(opts.publishNow || opts.schedule);
-    if (isPublishAction && hasStrictPublishBlocker) {
-      const blockers: string[] = [];
-      if (failsWordGate) blockers.push("600+ body words");
-      if (failsQuoteGate) blockers.push("2+ direct quotes");
-      if (failsAttributionGate) blockers.push("3+ in-body attributions");
-      if (failsBalanceGate) blockers.push("one opposing-view paragraph");
-      if (failsTemplateGate) blockers.push("remove template labels (Hook/Quick recap/etc.)");
-      toast.error(`Publish blocked: ${blockers.join(", ")}.`);
-      return;
-    }
-    if (!isPublishAction || !shouldWarnBeforePublish) {
+    if (!isPublishAction) {
       void save(opts);
       return;
     }
-    setPendingPublishOpts(opts);
-    setQualityConfirmOpen(true);
+
+    if (hasStrictPublishBlocker || shouldWarnBeforePublish) {
+      setPendingPublishOpts(opts);
+      setQualityConfirmOpen(true);
+      return;
+    }
+
+    if (!shouldWarnBeforePublish) {
+      void save(opts);
+      return;
+    }
   };
 
   const requestSaveWithReview = async (opts: {
@@ -1282,8 +1288,7 @@ export function AdminArticleForm({
                 saving ||
                 !publishAt ||
                 aliasLoading ||
-                aliasMissing ||
-                hasStrictPublishBlocker
+                aliasMissing
               }
               onClick={() => requestSave({ schedule: true })}
             >
@@ -1300,7 +1305,7 @@ export function AdminArticleForm({
             </Button>
             <Button
               type="button"
-              disabled={saving || aliasLoading || aliasMissing || hasStrictPublishBlocker}
+              disabled={saving || aliasLoading || aliasMissing}
               onClick={() => requestSave({ publishNow: true })}
             >
               Publish now
@@ -2054,12 +2059,24 @@ export function AdminArticleForm({
       <Dialog open={qualityConfirmOpen} onOpenChange={setQualityConfirmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Publish with low quality score?</DialogTitle>
+            <DialogTitle>
+              {hasStrictPublishBlocker
+                ? "Publish with unmet requirements?"
+                : "Publish with low quality score?"}
+            </DialogTitle>
             <DialogDescription>
-              This article is currently scored at {qualityScore}/100. You can still continue, but
-              consider improving the flagged items first.
+              {hasStrictPublishBlocker
+                ? `This draft still misses required checks. You can continue anyway, but please confirm before sending.`
+                : `This article is currently scored at ${qualityScore}/100. You can still continue, but consider improving the flagged items first.`}
             </DialogDescription>
           </DialogHeader>
+          {strictPublishIssues.length > 0 ? (
+            <ul className="list-disc space-y-1 pl-5 text-sm text-rose-600">
+              {strictPublishIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          ) : null}
           {qualityIssues.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               {qualityIssues.map((issue) => (
