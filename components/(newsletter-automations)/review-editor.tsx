@@ -43,6 +43,10 @@ import {
   saveDraft,
   getSettings,
   publishNewsletterToArticles,
+  deleteDraft,
+  clearDraftArticlesForRegeneration,
+  getPublishedArticlesForDraft,
+  deletePublishedNewsletterArticle,
 } from "@/lib/(newsletter-automations)/storage-services";
 import { sendToWebhook } from "@/lib/(newsletter-automations)/web-hook-services";
 import {
@@ -111,6 +115,15 @@ interface ReviewEditorProps {
 }
 
 type TabMode = "overview" | number;
+type PublishedDraftArticle = {
+  id: string;
+  title: string;
+  slug: string;
+  publishedAt: string | null;
+  updatedAt: string;
+  duplicateCount: number;
+  isDuplicate: boolean;
+};
 
 const ReviewEditor: React.FC<ReviewEditorProps> = ({
   draft,
@@ -144,6 +157,16 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [suggestingSubject, setSuggestingSubject] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<NewsletterDraft["status"]>(
+    draft.status,
+  );
+  const [isAlreadyPublished, setIsAlreadyPublished] = useState(
+    draft.status === "sent",
+  );
+  const [publishedArticles, setPublishedArticles] = useState<PublishedDraftArticle[]>(
+    [],
+  );
+  const [loadingPublishedArticles, setLoadingPublishedArticles] = useState(false);
 
   const handleSuggestEmailSubject = async () => {
     try {
@@ -176,6 +199,20 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     setTimeout(() => setSuccessMsg(""), 2000);
   };
 
+  const loadPublishedArticles = async () => {
+    setLoadingPublishedArticles(true);
+    try {
+      const rows = await getPublishedArticlesForDraft(draft.id);
+      setPublishedArticles(Array.isArray(rows) ? (rows as PublishedDraftArticle[]) : []);
+    } finally {
+      setLoadingPublishedArticles(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPublishedArticles();
+  }, [draft.id]);
+
   useEffect(() => {
     // Wait 1.5 seconds after the user stops typing/changing things before saving
     const timer = setTimeout(async () => {
@@ -183,6 +220,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
       const updatedDraft: NewsletterDraft = {
         ...draft,
+        status: draftStatus,
         data: data,
         articles: articles,
       };
@@ -204,7 +242,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
     // Cleanup the timer if the user types again before 1.5 seconds is up
     return () => clearTimeout(timer);
-  }, [data, articles, draft]); // Listen for ANY changes to your data
+  }, [data, articles, draft, draftStatus]); // Listen for changes to draft payload
 
   // One-time migration: swap non-Cloudinary image URLs to Cloudinary URLs when possible.
   useEffect(() => {
@@ -430,6 +468,18 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         art.contentHtml &&
         art.contentHtml.trim().length > 50,
     );
+  const missingArticleSlots = data.stories
+    .map((story, idx) => {
+      const article = articles[idx];
+      const missing =
+        !article ||
+        !article.title?.trim() ||
+        !article.contentHtml ||
+        article.contentHtml.trim().length < 50;
+      if (!missing) return null;
+      return `Story ${idx + 1}${story.headline?.trim() ? ` (${story.headline.trim()})` : ""}`;
+    })
+    .filter((value): value is string => Boolean(value));
 
   // --- HELPERS ---
 
@@ -537,12 +587,99 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     setData(payloadData);
     const updatedDraft: NewsletterDraft = {
       ...draft,
+      status: draftStatus,
       data: payloadData,
       articles: articles,
     };
     saveDraft(updatedDraft);
     setSuccessMsg("Draft saved locally.");
     setTimeout(() => setSuccessMsg(""), 2000);
+  };
+
+  const handleDeleteNewsletter = async () => {
+    const confirmDelete = window.confirm(
+      "Delete this newsletter draft? This cannot be undone.",
+    );
+    if (!confirmDelete) return;
+    setIsProcessing(true);
+    setLoadingText("Deleting newsletter...");
+    setErrorMsg("");
+    try {
+      const result = await deleteDraft(draft.id);
+      if (!result.success) {
+        throw new Error("Failed to delete newsletter.");
+      }
+      setSuccessMsg("Newsletter deleted.");
+      setTimeout(() => onUpdate(), 400);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
+  };
+
+  const handleDeletePublishedArticle = async (
+    articleId: string,
+    articleTitle: string,
+  ) => {
+    const confirmDelete = window.confirm(
+      `Delete published article "${articleTitle}"?`,
+    );
+    if (!confirmDelete) return;
+    setIsProcessing(true);
+    setLoadingText("Deleting published article...");
+    setErrorMsg("");
+    try {
+      const result = await deletePublishedNewsletterArticle(articleId);
+      if (!result.success) {
+        throw new Error("Failed to delete published article.");
+      }
+      setSuccessMsg("Published article deleted.");
+      await loadPublishedArticles();
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error ? err.message : "Could not delete published article.",
+      );
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
+  };
+
+  const handleClearSubmittedArticles = async () => {
+    const hasArticles = (articles || []).length > 0;
+    if (!hasArticles) {
+      setErrorMsg("No submitted/generated articles found in this newsletter.");
+      return;
+    }
+    const confirmClear = window.confirm(
+      "Clear all submitted/generated articles in this newsletter so you can regenerate them?",
+    );
+    if (!confirmClear) return;
+
+    setIsProcessing(true);
+    setLoadingText("Clearing submitted articles...");
+    setErrorMsg("");
+    try {
+      const result = await clearDraftArticlesForRegeneration(draft.id);
+      if (!result.success) {
+        throw new Error("Failed to clear submitted articles.");
+      }
+      setArticles([]);
+      setDraftStatus("draft");
+      setIsAlreadyPublished(false);
+      setActiveTab("overview");
+      setSuccessMsg("Submitted articles cleared. You can regenerate now.");
+      setTimeout(() => setSuccessMsg(""), 2500);
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error ? err.message : "Could not clear submitted articles.",
+      );
+    } finally {
+      setIsProcessing(false);
+      setLoadingText("");
+    }
   };
 
   // Batch Generation (Skips already generated ones)
@@ -619,6 +756,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
           // Save progress
           await saveDraft({
             ...draft,
+            status: draftStatus,
             data: {
               ...data,
               stories: currentStories,
@@ -698,6 +836,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
       await saveDraft({
         ...draft,
+        status: draftStatus,
         data: {
           ...data,
           stories: newStories,
@@ -717,6 +856,21 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   };
 
   const handleApproveAndSend = async () => {
+    if (isAlreadyPublished) {
+      setErrorMsg("This newsletter is already published. Duplicate publish is blocked.");
+      return;
+    }
+    if (missingArticleSlots.length > 0) {
+      const preview = missingArticleSlots.slice(0, 3).join(", ");
+      const remainder =
+        missingArticleSlots.length > 3
+          ? ` and ${missingArticleSlots.length - 3} more`
+          : "";
+      setErrorMsg(
+        `Missing article content in: ${preview}${remainder}. Generate these before publishing.`,
+      );
+      return;
+    }
     if (!isDraftComplete) {
       setErrorMsg("All articles must be generated before publishing.");
       return;
@@ -737,7 +891,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         throw new Error("Webhook URL missing in settings.");
 
       // 1. Save final state
-      await saveDraft({ ...draft, data, articles });
+      await saveDraft({ ...draft, status: draftStatus, data, articles });
 
       // 2. Publish to DB
       const dbResult = await publishNewsletterToArticles(draft.id);
@@ -748,16 +902,45 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             : "DB Publish failed.",
         );
       }
+      setDraftStatus("sent");
+      setIsAlreadyPublished(true);
+      await loadPublishedArticles();
 
       // 3. Prepare Payload
       const dataWithFinalSlugs = buildNewsletterDataWithFinalSlugs(data, articles);
-      const emailHtml = generateEmailHtml(dataWithFinalSlugs);
+      const publishedSlugByIndex = new Map<number, string>();
+      if ("published" in dbResult && Array.isArray(dbResult.published)) {
+        for (const row of dbResult.published) {
+          if (
+            row &&
+            typeof row.index === "number" &&
+            typeof row.slug === "string" &&
+            row.slug.trim()
+          ) {
+            publishedSlugByIndex.set(row.index, row.slug.trim());
+          }
+        }
+      }
+      const storiesWithPublishedSlugs = dataWithFinalSlugs.stories.map((story, idx) => {
+        const publishedSlug = publishedSlugByIndex.get(idx);
+        return publishedSlug ? { ...story, slug: publishedSlug } : story;
+      });
+      const dataWithPublishedSlugs = {
+        ...dataWithFinalSlugs,
+        stories: storiesWithPublishedSlugs,
+      };
+      const articlesWithPublishedSlugs = articles.map((article, idx) => {
+        const publishedSlug = publishedSlugByIndex.get(idx);
+        if (!publishedSlug || !article) return article;
+        return { ...article, slug: publishedSlug };
+      });
+      const emailHtml = generateEmailHtml(dataWithPublishedSlugs);
       const flatArticles: Record<string, any> = {};
-      articles.forEach((art, idx) => {
+      articlesWithPublishedSlugs.forEach((art, idx) => {
         flatArticles[`article_${idx + 1}`] = art;
       });
       const flatStories: Record<string, any> = {};
-      dataWithFinalSlugs.stories.forEach((story, idx) => {
+      dataWithPublishedSlugs.stories.forEach((story, idx) => {
         const n = idx + 1;
         flatStories[`story_${n}_headline`] = story.headline;
         flatStories[`story_${n}_summary`] = story.summary;
@@ -769,16 +952,22 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
       const payload: WebhookPayload = {
         newsletter: {
-          subject: dataWithFinalSlugs.title,
+          subject: dataWithPublishedSlugs.title,
           html: emailHtml,
-          data: dataWithFinalSlugs,
+          data: dataWithPublishedSlugs,
         },
-        articles: articles,
+        articles: articlesWithPublishedSlugs,
         ...flatArticles,
         ...flatStories,
-        newsletter_title: dataWithFinalSlugs.title,
+        newsletter_title: dataWithPublishedSlugs.title,
         newsletter_html: emailHtml,
       };
+
+      setData((prev) => ({
+        ...prev,
+        stories: storiesWithPublishedSlugs,
+      }));
+      setArticles(articlesWithPublishedSlugs);
 
       // 4. Send Webhook
       await sendToWebhook(settings.webhookUrl, payload);
@@ -787,7 +976,15 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       setTimeout(() => onUpdate(), 1500);
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Publishing failed.");
+      const message = err?.message || "Publishing failed.";
+      if (
+        typeof message === "string" &&
+        message.toLowerCase().includes("already published")
+      ) {
+        setDraftStatus("sent");
+        setIsAlreadyPublished(true);
+      }
+      setErrorMsg(message);
     } finally {
       setIsProcessing(false);
       setLoadingText("");
@@ -947,21 +1144,107 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
           <button
             type="button"
             onClick={handleApproveAndSend}
-            disabled={!isDraftComplete || isProcessing}
+            disabled={isProcessing || isAlreadyPublished}
             title={
-              !isDraftComplete
-                ? "Generate all articles first"
-                : "Publish"
+              isAlreadyPublished
+                ? "Already published"
+                : !isDraftComplete
+                  ? "Generate all articles first"
+                  : "Publish"
             }
             className={`inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border px-4 text-sm font-semibold shadow-sm transition-colors sm:basis-auto sm:flex-initial ${
-              isDraftComplete
+              isAlreadyPublished
+                ? "cursor-not-allowed border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+                : isDraftComplete
                 ? "border-emerald-800 bg-emerald-600 text-white hover:bg-emerald-500"
-                : "cursor-not-allowed border-border bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+                : "border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
             }`}
           >
             <Send className="h-4 w-4 shrink-0" />
-            Approve &amp; publish
+            {isAlreadyPublished ? "Already published" : "Approve & publish"}
           </button>
+          <button
+            type="button"
+            onClick={handleDeleteNewsletter}
+            disabled={isProcessing}
+            title="Delete this newsletter draft"
+            className="inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 sm:basis-auto sm:flex-initial dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            Delete newsletter
+          </button>
+          <button
+            type="button"
+            onClick={handleClearSubmittedArticles}
+            disabled={isProcessing || articles.length === 0}
+            title="Clear submitted/generated articles in this newsletter"
+            className="inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 shadow-sm transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:basis-auto sm:flex-initial dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+          >
+            <RefreshCw className="h-4 w-4 shrink-0" />
+            Clear submitted articles
+          </button>
+          {missingArticleSlots.length > 0 ? (
+            <div className="basis-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              Missing article content: {missingArticleSlots.slice(0, 3).join(", ")}
+              {missingArticleSlots.length > 3
+                ? ` and ${missingArticleSlots.length - 3} more.`
+                : "."}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-t border-border bg-muted/20 px-3 py-3 sm:px-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Published from this newsletter
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadPublishedArticles()}
+              disabled={loadingPublishedArticles || isProcessing}
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-white px-2 py-1 text-xs text-foreground hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            >
+              {loadingPublishedArticles ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Refresh
+            </button>
+          </div>
+          {publishedArticles.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No published articles found for this draft yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {publishedArticles.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-background px-2.5 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      /{item.slug}
+                      {item.isDuplicate ? ` • duplicate x${item.duplicateCount}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeletePublishedArticle(item.id, item.title)}
+                    disabled={isProcessing}
+                    className="inline-flex items-center gap-1 rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -232,11 +232,23 @@ export async function POST(req: NextRequest) {
   try {
     await db.transaction(async (tx) => {
       const existing = await tx
-        .select({ id: articles.id })
+        .select({ id: articles.id, deletedAt: articles.deletedAt })
         .from(articles)
         .where(eq(articles.slug, normalizedSlug));
-      if (existing.length > 0) {
+      const activeConflict = existing.some((row) => row.deletedAt == null);
+      if (activeConflict) {
         throw new Error("SLUG_CONFLICT");
+      }
+      const deletedConflicts = existing.filter((row) => row.deletedAt != null);
+      for (const row of deletedConflicts) {
+        const recycledSlug = `${normalizedSlug}--archived-${row.id.slice(0, 6)}`.slice(
+          0,
+          200,
+        );
+        await tx
+          .update(articles)
+          .set({ slug: recycledSlug, updatedAt: new Date() })
+          .where(eq(articles.id, row.id));
       }
 
       const readingMinutes =

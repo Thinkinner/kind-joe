@@ -129,15 +129,35 @@ export async function PUT(
   }
 
   const slug: string | null = emptyToNull(body.slug);
-  if (slug) {
+  const normalizedSlug = slug ? slugify(slug) : null;
+  if (slug && !normalizedSlug) {
+    return new NextResponse("Invalid slug", { status: 400 });
+  }
+  if (normalizedSlug) {
     const existing = await db
-      .select({ id: articles.id })
+      .select({ id: articles.id, deletedAt: articles.deletedAt })
       .from(articles)
-      .where(and(eq(articles.slug, slug), ne(articles.id, id)))
-      .limit(1);
-
-    if (existing[0]) {
+      .where(
+        and(
+          eq(articles.slug, normalizedSlug),
+          ne(articles.id, id),
+        ),
+      )
+      .limit(10);
+    const activeConflict = existing.some((row) => row.deletedAt == null);
+    if (activeConflict) {
       return new NextResponse("Slug already in use", { status: 400 });
+    }
+    const deletedConflicts = existing.filter((row) => row.deletedAt != null);
+    for (const row of deletedConflicts) {
+      const recycledSlug = `${normalizedSlug}--archived-${row.id.slice(0, 6)}`.slice(
+        0,
+        200,
+      );
+      await db
+        .update(articles)
+        .set({ slug: recycledSlug, updatedAt: new Date() })
+        .where(eq(articles.id, row.id));
     }
   }
 
@@ -226,7 +246,7 @@ export async function PUT(
 
   const update: Record<string, unknown> = {
     title: body.title ?? "",
-    slug: slug ?? undefined,
+    slug: normalizedSlug ?? undefined,
     excerpt: emptyToNull(body.excerpt),
     category: body.category ?? "General",
     coverImageUrl: emptyToNull(body.coverImageUrl),
@@ -352,9 +372,20 @@ export async function DELETE(
   }
 
   const { id } = await ctx.params;
+  const [toDelete] = await db
+    .select({ slug: articles.slug })
+    .from(articles)
+    .where(eq(articles.id, id))
+    .limit(1);
+
+  if (!toDelete) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  const recycledSlug = `${toDelete.slug}--archived-${id.slice(0, 6)}`.slice(0, 200);
   await db
     .update(articles)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .set({ slug: recycledSlug, deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(articles.id, id));
 
   try {

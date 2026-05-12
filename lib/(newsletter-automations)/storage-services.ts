@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   draftsTable,
@@ -280,6 +280,9 @@ export const publishNewsletterToArticles = async (draftId: string) => {
       .limit(1);
 
     if (!draft) throw new Error("Draft not found");
+    if (draft.status === "sent") {
+      throw new Error("This newsletter was already published.");
+    }
     const publisherId = staff.user.id;
     const authorId = publisherId;
     const publisherName =
@@ -291,6 +294,17 @@ export const publishNewsletterToArticles = async (draftId: string) => {
     const newsletterArticles = draft.articles || [];
     if (newsletterArticles.length === 0) {
       throw new Error("No articles to publish.");
+    }
+    const incompleteCount = newsletterArticles.filter((item) => {
+      const titleOk = typeof item?.title === "string" && item.title.trim().length > 0;
+      const htmlOk =
+        typeof item?.contentHtml === "string" && item.contentHtml.trim().length >= 50;
+      return !titleOk || !htmlOk;
+    }).length;
+    if (incompleteCount > 0) {
+      throw new Error(
+        `Cannot publish yet. ${incompleteCount} article slot${incompleteCount === 1 ? "" : "s"} still missing generated content.`,
+      );
     }
 
     const result = await db.transaction(async (tx) => {
@@ -308,8 +322,15 @@ export const publishNewsletterToArticles = async (draftId: string) => {
       }
 
       let publishedCount = 0;
+      const publishedRows: Array<{
+        index: number;
+        id: string;
+        slug: string;
+        title: string;
+      }> = [];
 
-      for (const item of newsletterArticles) {
+      for (let index = 0; index < newsletterArticles.length; index++) {
+        const item = newsletterArticles[index];
         const baseSlug = (slugify(item.title) || `article-${Date.now()}`).slice(0, 200);
         let finalSlug = baseSlug;
         for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
@@ -380,6 +401,12 @@ export const publishNewsletterToArticles = async (draftId: string) => {
         }
 
         publishedCount++;
+        publishedRows.push({
+          index,
+          id: articleId,
+          slug: finalSlug,
+          title: item.title,
+        });
       }
 
       await tx
@@ -387,7 +414,11 @@ export const publishNewsletterToArticles = async (draftId: string) => {
         .set({ status: "sent", updatedAt: new Date() })
         .where(eq(draftsTable.id, draftId));
 
-      return { success: true as const, count: publishedCount };
+      return {
+        success: true as const,
+        count: publishedCount,
+        published: publishedRows,
+      };
     });
 
     return result;
@@ -469,6 +500,137 @@ export const deleteDraft = async (id: string) => {
     await db.delete(draftsTable).where(eq(draftsTable.id, id));
     return { success: true as const };
   } catch (error) {
+    return { success: false as const, error };
+  }
+};
+
+export const clearDraftArticlesForRegeneration = async (id: string) => {
+  await assertStaff();
+  try {
+    const [updated] = await db
+      .update(draftsTable)
+      .set({
+        status: "draft",
+        articles: [],
+        updatedAt: new Date(),
+      })
+      .where(eq(draftsTable.id, id))
+      .returning({ id: draftsTable.id });
+    if (!updated) {
+      return { success: false as const, error: "Draft not found" };
+    }
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error };
+  }
+};
+
+export const getPublishedArticlesForDraft = async (draftId: string) => {
+  await assertStaff();
+  try {
+    const [draft] = await db
+      .select({ articles: draftsTable.articles })
+      .from(draftsTable)
+      .where(eq(draftsTable.id, draftId))
+      .limit(1);
+    if (!draft) return [];
+
+    const rawArticles = Array.isArray(draft.articles) ? draft.articles : [];
+    const titles = Array.from(
+      new Set(
+        rawArticles
+          .map((item) =>
+            item && typeof item === "object" && "title" in item
+              ? String((item as Record<string, unknown>).title ?? "").trim()
+              : "",
+          )
+          .filter(Boolean),
+      ),
+    );
+    if (titles.length === 0) return [];
+
+    const rows = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        slug: articles.slug,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+      })
+      .from(articles)
+      .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
+      .innerJoin(tags, eq(tags.id, articleTags.tagId))
+      .where(
+        and(
+          inArray(articles.title, titles),
+          eq(tags.slug, NEWSLETTER_FEATURED_TAG),
+          isNull(articles.deletedAt),
+        ),
+      )
+      .orderBy(desc(articles.updatedAt));
+
+    const uniqueById = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      if (!uniqueById.has(row.id)) uniqueById.set(row.id, row);
+    }
+    const deduped = Array.from(uniqueById.values());
+    const titleCounts = deduped.reduce(
+      (acc, row) => {
+        acc[row.title] = (acc[row.title] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return deduped.map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+      updatedAt: row.updatedAt.toISOString(),
+      duplicateCount: titleCounts[row.title] ?? 1,
+      isDuplicate: (titleCounts[row.title] ?? 1) > 1,
+    }));
+  } catch (error) {
+    console.error("Failed to load published newsletter articles", error);
+    return [];
+  }
+};
+
+export const deletePublishedNewsletterArticle = async (articleId: string) => {
+  await assertStaff();
+  try {
+    const [row] = await db
+      .select({ id: articles.id, slug: articles.slug })
+      .from(articles)
+      .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
+      .innerJoin(tags, eq(tags.id, articleTags.tagId))
+      .where(
+        and(
+          eq(articles.id, articleId),
+          eq(tags.slug, NEWSLETTER_FEATURED_TAG),
+          isNull(articles.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!row) return { success: false as const, error: "Article not found" };
+
+    const recycledSlug = `${row.slug}--archived-newsletter-${row.id.slice(0, 6)}`.slice(
+      0,
+      200,
+    );
+    await db
+      .update(articles)
+      .set({
+        slug: recycledSlug,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.id, row.id));
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Failed to delete published newsletter article", error);
     return { success: false as const, error };
   }
 };

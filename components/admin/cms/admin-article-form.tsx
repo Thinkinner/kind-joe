@@ -322,6 +322,9 @@ export function AdminArticleForm({
   const [aiPublishReviewLoading, setAiPublishReviewLoading] = useState(false);
   const [aiPublishReviewSummary, setAiPublishReviewSummary] = useState("");
   const [aiPublishReviewItems, setAiPublishReviewItems] = useState<string[]>([]);
+  const [aiFixSamplesLoading, setAiFixSamplesLoading] = useState(false);
+  const [aiFixSamplesSummary, setAiFixSamplesSummary] = useState("");
+  const [aiFixSamples, setAiFixSamples] = useState<string[]>([]);
   const [pendingPublishOpts, setPendingPublishOpts] = useState<{
     publishNow?: boolean;
     schedule?: boolean;
@@ -638,12 +641,42 @@ export function AdminArticleForm({
     failsBalanceGate ||
     failsTemplateGate;
   const strictPublishIssues: string[] = [];
-  if (failsWordGate) strictPublishIssues.push("Body has fewer than 600 words");
-  if (failsQuoteGate) strictPublishIssues.push("Fewer than 2 direct quotes");
-  if (failsAttributionGate) strictPublishIssues.push("Fewer than 3 in-body attributions");
-  if (failsBalanceGate) strictPublishIssues.push("Missing opposing-view paragraph");
-  if (failsTemplateGate)
+  const strictPublishGuides: Array<{ issue: string; fix: string }> = [];
+  if (failsWordGate) {
+    strictPublishIssues.push("Body has fewer than 600 words");
+    strictPublishGuides.push({
+      issue: "Body depth is below 600 words",
+      fix: `Add at least ${600 - bodyWordCount} more words. Best place: add a short 'what happens next' section (2-3 paragraphs) with concrete timeline and outcomes.`,
+    });
+  }
+  if (failsQuoteGate) {
+    strictPublishIssues.push("Fewer than 2 direct quotes");
+    strictPublishGuides.push({
+      issue: "Not enough direct quotes",
+      fix: `Add ${2 - directQuoteCount} more quote(s) from named sources. Format example: "..." [Name] said [where/when].`,
+    });
+  }
+  if (failsAttributionGate) {
+    strictPublishIssues.push("Fewer than 3 in-body attributions");
+    strictPublishGuides.push({
+      issue: "Not enough in-body attributions",
+      fix: `Add ${3 - attributionMentions} more attribution line(s) inside the body, e.g. 'According to Reuters...' or 'Per Senate records...'.`,
+    });
+  }
+  if (failsBalanceGate) {
+    strictPublishIssues.push("Missing opposing-view paragraph");
+    strictPublishGuides.push({
+      issue: "Opposing-view context is missing",
+      fix: "Add one paragraph with the other side's framing, or include a no-response line (e.g. 'X office did not immediately respond').",
+    });
+  }
+  if (failsTemplateGate) {
     strictPublishIssues.push("Template labels detected (Hook/Quick recap/etc.)");
+    strictPublishGuides.push({
+      issue: "Template labels are still present",
+      fix: "Rewrite labels like 'Hook:' and 'Quick recap:' into natural prose paragraphs so the article reads like a real newsroom draft.",
+    });
+  }
 
   useEffect(() => {
     if (aliasLoading) return;
@@ -859,6 +892,70 @@ export function AdminArticleForm({
     }
   };
 
+  const generateAiFixSamples = async () => {
+    const missingItems: string[] = [];
+    if (failsWordGate) missingItems.push("600+ body words");
+    if (failsQuoteGate) missingItems.push("2+ direct quotes");
+    if (failsAttributionGate) missingItems.push("3+ in-body attributions");
+    if (failsBalanceGate) missingItems.push("opposing-view paragraph");
+    if (failsTemplateGate) missingItems.push("remove template labels");
+    if (missingItems.length === 0) {
+      setAiFixSamplesSummary("");
+      setAiFixSamples([]);
+      return;
+    }
+
+    const sourceTitle = title.trim();
+    const sourceText = [excerpt.trim(), contentHtml.trim()]
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, 3600);
+    if (!sourceTitle && !sourceText) return;
+
+    setAiFixSamplesLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "seo",
+          title: sourceTitle,
+          html: sourceText,
+          customPrompt: [
+            "Generate realistic, ready-to-paste fix examples for the missing publish requirements.",
+            `Missing requirements: ${missingItems.join(", ")}.`,
+            "Return JSON with seoFeedback and suggestions.",
+            "seoFeedback: one short sentence summary.",
+            "suggestions: 3-6 concrete examples the writer can paste or adapt immediately.",
+            "Include a sample direct quote format when quote requirement is missing.",
+            "Include a sample attribution sentence when attribution requirement is missing.",
+            "Include one sample opposing-view sentence when balance requirement is missing.",
+            "Keep suggestions practical and specific to political/news writing tone.",
+          ].join("\n"),
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
+      if (!res.ok) {
+        throw new Error(payload.error ?? "Could not generate AI fix samples");
+      }
+
+      const summary = String(payload.seoFeedback ?? "").trim();
+      const items = Array.isArray(payload.suggestions)
+        ? payload.suggestions
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : [];
+      setAiFixSamplesSummary(summary);
+      setAiFixSamples(items);
+    } catch {
+      setAiFixSamplesSummary("");
+      setAiFixSamples([]);
+    } finally {
+      setAiFixSamplesLoading(false);
+    }
+  };
+
   const continuePublishWithQualityChecks = (
     opts: { publishNow?: boolean; schedule?: boolean },
   ) => {
@@ -871,6 +968,12 @@ export function AdminArticleForm({
     if (hasStrictPublishBlocker || shouldWarnBeforePublish) {
       setPendingPublishOpts(opts);
       setQualityConfirmOpen(true);
+      if (hasStrictPublishBlocker) {
+        void generateAiFixSamples();
+      } else {
+        setAiFixSamplesSummary("");
+        setAiFixSamples([]);
+      }
       return;
     }
 
@@ -884,6 +987,13 @@ export function AdminArticleForm({
     publishNow?: boolean;
     schedule?: boolean;
   }) => {
+    if (aliasMissing) {
+      setAliasModalOpen(true);
+      toast.error(
+        "Set your author alias in Security before creating or publishing articles.",
+      );
+      return;
+    }
     const isPublishAction = Boolean(opts.publishNow || opts.schedule);
     if (!isPublishAction) {
       continuePublishWithQualityChecks(opts);
@@ -1287,8 +1397,7 @@ export function AdminArticleForm({
               disabled={
                 saving ||
                 !publishAt ||
-                aliasLoading ||
-                aliasMissing
+                aliasLoading
               }
               onClick={() => requestSave({ schedule: true })}
             >
@@ -1297,7 +1406,7 @@ export function AdminArticleForm({
             <Button
               type="button"
               variant="outline"
-              disabled={saving || aliasLoading || aliasMissing}
+              disabled={saving || aliasLoading}
               onClick={() => save({})}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -1305,7 +1414,7 @@ export function AdminArticleForm({
             </Button>
             <Button
               type="button"
-              disabled={saving || aliasLoading || aliasMissing}
+              disabled={saving || aliasLoading}
               onClick={() => requestSave({ publishNow: true })}
             >
               Publish now
@@ -2077,12 +2186,57 @@ export function AdminArticleForm({
               ))}
             </ul>
           ) : null}
+          {strictPublishGuides.length > 0 ? (
+            <div className="space-y-2 rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-sm font-medium text-foreground">
+                How to fix quickly
+              </p>
+              <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+                {strictPublishGuides.map((guide) => (
+                  <li key={guide.issue}>
+                    <span className="font-medium text-foreground">{guide.issue}:</span>{" "}
+                    {guide.fix}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {qualityIssues.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               {qualityIssues.map((issue) => (
                 <li key={issue}>{issue}</li>
               ))}
             </ul>
+          ) : null}
+          {hasStrictPublishBlocker ? (
+            <div className="space-y-2 rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-sm font-medium text-foreground">
+                AI sample fixes (realistic examples)
+              </p>
+              {aiFixSamplesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating examples...
+                </div>
+              ) : (
+                <>
+                  {aiFixSamplesSummary ? (
+                    <p className="text-sm text-muted-foreground">{aiFixSamplesSummary}</p>
+                  ) : null}
+                  {aiFixSamples.length > 0 ? (
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                      {aiFixSamples.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No AI examples generated yet. You can still continue or fix manually.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           ) : null}
           <DialogFooter>
             <Button
@@ -2091,6 +2245,8 @@ export function AdminArticleForm({
               onClick={() => {
                 setPendingPublishOpts(null);
                 setQualityConfirmOpen(false);
+                setAiFixSamplesSummary("");
+                setAiFixSamples([]);
               }}
             >
               Cancel
@@ -2101,6 +2257,8 @@ export function AdminArticleForm({
                 const opts = pendingPublishOpts;
                 setPendingPublishOpts(null);
                 setQualityConfirmOpen(false);
+                setAiFixSamplesSummary("");
+                setAiFixSamples([]);
                 if (opts) {
                   void save(opts);
                 }
