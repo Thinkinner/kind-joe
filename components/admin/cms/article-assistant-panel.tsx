@@ -139,7 +139,7 @@ export function ArticleAssistantPanel() {
           title: "",
           html: rewriteSource,
           customPrompt:
-            "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. Target draftHtml around 350 words (roughly 320-380) and keep paragraphs short (1-2 sentences each). Use this exact flow in draftHtml: Hook, Quick recap, Your analysis (3-5 key points), Actionable takeaway, Sources (Fox/X links clearly attributed). Return title, slug, category, tags (about 20), excerpt, and draftHtml.",
+            "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. draftHtml must be at least 600 words (target 650-900 words) with short paragraphs (1-2 sentences each). Write a natural newsroom-style article, not a template. Cover what happened, why it matters, likely next steps, and reader/local relevance in flowing prose. Do not use labels like Hook/Quick recap/Your analysis/Actionable takeaway. Include source attribution naturally near the end. Return title, slug, category, tags (about 20), excerpt (at least 20 words), and draftHtml.",
         }),
       });
       if (!res.ok) throw new Error("Rewrite failed");
@@ -208,7 +208,7 @@ export function ArticleAssistantPanel() {
           title: assistResult.title,
           html: currentHtml,
           customPrompt:
-            "Return seoScore (0-100), seoFeedback, tone, bias, and suggestions (array of short actions).",
+            "Run a pre-publish newsroom risk review. Return seoScore (0-100), seoFeedback, tone, bias, and suggestions (array of short actions). Checklist: verify risky factual/superlative claims with exact source context, neutralize charged wording unless directly attributed, replace vague source attribution with specific outlet/document/transcript references, include one fair opposing-view/context line, and end with a concrete what-happens-next section.",
         }),
       });
       if (!res.ok) throw new Error("Analysis failed");

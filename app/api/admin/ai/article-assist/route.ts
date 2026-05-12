@@ -182,13 +182,13 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
 };
 
 const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
-  all: 1200,
+  all: 1800,
   slug: 120,
   category: 120,
   tags: 220,
   excerpt: 220,
   seo: 380,
-  content: 700,
+  content: 1100,
   title: 120,
   socialCopy: 420,
   predictionSuggestion: 260,
@@ -350,9 +350,19 @@ function sanitizeDraftHtml(raw: string): string {
   const input = raw.trim();
   if (!input) return "";
   // Convert heading tags into normal paragraph tags so generated drafts stay paragraph-first.
-  return input
+  const normalized = input
     .replace(/<h[1-6]\b[^>]*>/gi, "<p>")
     .replace(/<\/h[1-6]>/gi, "</p>");
+  const hasHtmlTag = /<[^>]+>/.test(normalized);
+  if (hasHtmlTag) return normalized;
+
+  // Fallback: if model returned plain text, convert paragraph breaks to simple HTML paragraphs.
+  return normalized
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((chunk) => `<p>${chunk}</p>`)
+    .join("");
 }
 
 function sanitizeCommentDraft(raw: string): string {
@@ -558,21 +568,27 @@ export async function POST(req: Request) {
         : mode === "all"
           ? [
               "When returning draftHtml, generate substantial original article content suitable for publication quality.",
-              "Target around 350 words of body content in draftHtml (roughly 320-380 words).",
+              "draftHtml must be at least 600 words; target 650-900 words for stronger depth.",
               "Use short paragraphs: 1-2 sentences per paragraph only.",
-              "Follow this exact article flow in draftHtml: Hook (2-3 lines on why topic matters), Quick recap (in your own words), Your analysis (3-5 key points), Actionable takeaway (what reader should do/think next), Sources (Fox/X links clearly attributed).",
-              "Use paragraph labels in plain HTML like: <p><strong>Hook:</strong> ...</p> and the same pattern for Quick recap, Your analysis, Actionable takeaway, and Sources.",
-              "The analysis section must include 3-5 concise bullet-like points written as separate <p> paragraphs beginning with '- '.",
-              "Sources must include attribution language (for example: 'Source: Fox News ...', 'Source: X post ...').",
+              "Write in a natural newsroom voice as one coherent article with a strong lead, contextual body, and clear close.",
+              "Cover: what happened, why it matters, what could happen next, and reader/local impact within the body flow.",
+              "Include at least 2 direct quotes with clear attribution when source material supports it.",
+              "Include at least 3 in-body attribution cues such as 'according to', 'reported by', or named official statements.",
+              "Include one short paragraph that fairly presents a skeptical or opposing perspective.",
+              "Do not output template labels like 'Hook:', 'Quick recap:', 'Your analysis:', 'Local/reader impact:', or 'Actionable takeaway:'.",
+              "Do not output bullet-point sections unless specifically required by the prompt.",
+              "Sources must include attribution language (for example: 'Source: Reuters ...', 'Source: official statement ...', 'Source: X post ...').",
+              "End with a short source attribution paragraph in natural prose.",
               "Do not include headings/subheadings tags; use paragraph-only HTML.",
               "Return clean HTML in draftHtml only (no markdown).",
             ].join("\n")
           : mode === "content"
             ? [
                 "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
-                "When expanding an article, preserve or improve this structure: Hook, Quick recap, Your analysis (3-5 key points), Actionable takeaway, Sources.",
-                "If the structure is missing, add content so the final draft follows that structure.",
-                "For analysis, include 3-5 concise bullet-like points as separate <p> paragraphs beginning with '- '.",
+                "When expanding an article, preserve natural newsroom flow and improve depth, clarity, and context.",
+                "If structure is weak, rewrite toward: strong lead, factual context, implications, and closing takeaway.",
+                "Ensure the full draft reaches these publish checks: 2+ direct quotes, 3+ in-body attribution cues, and one opposing-view paragraph.",
+                "Avoid rigid templates and avoid labels like 'Hook:' or 'Quick recap:'.",
                 "Keep sources clearly attributed (Fox/X links or references).",
                 "Do not include headings or subheadings inside draftHtml.",
                 "Keep additions editorially useful, concise, and readable.",

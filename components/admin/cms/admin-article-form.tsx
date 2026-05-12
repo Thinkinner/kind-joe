@@ -80,6 +80,13 @@ type ArticleSeoFields = {
   description?: string | null;
 };
 
+type SeoAssistPayload = {
+  seoScore?: number;
+  seoFeedback?: string;
+  suggestions?: string[];
+  error?: string;
+};
+
 function countWords(text: string) {
   const normalized = text.trim().replace(/\s+/g, " ");
   if (!normalized) return 0;
@@ -93,6 +100,88 @@ function countWordsFromHtmlText(html: string) {
     .replace(/\s+/g, " ")
     .trim();
   return countWords(plain);
+}
+
+function stripHtmlToText(input: string) {
+  return input
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractParagraphTextsFromHtml(html: string) {
+  const paragraphMatches = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+    .map((match) => stripHtmlToText(match[1] ?? ""))
+    .filter(Boolean);
+
+  if (paragraphMatches.length > 0) return paragraphMatches;
+
+  const fallback = stripHtmlToText(html);
+  if (!fallback) return [];
+  return fallback
+    .split(/\n{2,}/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function countParagraphsFromHtml(html: string) {
+  if (!html.trim()) return 0;
+  const paragraphMatches = html.match(/<p\b[^>]*>/gi) ?? [];
+  if (paragraphMatches.length > 0) return paragraphMatches.length;
+  const plain = stripHtmlToText(html);
+  if (!plain) return 0;
+  const fallbackParagraphs = plain
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+  return fallbackParagraphs.length || 1;
+}
+
+function hasSourceAttributionSignals(html: string) {
+  const plain = stripHtmlToText(html).toLowerCase();
+  if (!plain) return false;
+  const sourcePattern =
+    /\b(source|sources|according to|reported by|data from|official statement|court filing|press release)\b/;
+  const hasAttributionWords = sourcePattern.test(plain);
+  const outboundLinks = (html.match(/https?:\/\//gi) ?? []).length;
+  return hasAttributionWords || outboundLinks >= 2;
+}
+
+function countAttributionMentions(html: string) {
+  const plain = stripHtmlToText(html).toLowerCase();
+  if (!plain) return 0;
+  const attributionMatches =
+    plain.match(
+      /\b(according to|reported by|reporting by|said|stated|told|wrote|announced|confirmed|statement from|press release|court filing|senate records|house records|officials said)\b/g,
+    ) ?? [];
+  const linkedSources = html.match(/<a\b[^>]*href=/gi)?.length ?? 0;
+  const rawUrlMentions = html.match(/https?:\/\//gi)?.length ?? 0;
+  return attributionMatches.length + linkedSources + rawUrlMentions;
+}
+
+function countDirectQuotes(html: string) {
+  const plain = stripHtmlToText(html);
+  if (!plain) return 0;
+  const quoteMatches = plain.match(/["“][^"”]{18,}["”]/g) ?? [];
+  return quoteMatches.length;
+}
+
+function hasOpposingViewParagraph(html: string) {
+  const paragraphs = extractParagraphTextsFromHtml(html);
+  return paragraphs.some((paragraph) =>
+    /\b(however|critics|opponents|counterargument|on the other hand|in contrast|supporters argue|opponents argue)\b/i.test(
+      paragraph,
+    ),
+  );
+}
+
+function hasTemplateLabels(html: string) {
+  const plain = stripHtmlToText(html).toLowerCase();
+  return /\b(hook|quick recap|your analysis|local\/reader impact|actionable takeaway)\s*:/.test(
+    plain,
+  );
 }
 
 function isLikelyOpenEndedPrompt(question: string): boolean {
@@ -229,6 +318,10 @@ export function AdminArticleForm({
   const [aliasLoading, setAliasLoading] = useState(true);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
   const [qualityConfirmOpen, setQualityConfirmOpen] = useState(false);
+  const [aiPublishReviewOpen, setAiPublishReviewOpen] = useState(false);
+  const [aiPublishReviewLoading, setAiPublishReviewLoading] = useState(false);
+  const [aiPublishReviewSummary, setAiPublishReviewSummary] = useState("");
+  const [aiPublishReviewItems, setAiPublishReviewItems] = useState<string[]>([]);
   const [pendingPublishOpts, setPendingPublishOpts] = useState<{
     publishNow?: boolean;
     schedule?: boolean;
@@ -456,37 +549,67 @@ export function AdminArticleForm({
   const excerptWordCount = countWords(excerpt);
   const titleWordCount = countWords(title);
   const bodyWordCount = countWordsFromHtmlText(contentHtml);
+  const paragraphCount = countParagraphsFromHtml(contentHtml);
+  const hasSourceSignals = hasSourceAttributionSignals(contentHtml);
+  const attributionMentions = countAttributionMentions(contentHtml);
+  const directQuoteCount = countDirectQuotes(contentHtml);
+  const hasCounterView = hasOpposingViewParagraph(contentHtml);
+  const hasTemplateOutput = hasTemplateLabels(contentHtml);
   const metaCharCount = seoDescription.trim().length;
   const qualityChecks = [
     {
       id: "title",
       label: "Headline has enough detail",
-      pass: titleWordCount >= 6,
-      weight: 15,
+      pass: titleWordCount >= 7,
+      weight: 10,
     },
     {
       id: "excerpt",
       label: "Summary is substantial",
-      pass: excerptWordCount >= 12,
-      weight: 20,
+      pass: excerptWordCount >= 20,
+      weight: 10,
     },
     {
       id: "body",
-      label: "Body has enough depth",
-      pass: bodyWordCount >= 180,
-      weight: 35,
+      label: "Body depth meets AdSense baseline (600+ words)",
+      pass: bodyWordCount >= 600,
+      weight: 30,
+    },
+    {
+      id: "structure",
+      label: "Body uses readable paragraph structure",
+      pass: paragraphCount >= 8,
+      weight: 10,
+    },
+    {
+      id: "sources",
+      label: "Sources or attribution signals are present",
+      pass: hasSourceSignals && attributionMentions >= 3,
+      weight: 15,
+    },
+    {
+      id: "quotes",
+      label: "Includes at least 2 direct quotes",
+      pass: directQuoteCount >= 2,
+      weight: 10,
+    },
+    {
+      id: "balance",
+      label: "Includes opposing/counter-view context",
+      pass: hasCounterView,
+      weight: 10,
     },
     {
       id: "meta",
-      label: "Meta description is ready",
-      pass: metaCharCount >= 70,
-      weight: 20,
+      label: "Meta description is publish-ready (110-160 chars)",
+      pass: metaCharCount >= 110 && metaCharCount <= 160,
+      weight: 10,
     },
     {
       id: "tags",
       label: "Tags added for discoverability",
-      pass: tags.length >= 2,
-      weight: 10,
+      pass: tags.length >= 4,
+      weight: 5,
     },
   ] as const;
   const qualityScore = qualityChecks.reduce(
@@ -497,8 +620,23 @@ export function AdminArticleForm({
     .filter((check) => !check.pass)
     .map((check) => check.label);
   const qualityTier =
-    qualityScore >= 85 ? "Strong" : qualityScore >= 70 ? "Okay" : "Needs Review";
-  const shouldWarnBeforePublish = qualityScore < 70;
+    qualityScore >= 90
+      ? "AdSense Ready"
+      : qualityScore >= 75
+        ? "Almost Ready"
+        : "Needs Revision";
+  const shouldWarnBeforePublish = qualityScore < 85;
+  const failsWordGate = bodyWordCount < 600;
+  const failsQuoteGate = directQuoteCount < 2;
+  const failsAttributionGate = attributionMentions < 3;
+  const failsBalanceGate = !hasCounterView;
+  const failsTemplateGate = hasTemplateOutput;
+  const hasStrictPublishBlocker =
+    failsWordGate ||
+    failsQuoteGate ||
+    failsAttributionGate ||
+    failsBalanceGate ||
+    failsTemplateGate;
 
   useEffect(() => {
     if (aliasLoading) return;
@@ -650,13 +788,118 @@ export function AdminArticleForm({
   };
 
   const requestSave = (opts: { publishNow?: boolean; schedule?: boolean }) => {
+    void requestSaveWithReview(opts);
+  };
+
+  const runAiPrePublishReview = async () => {
+    const sourceTitle = title.trim();
+    const sourceText = [excerpt.trim(), contentHtml.trim()]
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, 3600);
+    if (!sourceTitle && !sourceText) {
+      return null;
+    }
+
+    setAiPublishReviewLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "seo",
+          title: sourceTitle,
+          html: sourceText,
+          customPrompt: [
+            "You are a strict pre-publish newsroom risk editor.",
+            "Review the draft using this checklist:",
+            "1) Verify risky factual claim: flag any superlative or potentially inaccurate/ambiguous claim unless exact date/source is cited.",
+            "2) Tone/word choice risk: charged phrases must be clearly attributed and neutrally framed.",
+            "3) Source precision: flag vague attribution like 'reports say' without specific outlet/document/transcript.",
+            "4) Balance line for fairness: require one sentence with opposing framing or note no-response context.",
+            "5) End stronger: require concrete what-happens-next timing and outcome scenarios.",
+            "Return only high-impact issues.",
+            "If there are no high-impact issues, set seoFeedback EXACTLY to 'No high-risk pre-publish issues found.' and suggestions to an empty array.",
+            "If issues exist, seoFeedback should be one short sentence and suggestions should be 3-6 concise fix actions.",
+          ].join("\n"),
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
+      if (!res.ok) {
+        throw new Error(payload.error ?? "Could not run AI pre-publish review");
+      }
+
+      const summary = String(payload.seoFeedback ?? "").trim();
+      const items = Array.isArray(payload.suggestions)
+        ? payload.suggestions
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : [];
+      const cleanSummary =
+        summary || (items.length > 0 ? "High-impact issues found before publish." : "");
+
+      if (
+        cleanSummary === "No high-risk pre-publish issues found." &&
+        items.length === 0
+      ) {
+        return null;
+      }
+
+      return { summary: cleanSummary, items };
+    } finally {
+      setAiPublishReviewLoading(false);
+    }
+  };
+
+  const continuePublishWithQualityChecks = (
+    opts: { publishNow?: boolean; schedule?: boolean },
+  ) => {
     const isPublishAction = Boolean(opts.publishNow || opts.schedule);
+    if (isPublishAction && hasStrictPublishBlocker) {
+      const blockers: string[] = [];
+      if (failsWordGate) blockers.push("600+ body words");
+      if (failsQuoteGate) blockers.push("2+ direct quotes");
+      if (failsAttributionGate) blockers.push("3+ in-body attributions");
+      if (failsBalanceGate) blockers.push("one opposing-view paragraph");
+      if (failsTemplateGate) blockers.push("remove template labels (Hook/Quick recap/etc.)");
+      toast.error(`Publish blocked: ${blockers.join(", ")}.`);
+      return;
+    }
     if (!isPublishAction || !shouldWarnBeforePublish) {
       void save(opts);
       return;
     }
     setPendingPublishOpts(opts);
     setQualityConfirmOpen(true);
+  };
+
+  const requestSaveWithReview = async (opts: {
+    publishNow?: boolean;
+    schedule?: boolean;
+  }) => {
+    const isPublishAction = Boolean(opts.publishNow || opts.schedule);
+    if (!isPublishAction) {
+      continuePublishWithQualityChecks(opts);
+      return;
+    }
+    try {
+      const review = await runAiPrePublishReview();
+      if (review) {
+        setAiPublishReviewSummary(review.summary);
+        setAiPublishReviewItems(review.items);
+        setPendingPublishOpts(opts);
+        setAiPublishReviewOpen(true);
+        return;
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "AI pre-publish review failed",
+      );
+    }
+    continuePublishWithQualityChecks(opts);
   };
 
   const uploadPostImageFile = async (file: File) => {
@@ -1035,7 +1278,13 @@ export function AdminArticleForm({
             <Button
               type="button"
               variant="outline"
-              disabled={saving || !publishAt || aliasLoading || aliasMissing}
+              disabled={
+                saving ||
+                !publishAt ||
+                aliasLoading ||
+                aliasMissing ||
+                hasStrictPublishBlocker
+              }
               onClick={() => requestSave({ schedule: true })}
             >
               Schedule
@@ -1051,7 +1300,7 @@ export function AdminArticleForm({
             </Button>
             <Button
               type="button"
-              disabled={saving || aliasLoading || aliasMissing}
+              disabled={saving || aliasLoading || aliasMissing || hasStrictPublishBlocker}
               onClick={() => requestSave({ publishNow: true })}
             >
               Publish now
@@ -1238,10 +1487,10 @@ export function AdminArticleForm({
                 value={seoDescription}
                 onChange={(e) => setSeoDescription(e.target.value)}
                 rows={3}
-                placeholder="Write a unique search description in your own voice (70+ chars)."
+                placeholder="Write a unique search description in your own voice (110-160 chars)."
               />
               <p className="text-[11px] text-muted-foreground">
-                {seoDescription.trim().length} chars - required when publishing/scheduling.
+                {seoDescription.trim().length} chars - target range: 110-160 for best quality score.
               </p>
             </div>
           </div>
@@ -1254,10 +1503,41 @@ export function AdminArticleForm({
                 ({qualityTier})
               </p>
               <p>Body words: {bodyWordCount}</p>
+              <p>Paragraphs: {paragraphCount}</p>
               <p>Summary words: {excerptWordCount}</p>
+              <p>Source signals: {hasSourceSignals ? "Detected" : "Missing"}</p>
+              <p>Attributions: {attributionMentions}</p>
+              <p>Direct quotes: {directQuoteCount}</p>
+              <p>Opposing view: {hasCounterView ? "Included" : "Missing"}</p>
+              <p>Template labels: {hasTemplateOutput ? "Detected" : "Clean"}</p>
               <p>
-                Publish/schedule is allowed at any score, but low-scoring drafts will trigger a confirmation.
+                Publish/schedule requires: 600+ words, 2+ quotes, 3+ attributions, opposing view, and no template labels.
               </p>
+              {failsWordGate ? (
+                <p className="text-rose-600">
+                  Publish gate: add at least {600 - bodyWordCount} more body words.
+                </p>
+              ) : null}
+              {failsQuoteGate ? (
+                <p className="text-rose-600">
+                  Publish gate: add at least {2 - directQuoteCount} more direct quote(s).
+                </p>
+              ) : null}
+              {failsAttributionGate ? (
+                <p className="text-rose-600">
+                  Publish gate: add at least {3 - attributionMentions} more in-body attribution(s).
+                </p>
+              ) : null}
+              {failsBalanceGate ? (
+                <p className="text-rose-600">
+                  Publish gate: include one paragraph that presents an opposing or skeptical view.
+                </p>
+              ) : null}
+              {failsTemplateGate ? (
+                <p className="text-rose-600">
+                  Publish gate: remove template labels like Hook/Quick recap/Your analysis.
+                </p>
+              ) : null}
               {qualityIssues.length > 0 ? (
                 <p className="text-amber-600">Improve: {qualityIssues.join(" • ")}</p>
               ) : null}
@@ -1810,6 +2090,75 @@ export function AdminArticleForm({
               }}
             >
               Yes, continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={aiPublishReviewOpen}
+        onOpenChange={(open) => {
+          setAiPublishReviewOpen(open);
+          if (!open) {
+            setPendingPublishOpts(null);
+            setAiPublishReviewSummary("");
+            setAiPublishReviewItems([]);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>AI Pre-Publish Review</DialogTitle>
+            <DialogDescription>
+              A final AI risk scan ran before publish. Review these fixes first.
+            </DialogDescription>
+          </DialogHeader>
+          {aiPublishReviewLoading ? (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Running pre-publish analysis...
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {aiPublishReviewSummary ? (
+                <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                  {aiPublishReviewSummary}
+                </p>
+              ) : null}
+              {aiPublishReviewItems.length > 0 ? (
+                <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                  {aiPublishReviewItems.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAiPublishReviewOpen(false);
+                setPendingPublishOpts(null);
+              }}
+            >
+              Fix now
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const opts = pendingPublishOpts;
+                setAiPublishReviewOpen(false);
+                setAiPublishReviewSummary("");
+                setAiPublishReviewItems([]);
+                setPendingPublishOpts(null);
+                if (opts) {
+                  continuePublishWithQualityChecks(opts);
+                }
+              }}
+            >
+              Continue anyway
             </Button>
           </DialogFooter>
         </DialogContent>
