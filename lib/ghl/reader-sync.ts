@@ -54,7 +54,7 @@ function buildReaderTags(extraTags: string[] | undefined): string[] {
 export async function ensureReaderContactInGhl(input: {
   email: string;
   name: string;
-  /** Extra GHL tags e.g. `kindjoe-watch` from signup funnel cookie. */
+  /** Extra GHL tags from signup funnel cookie. */
   extraTags?: string[];
 }): Promise<void> {
   const apiKey = process.env.GOHIGHLEVEL_API_KEY?.trim();

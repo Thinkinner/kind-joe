@@ -1,9 +1,5 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import {
-  GHL_ORIGIN_KINDJOE_WATCH,
-  GHL_SIGNUP_ORIGIN_COOKIE,
-} from "@/lib/ghl/signup-origin";
 
 const DEVELOPER_HOSTS = new Set([
   "developer.kindjoe.com",
@@ -100,17 +96,7 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  const res = NextResponse.next();
-  if (path === "/kindjoe-watch" || path.startsWith("/kindjoe-watch/")) {
-    res.cookies.set(GHL_SIGNUP_ORIGIN_COOKIE, GHL_ORIGIN_KINDJOE_WATCH, {
-      path: "/",
-      maxAge: 60 * 60 * 24,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-    });
-  }
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {

@@ -39,12 +39,6 @@ export function PredictionPublicShell({
               Predictions
             </Link>
             <Link
-              href="/kindjoe-watch"
-              className="hidden rounded-md px-2.5 py-1.5 text-[#a1a1aa] transition hover:bg-[#1c1c1f] hover:text-white sm:inline-flex"
-            >
-              Watch
-            </Link>
-            <Link
               href="/account/profile"
               className="rounded-md px-2.5 py-1.5 text-[#a1a1aa] transition hover:bg-[#1c1c1f] hover:text-white"
             >

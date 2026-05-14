@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/helpers/articles";
+import { renderPromptTemplate } from "@/lib/ai/prompt-settings";
 import {
   PREDICTION_CATEGORY_LABELS,
   type PredictionCategory,
@@ -325,6 +326,7 @@ export function AdminArticleForm({
   const [aiFixSamplesLoading, setAiFixSamplesLoading] = useState(false);
   const [aiFixSamplesSummary, setAiFixSamplesSummary] = useState("");
   const [aiFixSamples, setAiFixSamples] = useState<string[]>([]);
+  const [promptSettings, setPromptSettings] = useState<Record<string, string>>({});
   const [pendingPublishOpts, setPendingPublishOpts] = useState<{
     publishNow?: boolean;
     schedule?: boolean;
@@ -412,6 +414,27 @@ export function AdminArticleForm({
     if (initialValues.draftHtml) setContentHtml(initialValues.draftHtml);
     if (initialValues.seoDescription) setSeoDescription(initialValues.seoDescription);
   }, [articleId, initialValues]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/prompt-settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = (await res.json()) as {
+          prompts?: Record<string, string>;
+        };
+        if (!cancelled && payload.prompts) {
+          setPromptSettings(payload.prompts);
+        }
+      } catch {
+        // Keep built-in prompts if settings are unavailable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onTitle = (v: string) => {
     setTitle(v);
@@ -850,18 +873,9 @@ export function AdminArticleForm({
           mode: "seo",
           title: sourceTitle,
           html: sourceText,
-          customPrompt: [
-            "You are a strict pre-publish newsroom risk editor.",
-            "Review the draft using this checklist:",
-            "1) Verify risky factual claim: flag any superlative or potentially inaccurate/ambiguous claim unless exact date/source is cited.",
-            "2) Tone/word choice risk: charged phrases must be clearly attributed and neutrally framed.",
-            "3) Source precision: flag vague attribution like 'reports say' without specific outlet/document/transcript.",
-            "4) Balance line for fairness: require one sentence with opposing framing or note no-response context.",
-            "5) End stronger: require concrete what-happens-next timing and outcome scenarios.",
-            "Return only high-impact issues.",
-            "If there are no high-impact issues, set seoFeedback EXACTLY to 'No high-risk pre-publish issues found.' and suggestions to an empty array.",
-            "If issues exist, seoFeedback should be one short sentence and suggestions should be 3-6 concise fix actions.",
-          ].join("\n"),
+          customPrompt:
+            promptSettings.articlePrePublishRiskCustomPrompt ||
+            "You are a strict pre-publish newsroom risk editor.\nReview the draft using this checklist:\n1) Verify risky factual claim: flag any superlative or potentially inaccurate/ambiguous claim unless exact date/source is cited.\n2) Tone/word choice risk: charged phrases must be clearly attributed and neutrally framed.\n3) Source precision: flag vague attribution like 'reports say' without specific outlet/document/transcript.\n4) Balance line for fairness: require one sentence with opposing framing or note no-response context.\n5) End stronger: require concrete what-happens-next timing and outcome scenarios.\nReturn only high-impact issues.\nIf there are no high-impact issues, set seoFeedback EXACTLY to 'No high-risk pre-publish issues found.' and suggestions to an empty array.\nIf issues exist, seoFeedback should be one short sentence and suggestions should be 3-6 concise fix actions.",
         }),
       });
       const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
@@ -914,6 +928,9 @@ export function AdminArticleForm({
 
     setAiFixSamplesLoading(true);
     try {
+      const fixPromptTemplate =
+        promptSettings.articleFixSamplesCustomPrompt ||
+        "Generate realistic, ready-to-paste fix examples for the missing publish requirements.\nMissing requirements: {{missingItems}}.\nReturn JSON with seoFeedback and suggestions.\nseoFeedback: one short sentence summary.\nsuggestions: 3-6 concrete examples the writer can paste or adapt immediately.\nInclude a sample direct quote format when quote requirement is missing.\nInclude a sample attribution sentence when attribution requirement is missing.\nInclude one sample opposing-view sentence when balance requirement is missing.\nKeep suggestions practical and specific to political/news writing tone.";
       const res = await fetch("/api/admin/ai/article-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -921,17 +938,9 @@ export function AdminArticleForm({
           mode: "seo",
           title: sourceTitle,
           html: sourceText,
-          customPrompt: [
-            "Generate realistic, ready-to-paste fix examples for the missing publish requirements.",
-            `Missing requirements: ${missingItems.join(", ")}.`,
-            "Return JSON with seoFeedback and suggestions.",
-            "seoFeedback: one short sentence summary.",
-            "suggestions: 3-6 concrete examples the writer can paste or adapt immediately.",
-            "Include a sample direct quote format when quote requirement is missing.",
-            "Include a sample attribution sentence when attribution requirement is missing.",
-            "Include one sample opposing-view sentence when balance requirement is missing.",
-            "Keep suggestions practical and specific to political/news writing tone.",
-          ].join("\n"),
+          customPrompt: renderPromptTemplate(fixPromptTemplate, {
+            missingItems: missingItems.join(", "),
+          }),
         }),
       });
       const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
@@ -1159,6 +1168,7 @@ export function AdminArticleForm({
           title: title.trim(),
           html: (sourceHtml || sourceExcerpt).slice(0, 2200),
           customPrompt:
+            promptSettings.articlePredictionSuggestionCustomPrompt ||
             "Provide one best suggestion for either a prediction market or a simple polling vote for this article. Keep options actionable and neutral.",
         }),
       });
@@ -1427,13 +1437,21 @@ export function AdminArticleForm({
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8 xl:col-span-9">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => onTitle(e.target.value)}
-              placeholder="Untitled article"
-              className="h-auto border-x-0 border-t-0 border-b border-border px-0 pb-3 text-4xl font-bold tracking-tight placeholder:text-muted-foreground focus-visible:ring-0"
-            />
+            <div className="space-y-2">
+              <Label
+                htmlFor="title"
+                className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+              >
+                Article title
+              </Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => onTitle(e.target.value)}
+                placeholder="Enter article title..."
+                className="h-auto rounded-lg border border-border bg-background px-4 py-4 text-4xl font-bold tracking-tight placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+              />
+            </div>
 
             <Textarea
               id="excerpt"

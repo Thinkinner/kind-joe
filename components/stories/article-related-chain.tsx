@@ -154,6 +154,7 @@ type Props = {
   className?: string;
   title?: string;
   canCreatePredictions?: boolean;
+  primaryArticleElementId?: string;
 };
 
 export default function ArticleRelatedChain({
@@ -162,6 +163,7 @@ export default function ArticleRelatedChain({
   className,
   title: _title = "Continue Reading",
   canCreatePredictions = false,
+  primaryArticleElementId = "article-content",
 }: Props) {
   const [items, setItems] = useState<RelatedChainItem[]>([]);
   const [cursor, setCursor] = useState<number>(0);
@@ -175,8 +177,8 @@ export default function ArticleRelatedChain({
   const seenRef = useRef<Set<string>>(new Set([articleId]));
   const impressionRef = useRef<Set<string>>(new Set());
   const loadingPredictionRef = useRef<Set<string>>(new Set());
-  const bottomHitRef = useRef(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadedAtHalfRef = useRef<Set<string>>(new Set());
+  const relatedArticleRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     const merged = new Set([...readSessionSeenIds(), articleId]);
@@ -232,35 +234,56 @@ export default function ArticleRelatedChain({
   }, [articleId, cursor, hasMore, loading, slug]);
 
   useEffect(() => {
-    void loadMore();
-  }, [loadMore]);
+    if (typeof window === "undefined") return;
 
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || !hasMore) return;
+    let rafId: number | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry) return;
+    const checkHalfwayProgress = () => {
+      if (!hasMore || loading) return;
 
-        // Trigger only once per "reach bottom" event.
-        // User must scroll away and reach the sentinel again for the next fetch.
-        if (entry.isIntersecting && !bottomHitRef.current) {
-          bottomHitRef.current = true;
+      const scrollBottom = window.scrollY + window.innerHeight;
+      const rootEl = document.getElementById(primaryArticleElementId);
+      const targets: Array<{ key: string; element: HTMLElement | null }> = [
+        { key: `root:${articleId}`, element: rootEl },
+        ...items.map((item) => ({ key: item.id, element: relatedArticleRefs.current[item.id] ?? null })),
+      ];
+
+      for (const target of targets) {
+        if (!target.element) continue;
+        if (loadedAtHalfRef.current.has(target.key)) continue;
+
+        const rect = target.element.getBoundingClientRect();
+        const absoluteTop = rect.top + window.scrollY;
+        const halfwayPoint = absoluteTop + target.element.offsetHeight * 0.5;
+
+        if (scrollBottom >= halfwayPoint) {
+          loadedAtHalfRef.current.add(target.key);
           void loadMore();
-        } else if (!entry.isIntersecting) {
-          bottomHitRef.current = false;
+          break;
         }
-      },
-      // Trigger closer to the bottom so loading feels slower and deliberate.
-      // This waits until the sentinel is near the viewport's lower edge.
-      { rootMargin: "0px 0px 120px 0px", threshold: 0.1 },
-    );
+      }
+    };
 
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, loadMore]);
+    const scheduleCheck = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        checkHalfwayProgress();
+      });
+    };
+
+    scheduleCheck();
+    window.addEventListener("scroll", scheduleCheck, { passive: true });
+    window.addEventListener("resize", scheduleCheck);
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener("scroll", scheduleCheck);
+      window.removeEventListener("resize", scheduleCheck);
+    };
+  }, [articleId, hasMore, items, loadMore, loading, primaryArticleElementId]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -346,7 +369,13 @@ export default function ArticleRelatedChain({
           const predictionSectionId = `related-article-predictions-${item.id}`;
           const shareUrl = origin ? `${origin}${item.href}` : item.href;
           return (
-            <article key={item.id} className="border-t border-neutral-200 pt-8">
+            <article
+              key={item.id}
+              ref={(node) => {
+                relatedArticleRefs.current[item.id] = node;
+              }}
+              className="border-t border-neutral-200 pt-8"
+            >
               <header>
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
                   {item.title}
@@ -471,11 +500,11 @@ export default function ArticleRelatedChain({
         })}
       </div>
 
-      <div ref={sentinelRef} className="h-12 pt-4">
+      <div className="h-12 pt-4">
         {loading ? (
           <p className="text-xs text-neutral-500">Loading the next full story...</p>
         ) : hasMore ? (
-          <p className="text-xs text-neutral-400">Scroll to load another full related story</p>
+          <p className="text-xs text-neutral-400">Keep reading to 50% and we load the next story</p>
         ) : (
           <p className="text-xs text-neutral-400">You are all caught up.</p>
         )}

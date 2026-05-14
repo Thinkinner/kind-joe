@@ -1,6 +1,5 @@
 // app/page.tsx
 import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stories-carousel";
-import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
@@ -31,7 +30,6 @@ export default async function HomePage() {
           <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
             Latest Kindjoe Articles
           </h1>
-          <BreakingLiveNewsCta variant="inline" />
         </div>
 
         {/* Flex Row Wrapper */}

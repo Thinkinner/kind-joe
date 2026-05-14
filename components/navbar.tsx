@@ -3,11 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X, Search, LogIn, Shield, Settings, Eye } from "lucide-react";
-import {
-  formatSignalsViewerCount,
-  useSignalsLiveViewers,
-} from "@/hooks/use-signals-live-viewers";
+import { Menu, X, Search, LogIn, Shield, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
@@ -52,8 +48,6 @@ export default function Navbar({
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-  const signalsViewers = useSignalsLiveViewers();
-  const signalsWatchHref = "/kindjoe-watch";
   const { data: sessionData, isPending: sessionPending, refetch } =
     authClient.useSession();
 
@@ -128,58 +122,6 @@ export default function Navbar({
     document.body.style.overflow = open || searchOpen ? "hidden" : "auto";
   }, [open, searchOpen]);
 
-  const livePillSurfaceClass =
-    "items-center rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/55 to-red-950/20 shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-colors hover:border-red-500/55 hover:from-red-950/70 hover:to-red-950/30 active:opacity-95";
-
-  const livePillDesktopClass = `${livePillSurfaceClass} hidden min-w-0 max-w-full shrink-0 gap-2 px-2.5 py-1.5 sm:gap-2.5 sm:px-3 sm:py-1.5 lg:inline-flex`;
-
-  const livePillMobileClass =
-    "inline-flex h-7 max-w-full shrink-0 items-center gap-1 rounded-full border border-red-500/40 bg-gradient-to-b from-red-950/50 to-red-950/20 px-2.5 leading-none shadow-[0_0_8px_rgba(220,38,38,0.07)] ring-1 ring-red-500/10 transition-colors hover:border-red-500/50 hover:from-red-950/65 hover:to-red-950/28 active:opacity-95 sm:gap-1.5 sm:px-3";
-
-  const livePillInner = (
-    <>
-      <span className="relative flex h-2 w-2 shrink-0 sm:h-2.5 sm:w-2.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/45" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)] sm:h-2.5 sm:w-2.5" />
-      </span>
-      <span className="shrink-0 text-[9px] font-black tracking-[0.22em] text-red-500 sm:text-[10px] sm:tracking-[0.26em]">
-        LIVE
-      </span>
-      <Eye
-        className="h-[15px] w-[15px] shrink-0 text-red-300/90 sm:h-[17px] sm:w-[17px]"
-        aria-hidden
-      />
-      <span className="truncate font-mono text-sm font-bold tabular-nums text-white sm:text-base">
-        {formatSignalsViewerCount(signalsViewers)}
-      </span>
-      <span className="shrink-0 text-[8px] font-semibold uppercase tracking-[0.1em] text-red-200/85 sm:text-[9px] sm:tracking-[0.12em]">
-        watching
-      </span>
-    </>
-  );
-
-  const livePillInnerMobile = (
-    <>
-      <span className="relative flex h-2 w-2 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/40" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.55)]" />
-      </span>
-      <span className="shrink-0 text-[8px] font-black tracking-[0.16em] text-red-500">
-        LIVE
-      </span>
-      <Eye
-        className="h-3 w-3 shrink-0 text-red-300/90"
-        aria-hidden
-      />
-      <span className="font-mono text-[11px] font-bold tabular-nums text-white">
-        {formatSignalsViewerCount(signalsViewers)}
-      </span>
-      <span className="shrink-0 text-[6.5px] font-semibold uppercase tracking-[0.07em] text-red-200/80">
-        watching
-      </span>
-    </>
-  );
-
   return (
     <>
       <header className="sticky top-0 z-[60] border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
@@ -226,14 +168,6 @@ export default function Navbar({
             </div>
 
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <Link
-                href={signalsWatchHref}
-                className={livePillDesktopClass}
-                title="Open Kind Joe Watch live feed"
-              >
-                {livePillInner}
-              </Link>
-
               <div className="hidden shrink-0 items-center gap-1 sm:gap-1.5 lg:flex">
                 {authLoading ? (
                   <span
@@ -345,18 +279,6 @@ export default function Navbar({
                   {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                 </button>
               </div>
-            </div>
-          </div>
-
-          <div className="border-t border-white/[0.05] lg:hidden">
-            <div className="flex justify-center px-3 pb-0.5 pt-1.5 sm:px-5 sm:pt-2">
-              <Link
-                href={signalsWatchHref}
-                className={livePillMobileClass}
-                title="Open Kind Joe Watch live feed"
-              >
-                {livePillInnerMobile}
-              </Link>
             </div>
           </div>
         </nav>

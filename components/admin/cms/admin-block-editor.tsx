@@ -57,7 +57,21 @@ export function AdminBlockEditor({
     editorProps: {
       attributes: {
         class:
-          "prose max-w-none min-h-[320px] leading-relaxed focus:outline-none px-3 py-2",
+          [
+            "min-h-[420px] focus:outline-none px-5 py-5 text-[18px] leading-8 text-foreground",
+            // Base typography (do not depend on external `prose` plugin styles).
+            "[&_p]:my-[1.4rem] [&_p]:text-[1.01rem] [&_p]:leading-[1.78] [&_p]:text-foreground [&_p]:font-[ui-serif,Georgia,Cambria,Times,serif]",
+            "[&_h2]:mt-[3.2rem] [&_h2]:mb-[0.75rem] [&_h2]:text-[1.26rem] sm:[&_h2]:text-[1.36rem] [&_h2]:font-semibold [&_h2]:tracking-[0.04em] [&_h2]:uppercase [&_h2]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h2]:text-foreground",
+            "[&_h3]:mt-[2.8rem] [&_h3]:mb-[0.65rem] [&_h3]:text-[1.12rem] sm:[&_h3]:text-[1.18rem] [&_h3]:font-semibold [&_h3]:tracking-[0.035em] [&_h3]:uppercase [&_h3]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h3]:text-foreground",
+            "[&_h4]:mt-[2.3rem] [&_h4]:mb-[0.55rem] [&_h4]:text-[0.99rem] sm:[&_h4]:text-[1.03rem] [&_h4]:font-semibold [&_h4]:tracking-[0.03em] [&_h4]:uppercase [&_h4]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h4]:text-foreground",
+            "[&_ul]:my-[1.4rem] [&_ul]:list-disc [&_ul]:pl-[1.7rem]",
+            "[&_ol]:my-[1.4rem] [&_ol]:list-decimal [&_ol]:pl-[1.7rem]",
+            "[&_li]:my-[0.85rem] [&_li]:leading-[1.78] [&_li]:text-foreground [&_li]:font-[ui-serif,Georgia,Cambria,Times,serif]",
+            "[&_blockquote]:my-7 [&_blockquote]:border-l-2 [&_blockquote]:border-rose-300 [&_blockquote]:pl-5 [&_blockquote]:text-foreground",
+            "[&_a]:text-rose-700 dark:[&_a]:text-rose-300 [&_a]:underline [&_a]:underline-offset-2",
+            "[&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md",
+            "[&_iframe]:my-6 [&_iframe]:max-w-full [&_iframe]:rounded-md",
+          ].join(" "),
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -100,7 +114,7 @@ export function AdminBlockEditor({
 
   return (
     <div className={cn("rounded-xl border border-border bg-card", className)}>
-      <div className="flex flex-wrap gap-1 border-b border-border bg-muted/80 px-2 py-2">
+      <div className="sticky top-11 z-40 flex flex-wrap gap-1 border-b border-border bg-muted/95 px-2 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-muted/80 lg:top-16">
         <ToolbarBtn
           pressed={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -204,7 +218,7 @@ export function AdminBlockEditor({
           <Redo2 className="h-4 w-4" />
         </ToolbarBtn>
       </div>
-      <div className="mx-auto w-full max-w-3xl px-2 pb-4">
+      <div className="mx-auto w-full max-w-4xl px-3 pb-4">
         <EditorContent editor={editor} />
       </div>
     </div>

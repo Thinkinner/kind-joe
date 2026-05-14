@@ -320,6 +320,18 @@ export const settingsTable = pgTable("settings", {
 /** Same table as `settingsTable`; use either name across repos. */
 export const settings = settingsTable;
 
+export const promptSettingsTable = pgTable("prompt_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  prompts: jsonb("prompts")
+    .$type<Record<string, string>>()
+    .notNull()
+    .default({}),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/** Same table as `promptSettingsTable`; use either name across repos. */
+export const promptSettings = promptSettingsTable;
+
 export const draftsTable = pgTable("newsletter_drafts", {
   id: uuid("id").defaultRandom().primaryKey(),
   status: text("status").default("draft"),

@@ -18,7 +18,6 @@ import GetEmail from "@/components/stories/kindjoe-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
 import ArticleTracker from "@/components/article-tracker";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
-import BreakingLiveNewsCta from "@/components/stories/breaking-live-news-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
@@ -133,7 +132,6 @@ export default async function ArticleBySlug(props: {
     <main className={`py-8 ${googleSans.variable}`}>
       <ArticleTracker articleId={a.id} />
       <div className="mx-auto max-w-6xl md:px-4">
-        <BreakingLiveNewsCta />
         <div className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] md:items-start md:gap-8">
           <article className="md:pb-8">
             <header className="px-4 lg:px-6 pt-4 pb-3">

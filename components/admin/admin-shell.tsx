@@ -48,6 +48,7 @@ const baseNav = [
   { href: "/admin", label: "Dashboard", icon: Home, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/articles", label: "Articles", icon: FileText, permission: PERMISSIONS.ADMIN_ARTICLES },
   { href: "/admin/articles/ai-assistant", label: "Article assistant", icon: Wand2, permission: PERMISSIONS.ADMIN_ARTICLE_ASSISTANT },
+  { href: "/admin/prompt-settings", label: "Prompt settings", icon: Settings, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/articles/auto-comments", label: "Auto comments", icon: MessageCircle, permission: PERMISSIONS.ADMIN_ARTICLE_ASSISTANT },
   { href: "/admin/article-analytics", label: "Article analytics", icon: BarChart2, permission: PERMISSIONS.ADMIN_ANALYTICS },
   { href: "/admin/visitor-journeys", label: "Visitor journeys", icon: Route, permission: PERMISSIONS.ADMIN_VISITOR_JOURNEYS },

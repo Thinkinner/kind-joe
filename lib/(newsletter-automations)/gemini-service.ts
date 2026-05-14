@@ -1,12 +1,16 @@
 "use server";
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import {
+  renderPromptTemplate,
+  type PromptSettings,
+} from "@/lib/ai/prompt-settings";
+import { getEffectivePromptSettings } from "@/lib/ai/prompt-settings-store";
+import {
   NewsletterData,
   RawRssItem,
   PersonalizationConfig,
   NewsletterStory,
 } from "@/lib/(newsletter-automations)/types";
-import { SYSTEM_INSTRUCTION } from "@/lib/(newsletter-automations)/constants";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 
@@ -31,8 +35,15 @@ async function retry<T>(
 ): Promise<T> {
   try {
     return await fn();
-  } catch (error: any) {
-    if (retries > 0 && (error.status === 429 || error.status >= 500)) {
+  } catch (error: unknown) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error &&
+      typeof (error as { status?: unknown }).status === "number"
+        ? (error as { status: number }).status
+        : null;
+    if (retries > 0 && status !== null && (status === 429 || status >= 500)) {
       console.warn(`Gemini busy/glitching. Retrying... (${retries} left)`);
       await new Promise((res) => setTimeout(res, delay));
       return retry(fn, retries - 1, delay * 2);
@@ -48,7 +59,7 @@ const cleanJson = (text: string): string => {
   if (!text) return "{}";
 
   // 1. First, strip out common markdown code fences characters
-  let cleaned = text.replace(/```json/g, "").replace(/```/g, "");
+  const cleaned = text.replace(/```json/g, "").replace(/```/g, "");
 
   // 2. Now locate the outer JSON brackets
   const start = cleaned.indexOf("{");
@@ -422,22 +433,21 @@ type GenAIClient = ReturnType<typeof getClient>;
 async function generateEmailSubjectFromLeadStory(
   ai: GenAIClient,
   leadStory: NewsletterStory,
+  promptSettings: PromptSettings,
 ): Promise<string> {
+  const prompt = renderPromptTemplate(
+    promptSettings.newsletterLeadSubjectPromptTemplate,
+    {
+      headline: leadStory.headline,
+      category: leadStory.category || "News",
+      summary: (leadStory.summary || "").slice(0, 1200),
+    },
+  );
+
   return retry(async () => {
     const response = await ai.models.generateContent({
       model: NEWSLETTER_MODEL,
-      contents: `Create ONLY the inbox email subject line for this LEAD story (Story 1 in a newsletter).
-
-Headline: ${leadStory.headline}
-Category: ${leadStory.category || "News"}
-Summary: ${(leadStory.summary || "").slice(0, 1200)}
-
-Rules (follow strictly):
-- Base the hook ONLY on this story’s stakes, conflict, or surprise—not a generic digest title.
-- Keep it short and direct: target 4-6 words (hard reject if over 6).
-- Punchy: curiosity, shock, value, power, money, or urgency. Credible; do not invent facts.
-- No emoji. No "Daily Brief", "Newsletter", "Recap", month/day/year dates, or ALL CAPS.
-- Output JSON only.`,
+      contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: emailSubjectSuggestSchema,
@@ -469,7 +479,8 @@ export const suggestNewsletterEmailSubject = async (
     throw new Error("Add Story 1 with a headline first.");
   }
   const ai = getClient();
-  return generateEmailSubjectFromLeadStory(ai, leadStory);
+  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
+  return generateEmailSubjectFromLeadStory(ai, leadStory, promptSettings);
 };
 
 /**
@@ -480,6 +491,7 @@ export const generateNewsletter = async (
   config: PersonalizationConfig,
 ): Promise<NewsletterData> => {
   await assertNewsletterStaff();
+  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
 
   const now = new Date();
@@ -543,18 +555,22 @@ export const generateNewsletter = async (
   ]
     .filter(Boolean)
     .join("\n\n");
+  const personaHintsBlock = personaHints ? `\n${personaHints}\n` : "";
 
   try {
     return await retry(async () => {
       const response = await ai.models.generateContent({
         model: NEWSLETTER_MODEL,
-        contents: `Today is ${currentDateString}.
-${personaHints ? `\n${personaHints}\n` : ""}
-Build the newsletter from these articles. Discard older dates if a newer/trending story exists: ${JSON.stringify(inputData)}
-
-REMINDER — JSON field "title": This is the email inbox subject line. It MUST be derived from Story 1 (the first story you put in "stories") — short hook, ≤6 words when possible, never more than 10 words. Spicy, high-stakes, curiosity-driving. Not a newsletter name or date.`,
+        contents: renderPromptTemplate(
+          promptSettings.newsletterGenerateUserPromptTemplate,
+          {
+            currentDateString,
+            personaHintsBlock,
+            inputDataJson: JSON.stringify(inputData),
+          },
+        ),
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: promptSettings.newsletterSystemInstruction,
           // 5. CRITICAL: Give it Google Search so it knows what is ACTUALLY trending globally today
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
@@ -586,6 +602,7 @@ REMINDER — JSON field "title": This is the email inbox subject line. It MUST b
           data.title = await generateEmailSubjectFromLeadStory(
             ai,
             data.stories[0],
+            promptSettings,
           );
         } catch {
           /* leave title empty; user can use Suggest from Story 1 */
@@ -605,6 +622,7 @@ REMINDER — JSON field "title": This is the email inbox subject line. It MUST b
  */
 export const generateFullArticleContent = async (story: NewsletterStory) => {
   await assertNewsletterStaff();
+  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
   const now = new Date();
   const currentDateTimeString = now.toLocaleString("en-US", {
@@ -620,22 +638,14 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
 
   // SIMPLIFIED PROMPT: Removed complex <br/> requirements to reduce JSON errors.
   // We let the frontend handle spacing between paragraphs.
-  const prompt = `As-of timestamp (use this as "now"): ${currentDateTimeString}.
-
-Research and write a 300-400 word news article for: ${story.headline}.
-Context: ${story.summary}
-
-Timeliness and title rules (critical):
-- Treat people/titles based on the as-of timestamp above and grounded web results.
-- Do NOT use stale role labels.
-- Only call someone "former" if they are truly former as of the timestamp.
-- Example: if Donald Trump is the sitting U.S. president as of the timestamp, write "President Donald Trump" (not "former president Donald Trump").
-
-Formatting rules:
-- Use ONLY <p> tags for 'contentHtml'. Do not add extra line breaks like <br>.
-- Return a series of paragraphs.
-- Each <p> must contain EXACTLY 2 sentences only.
-- Repeat this format until the total article reaches ~300-400 words.`;
+  const prompt = renderPromptTemplate(
+    promptSettings.newsletterFullArticlePromptTemplate,
+    {
+      currentDateTimeString,
+      headline: story.headline,
+      summary: story.summary,
+    },
+  );
 
   return retry(async () => {
     const response = await ai.models.generateContent({
@@ -692,13 +702,18 @@ export const regenerateSingleStory = async (
   sourcePool?: RawRssItem[],
 ): Promise<NewsletterStory> => {
   await assertNewsletterStaff();
+  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
   return retry(async () => {
     const response = await ai.models.generateContent({
       model: NEWSLETTER_MODEL,
-      contents: `Task: ${instruction}. Context: ${JSON.stringify(
-        currentStory,
-      )}`,
+      contents: renderPromptTemplate(
+        promptSettings.newsletterSingleStoryPromptTemplate,
+        {
+          instruction,
+          currentStoryJson: JSON.stringify(currentStory),
+        },
+      ),
       config: {
         responseMimeType: "application/json",
         responseSchema: singleStorySchema,
@@ -720,6 +735,7 @@ export const generateStoryFromSelectedArticle = async (
   targetSlotName: string,
 ): Promise<NewsletterStory> => {
   await assertNewsletterStaff();
+  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
 
   return retry(async () => {
@@ -731,35 +747,16 @@ export const generateStoryFromSelectedArticle = async (
     ).slice(0, 6000);
     const sourceTitle = (selectedItem.title || "").trim();
 
-    const prompt = `
-      You are an expert news editor writing in a clean, fast, and uncensored "news-wire" style. 
-      I have manually selected a specific article to replace the story in the slot: "${targetSlotName}".
-      
-      ARTICLE DETAILS:
-      Title: ${sourceTitle || "(not provided)"}
-      Source: ${selectedItem.sourceName}
-      URL: ${articleUrl || "(none provided)"}
-      Content Snippet / Notes: ${sourceSnippet || "(none provided)"}
-
-      TASK:
-      Write exactly ONE story formatted perfectly for the newsletter slot "${targetSlotName}".
-
-      SOURCEING RULES (CRITICAL):
-      - If a URL is provided, prioritize that URL as the primary source and validate details from it.
-      - If only notes are provided, rely on those notes and your grounded web checks when needed.
-      - Do not invent facts. If uncertain, keep claims conservative.
-      
-      STRICT FORMATTING RULES for the 'summary' field (CRITICAL):
-      1. INTRO: Write EXACTLY 1 to 2 short sentences total. Combine the Who/What/Where into a tight, punchy intro. Do NOT write a long paragraph.
-      2. BULLETS: Follow the intro with EXACTLY 3 bullet points starting with "• ". Each bullet must be a single, short sentence detailing a key fact.
-
-      EXAMPLE OF EXACT EXPECTED LENGTH AND TONE FOR 'summary':
-      The Senate Homeland Security Committee narrowly approved Sen. Markwayne Mullin to lead the Department of Homeland Security.
-
-      • The nomination advanced despite a public clash between Mullin and Committee Chair Rand Paul.
-      • Democrats provided the necessary votes to move the nomination to the full Senate floor.
-      • The move comes as the department remains unfunded, causing operational breakdowns at borders and airports.
-    `;
+    const prompt = renderPromptTemplate(
+      promptSettings.newsletterSelectedArticlePromptTemplate,
+      {
+        targetSlotName,
+        sourceTitle: sourceTitle || "(not provided)",
+        sourceName: selectedItem.sourceName,
+        articleUrl: articleUrl || "(none provided)",
+        sourceSnippet: sourceSnippet || "(none provided)",
+      },
+    );
 
     const response = await ai.models.generateContent({
       model: NEWSLETTER_MODEL,

@@ -62,6 +62,7 @@ export function NewArticleWithAssistant() {
   const [socialHeadlines, setSocialHeadlines] = useState<string[]>([]);
   const [socialTightHeadline, setSocialTightHeadline] = useState("");
   const [socialCaption, setSocialCaption] = useState("");
+  const [promptSettings, setPromptSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +81,27 @@ export function NewArticleWithAssistant() {
         setRecentArticles([]);
       } finally {
         if (!cancelled) setRecentLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/prompt-settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = (await res.json()) as {
+          prompts?: Record<string, string>;
+        };
+        if (!cancelled && payload.prompts) {
+          setPromptSettings(payload.prompts);
+        }
+      } catch {
+        // Ignore prompt settings fetch errors and keep built-in defaults.
       }
     })();
     return () => {
@@ -107,6 +129,7 @@ export function NewArticleWithAssistant() {
         title: "",
         html: sourceInput,
         customPrompt:
+          promptSettings.articleRewriteCustomPrompt ||
           "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. The draftHtml must be at least 600 words (target 650-900 words) and use short paragraphs (1-2 sentences per paragraph). Write a natural newsroom-style article, not a template. Cover what happened, why it matters, likely next steps, and reader/local relevance in flowing prose. Do not use labels like Hook/Quick recap/Your analysis/Actionable takeaway. Include source attribution naturally near the end. Return title, slug, category, tags (about 20), excerpt (at least 20 words), draftHtml, and seoDescription (110-160 chars).",
       }),
     });

@@ -4,11 +4,11 @@ import React from "react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
-type Mark = { type: string; attrs?: any };
+type Mark = { type: string; attrs?: Record<string, unknown> };
 type JSONText = { type: "text"; text: string; marks?: Mark[] };
 type JSONNode = {
   type: string;
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
   content?: (JSONNode | JSONText)[];
   text?: string;
   marks?: Mark[];
@@ -105,6 +105,44 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
   });
 }
 
+function plainTextFromInline(nodes?: (JSONNode | JSONText)[]): string {
+  if (!nodes?.length) return "";
+  return nodes
+    .map((n) => {
+      if ((n as JSONText).type === "text") {
+        return (n as JSONText).text ?? "";
+      }
+      return plainTextFromInline((n as JSONNode).content);
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractDenseOrderedItems(text: string): string[] | null {
+  const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!/\b1\.\s+/.test(normalized) || !/\b2\.\s+/.test(normalized)) return null;
+
+  const matches = Array.from(normalized.matchAll(/(\d+)\.\s+/g));
+  if (matches.length < 2) return null;
+  if (Number(matches[0][1]) !== 1) return null;
+
+  const items: string[] = [];
+  for (let i = 0; i < matches.length; i += 1) {
+    const current = matches[i];
+    const next = matches[i + 1];
+    const num = Number(current[1]);
+    if (Number.isNaN(num) || num !== i + 1) return null;
+    const start = (current.index ?? 0) + current[0].length;
+    const end = next?.index ?? normalized.length;
+    const item = normalized.slice(start, end).trim();
+    if (!item) return null;
+    items.push(item);
+  }
+
+  return items.length >= 2 ? items : null;
+}
+
 /* ------------------------- Utilities ------------------------- */
 
 // Detect if a paragraph is effectively "empty"
@@ -132,14 +170,15 @@ function Heading({
   children: React.ReactNode;
 }) {
   const tag = (`h${Math.min(Math.max(level, 1), 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6");
+  const editorialSans = "font-[var(--font-google-sans),ui-sans-serif,system-ui]";
   const base =
     level === 1
-      ? "text-3xl font-semibold tracking-tight"
+      ? `text-[1.45rem] sm:text-[1.58rem] font-semibold tracking-[0.04em] uppercase ${editorialSans} text-neutral-900`
       : level === 2
-      ? "text-2xl font-semibold tracking-tight"
+      ? `text-[1.26rem] sm:text-[1.36rem] font-semibold tracking-[0.04em] uppercase ${editorialSans} text-neutral-900`
       : level === 3
-      ? "text-xl font-semibold tracking-tight"
-      : "text-lg font-semibold";
+      ? `text-[1.12rem] sm:text-[1.18rem] font-semibold tracking-[0.035em] uppercase ${editorialSans} text-neutral-900`
+      : `text-[0.99rem] sm:text-[1.03rem] font-semibold tracking-[0.03em] uppercase ${editorialSans} text-neutral-900`;
   const alignCls =
     align === "center"
       ? "text-center"
@@ -232,6 +271,21 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
         // collapse empty paragraphs so your content doesn’t get weird big gaps
         return <div key={key} className="h-2" />;
       }
+      const denseItems = extractDenseOrderedItems(plainTextFromInline(node.content));
+      if (denseItems) {
+        return (
+          <ol key={key} className="my-4 ml-6 list-decimal space-y-2">
+            {denseItems.map((item, idx) => (
+              <li
+                key={idx}
+                className="leading-relaxed"
+              >
+                {item}
+              </li>
+            ))}
+          </ol>
+        );
+      }
 
       const align = node.attrs?.textAlign as "left" | "center" | "right" | "justify" | undefined;
       const alignCls =
@@ -244,7 +298,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
           : "text-left";
 
       return (
-        <p key={key} className={`leading-relaxed ${alignCls}`}>
+        <p
+          key={key}
+          className={alignCls}
+        >
           {renderInline(node.content)}
         </p>
       );
@@ -263,11 +320,17 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "blockquote":
     case "quote":
       return (
-        <blockquote key={key} className="border-l-4 pl-4 italic text-slate-700">
+        <blockquote
+          key={key}
+          className="my-7 border-l-2 border-rose-300 pl-5 text-neutral-700"
+        >
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             return n.type === "paragraph" ? (
-              <p key={i} className="leading-relaxed">
+              <p
+                key={i}
+                className="italic"
+              >
                 {renderInline(n.content)}
               </p>
             ) : (
@@ -351,7 +414,12 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "codeBlock":
     case "code": {
       const codeText = (node.content ?? [])
-        .map((c: any) => (c.type === "text" ? c.text : ""))
+        .map((c) => {
+          if ((c as JSONText).type === "text") {
+            return (c as JSONText).text ?? "";
+          }
+          return "";
+        })
         .join("");
       return (
         <pre
@@ -387,23 +455,22 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
 export default function ArticleContent({ value }: { value: JSONDoc | null | undefined }) {
   if (!value || value.type !== "doc") return null;
+  const nodes = (value.content ?? []) as JSONNode[];
+  const serifAll = "font-[ui-serif,Georgia,Cambria,Times,serif]";
 
   return (
-    <article
-      className="
-        tiptap
-        prose prose-slate prose-lg
-        leading-relaxed
-        prose-headings:font-semibold
-        prose-headings:tracking-tight
-        prose-p:leading-relaxed
-        prose-li:leading-relaxed
-        prose-ul:my-3 prose-ol:my-3
-        prose-img:rounded-xl
-        prose-p:my-2
-      "
-    >
-      {(value.content ?? []).map((node, i) => renderBlock(node as JSONNode, i))}
+    <article className={`tiptap article-prose ${serifAll}`}>
+      <div
+        className="
+          prose prose-slate prose-base max-w-none leading-relaxed
+          prose-headings:font-semibold prose-headings:tracking-tight prose-headings:font-[var(--font-google-sans),ui-sans-serif,system-ui]
+          prose-p:leading-7 prose-li:leading-7 prose-ul:my-3 prose-ol:my-3
+          prose-img:rounded-xl prose-p:my-2
+          prose-a:text-rose-700 prose-strong:text-neutral-900
+        "
+      >
+        {nodes.map((node, i) => renderBlock(node, i))}
+      </div>
     </article>
   );
 }

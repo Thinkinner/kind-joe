@@ -1,4 +1,3 @@
-export * from "@/lib/signals/access";
 export * from "@/lib/signals/ai-summary-disclaimer";
 export * from "@/lib/signals/feed-marker-colors";
 export * from "@/lib/signals/globe-bloom";

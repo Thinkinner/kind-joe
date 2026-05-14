@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Check,
   Copy,
   Code2,
-  ExternalLink,
   Plus,
   RotateCw,
   Search,
@@ -376,25 +374,11 @@ export function IngestSignalsAdminPanel() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Signals</h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Persisted rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">signals</code> after ingest.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            asChild
-            className="gap-1.5"
-          >
-            <Link href="/kindjoe-watch" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open Kind Joe Watch
-            </Link>
-          </Button>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Signals</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Persisted rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">signals</code> after ingest.
+          </p>
         </div>
 
         {loading ? null : signals.length === 0 ? (
