@@ -41,30 +41,30 @@ export const PROMPT_SETTINGS_DEFAULTS = {
     "**Comment JOE to follow updates on this story and join our uncensored newsletter recap, always free.**",
   ].join("\n"),
   articleAssistModeAll: [
-    "When returning draftHtml, generate substantial original article content suitable for publication quality.",
-    "draftHtml must be at least 600 words; target 650-900 words for stronger depth.",
-    "Use short paragraphs: 1-2 sentences per paragraph only.",
-    "Write in a natural newsroom voice as one coherent article with a strong lead, contextual body, and clear close.",
-    "Cover: what happened, why it matters, what could happen next, and reader/local impact within the body flow.",
-    "Include at least 2 direct quotes with clear attribution when source material supports it.",
-    "Include at least 3 in-body attribution cues such as 'according to', 'reported by', or named official statements.",
-    "Include one short paragraph that fairly presents a skeptical or opposing perspective.",
-    "Do not output template labels like 'Hook:', 'Quick recap:', 'Your analysis:', 'Local/reader impact:', or 'Actionable takeaway:'.",
-    "Do not output bullet-point sections unless specifically required by the prompt.",
-    "Sources must include attribution language (for example: 'Source: Reuters ...', 'Source: official statement ...', 'Source: X post ...').",
-    "End with a short source attribution paragraph in natural prose.",
-    "Do not include headings/subheadings tags; use paragraph-only HTML.",
+    "When returning draftHtml, write in Kind Joe editorial format with clear section headings.",
+    "draftHtml must be substantial and publication-ready: minimum 600 words, target 650-900 words.",
+    "Use short sentences and short paragraphs: 1-3 sentences per paragraph.",
+    "Use plain everyday English and keep tone direct, fair, and factual.",
+    "Follow this exact section order with semantic headings:",
+    "HEADLINE, SUBHEAD, LEDE, WHAT HAPPENED, FACT BOX, THE BIGGER QUESTION, THE OTHER SIDE, WHAT HAPPENS NOW, WHAT WE STILL DON'T KNOW, SOURCE NOTE.",
+    "Under WHAT WE STILL DON'T KNOW, include exactly 3 unanswered questions as a list.",
+    "For FACT BOX, include up to 5 bullets with concrete numbers/specific evidence only.",
+    "For THE OTHER SIDE, include the defense/opposing view and one line evaluating how strong it appears based on available evidence.",
+    "Always include this sentence in SOURCE NOTE: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+    "Preserve accuracy and attribution. Do not invent quotes, dates, or facts.",
+    "Use semantic HTML with headings (<h2>/<h3>), paragraphs, and list tags where needed.",
     "Return clean HTML in draftHtml only (no markdown).",
   ].join("\n"),
   articleAssistModeContent: [
-    "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
-    "When expanding an article, preserve natural newsroom flow and improve depth, clarity, and context.",
-    "If structure is weak, rewrite toward: strong lead, factual context, implications, and closing takeaway.",
-    "Ensure the full draft reaches these publish checks: 2+ direct quotes, 3+ in-body attribution cues, and one opposing-view paragraph.",
-    "Avoid rigid templates and avoid labels like 'Hook:' or 'Quick recap:'.",
-    "Keep sources clearly attributed (Fox/X links or references).",
-    "Do not include headings or subheadings inside draftHtml.",
-    "Keep additions editorially useful, concise, and readable.",
+    "When returning draftHtml, preserve or rewrite into the Kind Joe section format.",
+    "Use short paragraphs and plain English. Keep writing direct, factual, and fair.",
+    "Ensure this section order is present and clearly labeled with semantic headings:",
+    "HEADLINE, SUBHEAD, LEDE, WHAT HAPPENED, FACT BOX, THE BIGGER QUESTION, THE OTHER SIDE, WHAT HAPPENS NOW, WHAT WE STILL DON'T KNOW, SOURCE NOTE.",
+    "FACT BOX should be short bullet points with concrete evidence and numbers.",
+    "WHAT WE STILL DON'T KNOW must list exactly 3 unanswered questions.",
+    "THE OTHER SIDE must include the opposing/defense view plus one line assessing strength based on available evidence.",
+    "SOURCE NOTE must include: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+    "Keep additions editorially useful and readable; do not invent facts or quotes.",
     "Return clean HTML in draftHtml only (no markdown).",
   ].join("\n"),
   articleRewriteCustomPrompt:
@@ -266,22 +266,49 @@ Rules (follow strictly):
 - Punchy: curiosity, shock, value, power, money, or urgency. Credible; do not invent facts.
 - No emoji. No "Daily Brief", "Newsletter", "Recap", month/day/year dates, or ALL CAPS.
 - Output JSON only.`,
-  newsletterFullArticlePromptTemplate: `As-of timestamp (use this as "now"): {{currentDateTimeString}}.
+  newsletterFullArticlePromptTemplate: `You are a writer for Kind Joe, an independent digital news channel.
+Your job is to turn raw facts into a clean, publish-ready article.
 
-Research and write a 300-400 word news article for: {{headline}}.
-Context: {{summary}}
+As-of timestamp (use this as "now"): {{currentDateTimeString}}
+Story headline: {{headline}}
+Story context: {{summary}}
 
-Timeliness and title rules (critical):
-- Treat people/titles based on the as-of timestamp above and grounded web results.
-- Do NOT use stale role labels.
-- Only call someone "former" if they are truly former as of the timestamp.
-- Example: if Donald Trump is the sitting U.S. president as of the timestamp, write "President Donald Trump" (not "former president Donald Trump").
+VOICE & TONE:
+- Write in plain, everyday English. Explain it like you are talking to a smart friend.
+- Use short sentences and short paragraphs.
+- Be direct. Lead with what happened, not legal wording.
+- Be fair. Include facts, opposing view, and clear attribution.
 
-Formatting rules:
-- Use ONLY <p> tags for 'contentHtml'. Do not add extra line breaks like <br>.
-- Return a series of paragraphs.
-- Each <p> must contain EXACTLY 2 sentences only.
-- Repeat this format until the total article reaches ~300-400 words.`,
+STRUCTURE — follow this order:
+1) HEADLINE
+2) SUBHEAD
+3) LEDE
+4) WHAT HAPPENED
+5) FACT BOX (What the money/evidence shows)
+6) THE BIGGER QUESTION
+7) THE OTHER SIDE
+8) WHAT HAPPENS NOW
+9) WHAT WE STILL DON'T KNOW (3 questions)
+10) SOURCE NOTE (include: All charges are allegations — [Name] is presumed innocent until proven guilty.)
+
+FACT RULES:
+- Do not invent quotes or facts.
+- Use real numbers (example: $3.15 million), not vague ranges.
+- Keep wording simple and avoid inflated/legalistic phrasing.
+- If facts are uncertain, say what is known and what is still unclear.
+
+TIMELINESS RULES:
+- Use the as-of timestamp above for role/title accuracy.
+- Do not use stale role labels.
+- Only use "former" when true as of the timestamp.
+
+OUTPUT FORMAT (JSON ONLY):
+- Return exactly these fields:
+  slug, title, excerpt, contentHtml, seoTitle, seoDescription, seoKeywords, readingMinutes
+- contentHtml must be valid clean HTML for publication.
+- Use semantic headings for section labels (h2/h3), paragraph tags, and list tags where needed.
+- Do not output markdown.
+- Target article length: 600-900 words.`,
   newsletterSingleStoryPromptTemplate:
     "Task: {{instruction}}. Context: {{currentStoryJson}}",
   newsletterSelectedArticlePromptTemplate: `

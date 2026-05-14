@@ -594,7 +594,14 @@ export async function POST(req: Request) {
 
     const headingStructureOverride =
       mode === "all" || mode === "content"
-        ? "Critical output format override: Use semantic HTML section headings with <h2> (and <h3> where needed) for major sections. Do NOT flatten headings into paragraphs."
+        ? [
+            "Critical output format override (must follow exactly):",
+            "Use semantic HTML section headings with <h2> (and <h3> where needed), not plain paragraph labels.",
+            "Section order must be:",
+            "HEADLINE, SUBHEAD, LEDE, WHAT HAPPENED, FACT BOX, THE BIGGER QUESTION, THE OTHER SIDE, WHAT HAPPENS NOW, WHAT WE STILL DON'T KNOW, SOURCE NOTE.",
+            "Include exactly 3 questions under WHAT WE STILL DON'T KNOW using list items.",
+            "Include this line in SOURCE NOTE: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+          ].join(" ")
         : "";
 
     const system = [
