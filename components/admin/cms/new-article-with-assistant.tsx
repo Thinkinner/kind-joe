@@ -185,6 +185,7 @@ Now write the article using these facts:
 Important field mapping for CMS:
 - HEADLINE means title.
 - Return title, slug, category, tags, excerpt, seoDescription.
+- Return at least 12 tags (12-20 preferred), specific and search-friendly.
 - Return article body in draftMarkdown as markdown.
 - Use markdown headings and bullets for the section structure.`,
       }),

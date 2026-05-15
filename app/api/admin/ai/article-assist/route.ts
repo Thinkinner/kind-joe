@@ -357,6 +357,83 @@ function normalizeToMarkdown(input: string): string {
   return normalized;
 }
 
+function normalizeTagValue(tag: string): string {
+  return String(tag)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildMinimumTags(input: {
+  title: string;
+  category: string;
+  sourceText: string;
+  existing: string[];
+  minCount?: number;
+}): string[] {
+  const minCount = input.minCount ?? 12;
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  const push = (value: string) => {
+    const normalized = normalizeTagValue(value);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  };
+
+  for (const tag of input.existing) push(tag);
+
+  // Derive a few candidates from title/category/source before generic fallbacks.
+  const titleTokens = String(input.title)
+    .split(/[^a-zA-Z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 4)
+    .slice(0, 8);
+  for (const token of titleTokens) push(token);
+
+  const categoryValue = String(input.category || "general");
+  push(categoryValue);
+
+  const sourceTokens = String(input.sourceText)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 5)
+    .slice(0, 20);
+  for (const token of sourceTokens) {
+    if (out.length >= minCount) break;
+    push(token);
+  }
+
+  const fallbackPool = [
+    "breaking-news",
+    "latest-updates",
+    "public-interest",
+    "accountability",
+    "news-analysis",
+    "community-impact",
+    "policy-watch",
+    "local-news",
+    "national-news",
+    "fact-check",
+    "developing-story",
+    "reader-update",
+    "current-events",
+    "investigation",
+    "editorial-coverage",
+    "newsroom-report",
+  ];
+  for (const candidate of fallbackPool) {
+    if (out.length >= minCount) break;
+    push(candidate);
+  }
+
+  return out;
+}
+
 function sanitizeCommentDraft(raw: string): string {
   const text = String(raw ?? "")
     .replace(/^["'`]+|["'`]+$/g, "")
@@ -714,6 +791,14 @@ export async function POST(req: Request) {
           ? formatDelayLabel(commentDelaySeconds)
           : "",
     };
+
+    result.tags = buildMinimumTags({
+      title: result.title,
+      category: result.category,
+      sourceText: safeText,
+      existing: result.tags,
+      minCount: 12,
+    });
 
     const rawDraftMarkdown = String(data.draftMarkdown ?? "").trim();
     const rawDraftHtml = String(data.draftHtml ?? "").trim();
