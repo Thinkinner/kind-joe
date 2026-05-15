@@ -69,31 +69,9 @@ export function ArticleAssistantPanel() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingComment, setIsGeneratingComment] = useState(false);
   const [assistResult, setAssistResult] = useState<AssistResult>(emptyResult);
-  const [promptSettings, setPromptSettings] = useState<Record<string, string>>({});
 
   const currentHtml = useMemo(() => assistResult.draftHtml.trim(), [assistResult.draftHtml]);
   const isGenerating = isRewriting || isWriting || isAnalyzing || isGeneratingComment;
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/prompt-settings", { cache: "no-store" });
-        if (!res.ok) return;
-        const payload = (await res.json()) as {
-          prompts?: Record<string, string>;
-        };
-        if (!cancelled && payload.prompts) {
-          setPromptSettings(payload.prompts);
-        }
-      } catch {
-        // Keep existing in-file defaults if prompt settings are unavailable.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const copyText = async (value: string, label: string) => {
     if (!value.trim()) return toast.message(`No ${label.toLowerCase()} to copy`);
@@ -161,7 +139,6 @@ export function ArticleAssistantPanel() {
           title: "",
           html: rewriteSource,
           customPrompt:
-            promptSettings.articleRewriteCustomPrompt ||
             "Treat input as a source article URL or raw article text. Produce a high-quality rewritten article with substantial original value. draftHtml must be at least 600 words (target 650-900 words) with short paragraphs (1-2 sentences each). Write a natural newsroom-style article, not a template. Cover what happened, why it matters, likely next steps, and reader/local relevance in flowing prose. Do not use labels like Hook/Quick recap/Your analysis/Actionable takeaway. Include source attribution naturally near the end. Return title, slug, category, tags (about 20), excerpt (at least 20 words), and draftHtml.",
         }),
       });
@@ -231,7 +208,6 @@ export function ArticleAssistantPanel() {
           title: assistResult.title,
           html: currentHtml,
           customPrompt:
-            promptSettings.articleSeoAnalysisCustomPrompt ||
             "Run a pre-publish newsroom risk review. Return seoScore (0-100), seoFeedback, tone, bias, and suggestions (array of short actions). Checklist: verify risky factual/superlative claims with exact source context, neutralize charged wording unless directly attributed, replace vague source attribution with specific outlet/document/transcript references, include one fair opposing-view/context line, and end with a concrete what-happens-next section.",
         }),
       });
@@ -271,7 +247,6 @@ export function ArticleAssistantPanel() {
           title: assistResult.title,
           html: sourceForComment,
           customPrompt:
-            promptSettings.articleHumanCommentCustomPrompt ||
             "Write one realistic reader comment with emotion and natural human phrasing.",
         }),
       });

@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { NextResponse } from "next/server";
-import { getEffectivePromptSettings } from "@/lib/ai/prompt-settings-store";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 
@@ -348,73 +347,22 @@ function summarizeForMode(input: string, maxChars: number): string {
 }
 
 function sanitizeDraftHtml(raw: string): string {
-  const normalizeDenseNumberedParagraphs = (html: string): string =>
-    html.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (full, inner) => {
-      const plain = String(inner ?? "")
-        .replace(/<br\s*\/?>/gi, " ")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (!/\b1\.\s+/.test(plain) || !/\b2\.\s+/.test(plain)) return full;
-
-      const matches = Array.from(plain.matchAll(/(\d+)\.\s+/g));
-      if (matches.length < 2) return full;
-      if (Number(matches[0][1]) !== 1) return full;
-
-      const items: string[] = [];
-      for (let i = 0; i < matches.length; i += 1) {
-        const current = matches[i];
-        const next = matches[i + 1];
-        const num = Number(current[1]);
-        if (Number.isNaN(num) || num !== i + 1) return full;
-        const start = (current.index ?? 0) + current[0].length;
-        const end = next?.index ?? plain.length;
-        const item = plain.slice(start, end).trim();
-        if (!item) return full;
-        items.push(item);
-      }
-
-      if (items.length < 2) return full;
-      return `<ol>${items.map((item) => `<li>${item}</li>`).join("")}</ol>`;
-    });
-
   const input = raw.trim();
   if (!input) return "";
-  // Preserve semantic tags (including headings) so TipTap can build proper JSON nodes.
-  const hasHtmlTag = /<[^>]+>/.test(input);
-  if (hasHtmlTag) return normalizeDenseNumberedParagraphs(input);
-
-  // If model returned markdown-style headings, convert them into semantic HTML headings.
-  const lines = input.split(/\r?\n/);
-  const markdownHeadingDetected = lines.some((line) =>
-    /^\s{0,3}#{1,6}\s+/.test(line),
-  );
-  if (markdownHeadingDetected) {
-    const converted = lines
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
-        if (headingMatch) {
-          const level = Math.min(6, Math.max(1, headingMatch[1].length));
-          const text = headingMatch[2].trim();
-          return `<h${level}>${text}</h${level}>`;
-        }
-        return `<p>${line}</p>`;
-      })
-      .join("");
-    return normalizeDenseNumberedParagraphs(converted);
-  }
+  // Convert heading tags into normal paragraph tags so generated drafts stay paragraph-first.
+  const normalized = input
+    .replace(/<h[1-6]\b[^>]*>/gi, "<p>")
+    .replace(/<\/h[1-6]>/gi, "</p>");
+  const hasHtmlTag = /<[^>]+>/.test(normalized);
+  if (hasHtmlTag) return normalized;
 
   // Fallback: if model returned plain text, convert paragraph breaks to simple HTML paragraphs.
-  const paragraphHtml = input
+  return normalized
     .split(/\n{2,}/)
     .map((chunk) => chunk.trim())
     .filter(Boolean)
     .map((chunk) => `<p>${chunk}</p>`)
     .join("");
-  return normalizeDenseNumberedParagraphs(paragraphHtml);
 }
 
 function sanitizeCommentDraft(raw: string): string {
@@ -554,7 +502,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
     const body = (await req.json()) as Record<string, unknown>;
     const title = body.title;
     const html = body.html;
@@ -581,34 +528,81 @@ export async function POST(req: Request) {
 
     const modeGuidance =
       mode === "predictionSuggestion"
-        ? promptSettings.articleAssistModePredictionSuggestion
+        ? [
+            "Generate one concise high-engagement prediction or poll idea from the article topic.",
+            "Return JSON only with: suggestionType, title, description, category, options, rationale.",
+            "suggestionType must be either 'prediction' or 'poll'.",
+            "options must be 2-6 short options suitable for voting.",
+            "Prefer 3-5 nuanced options; avoid default yes/no unless truly binary.",
+            "If the topic is discussion-oriented, write an engaging audience question instead of a strict forecast.",
+            "category should map to one of: general, politics, economy, technology, science, sports, world, culture.",
+            "Keep description and rationale brief (1-2 sentences each).",
+          ].join("\n")
         : mode === "humanComment"
-          ? promptSettings.articleAssistModeHumanComment
+          ? [
+              "Generate one human-like article comment as if from a normal reader.",
+              "Return JSON only with: comment, persona, emotion, engagementIntent.",
+              "comment must be 1-3 short sentences and <= 240 characters.",
+              "Sound natural, specific, and conversational; avoid robotic wording.",
+              "Reference one concrete point from the input article summary.",
+              "Do not use hashtags, promotional language, or CTA marketing phrases.",
+              "Do not claim firsthand events you cannot know; keep it as reader feedback/opinion.",
+              "persona should be one of: curious-reader, thoughtful-analyst, supportive-local, skeptical-observer, practical-voice.",
+              "emotion should be one of: curious, hopeful, concerned, skeptical, impressed, mixed.",
+              "engagementIntent should be one of: ask-question, share-reaction, add-context, cautious-take, encourage-discussion.",
+            ].join("\n")
           : mode === "socialCopy"
-            ? promptSettings.articleAssistModeSocialCopy
+            ? [
+                "Return JSON only with keys: headlines, tightHeadline, caption.",
+                "headlines must contain exactly 5 different short news-style headline options.",
+                "Keep each headline neutral, factual, concise, and non-sensational.",
+                "Avoid exaggeration, speculation, and emotionally loaded language.",
+                "Use clear attribution when needed (e.g., allegedly, reports say, officials say).",
+                "1-2 relevant emojis at the start are optional, but preferred when natural.",
+                "tightHeadline must be the shortest accurate version.",
+                "caption must start as one short teasing sentence and include the exact phrase: Details in bio.",
+                "After that sentence, include a horizontal divider line: ---",
+                "Then include this exact bold CTA line:",
+                "**Comment JOE to follow updates on this story and join our uncensored newsletter recap, always free.**",
+              ].join("\n")
         : mode === "all"
-          ? promptSettings.articleAssistModeAll
+          ? [
+              "When returning draftHtml, generate substantial original article content suitable for publication quality.",
+              "draftHtml must be at least 600 words; target 650-900 words for stronger depth.",
+              "Use short paragraphs: 1-2 sentences per paragraph only.",
+              "Write in a natural newsroom voice as one coherent article with a strong lead, contextual body, and clear close.",
+              "Cover: what happened, why it matters, what could happen next, and reader/local impact within the body flow.",
+              "Include at least 2 direct quotes with clear attribution when source material supports it.",
+              "Include at least 3 in-body attribution cues such as 'according to', 'reported by', or named official statements.",
+              "Include one short paragraph that fairly presents a skeptical or opposing perspective.",
+              "Do not output template labels like 'Hook:', 'Quick recap:', 'Your analysis:', 'Local/reader impact:', or 'Actionable takeaway:'.",
+              "Do not output bullet-point sections unless specifically required by the prompt.",
+              "Sources must include attribution language (for example: 'Source: Reuters ...', 'Source: official statement ...', 'Source: X post ...').",
+              "End with a short source attribution paragraph in natural prose.",
+              "Do not include headings/subheadings tags; use paragraph-only HTML.",
+              "Return clean HTML in draftHtml only (no markdown).",
+            ].join("\n")
           : mode === "content"
-            ? promptSettings.articleAssistModeContent
+            ? [
+                "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
+                "When expanding an article, preserve natural newsroom flow and improve depth, clarity, and context.",
+                "If structure is weak, rewrite toward: strong lead, factual context, implications, and closing takeaway.",
+                "Ensure the full draft reaches these publish checks: 2+ direct quotes, 3+ in-body attribution cues, and one opposing-view paragraph.",
+                "Avoid rigid templates and avoid labels like 'Hook:' or 'Quick recap:'.",
+                "Keep sources clearly attributed (Fox/X links or references).",
+                "Do not include headings or subheadings inside draftHtml.",
+                "Keep additions editorially useful, concise, and readable.",
+                "Return clean HTML in draftHtml only (no markdown).",
+              ].join("\n")
             : "";
 
-    const headingStructureOverride =
-      mode === "all" || mode === "content"
-        ? [
-            "Critical output format override (must follow exactly):",
-            "Use semantic HTML section headings with <h2> (and <h3> where needed), not plain paragraph labels.",
-            "Section order must be:",
-            "HEADLINE, SUBHEAD, LEDE, WHAT HAPPENED, FACT BOX, THE BIGGER QUESTION, THE OTHER SIDE, WHAT HAPPENS NOW, WHAT WE STILL DON'T KNOW, SOURCE NOTE.",
-            "Include exactly 3 questions under WHAT WE STILL DON'T KNOW using list items.",
-            "Include this line in SOURCE NOTE: All charges are allegations — [Name] is presumed innocent until proven guilty.",
-          ].join(" ")
-        : "";
-
     const system = [
-      promptSettings.articleAssistSystemBase,
+      "You are an SEO assistant for a news/blog CMS.",
+      "Return JSON matching the schema only.",
+      "Be neutral and factual; do not invent concrete statistics.",
+      "Tags: lowercase kebab-case, specific, 5–12 items unless mode says otherwise.",
       `Mode: ${mode}.`,
       modeGuidance,
-      headingStructureOverride,
       customPrompt ? `Extra instructions: ${customPrompt}` : "",
     ]
       .filter(Boolean)
