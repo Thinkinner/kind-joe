@@ -75,7 +75,8 @@ export const articles = pgTable(
     readingMinutes: integer("reading_minutes"),
     isDraft: boolean("is_draft").notNull().default(true),
 
-    content: jsonb("content").notNull(),
+    content: jsonb("content"),
+    contentMarkdown: text("content_markdown"),
     contentHtml: text("content_html"),
   },
   (t) => ({
@@ -107,27 +108,6 @@ export const articlePageviews = pgTable(
     articleIdx: index("pageviews_article_id_idx").on(t.articleId),
     sourceIdx: index("pageviews_traffic_source_idx").on(t.trafficSource),
     dateIdx: index("pageviews_viewed_at_idx").on(t.viewedAt),
-  }),
-);
-
-export const visitorJourneyEvents = pgTable(
-  "visitor_journey_events",
-  {
-    id: serial("id").primaryKey(),
-    sessionId: varchar("session_id", { length: 128 }).notNull(),
-    visitorId: varchar("visitor_id", { length: 128 }),
-    path: text("path").notNull(),
-    query: text("query"),
-    referrer: text("referrer"),
-    userAgent: text("user_agent"),
-    viewedAt: timestamp("viewed_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (t) => ({
-    sessionIdx: index("visitor_journey_session_idx").on(t.sessionId),
-    visitorIdx: index("visitor_journey_visitor_idx").on(t.visitorId),
-    viewedAtIdx: index("visitor_journey_viewed_at_idx").on(t.viewedAt),
   }),
 );
 

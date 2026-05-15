@@ -9,8 +9,7 @@ type ArticleTransparencyPanelProps = {
   createdAt: MaybeDate;
   updatedAt: MaybeDate;
   seo: unknown;
-  contentHtml?: string | null;
-  content?: unknown;
+  markdown?: string | null;
   sourceLinkClassName?: string;
 };
 
@@ -106,8 +105,7 @@ export default function ArticleTransparencyPanel({
   createdAt,
   updatedAt,
   seo,
-  contentHtml,
-  content,
+  markdown,
   sourceLinkClassName = "text-red-600 hover:underline",
 }: ArticleTransparencyPanelProps) {
   const publishedReference = parseDate(publishedAt) ?? parseDate(publishAt) ?? parseDate(createdAt);
@@ -119,8 +117,7 @@ export default function ArticleTransparencyPanel({
   );
 
   const textCandidates = [
-    ...(contentHtml ? extractUrlsFromText(contentHtml) : []),
-    ...extractUrlsFromText(JSON.stringify(content ?? {})),
+    ...(markdown ? extractUrlsFromText(markdown) : []),
     ...extractSeoSourceUrls(seo),
   ];
 

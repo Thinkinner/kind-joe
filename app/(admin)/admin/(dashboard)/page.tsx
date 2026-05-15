@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { articlePageviews, articles, visitorJourneyEvents } from "@/db/schema";
+import { articlePageviews, articles } from "@/db/schema";
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -111,27 +111,22 @@ export default async function AdminDashboardPage({
   const period = getPeriodWindow(range, now);
   const chartDays = range === "today" ? 1 : range === "week" ? 7 : range === "month" ? 30 : 30;
 
-  const currentVisitorWhere =
-    period.currentStart && range !== "all"
-      ? and(
-          gte(visitorJourneyEvents.viewedAt, period.currentStart),
-          lt(visitorJourneyEvents.viewedAt, period.currentEnd),
-        )
-      : undefined;
-  const previousVisitorWhere =
-    period.previousStart && period.previousEnd
-      ? and(
-          gte(visitorJourneyEvents.viewedAt, period.previousStart),
-          lt(visitorJourneyEvents.viewedAt, period.previousEnd),
-        )
-      : undefined;
-  const currentArticleWhere =
+  const currentPageviewWhere =
     period.currentStart && range !== "all"
       ? and(
           gte(articlePageviews.viewedAt, period.currentStart),
           lt(articlePageviews.viewedAt, period.currentEnd),
         )
       : undefined;
+  const previousPageviewWhere =
+    period.previousStart && period.previousEnd
+      ? and(
+          gte(articlePageviews.viewedAt, period.previousStart),
+          lt(articlePageviews.viewedAt, period.previousEnd),
+        )
+      : undefined;
+  const currentArticleWhere =
+    currentPageviewWhere;
 
   const [
     currentStats,
@@ -139,18 +134,17 @@ export default async function AdminDashboardPage({
     topArticles,
     currentBounds,
     previousBounds,
-    deviceStats,
   ] = await Promise.all([
     db.select({
       visits: sql<number>`COUNT(*)`,
-      sessions: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.sessionId})`,
-      visitors: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.visitorId})`
-    }).from(visitorJourneyEvents).where(currentVisitorWhere),
+      sessions: sql<number>`COUNT(DISTINCT ${articlePageviews.visitorId})`,
+      visitors: sql<number>`COUNT(DISTINCT ${articlePageviews.visitorId})`
+    }).from(articlePageviews).where(currentPageviewWhere),
     db.select({
       visits: sql<number>`COUNT(*)`,
-      sessions: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.sessionId})`,
-      visitors: sql<number>`COUNT(DISTINCT ${visitorJourneyEvents.visitorId})`
-    }).from(visitorJourneyEvents).where(previousVisitorWhere),
+      sessions: sql<number>`COUNT(DISTINCT ${articlePageviews.visitorId})`,
+      visitors: sql<number>`COUNT(DISTINCT ${articlePageviews.visitorId})`
+    }).from(articlePageviews).where(previousPageviewWhere),
     db.select({
       id: articles.id,
       title: articles.title,
@@ -161,47 +155,13 @@ export default async function AdminDashboardPage({
       .where(currentArticleWhere)
       .groupBy(articles.id).orderBy(desc(sql`COUNT(${articlePageviews.id})`)).limit(top),
     db.select({
-      minViewedAt: sql<Date | null>`MIN(${visitorJourneyEvents.viewedAt})`,
-      maxViewedAt: sql<Date | null>`MAX(${visitorJourneyEvents.viewedAt})`,
-    }).from(visitorJourneyEvents).where(currentVisitorWhere),
+      minViewedAt: sql<Date | null>`MIN(${articlePageviews.viewedAt})`,
+      maxViewedAt: sql<Date | null>`MAX(${articlePageviews.viewedAt})`,
+    }).from(articlePageviews).where(currentPageviewWhere),
     db.select({
-      minViewedAt: sql<Date | null>`MIN(${visitorJourneyEvents.viewedAt})`,
-      maxViewedAt: sql<Date | null>`MAX(${visitorJourneyEvents.viewedAt})`,
-    }).from(visitorJourneyEvents).where(previousVisitorWhere),
-    db.select({
-      mobile: sql<number>`SUM(CASE
-        WHEN (
-          ${visitorJourneyEvents.userAgent} ILIKE '%mobile%' OR
-          ${visitorJourneyEvents.userAgent} ILIKE '%iphone%' OR
-          ${visitorJourneyEvents.userAgent} ILIKE '%android%'
-        )
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%ipad%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%tablet%'
-        THEN 1 ELSE 0 END)::int`,
-      tablet: sql<number>`SUM(CASE
-        WHEN (
-          ${visitorJourneyEvents.userAgent} ILIKE '%ipad%' OR
-          ${visitorJourneyEvents.userAgent} ILIKE '%tablet%' OR
-          ${visitorJourneyEvents.userAgent} ILIKE '%kindle%' OR
-          ${visitorJourneyEvents.userAgent} ILIKE '%sm-t%'
-        )
-        THEN 1 ELSE 0 END)::int`,
-      desktop: sql<number>`SUM(CASE
-        WHEN ${visitorJourneyEvents.userAgent} IS NOT NULL
-        AND ${visitorJourneyEvents.userAgent} <> ''
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%mobile%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%iphone%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%android%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%ipad%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%tablet%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%kindle%'
-        AND ${visitorJourneyEvents.userAgent} NOT ILIKE '%sm-t%'
-        THEN 1 ELSE 0 END)::int`,
-      other: sql<number>`SUM(CASE
-        WHEN ${visitorJourneyEvents.userAgent} IS NULL
-        OR ${visitorJourneyEvents.userAgent} = ''
-        THEN 1 ELSE 0 END)::int`,
-    }).from(visitorJourneyEvents).where(currentVisitorWhere),
+      minViewedAt: sql<Date | null>`MIN(${articlePageviews.viewedAt})`,
+      maxViewedAt: sql<Date | null>`MAX(${articlePageviews.viewedAt})`,
+    }).from(articlePageviews).where(previousPageviewWhere),
   ]);
 
   const totalVisits = currentStats[0]?.visits ?? 0;
@@ -240,23 +200,6 @@ export default async function AdminDashboardPage({
     range === "all" ? noComparison : formatTrendState(totalSessions, previousSessions);
   const avgDailyTrend =
     range === "all" ? noComparison : formatTrendState(avgDaily, previousAvgDaily);
-  const deviceCounts = {
-    mobile: Math.max(0, Number(deviceStats[0]?.mobile ?? 0)),
-    desktop: Math.max(0, Number(deviceStats[0]?.desktop ?? 0)),
-    tablet: Math.max(0, Number(deviceStats[0]?.tablet ?? 0)),
-    other: Math.max(0, Number(deviceStats[0]?.other ?? 0)),
-  };
-  const deviceTotal =
-    deviceCounts.mobile +
-    deviceCounts.desktop +
-    deviceCounts.tablet +
-    deviceCounts.other;
-  const deviceRows = [
-    { key: "desktop", label: "Desktop", value: deviceCounts.desktop },
-    { key: "mobile", label: "Mobile", value: deviceCounts.mobile },
-    { key: "tablet", label: "Tablet", value: deviceCounts.tablet },
-    { key: "other", label: "Other/Unknown", value: deviceCounts.other },
-  ] as const;
   const topArticleSharePercent =
     topArticles.length > 0 && totalVisits > 0
       ? Math.round((topArticles[0].views / totalVisits) * 100)
@@ -389,36 +332,12 @@ export default async function AdminDashboardPage({
 
           <div className="rounded-xl border border-border bg-card p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
              <h2 className="font-bold text-foreground mb-4">Device Distribution</h2>
-             {deviceTotal > 0 ? (
-               <div className="space-y-3">
-                 {deviceRows.map((row) => {
-                   const pct = Math.round((row.value / deviceTotal) * 100);
-                   return (
-                     <div key={row.key} className="space-y-1">
-                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                         <span>{row.label}</span>
-                         <span className="font-medium">
-                           {row.value.toLocaleString()} ({pct}%)
-                         </span>
-                       </div>
-                       <div className="h-1.5 w-full rounded-full bg-muted">
-                         <div
-                           className="h-full rounded-full bg-indigo-500"
-                           style={{ width: `${pct}%` }}
-                         />
-                       </div>
-                     </div>
-                   );
-                 })}
-               </div>
-             ) : (
-               <div className="rounded-lg border border-dashed border-border bg-muted px-4 py-5">
-                 <p className="text-sm font-medium text-foreground">No device data yet</p>
-                 <p className="mt-1 text-xs text-muted-foreground">
-                   Device metrics will appear once traffic is tracked for this period.
-                 </p>
-               </div>
-             )}
+             <div className="rounded-lg border border-dashed border-border bg-muted px-4 py-5">
+               <p className="text-sm font-medium text-foreground">Device tracking disabled</p>
+               <p className="mt-1 text-xs text-muted-foreground">
+                 Visitor-journey/device collection was removed for performance.
+               </p>
+             </div>
           </div>
         </section>
 

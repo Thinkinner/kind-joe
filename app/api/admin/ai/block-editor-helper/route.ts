@@ -22,7 +22,7 @@ const layoutSchema = {
 };
 
 export async function POST(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLES);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },

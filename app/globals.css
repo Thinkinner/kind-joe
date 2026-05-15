@@ -264,60 +264,307 @@
   }
 }
 
-/* Public article typography (single source of truth for spacing/font rhythm). */
-.tiptap.article-prose {
-  color: rgb(38 38 38);
+/* Public article typography (markdown flow system). */
+.article-content {
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.85;
+  color: oklch(0.24 0.008 255);
 }
 
-.tiptap.article-prose :where(p, li) {
-  font-family: ui-serif, Georgia, Cambria, Times, serif;
-  font-size: 1.01rem;
-  line-height: 1.78;
-  color: rgb(40 40 40);
+.article-content :where(p, li) {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.03rem, 1rem + 0.22vw, 1.12rem);
+  line-height: 1.9;
+  color: oklch(0.27 0.008 255);
 }
 
-.tiptap.article-prose :where(ul, ol) {
-  margin-top: 1.4rem;
-  margin-bottom: 1.4rem;
-  padding-left: 1.7rem;
+.article-content .article-flow > * + *,
+.article-content .article-flow .article-flow-content > * + * {
+  margin-top: 2rem;
 }
 
-.tiptap.article-prose li {
-  margin-top: 0.85rem;
-  margin-bottom: 0.85rem;
+.article-content .article-flow > p + p,
+.article-content .article-flow .article-flow-content > p + p {
+  margin-top: 1.35rem;
 }
 
-.tiptap.article-prose p {
-  margin-top: 1.4rem;
-  margin-bottom: 1.4rem;
-}
-
-.tiptap.article-prose :where(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--font-google-sans), ui-sans-serif, system-ui, sans-serif;
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  margin: 0;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.035em;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: oklch(0.18 0.008 255);
+}
+
+.article-content h2 {
+  font-size: clamp(1.35rem, 1.25rem + 0.52vw, 1.58rem);
+}
+
+.article-content h3 {
+  margin-top: 4.5rem !important;
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.14rem, 1.08rem + 0.25vw, 1.3rem);
+}
+
+.article-content .article-flow > :where(h1, h2, h3, h4, h5, h6) + *,
+.article-content .article-flow .article-flow-content > :where(h1, h2, h3, h4, h5, h6) + * {
+  margin-top: 1rem;
+}
+
+.article-content .article-flow > :where(ul, ol),
+.article-content .article-flow .article-flow-content > :where(ul, ol) {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  padding-left: 1.5rem;
+}
+
+.article-content li + li {
+  margin-top: 1rem;
+}
+
+.article-content ul {
+  list-style-type: disc;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+}
+
+.article-content :where(ul li)::marker,
+.article-content :where(ol li)::marker {
+  color: oklch(0.45 0.02 255);
+}
+
+.article-content a {
+  color: oklch(0.5 0.19 25);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklab, oklch(0.5 0.19 25) 72%, white);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.15em;
+}
+
+.article-content a:hover {
+  color: oklch(0.44 0.19 25);
+}
+
+.article-content blockquote {
+  margin-top: 1.15rem;
+  margin-bottom: 1.2rem;
+  padding: 0.5rem 1rem;
+  border-left: 4px solid oklch(0.59 0.19 25);
+  background: oklch(0.968 0.003 255);
+  border-radius: 0;
+}
+
+.article-content blockquote :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0 !important;
+  margin-bottom: 0.35rem;
+  text-transform: none;
+  font-size: clamp(1.02rem, 0.98rem + 0.16vw, 1.14rem);
+}
+
+/* Legacy article typography (kept temporarily). */
+.article-markdown-prose {
+  color: oklch(0.24 0.008 255);
+}
+
+.article-markdown-prose .article-flow > * + * {
+  margin-top: 1.35rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > * + * {
+  margin-top: 1.35rem;
+}
+
+.article-markdown-prose .article-flow > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.article-markdown-prose .article-flow > p + p {
+  margin-top: 1.55rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > p + p {
+  margin-top: 1.55rem;
+}
+
+.article-markdown-prose .article-flow > :where(h1, h2) {
+  margin-top: 3.15rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > :where(h1, h2) {
+  margin-top: 3.15rem;
+}
+
+.article-markdown-prose .article-flow > h3 {
+  margin-top: 2.6rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > h3 {
+  margin-top: 2.6rem;
+}
+
+.article-markdown-prose .article-flow > :where(h4, h5, h6) {
+  margin-top: 2.4rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > :where(h4, h5, h6) {
+  margin-top: 2.4rem;
+}
+
+.article-markdown-prose .article-flow > :where(h1, h2, h3, h4, h5, h6) + p {
+  margin-top: 1.15rem;
+}
+
+.article-markdown-prose .article-flow .article-flow-content > :where(h1, h2, h3, h4, h5, h6) + p {
+  margin-top: 1.15rem;
+}
+
+.article-markdown-prose :where(p, li) {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.03rem, 1rem + 0.22vw, 1.12rem);
+  line-height: 1.94;
+  color: oklch(0.27 0.008 255);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.article-markdown-prose :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 780;
+  text-transform: none;
+  letter-spacing: -0.018em;
   line-height: 1.22;
-  color: rgb(24 24 27 / 0.9);
+  color: oklch(0.18 0.008 255);
+  text-wrap: balance;
 }
 
-.tiptap.article-prose h1 {
-  margin-top: 3.6rem;
-  margin-bottom: 0.8rem;
+.article-markdown-prose h1 {
+  font-size: 1.95rem;
 }
 
-.tiptap.article-prose h2 {
-  margin-top: 3.2rem;
+.article-markdown-prose h2 {
+  font-size: clamp(1.35rem, 1.25rem + 0.52vw, 1.58rem);
+}
+
+.article-markdown-prose h3 {
+  font-size: clamp(1.14rem, 1.08rem + 0.25vw, 1.3rem);
+}
+
+.article-markdown-prose :where(ul, ol) {
+  margin-top: 1.1rem;
+  margin-bottom: 2.1rem;
+  padding-left: 1.35rem;
+}
+
+.article-markdown-prose .article-flow > :where(h1, h2, h3, h4, h5, h6) + :where(ul, ol),
+.article-markdown-prose .article-flow .article-flow-content > :where(h1, h2, h3, h4, h5, h6) + :where(ul, ol) {
+  margin-top: 1rem;
+}
+
+.article-markdown-prose .article-flow > :where(ul, ol) + :where(h1, h2, h3, h4, h5, h6),
+.article-markdown-prose .article-flow .article-flow-content > :where(ul, ol) + :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: 2.45rem;
+}
+
+.article-markdown-prose .article-flow > :where(ul, ol) + p,
+.article-markdown-prose .article-flow .article-flow-content > :where(ul, ol) + p {
+  margin-top: 1.15rem;
+}
+
+.article-markdown-prose ul {
+  list-style-type: disc;
+}
+
+.article-markdown-prose ol {
+  list-style-type: decimal;
+}
+
+.article-markdown-prose :where(ul > li, ol > li) {
+  padding-left: 0.2rem;
+}
+
+.article-markdown-prose :where(li) {
+  margin-top: 0.75rem;
   margin-bottom: 0.75rem;
 }
 
-.tiptap.article-prose h3 {
-  margin-top: 2.8rem;
-  margin-bottom: 0.65rem;
+.article-markdown-prose :where(ul li)::marker,
+.article-markdown-prose :where(ol li)::marker {
+  color: oklch(0.45 0.02 255);
 }
 
-.tiptap.article-prose h4 {
-  margin-top: 2.3rem;
-  margin-bottom: 0.55rem;
+.article-markdown-prose blockquote {
+  margin-top: 1.05rem;
+  margin-bottom: 1.2rem;
+  padding: 0.45rem 1rem 0.5rem;
+  border-left: 4px solid oklch(0.59 0.19 25);
+  background: oklch(0.968 0.003 255);
+  color: oklch(0.2 0.008 255);
+  border-radius: 0;
+  font-style: normal;
+}
+
+.article-markdown-prose blockquote p {
+  margin: 0.1rem 0;
+  font-style: normal;
+  font-size: clamp(1.02rem, 0.98rem + 0.16vw, 1.14rem);
+  font-weight: 620;
+  line-height: 1.55;
+}
+
+.article-markdown-prose blockquote :where(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-size: clamp(1.02rem, 0.98rem + 0.16vw, 1.14rem);
+  font-weight: 620;
+  line-height: 1.55;
+  text-transform: none;
+  letter-spacing: -0.01em;
+}
+
+.article-markdown-prose blockquote :where(em, i) {
+  font-style: normal;
+}
+
+.article-markdown-prose blockquote :where(strong, b) {
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.article-markdown-prose :where(a) {
+  color: oklch(0.5 0.19 25);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklab, oklch(0.5 0.19 25) 72%, white);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.15em;
+  transition: color 120ms ease;
+}
+
+.article-markdown-prose :where(a:hover) {
+  color: oklch(0.44 0.19 25);
+}
+
+.article-markdown-prose :where(strong, b) {
+  color: oklch(0.18 0.008 255);
+}
+
+.article-markdown-prose :where(hr) {
+  margin-top: 2.2rem;
+  margin-bottom: 2rem;
 }
 
 /* === Infinite horizontal ticker for stocks === */

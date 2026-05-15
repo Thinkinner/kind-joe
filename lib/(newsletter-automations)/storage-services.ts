@@ -297,9 +297,9 @@ export const publishNewsletterToArticles = async (draftId: string) => {
     }
     const incompleteCount = newsletterArticles.filter((item) => {
       const titleOk = typeof item?.title === "string" && item.title.trim().length > 0;
-      const htmlOk =
-        typeof item?.contentHtml === "string" && item.contentHtml.trim().length >= 50;
-      return !titleOk || !htmlOk;
+      const markdownOk =
+        typeof item?.contentMarkdown === "string" && item.contentMarkdown.trim().length >= 50;
+      return !titleOk || !markdownOk;
     }).length;
     if (incompleteCount > 0) {
       throw new Error(
@@ -349,12 +349,6 @@ export const publishNewsletterToArticles = async (draftId: string) => {
         );
         const seoKeywords = normalizedTags.map((tag) => tag.name);
 
-        const contentJson =
-          item.content && typeof item.content === "object"
-            ? item.content
-            : htmlToMinimalTiptapDoc(item.contentHtml || item.excerpt || "");
-
-        const articleId = newArticleId();
         await tx.insert(articles).values({
           id: articleId,
           slug: finalSlug,
@@ -363,7 +357,7 @@ export const publishNewsletterToArticles = async (draftId: string) => {
           coverImageUrl: item.coverImageUrl || null,
           category: item.category || "General",
           authorId,
-          content: contentJson as object,
+          contentMarkdown: item.contentMarkdown,
           contentHtml: item.contentHtml || "",
           seo: {
             title: item.seo?.title || item.title,

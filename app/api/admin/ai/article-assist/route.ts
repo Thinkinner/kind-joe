@@ -2,6 +2,8 @@ import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { NextResponse } from "next/server";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -30,10 +32,10 @@ const ARTICLE_ALL_SCHEMA: Schema = {
       items: { type: Type.STRING },
     },
     excerpt: { type: Type.STRING },
-    draftHtml: { type: Type.STRING },
+    draftMarkdown: { type: Type.STRING },
     seoDescription: { type: Type.STRING },
   },
-  required: ["title", "slug", "category", "tags", "excerpt", "draftHtml"],
+  required: ["title", "slug", "category", "tags", "excerpt", "draftMarkdown"],
 };
 
 const PREDICTION_SUGGESTION_SCHEMA: Schema = {
@@ -116,8 +118,8 @@ const SEO_SCHEMA: Schema = {
 
 const CONTENT_SCHEMA: Schema = {
   type: Type.OBJECT,
-  properties: { draftHtml: { type: Type.STRING } },
-  required: ["draftHtml"],
+  properties: { draftMarkdown: { type: Type.STRING } },
+  required: ["draftMarkdown"],
 };
 
 const TITLE_SCHEMA: Schema = {
@@ -346,23 +348,13 @@ function summarizeForMode(input: string, maxChars: number): string {
   return input.slice(0, maxChars);
 }
 
-function sanitizeDraftHtml(raw: string): string {
-  const input = raw.trim();
-  if (!input) return "";
-  // Convert heading tags into normal paragraph tags so generated drafts stay paragraph-first.
-  const normalized = input
-    .replace(/<h[1-6]\b[^>]*>/gi, "<p>")
-    .replace(/<\/h[1-6]>/gi, "</p>");
-  const hasHtmlTag = /<[^>]+>/.test(normalized);
-  if (hasHtmlTag) return normalized;
+function looksLikeHtml(input: string): boolean {
+  return /<[^>]+>/.test(input);
+}
 
-  // Fallback: if model returned plain text, convert paragraph breaks to simple HTML paragraphs.
-  return normalized
-    .split(/\n{2,}/)
-    .map((chunk) => chunk.trim())
-    .filter(Boolean)
-    .map((chunk) => `<p>${chunk}</p>`)
-    .join("");
+function normalizeToMarkdown(input: string): string {
+  const normalized = normalizeArticleMarkdown(universalParser(input)).trim();
+  return normalized;
 }
 
 function sanitizeCommentDraft(raw: string): string {
@@ -485,7 +477,7 @@ function parseGeneratedJson<T>(rawText: string): T {
 }
 
 export async function POST(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLE_ASSISTANT);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLES);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },
@@ -509,6 +501,8 @@ export async function POST(req: Request) {
     const inspectOnly = body.inspectOnly === true;
     const customPrompt = String(body.customPrompt ?? "");
     const mode = isAssistMode(body.mode) ? body.mode : "all";
+    const usesCustomDraftPrompt =
+      customPrompt.trim().length > 0 && (mode === "all" || mode === "content");
 
     const resolvedInput = await resolveAssistInput(String(html ?? ""));
     if (inspectOnly) {
@@ -566,9 +560,11 @@ export async function POST(req: Request) {
                 "**Comment JOE to follow updates on this story and join our uncensored newsletter recap, always free.**",
               ].join("\n")
         : mode === "all"
-          ? [
-              "When returning draftHtml, generate substantial original article content suitable for publication quality.",
-              "draftHtml must be at least 600 words; target 650-900 words for stronger depth.",
+          ? usesCustomDraftPrompt
+            ? ""
+            : [
+              "When returning draftMarkdown, generate substantial original article content suitable for publication quality.",
+              "draftMarkdown must be at least 600 words; target 650-900 words for stronger depth.",
               "Use short paragraphs: 1-2 sentences per paragraph only.",
               "Write in a natural newsroom voice as one coherent article with a strong lead, contextual body, and clear close.",
               "Cover: what happened, why it matters, what could happen next, and reader/local impact within the body flow.",
@@ -579,20 +575,20 @@ export async function POST(req: Request) {
               "Do not output bullet-point sections unless specifically required by the prompt.",
               "Sources must include attribution language (for example: 'Source: Reuters ...', 'Source: official statement ...', 'Source: X post ...').",
               "End with a short source attribution paragraph in natural prose.",
-              "Do not include headings/subheadings tags; use paragraph-only HTML.",
-              "Return clean HTML in draftHtml only (no markdown).",
+              "Return markdown in draftMarkdown only.",
             ].join("\n")
           : mode === "content"
-            ? [
-                "When returning draftHtml, prefer short paragraphs (1-2 sentences each).",
+            ? usesCustomDraftPrompt
+              ? ""
+              : [
+                "When returning draftMarkdown, prefer short paragraphs (1-2 sentences each).",
                 "When expanding an article, preserve natural newsroom flow and improve depth, clarity, and context.",
                 "If structure is weak, rewrite toward: strong lead, factual context, implications, and closing takeaway.",
                 "Ensure the full draft reaches these publish checks: 2+ direct quotes, 3+ in-body attribution cues, and one opposing-view paragraph.",
                 "Avoid rigid templates and avoid labels like 'Hook:' or 'Quick recap:'.",
                 "Keep sources clearly attributed (Fox/X links or references).",
-                "Do not include headings or subheadings inside draftHtml.",
                 "Keep additions editorially useful, concise, and readable.",
-                "Return clean HTML in draftHtml only (no markdown).",
+                "Return markdown in draftMarkdown only.",
               ].join("\n")
             : "";
 
@@ -699,7 +695,8 @@ export async function POST(req: Request) {
       suggestedCoverPrompt: String(data.suggestedCoverPrompt ?? ""),
       readingMinutes:
         typeof data.readingMinutes === "number" ? data.readingMinutes : undefined,
-      draftHtml: sanitizeDraftHtml(String(data.draftHtml ?? "")),
+      draftMarkdown: "",
+      draftHtml: "",
       draftBlocks: data.draftBlocks,
       title: String(data.title ?? ""),
       socialHeadlines: Array.isArray(data.headlines)
@@ -717,6 +714,19 @@ export async function POST(req: Request) {
           ? formatDelayLabel(commentDelaySeconds)
           : "",
     };
+
+    const rawDraftMarkdown = String(data.draftMarkdown ?? "").trim();
+    const rawDraftHtml = String(data.draftHtml ?? "").trim();
+
+    if (rawDraftMarkdown) {
+      result.draftMarkdown = looksLikeHtml(rawDraftMarkdown)
+        ? normalizeToMarkdown(rawDraftMarkdown)
+        : normalizeArticleMarkdown(rawDraftMarkdown).trim();
+    } else if (rawDraftHtml) {
+      result.draftMarkdown = normalizeToMarkdown(rawDraftHtml);
+    }
+
+    result.draftHtml = "";
 
     return NextResponse.json(result);
   } catch (err: unknown) {

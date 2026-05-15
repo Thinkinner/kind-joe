@@ -1,89 +1,113 @@
 "use client";
 
-import { useCallback } from "react";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import ImageExt from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
+import LinkExt from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import Youtube from "@tiptap/extension-youtube";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { marked } from "marked";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import {
   Bold,
+  Code2,
+  Heading2,
+  Heading3,
+  ImagePlus,
   Italic,
+  Link2,
   List,
   ListOrdered,
   Quote,
-  Redo2,
-  Strikethrough,
-  Undo2,
-  ImageIcon,
-  Link2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const defaultDoc = {
-  type: "doc" as const,
-  content: [{ type: "paragraph" as const }],
-};
 
 export type AdminBlockEditorProps = {
-  initialDoc?: object;
+  initialMarkdown?: string;
   initialHtml?: string;
   className?: string;
-  onChange?: (payload: { json: object; html: string }) => void;
-  onEditorReady?: (editor: Editor) => void;
+  onChange?: (payload: { markdown: string; html: string }) => void;
 };
 
 export function AdminBlockEditor({
-  initialDoc,
+  initialMarkdown,
   initialHtml,
   className,
   onChange,
-  onEditorReady,
 }: AdminBlockEditorProps) {
+  const hasUserEditedRef = useRef(false);
+  const startingHtml = useMemo(() => {
+    if (initialHtml?.trim()) {
+      return initialHtml;
+    }
+    if (initialMarkdown?.trim()) {
+      const parsed = marked.parse(normalizeArticleMarkdown(initialMarkdown));
+      return typeof parsed === "string" ? parsed : "";
+    }
+    return "";
+  }, [initialHtml, initialMarkdown]);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3, 4] },
       }),
-      Link.configure({ openOnClick: false, autolink: true }),
+      LinkExt.configure({ openOnClick: false, autolink: true }),
       ImageExt.configure({ inline: false }),
       Underline,
       Youtube.configure({ width: 640, height: 360 }),
     ],
-    content: initialDoc ?? defaultDoc,
+    content: startingHtml || "<p></p>",
     editorProps: {
       attributes: {
         class:
           [
-            "min-h-[420px] focus:outline-none px-5 py-5 text-[18px] leading-8 text-foreground",
-            // Base typography (do not depend on external `prose` plugin styles).
-            "[&_p]:my-[1.4rem] [&_p]:text-[1.01rem] [&_p]:leading-[1.78] [&_p]:text-foreground [&_p]:font-[ui-serif,Georgia,Cambria,Times,serif]",
-            "[&_h2]:mt-[3.2rem] [&_h2]:mb-[0.75rem] [&_h2]:text-[1.26rem] sm:[&_h2]:text-[1.36rem] [&_h2]:font-semibold [&_h2]:tracking-[0.04em] [&_h2]:uppercase [&_h2]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h2]:text-foreground",
-            "[&_h3]:mt-[2.8rem] [&_h3]:mb-[0.65rem] [&_h3]:text-[1.12rem] sm:[&_h3]:text-[1.18rem] [&_h3]:font-semibold [&_h3]:tracking-[0.035em] [&_h3]:uppercase [&_h3]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h3]:text-foreground",
-            "[&_h4]:mt-[2.3rem] [&_h4]:mb-[0.55rem] [&_h4]:text-[0.99rem] sm:[&_h4]:text-[1.03rem] [&_h4]:font-semibold [&_h4]:tracking-[0.03em] [&_h4]:uppercase [&_h4]:font-[var(--font-google-sans),ui-sans-serif,system-ui] [&_h4]:text-foreground",
-            "[&_ul]:my-[1.4rem] [&_ul]:list-disc [&_ul]:pl-[1.7rem]",
-            "[&_ol]:my-[1.4rem] [&_ol]:list-decimal [&_ol]:pl-[1.7rem]",
-            "[&_li]:my-[0.85rem] [&_li]:leading-[1.78] [&_li]:text-foreground [&_li]:font-[ui-serif,Georgia,Cambria,Times,serif]",
-            "[&_blockquote]:my-7 [&_blockquote]:border-l-2 [&_blockquote]:border-rose-300 [&_blockquote]:pl-5 [&_blockquote]:text-foreground",
-            "[&_a]:text-rose-700 dark:[&_a]:text-rose-300 [&_a]:underline [&_a]:underline-offset-2",
-            "[&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md",
-            "[&_iframe]:my-6 [&_iframe]:max-w-full [&_iframe]:rounded-md",
+            "min-h-[520px] focus:outline-none px-5 py-5 bg-background",
+            "text-[1.03rem] leading-8 text-foreground font-[var(--font-sans),ui-sans-serif,system-ui,sans-serif]",
+            "[&_p]:my-4 [&_p]:leading-8",
+            "[&_h2]:mt-9 [&_h2]:mb-3 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:tracking-tight",
+            "[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:tracking-tight",
+            "[&_h4]:mt-6 [&_h4]:mb-2 [&_h4]:text-xl [&_h4]:font-semibold",
+            "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6",
+            "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6",
+            "[&_li]:my-2",
+            "[&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-rose-400/70 [&_blockquote]:bg-transparent [&_blockquote]:pl-4 [&_blockquote]:pr-0 [&_blockquote]:py-0",
+            "[&_blockquote_p]:my-2",
+            "[&_a]:text-rose-700 [&_a]:underline [&_a]:underline-offset-2",
+            "[&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg",
+            "[&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-950 [&_pre]:p-4 [&_pre]:text-slate-100",
           ].join(" "),
       },
     },
     onUpdate: ({ editor: ed }) => {
-      onChange?.({ json: ed.getJSON() as object, html: ed.getHTML() });
+      hasUserEditedRef.current = true;
+      const html = ed.getHTML();
+      onChange?.({
+        markdown: universalParser(ed.getJSON()),
+        html,
+      });
     },
     onCreate: ({ editor: ed }) => {
-      if (initialHtml?.trim()) {
-        ed.commands.setContent(initialHtml);
-      }
-      onEditorReady?.(ed);
+      const html = ed.getHTML();
+      onChange?.({
+        markdown: universalParser(ed.getJSON()),
+        html,
+      });
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    if (!startingHtml.trim()) return;
+    if (hasUserEditedRef.current) return;
+    if (editor.isFocused) return;
+    if (startingHtml === editor.getHTML()) return;
+    editor.commands.setContent(startingHtml, false);
+  }, [editor, startingHtml]);
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -99,152 +123,112 @@ export function AdminBlockEditor({
 
   const addImage = useCallback(() => {
     if (!editor) return;
-    const url = window.prompt("Image URL (upload via cover or media first)");
+    const url = window.prompt("Image URL");
     if (!url?.trim()) return;
     editor.chain().focus().setImage({ src: url.trim() }).run();
   }, [editor]);
 
-  if (!editor) {
-    return (
-      <div className="rounded-xl border border-border bg-muted p-8 text-sm text-muted-foreground">
-        Loading editor…
-      </div>
-    );
-  }
-
   return (
     <div className={cn("rounded-xl border border-border bg-card", className)}>
-      <div className="sticky top-11 z-40 flex flex-wrap gap-1 border-b border-border bg-muted/95 px-2 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-muted/80 lg:top-16">
-        <ToolbarBtn
-          pressed={editor.isActive("bold")}
-          onClick={() => editor.chain().focus().toggleBold().run()}
+      <div className="border-b border-border bg-muted/60 px-3 py-2">
+        <p className="text-xs text-muted-foreground">
+          Visual editor (live markdown sync in background).
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-2.5 py-2">
+        <IconToolButton
           label="Bold"
+          shortcut="Cmd/Ctrl+B"
+          onClick={() => editor?.chain().focus().toggleBold().run()}
         >
           <Bold className="h-4 w-4" />
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("italic")}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+        </IconToolButton>
+        <IconToolButton
           label="Italic"
+          shortcut="Cmd/Ctrl+I"
+          onClick={() => editor?.chain().focus().toggleItalic().run()}
         >
           <Italic className="h-4 w-4" />
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("underline")}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          label="Underline"
+        </IconToolButton>
+        <span className="mx-0.5 h-6 w-px bg-border" />
+        <IconToolButton
+          label="Heading 2"
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
         >
-          <span className="text-xs font-bold underline">U</span>
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("strike")}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          label="Strikethrough"
+          <Heading2 className="h-4 w-4" />
+        </IconToolButton>
+        <IconToolButton
+          label="Heading 3"
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
         >
-          <Strikethrough className="h-4 w-4" />
-        </ToolbarBtn>
-        <span className="mx-1 w-px self-stretch bg-border" />
-        <ToolbarBtn
-          pressed={editor.isActive("heading", { level: 2 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
-          label="H2"
-        >
-          H2
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("heading", { level: 3 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 3 }).run()
-          }
-          label="H3"
-        >
-          H3
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("bulletList")}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          <Heading3 className="h-4 w-4" />
+        </IconToolButton>
+        <span className="mx-0.5 h-6 w-px bg-border" />
+        <IconToolButton
           label="Bullet list"
+          onClick={() => editor?.chain().focus().toggleBulletList().run()}
         >
           <List className="h-4 w-4" />
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          label="Ordered list"
+        </IconToolButton>
+        <IconToolButton
+          label="Numbered list"
+          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered className="h-4 w-4" />
-        </ToolbarBtn>
-        <ToolbarBtn
-          pressed={editor.isActive("blockquote")}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          label="Quote"
+        </IconToolButton>
+        <IconToolButton
+          label="Blockquote"
+          onClick={() => editor?.chain().focus().toggleBlockquote().run()}
         >
           <Quote className="h-4 w-4" />
-        </ToolbarBtn>
-        <span className="mx-1 w-px self-stretch bg-border" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1 px-2"
-          onClick={setLink}
-        >
+        </IconToolButton>
+        <span className="mx-0.5 h-6 w-px bg-border" />
+        <IconToolButton label="Link" shortcut="Cmd/Ctrl+K" onClick={setLink}>
           <Link2 className="h-4 w-4" />
-          Link
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1 px-2"
-          onClick={addImage}
+        </IconToolButton>
+        <IconToolButton label="Image" onClick={addImage}>
+          <ImagePlus className="h-4 w-4" />
+        </IconToolButton>
+        <IconToolButton
+          label="Code block"
+          onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
         >
-          <ImageIcon className="h-4 w-4" />
-          Image
-        </Button>
-        <span className="mx-1 w-px self-stretch bg-border" />
-        <ToolbarBtn
-          onClick={() => editor.chain().focus().undo().run()}
-          label="Undo"
-        >
-          <Undo2 className="h-4 w-4" />
-        </ToolbarBtn>
-        <ToolbarBtn
-          onClick={() => editor.chain().focus().redo().run()}
-          label="Redo"
-        >
-          <Redo2 className="h-4 w-4" />
-        </ToolbarBtn>
+          <Code2 className="h-4 w-4" />
+        </IconToolButton>
       </div>
-      <div className="mx-auto w-full max-w-4xl px-3 pb-4">
-        <EditorContent editor={editor} />
+
+      <div className="min-h-[520px] bg-background">
+        {editor ? (
+          <EditorContent editor={editor} />
+        ) : (
+          <div className="px-5 py-5 text-sm text-muted-foreground">Loading editor...</div>
+        )}
       </div>
     </div>
   );
 }
 
-function ToolbarBtn({
+function IconToolButton({
   children,
-  onClick,
-  pressed,
   label,
+  shortcut,
+  onClick,
 }: {
   children: React.ReactNode;
-  onClick: () => void;
-  pressed?: boolean;
   label: string;
+  shortcut?: string;
+  onClick: () => void;
 }) {
+  const title = shortcut ? `${label} (${shortcut})` : label;
   return (
     <Button
       type="button"
-      variant={pressed ? "secondary" : "ghost"}
-      size="sm"
-      className="h-8 min-w-8 px-2"
+      size="icon"
+      variant="ghost"
       onClick={onClick}
       aria-label={label}
-      title={label}
+      title={title}
+      className="h-8 w-8 rounded-md text-foreground/80 transition hover:bg-muted hover:text-foreground"
     >
       {children}
     </Button>

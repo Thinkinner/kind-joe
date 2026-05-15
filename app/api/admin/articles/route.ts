@@ -20,8 +20,10 @@ import {
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
-import { processQueuedArticleAutoComment } from "@/lib/automation/article-auto-comments";
+import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +48,7 @@ const SubmitSchema = z.object({
       content: z.array(z.unknown()).optional(),
     })
     .default({ type: "doc", content: [{ type: "paragraph" }] }),
+  contentMarkdown: z.string().optional(),
   contentHtml: z.string().optional(),
   publishedAt: z.string().datetime().nullable().optional(),
   publishAt: z.string().datetime().nullable().optional(),
@@ -97,6 +100,20 @@ function asTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveMarkdownForStorage(
+  markdownInput: string | undefined,
+  blockInput: unknown,
+): string | null {
+  const direct = asTrimmedString(markdownInput);
+  if (direct) {
+    const normalized = normalizeArticleMarkdown(direct).trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  const parsed = normalizeArticleMarkdown(universalParser(blockInput)).trim();
+  return parsed.length > 0 ? parsed : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -189,7 +206,8 @@ export async function POST(req: NextRequest) {
     avatarUrl: u.image,
   });
 
-  const parsed = SubmitSchema.safeParse(await req.json());
+  const body = await req.json();
+  const parsed = SubmitSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.flatten().fieldErrors },
@@ -254,6 +272,10 @@ export async function POST(req: NextRequest) {
       const readingMinutes =
         input.readingMinutes ?? calcReadingMinutesFromHtml(input.contentHtml);
       const finalIsDraft = wantsPublishedNow || wantsScheduled ? false : input.isDraft;
+      const markdownForStorage = resolveMarkdownForStorage(
+        input.contentMarkdown,
+        input.blocks,
+      );
 
       const publishedAtDate =
         wantsPublishedNow && input.publishedAt
@@ -277,6 +299,7 @@ export async function POST(req: NextRequest) {
         isDraft: finalIsDraft,
         seo: mergeSeoWithByline(seoInput, bylineAlias),
         content: input.blocks as object,
+        contentMarkdown: markdownForStorage,
         contentHtml: input.contentHtml ?? null,
       });
 
@@ -339,29 +362,9 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const [createdArticle] = await db
-        .select({
-          id: articles.id,
-          isDraft: articles.isDraft,
-          publishedAt: articles.publishedAt,
-          publishAt: articles.publishAt,
-          predictionId: articles.predictionId,
-        })
-        .from(articles)
-        .where(eq(articles.id, id))
-        .limit(1);
-      if (createdArticle) {
-        const publishedRef = createdArticle.publishedAt ?? createdArticle.publishAt;
-        await processQueuedArticleAutoComment({
-          articleId: createdArticle.id,
-          slotIndex: 0,
-          marketId: createdArticle.predictionId ?? undefined,
-          publishedAtIso: publishedRef?.toISOString(),
-          forceDue: true,
-        });
-      }
+      await postImmediateArticleComment({ articleId: id, now: new Date() });
     } catch (error) {
-      console.error("[articles.create] immediate auto-comment failed", error);
+      console.error("[articles.create] immediate comment failed", error);
     }
 
     return NextResponse.json({ ok: true, id }, { status: 201 });

@@ -42,17 +42,9 @@ export default async function AdminLayout({
       effectiveUser,
       PERMISSIONS.ADMIN_ARTICLES,
     ),
-    [PERMISSIONS.ADMIN_ARTICLE_ASSISTANT]: userHasPermission(
-      effectiveUser,
-      PERMISSIONS.ADMIN_ARTICLE_ASSISTANT,
-    ),
     [PERMISSIONS.ADMIN_ANALYTICS]: userHasPermission(
       effectiveUser,
       PERMISSIONS.ADMIN_ANALYTICS,
-    ),
-    [PERMISSIONS.ADMIN_VISITOR_JOURNEYS]: userHasPermission(
-      effectiveUser,
-      PERMISSIONS.ADMIN_VISITOR_JOURNEYS,
     ),
     [PERMISSIONS.ADMIN_POSTS]: userHasPermission(
       effectiveUser,

@@ -98,6 +98,7 @@ export interface DbArticle {
     keywords: string[];
   };
   content: unknown;
+  contentMarkdown: string;
   contentHtml: string;
 }
 

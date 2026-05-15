@@ -465,8 +465,8 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         art &&
         art.title &&
         art.title.trim() !== "" &&
-        art.contentHtml &&
-        art.contentHtml.trim().length > 50,
+        art.contentMarkdown &&
+        art.contentMarkdown.trim().length > 50,
     );
   const missingArticleSlots = data.stories
     .map((story, idx) => {
@@ -474,8 +474,8 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       const missing =
         !article ||
         !article.title?.trim() ||
-        !article.contentHtml ||
-        article.contentHtml.trim().length < 50;
+        !article.contentMarkdown ||
+        article.contentMarkdown.trim().length < 50;
       if (!missing) return null;
       return `Story ${idx + 1}${story.headline?.trim() ? ` (${story.headline.trim()})` : ""}`;
     })
@@ -723,8 +723,9 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             slug: uniqueSlug,
             title: content.title,
             excerpt: content.excerpt,
-            content: content.content, // JSON
-            contentHtml: content.contentHtml, // HTML
+            contentMarkdown: content.contentMarkdown,
+            content: {}, // Empty JSON
+            contentHtml: "", // Empty HTML
             coverImageUrl: story.imageUrl || null,
             category: story.category || "General",
             authorId: settings.authorId,
@@ -802,8 +803,9 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         slug: uniqueSlug,
         title: content.title,
         excerpt: content.excerpt,
-        content: content.content,
-        contentHtml: content.contentHtml,
+        contentMarkdown: content.contentMarkdown,
+        content: {},
+        contentHtml: "",
         coverImageUrl: story.imageUrl || null,
         category: story.category || "General",
         authorId: settings.authorId || "default",
@@ -998,8 +1000,8 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
   const storyNeedsArticle = (idx: number) =>
     !articles[idx] ||
-    !articles[idx].contentHtml ||
-    articles[idx].contentHtml.length < 50;
+    !articles[idx].contentMarkdown ||
+    articles[idx].contentMarkdown.length < 50;
 
   return (
     <div className="flex h-full min-h-0 flex-col animate-fade-in bg-background text-foreground">

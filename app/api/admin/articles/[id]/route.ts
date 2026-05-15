@@ -14,11 +14,13 @@ import {
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import {
   removeArticleEmbedding,
   syncArticleEmbeddingByArticleId,
 } from "@/lib/recommendations/article-related";
-import { processQueuedArticleAutoComment } from "@/lib/automation/article-auto-comments";
+import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +58,25 @@ function asTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function isMissingContentMarkdownColumnError(error: unknown): boolean {
+  const maybe = error as { message?: string; cause?: { code?: string; message?: string } };
+  const directMessage = String(maybe?.message ?? "").toLowerCase();
+  const causeCode = String(maybe?.cause?.code ?? "");
+  const causeMessage = String(maybe?.cause?.message ?? "").toLowerCase();
+  return (
+    causeCode === "42703" &&
+    (directMessage.includes("content_markdown") ||
+      causeMessage.includes("content_markdown"))
+  );
+}
+
+function toNormalizedMarkdownOrNull(value: unknown): string | null {
+  const raw = asTrimmedString(value);
+  if (!raw) return null;
+  const normalized = normalizeArticleMarkdown(raw).trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 export async function GET(
@@ -124,9 +145,7 @@ export async function PUT(
   const body = await req.json();
 
   const content = body.content ?? body.blocks ?? null;
-  if (!content || typeof content !== "object") {
-    return new NextResponse("content json required", { status: 400 });
-  }
+  const contentMarkdown = body.contentMarkdown;
 
   const slug: string | null = emptyToNull(body.slug);
   const normalizedSlug = slug ? slugify(slug) : null;
@@ -161,18 +180,49 @@ export async function PUT(
     }
   }
 
-  const [existingArticle] = await db
-    .select({
-      id: articles.id,
-      isDraft: articles.isDraft,
-      excerpt: articles.excerpt,
-      content: articles.content,
-      contentHtml: articles.contentHtml,
-      seo: articles.seo,
-    })
-    .from(articles)
-    .where(and(eq(articles.id, id), isNull(articles.deletedAt)))
-    .limit(1);
+  let existingArticle:
+    | {
+        id: string;
+        isDraft: boolean;
+        excerpt: string | null;
+        content: unknown;
+        contentMarkdown: string | null;
+        contentHtml: string | null;
+        seo: unknown;
+      }
+    | undefined;
+  try {
+    const [row] = await db
+      .select({
+        id: articles.id,
+        isDraft: articles.isDraft,
+        excerpt: articles.excerpt,
+        content: articles.content,
+        contentMarkdown: articles.contentMarkdown,
+        contentHtml: articles.contentHtml,
+        seo: articles.seo,
+      })
+      .from(articles)
+      .where(and(eq(articles.id, id), isNull(articles.deletedAt)))
+      .limit(1);
+    existingArticle = row;
+  } catch (error) {
+    if (!isMissingContentMarkdownColumnError(error)) throw error;
+    const [row] = await db
+      .select({
+        id: articles.id,
+        isDraft: articles.isDraft,
+        excerpt: articles.excerpt,
+        content: articles.content,
+        contentMarkdown: sql<string | null>`null`,
+        contentHtml: articles.contentHtml,
+        seo: articles.seo,
+      })
+      .from(articles)
+      .where(and(eq(articles.id, id), isNull(articles.deletedAt)))
+      .limit(1);
+    existingArticle = row;
+  }
 
   if (!existingArticle) {
     return new NextResponse("Not found", { status: 404 });
@@ -220,6 +270,11 @@ export async function PUT(
   const nextContentHtml =
     emptyToNull(body.contentHtml) ?? (existingArticle.contentHtml ?? null);
   const nextContent = content ?? existingArticle.content;
+  const incomingMarkdown = toNormalizedMarkdownOrNull(body.contentMarkdown);
+  const existingMarkdown = toNormalizedMarkdownOrNull(existingArticle.contentMarkdown);
+  const fallbackFromBlocks = toNormalizedMarkdownOrNull(universalParser(nextContent));
+  const nextContentMarkdown =
+    incomingMarkdown ?? existingMarkdown ?? fallbackFromBlocks;
   const seoDescription = asTrimmedString(mergedSeo.description);
   const summaryWordCount = countWordsFromHtml(nextExcerpt);
 
@@ -252,7 +307,8 @@ export async function PUT(
     coverImageUrl: emptyToNull(body.coverImageUrl),
     isDraft: !!body.isDraft,
     updatedAt: new Date(),
-    content,
+    content: nextContent,
+    contentMarkdown: nextContentMarkdown,
     contentHtml: emptyToNull(body.contentHtml),
     seo: body.seo === undefined ? undefined : mergedSeo,
     readingMinutes:
@@ -344,16 +400,9 @@ export async function PUT(
   }
 
   try {
-    const publishedRef = updated.publishedAt ?? updated.publishAt;
-    await processQueuedArticleAutoComment({
-      articleId: updated.id,
-      slotIndex: 0,
-      marketId: updated.predictionId ?? undefined,
-      publishedAtIso: publishedRef?.toISOString(),
-      forceDue: true,
-    });
+    await postImmediateArticleComment({ articleId: id, now: new Date() });
   } catch (error) {
-    console.error("[articles.update] immediate auto-comment failed", error);
+    console.error("[articles.update] immediate comment failed", error);
   }
 
   return NextResponse.json(updated);

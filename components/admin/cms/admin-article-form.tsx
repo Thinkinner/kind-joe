@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Editor } from "@tiptap/react";
 import {
   AlertTriangle,
   ArrowLeft,
   Copy,
   ImagePlus,
   Loader2,
-  WandSparkles,
 } from "lucide-react";
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { Button } from "@/components/ui/button";
@@ -28,7 +26,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/helpers/articles";
-import { renderPromptTemplate } from "@/lib/ai/prompt-settings";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import {
   PREDICTION_CATEGORY_LABELS,
   type PredictionCategory,
@@ -38,13 +37,13 @@ import { toast } from "sonner";
 type Props = {
   articleId?: string;
   postCreateRedirectTo?: string;
-  assistantMode?: boolean;
   initialValues?: {
     title?: string;
     slug?: string;
     excerpt?: string;
     category?: string;
     tags?: string[];
+    draftMarkdown?: string;
     draftHtml?: string;
     seoDescription?: string;
   };
@@ -57,35 +56,12 @@ type PredictionLookupItem = {
   status: "open" | "locked" | "resolved";
 };
 
-type PredictionSuggestionPayload = {
-  suggestionType?: "prediction" | "poll" | "";
-  title?: string;
-  description?: string;
-  category?: string;
-  options?: string[];
-  rationale?: string;
-};
-
-type SocialCopyPayload = {
-  socialHeadlines?: string[];
-  socialTightHeadline?: string;
-  socialCaption?: string;
-  error?: string;
-};
-
 type AdminProfileResponse = {
   aliasFullName?: string | null;
 };
 
 type ArticleSeoFields = {
   description?: string | null;
-};
-
-type SeoAssistPayload = {
-  seoScore?: number;
-  seoFeedback?: string;
-  suggestions?: string[];
-  error?: string;
 };
 
 function countWords(text: string) {
@@ -253,11 +229,9 @@ function mapArticleCategoryToPredictionCategory(
 export function AdminArticleForm({
   articleId,
   postCreateRedirectTo = "/admin/articles",
-  assistantMode = false,
   initialValues,
 }: Props) {
   const router = useRouter();
-  const editorRef = useRef<Editor | null>(null);
   const [loading, setLoading] = useState(!!articleId);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -269,22 +243,18 @@ export function AdminArticleForm({
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [isDraft, setIsDraft] = useState(true);
   const [publishAt, setPublishAt] = useState("");
+  const [contentHtml, setContentHtml] = useState("");
   const [blocks, setBlocks] = useState<object>({
     type: "doc",
     content: [{ type: "paragraph" }],
   });
-  const [contentHtml, setContentHtml] = useState("");
+  const [contentMarkdown, setContentMarkdown] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [postImageUrl, setPostImageUrl] = useState("");
   const [postImageUploading, setPostImageUploading] = useState(false);
   const [postImageDragging, setPostImageDragging] = useState(false);
   const [showPostPrompt, setShowPostPrompt] = useState(false);
-  const [showSocialCopyPrompt, setShowSocialCopyPrompt] = useState(false);
-  const [socialCopyLoading, setSocialCopyLoading] = useState(false);
-  const [socialHeadlines, setSocialHeadlines] = useState<string[]>([]);
-  const [socialTightHeadline, setSocialTightHeadline] = useState("");
-  const [socialCaption, setSocialCaption] = useState("");
   const [postPromptContext, setPostPromptContext] = useState<"createFlow" | "manual">(
     "createFlow",
   );
@@ -303,12 +273,6 @@ export function AdminArticleForm({
     "Yes",
     "No",
   ]);
-  const [predictionSuggestionType, setPredictionSuggestionType] = useState<
-    "prediction" | "poll" | ""
-  >("");
-  const [predictionSuggestionRationale, setPredictionSuggestionRationale] =
-    useState("");
-  const [suggestingPrediction, setSuggestingPrediction] = useState(false);
   const [savingPrediction, setSavingPrediction] = useState(false);
   const [predictionId, setPredictionId] = useState<number | null>(null);
   const [predictionSearch, setPredictionSearch] = useState("");
@@ -319,14 +283,6 @@ export function AdminArticleForm({
   const [aliasLoading, setAliasLoading] = useState(true);
   const [aliasModalOpen, setAliasModalOpen] = useState(false);
   const [qualityConfirmOpen, setQualityConfirmOpen] = useState(false);
-  const [aiPublishReviewOpen, setAiPublishReviewOpen] = useState(false);
-  const [aiPublishReviewLoading, setAiPublishReviewLoading] = useState(false);
-  const [aiPublishReviewSummary, setAiPublishReviewSummary] = useState("");
-  const [aiPublishReviewItems, setAiPublishReviewItems] = useState<string[]>([]);
-  const [aiFixSamplesLoading, setAiFixSamplesLoading] = useState(false);
-  const [aiFixSamplesSummary, setAiFixSamplesSummary] = useState("");
-  const [aiFixSamples, setAiFixSamples] = useState<string[]>([]);
-  const [promptSettings, setPromptSettings] = useState<Record<string, string>>({});
   const [pendingPublishOpts, setPendingPublishOpts] = useState<{
     publishNow?: boolean;
     schedule?: boolean;
@@ -388,10 +344,16 @@ export function AdminArticleForm({
           const d = new Date(data.publishAt);
           setPublishAt(d.toISOString().slice(0, 16));
         }
-        if (data.content && typeof data.content === "object") {
-          setBlocks(data.content);
-        }
+        const loadedMarkdown = (data.contentMarkdown ?? "").trim();
+        setContentMarkdown(
+          normalizeArticleMarkdown(
+            loadedMarkdown.length > 0
+              ? loadedMarkdown
+              : universalParser(data.contentHtml ?? data.content ?? ""),
+          ),
+        );
         setContentHtml(data.contentHtml ?? "");
+        if (data.content) setBlocks(data.content);
       } catch {
         toast.error("Could not load article");
       } finally {
@@ -411,30 +373,23 @@ export function AdminArticleForm({
     if (initialValues.excerpt) setExcerpt(initialValues.excerpt);
     if (initialValues.category) setCategory(initialValues.category);
     if (Array.isArray(initialValues.tags)) setTags(initialValues.tags);
-    if (initialValues.draftHtml) setContentHtml(initialValues.draftHtml);
+    const seededDraft =
+      initialValues.draftMarkdown ?? initialValues.draftHtml ?? "";
+    if (seededDraft) {
+      const seeded = seededDraft
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n");
+      const looksLikeHtml = /<([a-z][a-z0-9]*)\b[^>]*>/i.test(seeded);
+      if (looksLikeHtml) {
+        setContentHtml(seeded);
+        setContentMarkdown(normalizeArticleMarkdown(universalParser(seeded)));
+      } else {
+        setContentHtml("");
+        setContentMarkdown(normalizeArticleMarkdown(seeded));
+      }
+    }
     if (initialValues.seoDescription) setSeoDescription(initialValues.seoDescription);
   }, [articleId, initialValues]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/prompt-settings", { cache: "no-store" });
-        if (!res.ok) return;
-        const payload = (await res.json()) as {
-          prompts?: Record<string, string>;
-        };
-        if (!cancelled && payload.prompts) {
-          setPromptSettings(payload.prompts);
-        }
-      } catch {
-        // Keep built-in prompts if settings are unavailable.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const onTitle = (v: string) => {
     setTitle(v);
@@ -493,6 +448,8 @@ export function AdminArticleForm({
       tags,
       coverImageUrl: coverImageUrl || null,
       isDraft: opts.publishNow || opts.schedule ? false : isDraft,
+      blocks,
+      contentMarkdown,
       contentHtml,
       predictionId,
       seo: nextSeo,
@@ -706,74 +663,6 @@ export function AdminArticleForm({
     setAliasModalOpen(aliasMissing);
   }, [aliasLoading, aliasMissing]);
 
-  const copySocialText = async (value: string) => {
-    const text = value.trim();
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copied");
-    } catch {
-      toast.error("Could not copy");
-    }
-  };
-
-  const prepareSocialCopyPrompt = async () => {
-    const sourceExcerpt = excerpt.trim();
-    const sourceHtml = contentHtml?.trim() || "";
-    const sourceTitle = title.trim();
-    if (!sourceTitle && !sourceExcerpt && !sourceHtml) {
-      setShowPostPrompt(true);
-      return;
-    }
-
-    setSocialCopyLoading(true);
-    setSocialHeadlines([]);
-    setSocialTightHeadline("");
-    setSocialCaption("");
-    try {
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "socialCopy",
-          title: sourceTitle,
-          html: [sourceExcerpt, sourceHtml].filter(Boolean).join("\n\n").slice(0, 2600),
-        }),
-      });
-      const payload = (await res.json().catch(() => ({}))) as SocialCopyPayload;
-      if (!res.ok) {
-        toast.error(payload.error ?? "Could not generate social copy");
-        setShowPostPrompt(true);
-        return;
-      }
-
-      const nextHeadlines = Array.isArray(payload.socialHeadlines)
-        ? payload.socialHeadlines
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .slice(0, 5)
-        : [];
-      const tight = String(payload.socialTightHeadline ?? "").trim();
-      const caption = String(payload.socialCaption ?? "").trim();
-
-      if (!nextHeadlines.length && !tight && !caption) {
-        toast.error("Social copy came back empty");
-        setShowPostPrompt(true);
-        return;
-      }
-
-      setSocialHeadlines(nextHeadlines);
-      setSocialTightHeadline(tight);
-      setSocialCaption(caption);
-      setShowSocialCopyPrompt(true);
-    } catch {
-      toast.error("Could not generate social copy");
-      setShowPostPrompt(true);
-    } finally {
-      setSocialCopyLoading(false);
-    }
-  };
-
   const save = async (opts: { publishNow?: boolean; schedule?: boolean }) => {
     if (aliasMissing) {
       toast.error(
@@ -788,7 +677,7 @@ export function AdminArticleForm({
         const res = await fetch(`/api/admin/articles/${articleId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...meta, content: blocks }),
+          body: JSON.stringify(meta),
         });
         if (!res.ok) throw new Error(await res.text());
         toast.success("Saved");
@@ -805,7 +694,6 @@ export function AdminArticleForm({
           body: JSON.stringify({
             ...meta,
             slug: finalCreateSlug,
-            blocks,
           }),
         });
         if (res.ok) {
@@ -834,15 +722,9 @@ export function AdminArticleForm({
       setPredictionBody(excerpt.trim() || "How do you think this story will unfold?");
       setPredictionCategory(mapArticleCategoryToPredictionCategory(category));
       setPredictionDraftOptions(["Yes", "No"]);
-      setPredictionSuggestionType("");
-      setPredictionSuggestionRationale("");
       setPostPromptContext("createFlow");
       setPredictionPromptContext("createFlow");
-      if (assistantMode) {
-        await prepareSocialCopyPrompt();
-      } else {
-        setShowPostPrompt(true);
-      }
+      setShowPostPrompt(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -852,117 +734,6 @@ export function AdminArticleForm({
 
   const requestSave = (opts: { publishNow?: boolean; schedule?: boolean }) => {
     void requestSaveWithReview(opts);
-  };
-
-  const runAiPrePublishReview = async () => {
-    const sourceTitle = title.trim();
-    const sourceText = [excerpt.trim(), contentHtml.trim()]
-      .filter(Boolean)
-      .join("\n\n")
-      .slice(0, 3600);
-    if (!sourceTitle && !sourceText) {
-      return null;
-    }
-
-    setAiPublishReviewLoading(true);
-    try {
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "seo",
-          title: sourceTitle,
-          html: sourceText,
-          customPrompt:
-            promptSettings.articlePrePublishRiskCustomPrompt ||
-            "You are a strict pre-publish newsroom risk editor.\nReview the draft using this checklist:\n1) Verify risky factual claim: flag any superlative or potentially inaccurate/ambiguous claim unless exact date/source is cited.\n2) Tone/word choice risk: charged phrases must be clearly attributed and neutrally framed.\n3) Source precision: flag vague attribution like 'reports say' without specific outlet/document/transcript.\n4) Balance line for fairness: require one sentence with opposing framing or note no-response context.\n5) End stronger: require concrete what-happens-next timing and outcome scenarios.\nReturn only high-impact issues.\nIf there are no high-impact issues, set seoFeedback EXACTLY to 'No high-risk pre-publish issues found.' and suggestions to an empty array.\nIf issues exist, seoFeedback should be one short sentence and suggestions should be 3-6 concise fix actions.",
-        }),
-      });
-      const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
-      if (!res.ok) {
-        throw new Error(payload.error ?? "Could not run AI pre-publish review");
-      }
-
-      const summary = String(payload.seoFeedback ?? "").trim();
-      const items = Array.isArray(payload.suggestions)
-        ? payload.suggestions
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .slice(0, 8)
-        : [];
-      const cleanSummary =
-        summary || (items.length > 0 ? "High-impact issues found before publish." : "");
-
-      if (
-        cleanSummary === "No high-risk pre-publish issues found." &&
-        items.length === 0
-      ) {
-        return null;
-      }
-
-      return { summary: cleanSummary, items };
-    } finally {
-      setAiPublishReviewLoading(false);
-    }
-  };
-
-  const generateAiFixSamples = async () => {
-    const missingItems: string[] = [];
-    if (failsWordGate) missingItems.push("600+ body words");
-    if (failsQuoteGate) missingItems.push("2+ direct quotes");
-    if (failsAttributionGate) missingItems.push("3+ in-body attributions");
-    if (failsBalanceGate) missingItems.push("opposing-view paragraph");
-    if (failsTemplateGate) missingItems.push("remove template labels");
-    if (missingItems.length === 0) {
-      setAiFixSamplesSummary("");
-      setAiFixSamples([]);
-      return;
-    }
-
-    const sourceTitle = title.trim();
-    const sourceText = [excerpt.trim(), contentHtml.trim()]
-      .filter(Boolean)
-      .join("\n\n")
-      .slice(0, 3600);
-    if (!sourceTitle && !sourceText) return;
-
-    setAiFixSamplesLoading(true);
-    try {
-      const fixPromptTemplate =
-        promptSettings.articleFixSamplesCustomPrompt ||
-        "Generate realistic, ready-to-paste fix examples for the missing publish requirements.\nMissing requirements: {{missingItems}}.\nReturn JSON with seoFeedback and suggestions.\nseoFeedback: one short sentence summary.\nsuggestions: 3-6 concrete examples the writer can paste or adapt immediately.\nInclude a sample direct quote format when quote requirement is missing.\nInclude a sample attribution sentence when attribution requirement is missing.\nInclude one sample opposing-view sentence when balance requirement is missing.\nKeep suggestions practical and specific to political/news writing tone.";
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "seo",
-          title: sourceTitle,
-          html: sourceText,
-          customPrompt: renderPromptTemplate(fixPromptTemplate, {
-            missingItems: missingItems.join(", "),
-          }),
-        }),
-      });
-      const payload = (await res.json().catch(() => ({}))) as SeoAssistPayload;
-      if (!res.ok) {
-        throw new Error(payload.error ?? "Could not generate AI fix samples");
-      }
-
-      const summary = String(payload.seoFeedback ?? "").trim();
-      const items = Array.isArray(payload.suggestions)
-        ? payload.suggestions
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .slice(0, 8)
-        : [];
-      setAiFixSamplesSummary(summary);
-      setAiFixSamples(items);
-    } catch {
-      setAiFixSamplesSummary("");
-      setAiFixSamples([]);
-    } finally {
-      setAiFixSamplesLoading(false);
-    }
   };
 
   const continuePublishWithQualityChecks = (
@@ -977,12 +748,6 @@ export function AdminArticleForm({
     if (hasStrictPublishBlocker || shouldWarnBeforePublish) {
       setPendingPublishOpts(opts);
       setQualityConfirmOpen(true);
-      if (hasStrictPublishBlocker) {
-        void generateAiFixSamples();
-      } else {
-        setAiFixSamplesSummary("");
-        setAiFixSamples([]);
-      }
       return;
     }
 
@@ -992,7 +757,7 @@ export function AdminArticleForm({
     }
   };
 
-  const requestSaveWithReview = async (opts: {
+  const requestSaveWithReview = (opts: {
     publishNow?: boolean;
     schedule?: boolean;
   }) => {
@@ -1007,22 +772,6 @@ export function AdminArticleForm({
     if (!isPublishAction) {
       continuePublishWithQualityChecks(opts);
       return;
-    }
-    try {
-      const review = await runAiPrePublishReview();
-      if (review) {
-        setAiPublishReviewSummary(review.summary);
-        setAiPublishReviewItems(review.items);
-        setPendingPublishOpts(opts);
-        setAiPublishReviewOpen(true);
-        return;
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "AI pre-publish review failed",
-      );
     }
     continuePublishWithQualityChecks(opts);
   };
@@ -1148,107 +897,6 @@ export function AdminArticleForm({
     }
   };
 
-  const suggestPredictionPrompt = async () => {
-    const sourceHtml = contentHtml?.trim() || "";
-    const sourceExcerpt = excerpt?.trim() || "";
-    if (!title.trim() && !sourceHtml && !sourceExcerpt) {
-      toast.error("Add article title or content so AI can suggest a poll.");
-      return;
-    }
-    setSuggestingPrediction(true);
-    const loadingToastId = assistantMode
-      ? null
-      : toast.loading("AI is generating prediction ideas... this can take 2-3 minutes.");
-    try {
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "predictionSuggestion",
-          title: title.trim(),
-          html: (sourceHtml || sourceExcerpt).slice(0, 2200),
-          customPrompt:
-            promptSettings.articlePredictionSuggestionCustomPrompt ||
-            "Provide one best suggestion for either a prediction market or a simple polling vote for this article. Keep options actionable and neutral.",
-        }),
-      });
-      const payload = (await res.json().catch(() => ({}))) as
-        | PredictionSuggestionPayload
-        | { error?: string };
-      if (!res.ok) {
-        const message =
-          "error" in payload && typeof payload.error === "string"
-            ? payload.error
-            : "Could not generate suggestion";
-        if (loadingToastId) {
-          toast.error(message, { id: loadingToastId });
-        } else {
-          toast.error(message);
-        }
-        return;
-      }
-      const suggestion = payload as PredictionSuggestionPayload;
-      if (typeof suggestion.title === "string" && suggestion.title.trim()) {
-        setPredictionTitle(suggestion.title.trim());
-      }
-      if (
-        typeof suggestion.description === "string" &&
-        suggestion.description.trim()
-      ) {
-        setPredictionBody(suggestion.description.trim());
-      }
-      if (typeof suggestion.category === "string" && suggestion.category.trim()) {
-        setPredictionCategory(
-          mapArticleCategoryToPredictionCategory(suggestion.category),
-        );
-      }
-      if (Array.isArray(suggestion.options) && suggestion.options.length > 0) {
-        const cleanedOptions = suggestion.options
-          .map((option) => option.trim())
-          .filter(Boolean);
-        const dedupedOptions = [
-          ...new Map(cleanedOptions.map((opt) => [opt.toLowerCase(), opt])).values(),
-        ];
-        if (dedupedOptions.length >= 2) {
-          const nextOptions =
-            suggestion.suggestionType === "poll" &&
-            looksLikeYesNoOptions(dedupedOptions) &&
-            isLikelyOpenEndedPrompt(
-              (typeof suggestion.title === "string" && suggestion.title.trim()) ||
-                predictionTitle,
-            )
-              ? defaultEngagementOptions()
-              : dedupedOptions.slice(0, 6);
-          setPredictionDraftOptions(nextOptions);
-        }
-      }
-      setPredictionSuggestionType(
-        suggestion.suggestionType === "poll" ||
-          suggestion.suggestionType === "prediction"
-          ? suggestion.suggestionType
-          : "",
-      );
-      setPredictionSuggestionRationale(
-        typeof suggestion.rationale === "string" ? suggestion.rationale.trim() : "",
-      );
-      if (loadingToastId) {
-        toast.success("AI suggestion applied. Review and edit before creating.", {
-          id: loadingToastId,
-        });
-      } else {
-        toast.success("AI suggestion applied. Review and edit before creating.");
-      }
-    } catch {
-      if (loadingToastId) {
-        toast.error("Could not generate suggestion", { id: loadingToastId });
-      } else {
-        toast.error("Could not generate suggestion");
-      }
-    } finally {
-      setSuggestingPrediction(false);
-    }
-  };
-
   const createPostCard = async () => {
     if (!postImageUrl.trim()) {
       toast.message("Upload a post image first");
@@ -1357,9 +1005,9 @@ export function AdminArticleForm({
   };
 
   const onEditorChange = useCallback(
-    ({ json, html }: { json: object; html: string }) => {
-      setBlocks(json);
+    ({ markdown, html }: { markdown: string; html: string }) => {
       setContentHtml(html);
+      setContentMarkdown(markdown);
     },
     [],
   );
@@ -1466,13 +1114,15 @@ export function AdminArticleForm({
               <Label className="text-sm font-semibold tracking-tight text-foreground">
                 Main editor
               </Label>
+              <p className="text-xs text-muted-foreground">
+                Markdown-first flow: use <code>### HEADING</code> for section titles and
+                regular <code>* list item</code> bullets. Avoid blockquote markers for
+                structured sections.
+              </p>
               <AdminBlockEditor
-                initialDoc={blocks}
+                initialMarkdown={contentMarkdown || undefined}
                 initialHtml={contentHtml || undefined}
                 onChange={onEditorChange}
-                onEditorReady={(ed) => {
-                  editorRef.current = ed;
-                }}
                 className="rounded-none border-border"
               />
             </div>
@@ -1771,7 +1421,7 @@ export function AdminArticleForm({
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Use these tools directly from the article editor. AI suggestion is available inside the prediction modal.
+                    Use these tools directly from the article editor.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="outline" onClick={openManualPostModal}>
@@ -1787,120 +1437,6 @@ export function AdminArticleForm({
           </div>
         </aside>
       </div>
-
-      <Dialog
-        open={showSocialCopyPrompt}
-        onOpenChange={(open) => {
-          if (open) {
-            setShowSocialCopyPrompt(true);
-            return;
-          }
-          if (socialCopyLoading) return;
-          setShowSocialCopyPrompt(false);
-          setShowPostPrompt(true);
-        }}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Carousel Headlines & Caption</DialogTitle>
-            <DialogDescription>
-              Review and copy these generated lines before creating the post card.
-            </DialogDescription>
-          </DialogHeader>
-
-          {socialCopyLoading ? (
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-4 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating headlines and caption...
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">5 headline options</Label>
-                {socialHeadlines.length ? (
-                  <div className="space-y-2">
-                    {socialHeadlines.map((line, idx) => (
-                      <div
-                        key={`${line}-${idx}`}
-                        className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted px-3 py-2"
-                      >
-                        <p className="text-sm text-foreground">{line}</p>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 shrink-0"
-                          aria-label={`Copy headline ${idx + 1}`}
-                          onClick={() => void copySocialText(line)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No headline options generated.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Tight headline</Label>
-                {socialTightHeadline ? (
-                  <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted px-3 py-2">
-                    <p className="text-sm text-foreground">{socialTightHeadline}</p>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      aria-label="Copy tight headline"
-                      onClick={() => void copySocialText(socialTightHeadline)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No tight headline generated.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Caption</Label>
-                {socialCaption ? (
-                  <div className="space-y-2">
-                    <Textarea readOnly rows={6} value={socialCaption} className="bg-muted" />
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void copySocialText(socialCaption)}
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copy caption
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No caption generated.</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setShowSocialCopyPrompt(false);
-                setShowPostPrompt(true);
-              }}
-            >
-              Continue to post modal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={showPostPrompt}
@@ -2032,43 +1568,9 @@ export function AdminArticleForm({
           </DialogHeader>
 
           <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-indigo-900">
-                Need ideas? Let AI suggest a prediction or poll from this article.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="border-indigo-300 bg-card text-indigo-900 hover:bg-indigo-100"
-                disabled={suggestingPrediction}
-                onClick={() => void suggestPredictionPrompt()}
-              >
-                {suggestingPrediction ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <WandSparkles className="h-4 w-4" />
-                )}
-                {suggestingPrediction ? "Suggesting..." : "Suggest with AI"}
-              </Button>
-            </div>
-            {suggestingPrediction && !assistantMode ? (
-              <p className="mt-2 text-xs text-indigo-800/80">
-                AI help can take up to 2-3 minutes.
-              </p>
-            ) : null}
-            {predictionSuggestionType ? (
-              <p className="mt-2 text-xs text-indigo-800">
-                Suggested format:{" "}
-                <span className="font-semibold capitalize">
-                  {predictionSuggestionType}
-                </span>
-              </p>
-            ) : null}
-            {predictionSuggestionRationale ? (
-              <p className="mt-1 text-xs text-indigo-800/90">
-                {predictionSuggestionRationale}
-              </p>
-            ) : null}
+            <p className="text-sm text-indigo-900">
+              Create a clear, outcome-based prediction and keep options concise.
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -2226,36 +1728,6 @@ export function AdminArticleForm({
               ))}
             </ul>
           ) : null}
-          {hasStrictPublishBlocker ? (
-            <div className="space-y-2 rounded-lg border border-border bg-muted px-3 py-3">
-              <p className="text-sm font-medium text-foreground">
-                AI sample fixes (realistic examples)
-              </p>
-              {aiFixSamplesLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating examples...
-                </div>
-              ) : (
-                <>
-                  {aiFixSamplesSummary ? (
-                    <p className="text-sm text-muted-foreground">{aiFixSamplesSummary}</p>
-                  ) : null}
-                  {aiFixSamples.length > 0 ? (
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      {aiFixSamples.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No AI examples generated yet. You can still continue or fix manually.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          ) : null}
           <DialogFooter>
             <Button
               type="button"
@@ -2263,8 +1735,6 @@ export function AdminArticleForm({
               onClick={() => {
                 setPendingPublishOpts(null);
                 setQualityConfirmOpen(false);
-                setAiFixSamplesSummary("");
-                setAiFixSamples([]);
               }}
             >
               Cancel
@@ -2275,8 +1745,6 @@ export function AdminArticleForm({
                 const opts = pendingPublishOpts;
                 setPendingPublishOpts(null);
                 setQualityConfirmOpen(false);
-                setAiFixSamplesSummary("");
-                setAiFixSamples([]);
                 if (opts) {
                   void save(opts);
                 }
@@ -2288,74 +1756,6 @@ export function AdminArticleForm({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={aiPublishReviewOpen}
-        onOpenChange={(open) => {
-          setAiPublishReviewOpen(open);
-          if (!open) {
-            setPendingPublishOpts(null);
-            setAiPublishReviewSummary("");
-            setAiPublishReviewItems([]);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>AI Pre-Publish Review</DialogTitle>
-            <DialogDescription>
-              A final AI risk scan ran before publish. Review these fixes first.
-            </DialogDescription>
-          </DialogHeader>
-          {aiPublishReviewLoading ? (
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-4 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Running pre-publish analysis...
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {aiPublishReviewSummary ? (
-                <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
-                  {aiPublishReviewSummary}
-                </p>
-              ) : null}
-              {aiPublishReviewItems.length > 0 ? (
-                <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  {aiPublishReviewItems.map((issue) => (
-                    <li key={issue}>{issue}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setAiPublishReviewOpen(false);
-                setPendingPublishOpts(null);
-              }}
-            >
-              Fix now
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                const opts = pendingPublishOpts;
-                setAiPublishReviewOpen(false);
-                setAiPublishReviewSummary("");
-                setAiPublishReviewItems([]);
-                setPendingPublishOpts(null);
-                if (opts) {
-                  continuePublishWithQualityChecks(opts);
-                }
-              }}
-            >
-              Continue anyway
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

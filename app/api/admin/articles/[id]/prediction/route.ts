@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { articles, predictionMarkets } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
-import { processQueuedArticleAutoComment } from "@/lib/automation/article-auto-comments";
+import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
 
 function parsePredictionId(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
@@ -73,16 +73,9 @@ export async function PATCH(
   }
 
   try {
-    const publishedRef = updated.publishedAt ?? updated.publishAt;
-    await processQueuedArticleAutoComment({
-      articleId: updated.id,
-      slotIndex: 0,
-      marketId: updated.predictionId ?? undefined,
-      publishedAtIso: publishedRef?.toISOString(),
-      forceDue: true,
-    });
+    await postImmediateArticleComment({ articleId: updated.id, now: new Date() });
   } catch (error) {
-    console.error("[articles.prediction.patch] immediate auto-comment failed", error);
+    console.error("[articles.prediction.patch] immediate comment failed", error);
   }
 
   return NextResponse.json({ ok: true, article: updated });

@@ -42,9 +42,9 @@ export async function generateMetadata(props: {
   const data = await getFullArticleBySlug(slug);
 
   if (!data) return {};
-  const { article: a } = data;
+  const { article: a, seo: rawSeo } = data;
 
-  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seoRaw: unknown = typeof rawSeo === "string" ? JSON.parse(rawSeo) : rawSeo;
   const seo =
     seoRaw && typeof seoRaw === "object"
       ? (seoRaw as { title?: string; description?: string; canonical?: string })
@@ -84,7 +84,7 @@ export default async function VenturaArticleBySlug(props: {
   const data = await getFullArticleBySlug(slug);
   if (!data) notFound();
 
-  const { article: a, tags } = data;
+  const { article: a, tags, seo: rawSeo } = data;
   const session = await getServerSession();
   const user = session?.user as AuthAppUser | undefined;
   const viewerId = user?.id ?? null;
@@ -102,7 +102,7 @@ export default async function VenturaArticleBySlug(props: {
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
       : null;
-  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seoRaw: unknown = typeof rawSeo === "string" ? JSON.parse(rawSeo) : rawSeo;
   const seo =
     seoRaw && typeof seoRaw === "object"
       ? (seoRaw as { authorName?: string; bylineSource?: string })
@@ -119,8 +119,10 @@ export default async function VenturaArticleBySlug(props: {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("") || "JV";
 
-  const content =
-    typeof a.content === "string" ? JSON.parse(a.content) : a.content;
+  const contentMarkdown =
+    data.contentMarkdown && data.contentMarkdown.trim().length > 0
+      ? data.contentMarkdown
+      : null;
   const chainEnabled = true;
 
   return (
@@ -254,8 +256,8 @@ export default async function VenturaArticleBySlug(props: {
 
             {/* Content Area with Orange Links */}
             <div id="article-content" className="mt-7 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10">
-              <div className="tiptap prose prose-base sm:prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-orange-600">
-                <ArticleContent value={content} />
+              <div>
+                <ArticleContent markdown={contentMarkdown} />
               </div>
               <ArticleTransparencyPanel
                 publishedAt={a.publishedAt}
@@ -263,8 +265,7 @@ export default async function VenturaArticleBySlug(props: {
                 createdAt={a.createdAt}
                 updatedAt={a.updatedAt}
                 seo={seoRaw}
-                contentHtml={a.contentHtml}
-                content={content}
+                markdown={contentMarkdown}
                 sourceLinkClassName="text-orange-600 hover:underline"
               />
               <div id="article-predictions" className="mt-8">

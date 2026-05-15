@@ -42,9 +42,10 @@ export async function generateMetadata(props: {
   const data = await getFullArticleBySlug(slug);
 
   if (!data) return {};
-  const { article: a } = data;
+  const { article: a, seo: rawSeo } = data;
 
-  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seoRaw: unknown =
+    typeof rawSeo === "string" ? JSON.parse(rawSeo) : rawSeo;
   const seo =
     seoRaw && typeof seoRaw === "object"
       ? (seoRaw as { title?: string; description?: string; canonical?: string })
@@ -88,7 +89,7 @@ export default async function ArticleBySlug(props: {
   const data = await getFullArticleBySlug(slug);
   if (!data) notFound();
 
-  const { article: a, tags } = data;
+  const { article: a, tags, seo: rawSeo } = data;
   const session = await getServerSession();
   const user = session?.user as AuthAppUser | undefined;
   const viewerId = user?.id ?? null;
@@ -108,7 +109,8 @@ export default async function ArticleBySlug(props: {
     typeof a.predictionId === "number" && Number.isFinite(a.predictionId)
       ? await getPredictionMarketById(a.predictionId, viewerId)
       : null;
-  const seoRaw: unknown = typeof a.seo === "string" ? JSON.parse(a.seo) : a.seo;
+  const seoRaw: unknown =
+    typeof rawSeo === "string" ? JSON.parse(rawSeo) : rawSeo;
   const seo =
     seoRaw && typeof seoRaw === "object"
       ? (seoRaw as { authorName?: string; bylineSource?: string })
@@ -124,32 +126,32 @@ export default async function ArticleBySlug(props: {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("") || "KJ";
 
-  const content =
-    typeof a.content === "string" ? JSON.parse(a.content) : a.content;
+  const contentMarkdown =
+    data.contentMarkdown && data.contentMarkdown.trim().length > 0
+      ? data.contentMarkdown
+      : null;
   const chainEnabled = true;
 
   return (
-    <main className={`py-8 ${googleSans.variable}`}>
+    <main className={`bg-neutral-50/70 py-6 sm:py-8 ${googleSans.variable}`}>
       <ArticleTracker articleId={a.id} />
-      <div className="mx-auto max-w-6xl md:px-4">
-        <div className="md:grid md:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] lg:grid-cols-[minmax(0,3fr)_minmax(260px,1.4fr)] md:items-start md:gap-8">
-          <article className="md:pb-8">
-            <header className="px-4 lg:px-6 pt-4 pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
-                <div className="flex flex-wrap items-center gap-2">
-                  {cats.length > 0 && (
-                    <span className="bg-red-600 text-white px-2 py-0.5 font-semibold">
-                      {cats[0].name}
-                    </span>
-                  )}
-                </div>
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-5 lg:px-6">
+        <div className="grid gap-7 md:grid-cols-[minmax(0,1fr)_300px] md:items-start lg:grid-cols-[minmax(0,1fr)_340px]">
+          <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_10px_30px_-22px_rgba(15,23,42,0.35)]">
+            <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-500">
+                {cats.length > 0 && (
+                  <span className="rounded bg-red-600 px-2 py-0.5 font-semibold text-white">
+                    {cats[0].name}
+                  </span>
+                )}
               </div>
 
-              <h1 className="mt-4 text-2xl lg:text-[36px] font-extrabold leading-tight tracking-tight text-neutral-900">
+              <h1 className="mt-4 text-[1.95rem] font-extrabold leading-[1.08] tracking-tight text-neutral-900 sm:text-[2.35rem] lg:text-[2.7rem]">
                 {a.title}
               </h1>
 
-              <div className="mt-6 border-y border-neutral-200 py-4 sm:py-5">
+              <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50/70 px-4 py-4 sm:px-5 sm:py-5">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -198,9 +200,6 @@ export default async function ArticleBySlug(props: {
                         </div>
                       </div>
                     </div>
-                    <p className="hidden text-xs font-semibold uppercase tracking-wide text-neutral-400 sm:block">
-                      Community
-                    </p>
                   </div>
 
                   <div className="h-px w-full bg-neutral-200" />
@@ -218,7 +217,7 @@ export default async function ArticleBySlug(props: {
                       <ScrollToArticleCta
                         targetId="article-predictions"
                         label="Share your take"
-                        className="w-full sm:w-auto"
+                        className="w-full rounded-lg border-red-300 bg-red-50 text-red-700 hover:border-red-400 hover:bg-red-100 sm:w-auto"
                       />
                       <ShareButtons
                         showLabel={false}
@@ -230,8 +229,8 @@ export default async function ArticleBySlug(props: {
               </div>
             </header>
 
-            <div className="mt-4 lg:mt-6 px-4 lg:px-6">
-              <div className="overflow-hidden rounded-xl shadow-sm">
+            <div className="mt-4 px-4 sm:px-6 lg:px-8">
+              <div className="overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
                 <FocusableImage
                   src={a.coverImageUrl ?? "/placeholder.jpg"}
                   alt={a.title}
@@ -240,7 +239,7 @@ export default async function ArticleBySlug(props: {
               </div>
             </div>
 
-            <section className="mt-6 px-4 lg:px-6">
+            <section className="mt-6 px-4 sm:px-6 lg:px-8">
               <AdsenseUnit
                 slot={inlineAdSlot}
                 label="In-article ad"
@@ -251,9 +250,9 @@ export default async function ArticleBySlug(props: {
               />
             </section>
 
-            <div id="article-content" className="mt-8 px-4 lg:px-6">
-              <div className="tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
-                <ArticleContent value={content} />
+            <div id="article-content" className="mt-8 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10">
+              <div>
+                <ArticleContent markdown={contentMarkdown} />
               </div>
               <ArticleTransparencyPanel
                 publishedAt={a.publishedAt}
@@ -261,8 +260,7 @@ export default async function ArticleBySlug(props: {
                 createdAt={a.createdAt}
                 updatedAt={a.updatedAt}
                 seo={seoRaw}
-                contentHtml={a.contentHtml}
-                content={content}
+                markdown={contentMarkdown}
                 sourceLinkClassName="text-red-600 hover:underline"
               />
               <div id="article-predictions">
@@ -284,11 +282,29 @@ export default async function ArticleBySlug(props: {
             </div>
           </article>
 
-          <aside className="mt-8 self-start md:mt-0 md:sticky md:top-24">
-            <div className="space-y-8">
+          <aside className="self-start md:sticky md:top-24">
+            <div className="space-y-5">
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                  Quick actions
+                </p>
+                <div className="mt-3 space-y-2">
+                  <ScrollToArticleCta
+                    targetId="article-content"
+                    label="Jump to article"
+                    className="w-full justify-center rounded-lg border border-neutral-300 bg-white text-sm text-neutral-800 hover:bg-neutral-50"
+                  />
+                  <ScrollToArticleCta
+                    targetId="article-predictions"
+                    label="View discussion"
+                    className="w-full justify-center rounded-lg border-red-300 bg-red-50 text-red-700 hover:border-red-400 hover:bg-red-100"
+                  />
+                </div>
+              </section>
+
               <GetEmail />
 
-              <section className="px-4 lg:px-0">
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
                 <AdsenseUnit
                   slot={sidebarAdSlot}
                   label="Sidebar ad"

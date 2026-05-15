@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { marked } from "marked";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 
 type Mark = { type: string; attrs?: Record<string, unknown> };
 type JSONText = { type: "text"; text: string; marks?: Mark[] };
@@ -30,29 +32,24 @@ function getMarkAttr(run: JSONText, t: string, key: string) {
 function renderTextRun(run: JSONText): React.ReactNode {
   let el: React.ReactNode = run.text;
 
-  // inline code first
   if (hasMark(run, "code")) {
     el = <code className="px-1 py-0.5 rounded bg-gray-100 text-[0.9em]">{el}</code>;
   }
 
-  // highlight
   if (hasMark(run, "highlight")) {
     el = <span className="bg-yellow-200">{el}</span>;
   }
 
-  // textStyle (e.g., color) - TipTap TextStyle extension
   const textStyle = getMark(run, "textStyle");
   if (textStyle?.attrs?.color) {
     el = <span style={{ color: textStyle.attrs.color }}>{el}</span>;
   }
 
-  // typography marks (support aliases)
   if (hasMark(run, "bold") || hasMark(run, "strong")) el = <strong>{el}</strong>;
   if (hasMark(run, "italic") || hasMark(run, "em")) el = <em>{el}</em>;
   if (hasMark(run, "underline")) el = <u>{el}</u>;
   if (hasMark(run, "strike")) el = <s>{el}</s>;
 
-  // link as MARK (TipTap default)
   if (hasMark(run, "link")) {
     const href = getMarkAttr(run, "link", "href") ?? "#";
     const target = getMarkAttr(run, "link", "target") ?? "_blank";
@@ -77,12 +74,10 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
     }
     const node = n as JSONNode;
 
-    // explicit hard break
     if (node.type === "hardBreak") {
       return <br key={i} />;
     }
 
-    // link as NODE (less common, but support it)
     if (node.type === "link") {
       const href = node.attrs?.href ?? "#";
       const target = node.attrs?.target ?? "_blank";
@@ -100,7 +95,6 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
       );
     }
 
-    // unknown inline container → recurse
     return <React.Fragment key={i}>{renderInline(node.content)}</React.Fragment>;
   });
 }
@@ -145,7 +139,6 @@ function extractDenseOrderedItems(text: string): string[] | null {
 
 /* ------------------------- Utilities ------------------------- */
 
-// Detect if a paragraph is effectively "empty"
 function isEmptyParagraph(node: JSONNode) {
   if (!node.content || node.content.length === 0) return true;
   return node.content.every((c) => {
@@ -170,23 +163,16 @@ function Heading({
   children: React.ReactNode;
 }) {
   const tag = (`h${Math.min(Math.max(level, 1), 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6");
-  const editorialSans = "font-[var(--font-google-sans),ui-sans-serif,system-ui]";
   const base =
     level === 1
-      ? `text-[1.45rem] sm:text-[1.58rem] font-semibold tracking-[0.04em] uppercase ${editorialSans} text-neutral-900`
+      ? `text-[1.85rem] font-bold tracking-tight uppercase mt-16 mb-5`
       : level === 2
-      ? `text-[1.26rem] sm:text-[1.36rem] font-semibold tracking-[0.04em] uppercase ${editorialSans} text-neutral-900`
+      ? `text-[1.35rem] font-bold tracking-tight uppercase mt-14 mb-4`
       : level === 3
-      ? `text-[1.12rem] sm:text-[1.18rem] font-semibold tracking-[0.035em] uppercase ${editorialSans} text-neutral-900`
-      : `text-[0.99rem] sm:text-[1.03rem] font-semibold tracking-[0.03em] uppercase ${editorialSans} text-neutral-900`;
+      ? `text-[1.15rem] font-bold tracking-tight uppercase mt-10 mb-3`
+      : `text-[1rem] font-bold tracking-tight uppercase mt-8 mb-2`;
   const alignCls =
-    align === "center"
-      ? "text-center"
-      : align === "right"
-      ? "text-right"
-      : align === "justify"
-      ? "text-justify"
-      : "text-left";
+    align === "center" ? "text-center" : align === "right" ? "text-right" : align === "justify" ? "text-justify" : "text-left";
 
   return React.createElement(tag, { className: `${base} ${alignCls}` }, children);
 }
@@ -209,7 +195,6 @@ function renderListItems(children: (JSONNode | JSONText)[]) {
         </li>
       );
     }
-    // Fallback if editor gave raw inline content
     return (
       <li key={i} className="leading-relaxed">
         {renderInline((c as JSONNode).content)}
@@ -268,7 +253,6 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   switch (node.type) {
     case "paragraph": {
       if (isEmptyParagraph(node)) {
-        // collapse empty paragraphs so your content doesn’t get weird big gaps
         return <div key={key} className="h-2" />;
       }
       const denseItems = extractDenseOrderedItems(plainTextFromInline(node.content));
@@ -276,12 +260,7 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
         return (
           <ol key={key} className="my-4 ml-6 list-decimal space-y-2">
             {denseItems.map((item, idx) => (
-              <li
-                key={idx}
-                className="leading-relaxed"
-              >
-                {item}
-              </li>
+              <li key={idx} className="leading-relaxed">{item}</li>
             ))}
           </ol>
         );
@@ -289,19 +268,10 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
       const align = node.attrs?.textAlign as "left" | "center" | "right" | "justify" | undefined;
       const alignCls =
-        align === "center"
-          ? "text-center"
-          : align === "right"
-          ? "text-right"
-          : align === "justify"
-          ? "text-justify"
-          : "text-left";
+        align === "center" ? "text-center" : align === "right" ? "text-right" : align === "justify" ? "text-justify" : "text-left";
 
       return (
-        <p
-          key={key}
-          className={alignCls}
-        >
+        <p key={key} className={`${alignCls} leading-[1.75] my-6`}>
           {renderInline(node.content)}
         </p>
       );
@@ -320,19 +290,11 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "blockquote":
     case "quote":
       return (
-        <blockquote
-          key={key}
-          className="my-7 border-l-2 border-rose-300 pl-5 text-neutral-700"
-        >
+        <blockquote key={key} className="my-7 border-l-2 border-rose-300 pl-5 text-neutral-700">
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             return n.type === "paragraph" ? (
-              <p
-                key={i}
-                className="italic"
-              >
-                {renderInline(n.content)}
-              </p>
+              <p key={i} className="italic leading-[1.75]">{renderInline(n.content)}</p>
             ) : (
               <div key={i}>{renderBlock(n, i)}</div>
             );
@@ -343,39 +305,35 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
     case "image": {
       const { src, alt } = node.attrs ?? {};
       if (!src) return null;
-      // eslint-disable-next-line @next/next/no-img-element
-      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl my-4 max-w-full" />;
+      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl my-6 max-w-full mx-auto" />;
     }
 
-    // Generic list (your schema)
     case "list": {
       const ordered = !!node.attrs?.ordered;
       const Tag = ordered ? "ol" : "ul";
       const cls = ordered ? "list-decimal" : "list-disc";
       return (
-        <Tag key={key} className={`ml-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc space-y-1`}>
+        <Tag key={key} className={`ml-6 ${cls} [&_ol]:list-decimal [&_ul]:list-disc space-y-2 my-6`}>
           {renderListItems(node.content ?? [])}
         </Tag>
       );
     }
-    // TipTap lists
     case "bulletList":
       return (
-        <ul key={key} className="ml-6 list-disc space-y-1">
+        <ul key={key} className="ml-6 list-disc space-y-2 my-6">
           {renderListItems(node.content ?? [])}
         </ul>
       );
     case "orderedList":
       return (
-        <ol key={key} className="ml-6 list-decimal space-y-1">
+        <ol key={key} className="ml-6 list-decimal space-y-2 my-6">
           {renderListItems(node.content ?? [])}
         </ol>
       );
 
-    // TipTap task list
     case "taskList": {
       return (
-        <ul key={key} className="ml-6 space-y-2">
+        <ul key={key} className="ml-6 space-y-2 my-6">
           {(node.content ?? []).map((c, i) => {
             const n = c as JSONNode;
             if (n.type !== "taskItem") return null;
@@ -391,12 +349,11 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
       );
     }
 
-    // Embeds (youtube/iframe-like)
     case "embed": {
       const { src, title } = node.attrs ?? {};
       if (!src) return null;
       return (
-        <div key={key} className="my-4 aspect-video not-prose">
+        <div key={key} className="my-6 aspect-video not-prose">
           <iframe
             src={src}
             title={title || "embed"}
@@ -422,10 +379,7 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
         })
         .join("");
       return (
-        <pre
-          key={key}
-          className="my-4 rounded-xl bg-slate-900 text-slate-50 text-sm p-4 overflow-x-auto not-prose"
-        >
+        <pre key={key} className="my-6 rounded-xl bg-slate-900 text-slate-50 text-sm p-4 overflow-x-auto not-prose">
           <code>{codeText}</code>
         </pre>
       );
@@ -433,7 +387,7 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
     case "hr":
     case "horizontalRule":
-      return <Separator key={key} className="my-8" />;
+      return <Separator key={key} className="my-10" />;
 
     case "doc":
       return (
@@ -453,23 +407,29 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
 /* ------------------------- Exported component ------------------------- */
 
-export default function ArticleContent({ value }: { value: JSONDoc | null | undefined }) {
-  if (!value || value.type !== "doc") return null;
-  const nodes = (value.content ?? []) as JSONNode[];
-  const serifAll = "font-[ui-serif,Georgia,Cambria,Times,serif]";
+type ArticleContentProps = {
+  value?: JSONDoc | null;
+  markdown?: string | null;
+};
+
+export default function ArticleContent({ value, markdown }: ArticleContentProps) {
+  const sansAll = "font-[var(--font-sans),ui-sans-serif,system-ui,sans-serif]";
+
+  const htmlContent = useMemo(() => {
+    if (markdown) {
+      return marked(normalizeArticleMarkdown(markdown));
+    }
+    return null;
+  }, [markdown]);
 
   return (
-    <article className={`tiptap article-prose ${serifAll}`}>
-      <div
-        className="
-          prose prose-slate prose-base max-w-none leading-relaxed
-          prose-headings:font-semibold prose-headings:tracking-tight prose-headings:font-[var(--font-google-sans),ui-sans-serif,system-ui]
-          prose-p:leading-7 prose-li:leading-7 prose-ul:my-3 prose-ol:my-3
-          prose-img:rounded-xl prose-p:my-2
-          prose-a:text-rose-700 prose-strong:text-neutral-900
-        "
-      >
-        {nodes.map((node, i) => renderBlock(node, i))}
+    <article className={`article-content ${sansAll}`}>
+      <div className="article-flow max-w-none">
+        {htmlContent ? (
+          <div className="article-flow-content" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+        ) : value?.content ? (
+          value.content.map((node, i) => renderBlock(node, i))
+        ) : null}
       </div>
     </article>
   );

@@ -3,6 +3,8 @@
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { useEffect, useState } from "react";
+import { Link as LinkIcon } from "lucide-react";
+import { toast } from "sonner";
 
 type ShareButtonsProps = {
   className?: string;
@@ -25,6 +27,16 @@ export default function ShareButtons({
 
   const shareUrl = url ?? currentUrl;
 
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
   return (
     <div className={`flex items-center gap-3 ${className}`.trim()}>
       {showLabel ? (
@@ -41,7 +53,7 @@ export default function ShareButtons({
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on Facebook"
-        className="h-9 w-9 flex items-center justify-center rounded-full bg-[#3b5998] text-white hover:opacity-90 transition"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-[#3b5998] transition hover:border-neutral-300 hover:bg-neutral-50"
       >
         <FaFacebookF className="h-4 w-4" />
       </a>
@@ -54,7 +66,7 @@ export default function ShareButtons({
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on X"
-        className="h-9 w-9 flex items-center justify-center rounded-full bg-black text-white hover:opacity-90 transition"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-black transition hover:border-neutral-300 hover:bg-neutral-50"
       >
         <FaXTwitter className="h-4 w-4" />
       </a>
@@ -67,10 +79,18 @@ export default function ShareButtons({
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share on LinkedIn"
-        className="h-9 w-9 flex items-center justify-center rounded-full bg-[#0077b5] text-white hover:opacity-90 transition"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-[#0077b5] transition hover:border-neutral-300 hover:bg-neutral-50"
       >
         <FaLinkedinIn className="h-4 w-4" />
       </a>
+      <button
+        type="button"
+        onClick={() => void copyLink()}
+        aria-label="Copy article link"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+      >
+        <LinkIcon className="h-4 w-4" />
+      </button>
     </div>
   );
 }

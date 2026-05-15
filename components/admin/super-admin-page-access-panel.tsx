@@ -25,9 +25,7 @@ type StaffAccessRow = {
 const PERMISSION_LABELS: Partial<Record<AppPermission, string>> = {
   [PERMISSIONS.ADMIN_DASHBOARD]: "Dashboard",
   [PERMISSIONS.ADMIN_ARTICLES]: "Articles",
-  [PERMISSIONS.ADMIN_ARTICLE_ASSISTANT]: "Article assistant",
   [PERMISSIONS.ADMIN_ANALYTICS]: "Article analytics",
-  [PERMISSIONS.ADMIN_VISITOR_JOURNEYS]: "Visitor journeys",
   [PERMISSIONS.ADMIN_POSTS]: "Posts",
   [PERMISSIONS.ADMIN_NEWSLETTER]: "Newsletter",
   [PERMISSIONS.ADMIN_PREDICTIONS]: "Predictions",

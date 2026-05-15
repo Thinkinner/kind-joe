@@ -388,7 +388,7 @@ const articleSchema: Schema = {
     slug: { type: Type.STRING },
     title: { type: Type.STRING },
     excerpt: { type: Type.STRING },
-    contentHtml: { type: Type.STRING, description: "Full HTML article body" },
+    contentMarkdown: { type: Type.STRING, description: "Full Markdown article body" },
     seoTitle: { type: Type.STRING },
     seoDescription: { type: Type.STRING },
     seoKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -398,7 +398,7 @@ const articleSchema: Schema = {
     "slug",
     "title",
     "excerpt",
-    "contentHtml",
+    "contentMarkdown",
     "seoTitle",
     "seoDescription",
     "seoKeywords",
@@ -667,7 +667,7 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
         slug: string;
         title: string;
         excerpt: string;
-        contentHtml: string;
+        contentMarkdown: string;
         seoTitle: string;
         seoDescription: string;
         seoKeywords: string[];
@@ -689,7 +689,7 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
       response.candidates?.[0]?.groundingMetadata?.searchEntryPoint
         ?.renderedContent;
 
-    return { ...parsed, content: parsed.contentHtml, sources };
+    return { ...parsed, contentMarkdown: parsed.contentMarkdown, contentHtml: "", content: {}, sources };
   });
 };
 

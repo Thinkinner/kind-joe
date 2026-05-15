@@ -1,10 +1,9 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Poppins } from "next/font/google";
+import { Poppins, Lora } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/google-analytics";
-import VisitorJourneyTracker from "@/components/visitor-journey-tracker";
 import CookieConsent from "@/components/modals/cookie-consent";
 import AdsenseScriptLoader from "@/components/ads/adsense-script-loader";
 
@@ -15,6 +14,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-poppins",
+  display: "swap",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-lora",
   display: "swap",
 });
 
@@ -167,11 +173,10 @@ export default async function RootLayout({
       </head>
 
       <body
-        className={`${poppins.variable} antialiased h-full bg-background text-foreground`}
+        className={`${poppins.variable} ${lora.variable} antialiased h-full bg-background text-foreground`}
       >
         <GoogleAnalytics />
         <AdsenseScriptLoader client={resolvedAdsenseClient} />
-        <VisitorJourneyTracker />
         <main className="min-h-dvh min-w-0">{children}</main>
         <CookieConsent />
         <Toaster position="top-center" richColors closeButton />

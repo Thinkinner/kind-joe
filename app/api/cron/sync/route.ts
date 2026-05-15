@@ -1,5 +1,4 @@
 import { syncRealTimeNews } from "@/lib/aggregator";
-import { processScheduledArticleAutoComments } from "@/lib/automation/article-auto-comments";
 import { NextResponse } from "next/server";
 
 // This tells Next.js not to cache this route
@@ -18,15 +17,11 @@ export async function GET(request: Request) {
   try {
     console.log("🕒 Cron: RSS sync (no feeds configured)");
     const newSignals = await syncRealTimeNews();
-    const autoComments = await processScheduledArticleAutoComments({
-      now: new Date(),
-    });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       processed: newSignals.length,
-      autoComments,
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("❌ Cron Job Failed:", error);

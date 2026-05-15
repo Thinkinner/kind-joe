@@ -25,6 +25,8 @@ import {
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
 import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
+import { universalParser } from "@/lib/content/parser";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 
 const MAX_LIST_PAGE = 50;
 const TOPIC_KEYWORDS: Record<TopicSlug, string[]> = {
@@ -226,65 +228,116 @@ const publishedFilter = (slug: string, now = new Date()) =>
     ),
   );
 
+function isMissingContentMarkdownColumnError(error: unknown): boolean {
+  const maybe = error as { message?: string; cause?: { code?: string; message?: string } };
+  const directMessage = String(maybe?.message ?? "").toLowerCase();
+  const causeCode = String(maybe?.cause?.code ?? "");
+  const causeMessage = String(maybe?.cause?.message ?? "").toLowerCase();
+  return (
+    causeCode === "42703" &&
+    (directMessage.includes("content_markdown") ||
+      causeMessage.includes("content_markdown"))
+  );
+}
+
 export async function getFullArticleBySlug(slug: string) {
   const now = new Date();
+  const baseSelect = {
+    article: {
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      category: articles.category,
+      predictionId: articles.predictionId,
+      content: articles.content,
+      contentHtml: articles.contentHtml,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      publishedAt: articles.publishedAt,
+      publishAt: articles.publishAt,
+      readingMinutes: articles.readingMinutes,
+      isDraft: articles.isDraft,
+    },
+    authorAlias: sql<string | null>`coalesce(
+      nullif(${authUser.aliasFullName}, ''),
+      nullif(${users.aliasFullName}, '')
+    )`,
+    authorProfileName: sql<string | null>`coalesce(
+      nullif(${authUser.name}, ''),
+      ${users.name}
+    )`,
+    authorName: sql<string | null>`coalesce(
+      nullif(${articles.seo}->>'authorName', ''),
+      nullif(${authUser.aliasFullName}, ''),
+      nullif(${authUser.name}, ''),
+      nullif(${users.aliasFullName}, ''),
+      ${users.name}
+    )`,
+    authorAvatar: users.avatarUrl,
+    seo: articles.seo,
+    tags: sql<{ id: number; name: string; slug: string }[]>`COALESCE(
+      (SELECT json_agg(t.*)
+       FROM ${articleTags} at
+       INNER JOIN ${tags} t ON at.tag_id = t.id
+       WHERE at.article_id = ${articles.id}),
+      '[]'
+    )`,
+  } as const;
 
-  const row = await db
-    .select({
-      article: articles,
-      authorAlias: sql<string | null>`coalesce(
-        nullif(${authUser.aliasFullName}, ''),
-        nullif(${users.aliasFullName}, '')
-      )`,
-      authorProfileName: sql<string | null>`coalesce(
-        nullif(${authUser.name}, ''),
-        ${users.name}
-      )`,
-      authorName: sql<string | null>`coalesce(
-        nullif(${articles.seo}->>'authorName', ''),
-        nullif(${authUser.aliasFullName}, ''),
-        nullif(${authUser.name}, ''),
-        nullif(${users.aliasFullName}, ''),
-        ${users.name}
-      )`,
-      authorAvatar: users.avatarUrl,
-      // 🧠 This MUST be inside the select object
-      tags: sql<{ id: number; name: string; slug: string }[]>`COALESCE(
-        (SELECT json_agg(t.*) 
-         FROM ${articleTags} at 
-         INNER JOIN ${tags} t ON at.tag_id = t.id 
-         WHERE at.article_id = ${articles.id}), 
-        '[]'
-      )`,
-    })
-    .from(articles)
-    .leftJoin(users, eq(users.id, articles.authorId))
-    .leftJoin(authUser, eq(authUser.id, articles.authorId))
-    .where(
-      and(
-        eq(articles.slug, slug),
-        eq(articles.isDraft, false),
-        isNull(articles.deletedAt),
-        or(
-          and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
-          and(
-            isNull(articles.publishedAt),
-            isNotNull(articles.publishAt),
-            lte(articles.publishAt, now),
-          ),
-        ),
-      ),
-    )
-    .limit(1);
+  let row: Array<{
+    article: (typeof baseSelect)["article"];
+    contentMarkdown: string | null;
+    authorAlias: string | null;
+    authorProfileName: string | null;
+    authorName: string | null;
+    authorAvatar: string | null;
+    seo: unknown;
+    tags: { id: number; name: string; slug: string }[];
+  }>;
+
+  try {
+    row = await db
+      .select({
+        ...baseSelect,
+        contentMarkdown: articles.contentMarkdown,
+      })
+      .from(articles)
+      .leftJoin(users, eq(users.id, articles.authorId))
+      .leftJoin(authUser, eq(authUser.id, articles.authorId))
+      .where(publishedFilter(slug, now))
+      .limit(1);
+  } catch (error) {
+    if (!isMissingContentMarkdownColumnError(error)) throw error;
+    row = await db
+      .select({
+        ...baseSelect,
+        contentMarkdown: sql<string | null>`null`,
+      })
+      .from(articles)
+      .leftJoin(users, eq(users.id, articles.authorId))
+      .leftJoin(authUser, eq(authUser.id, articles.authorId))
+      .where(publishedFilter(slug, now))
+      .limit(1);
+  }
 
   if (!row[0]) return null;
 
+  const storedMarkdown = (row[0].contentMarkdown ?? "").trim();
+  const fallbackMarkdown = normalizeArticleMarkdown(
+    universalParser(row[0].article.content ?? row[0].article.contentHtml ?? ""),
+  ).trim();
+  const resolvedMarkdown = storedMarkdown || fallbackMarkdown || null;
+
   return {
     article: row[0].article,
+    contentMarkdown: resolvedMarkdown,
     authorAlias: row[0].authorAlias,
     authorProfileName: row[0].authorProfileName,
     authorName: row[0].authorName,
     authorAvatar: row[0].authorAvatar,
+    seo: row[0].seo,
     tags: row[0].tags, // Now explicitly returned
   };
 }
