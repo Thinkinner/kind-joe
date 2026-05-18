@@ -97,9 +97,9 @@ export interface DbArticle {
     description: string;
     keywords: string[];
   };
-  content: unknown;
+  content?: unknown;
   contentMarkdown: string;
-  contentHtml: string;
+  contentHtml?: string;
 }
 
 export interface WebhookPayload {

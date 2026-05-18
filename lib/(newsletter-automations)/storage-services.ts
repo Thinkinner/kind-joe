@@ -358,7 +358,6 @@ export const publishNewsletterToArticles = async (draftId: string) => {
           category: item.category || "General",
           authorId,
           contentMarkdown: item.contentMarkdown,
-          contentHtml: item.contentHtml || "",
           seo: {
             title: item.seo?.title || item.title,
             description: item.seo?.description || item.excerpt || "",

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Loader2,
   UploadCloud,
@@ -26,7 +26,6 @@ import {
   uploadBase64ImageToCloudinary,
   uploadImage,
 } from "@/lib/(newsletter-automations)/cloudinary-service";
-import BlockEditor from "@/components/(newsletter-automations)/newsletter-block-editor";
 import {
   NewsletterDraft,
   NewsletterData,
@@ -38,6 +37,8 @@ import {
   normalizeSiteBase,
   normalizeStorySlug,
 } from "@/lib/(newsletter-automations)/newsletter-links";
+import { marked } from "marked";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import NewsletterPreview from "./newsletter-preview";
 import {
   saveDraft,
@@ -51,9 +52,9 @@ import {
 import { sendToWebhook } from "@/lib/(newsletter-automations)/web-hook-services";
 import {
   generateFullArticleContent,
-  regenerateSingleStory,
   suggestNewsletterEmailSubject,
 } from "@/lib/(newsletter-automations)/gemini-service";
+import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
 import { generateEmailHtml } from "@/lib/(newsletter-automations)/email-template-service";
 import ArticleSelectionModal from "./article-selection-modal";
@@ -412,8 +413,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       updatedArticles[replaceIndex] = {
         ...updatedArticles[replaceIndex],
         title: newStory.headline,
-        contentHtml: "", // Wipe HTML so the "Generate" button appears again
-        content: null,
+        contentMarkdown: "", // Wipe markdown so the "Generate" button appears again
         coverImageUrl: newStory.imageUrl || null,
       };
       setArticles(updatedArticles);
@@ -704,7 +704,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
       for (let i = 0; i < data.stories.length; i++) {
         // Skip if content already exists
-        if (currentArticles[i]?.contentHtml) continue;
+        if (currentArticles[i]?.contentMarkdown?.trim().length > 50) continue;
 
         const story = data.stories[i];
         setLoadingText(
@@ -724,8 +724,6 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             title: content.title,
             excerpt: content.excerpt,
             contentMarkdown: content.contentMarkdown,
-            content: {}, // Empty JSON
-            contentHtml: "", // Empty HTML
             coverImageUrl: story.imageUrl || null,
             category: story.category || "General",
             authorId: settings.authorId,
@@ -774,7 +772,9 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         }
       }
 
-      if (currentArticles.every((a) => a?.contentHtml)) {
+      if (
+        currentArticles.every((a) => a?.contentMarkdown?.trim().length > 50)
+      ) {
         setSuccessMsg("All articles generated!");
       }
     } catch (err: any) {
@@ -804,8 +804,6 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         title: content.title,
         excerpt: content.excerpt,
         contentMarkdown: content.contentMarkdown,
-        content: {},
-        contentHtml: "",
         coverImageUrl: story.imageUrl || null,
         category: story.category || "General",
         authorId: settings.authorId || "default",
@@ -1002,6 +1000,12 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     !articles[idx] ||
     !articles[idx].contentMarkdown ||
     articles[idx].contentMarkdown.length < 50;
+  const activeArticle = activeTab === "overview" ? null : articles[activeTab as number];
+  const activeArticlePreviewHtml = useMemo(() => {
+    const markdown = activeArticle?.contentMarkdown || "";
+    if (!markdown.trim()) return "";
+    return marked(normalizeArticleMarkdown(markdown));
+  }, [activeArticle?.contentMarkdown]);
 
   return (
     <div className="flex h-full min-h-0 flex-col animate-fade-in bg-background text-foreground">
@@ -1560,24 +1564,15 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
                     }}
                     placeholder="Article Title..."
                   />
-                  <div className="flex-1 min-h-[500px]">
-                    <BlockEditor
-                      className="h-full"
-                      value={
-                        articles[activeTab as number]
-                          .content as import("@/components/(newsletter-automations)/newsletter-block-editor").BlockEditorProps["value"]
-                      }
-                      onChange={(json, html) => {
-                        const newArticles = [...articles];
-                        newArticles[activeTab as number] = {
-                          ...newArticles[activeTab as number],
-                          content: json,
-                          contentHtml: html,
-                        };
-                        setArticles(newArticles);
-                      }}
-                    />
-                  </div>
+                  <AdminBlockEditor
+                    initialMarkdown={
+                      articles[activeTab as number].contentMarkdown || ""
+                    }
+                    onChange={({ markdown }) => {
+                      updateArticle(activeTab as number, "contentMarkdown", markdown);
+                    }}
+                    className="min-h-[520px]"
+                  />
                 </>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-border  text-muted-foreground p-8 text-center">
@@ -1599,21 +1594,21 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             {/* RIGHT: PREVIEW */}
             <div className="w-full overflow-y-auto bg-card p-4 text-foreground sm:p-8 lg:w-1/2 lg:p-12">
               <div className="prose prose-lg prose-invert mx-auto max-w-2xl">
-                {articles[activeTab as number]?.contentHtml ? (
+                {activeArticlePreviewHtml ? (
                   <>
-                    {articles[activeTab as number].coverImageUrl && (
+                    {activeArticle?.coverImageUrl && (
                       <img
-                        src={articles[activeTab as number].coverImageUrl!}
+                        src={activeArticle.coverImageUrl}
                         alt="Cover"
                         className="mb-8 h-64 w-full object-cover"
                       />
                     )}
                     <h1 className="mb-4 text-2xl font-black leading-tight sm:mb-6 sm:text-4xl">
-                      {articles[activeTab as number].title}
+                      {activeArticle?.title}
                     </h1>
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: articles[activeTab as number].contentHtml,
+                        __html: activeArticlePreviewHtml,
                       }}
                     />
                   </>

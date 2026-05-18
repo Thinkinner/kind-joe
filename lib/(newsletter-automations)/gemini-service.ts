@@ -1,10 +1,9 @@
 "use server";
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import {
+  PROMPT_SETTINGS_DEFAULTS,
   renderPromptTemplate,
-  type PromptSettings,
 } from "@/lib/ai/prompt-settings";
-import { getEffectivePromptSettings } from "@/lib/ai/prompt-settings-store";
 import {
   NewsletterData,
   RawRssItem,
@@ -27,6 +26,8 @@ const getClient = () => {
   if (!apiKey) throw new Error("GOOGLE_API_KEY not found in environment variables");
   return new GoogleGenAI({ apiKey });
 };
+
+const PROMPTS = PROMPT_SETTINGS_DEFAULTS;
 
 async function retry<T>(
   fn: () => Promise<T>,
@@ -433,10 +434,9 @@ type GenAIClient = ReturnType<typeof getClient>;
 async function generateEmailSubjectFromLeadStory(
   ai: GenAIClient,
   leadStory: NewsletterStory,
-  promptSettings: PromptSettings,
 ): Promise<string> {
   const prompt = renderPromptTemplate(
-    promptSettings.newsletterLeadSubjectPromptTemplate,
+    PROMPTS.newsletterLeadSubjectPromptTemplate,
     {
       headline: leadStory.headline,
       category: leadStory.category || "News",
@@ -479,8 +479,7 @@ export const suggestNewsletterEmailSubject = async (
     throw new Error("Add Story 1 with a headline first.");
   }
   const ai = getClient();
-  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
-  return generateEmailSubjectFromLeadStory(ai, leadStory, promptSettings);
+  return generateEmailSubjectFromLeadStory(ai, leadStory);
 };
 
 /**
@@ -491,7 +490,6 @@ export const generateNewsletter = async (
   config: PersonalizationConfig,
 ): Promise<NewsletterData> => {
   await assertNewsletterStaff();
-  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
 
   const now = new Date();
@@ -562,7 +560,7 @@ export const generateNewsletter = async (
       const response = await ai.models.generateContent({
         model: NEWSLETTER_MODEL,
         contents: renderPromptTemplate(
-          promptSettings.newsletterGenerateUserPromptTemplate,
+          PROMPTS.newsletterGenerateUserPromptTemplate,
           {
             currentDateString,
             personaHintsBlock,
@@ -570,7 +568,7 @@ export const generateNewsletter = async (
           },
         ),
         config: {
-          systemInstruction: promptSettings.newsletterSystemInstruction,
+          systemInstruction: PROMPTS.newsletterSystemInstruction,
           // 5. CRITICAL: Give it Google Search so it knows what is ACTUALLY trending globally today
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
@@ -599,11 +597,7 @@ export const generateNewsletter = async (
 
       if (data.stories?.[0] && (!data.title || !data.title.trim())) {
         try {
-          data.title = await generateEmailSubjectFromLeadStory(
-            ai,
-            data.stories[0],
-            promptSettings,
-          );
+          data.title = await generateEmailSubjectFromLeadStory(ai, data.stories[0]);
         } catch {
           /* leave title empty; user can use Suggest from Story 1 */
         }
@@ -622,7 +616,6 @@ export const generateNewsletter = async (
  */
 export const generateFullArticleContent = async (story: NewsletterStory) => {
   await assertNewsletterStaff();
-  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
   const now = new Date();
   const currentDateTimeString = now.toLocaleString("en-US", {
@@ -639,18 +632,28 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
   // SIMPLIFIED PROMPT: Removed complex <br/> requirements to reduce JSON errors.
   // We let the frontend handle spacing between paragraphs.
   const prompt = renderPromptTemplate(
-    promptSettings.newsletterFullArticlePromptTemplate,
+    PROMPTS.newsletterFullArticlePromptTemplate,
     {
       currentDateTimeString,
       headline: story.headline,
       summary: story.summary,
     },
   );
+  const markdownOutputGuard = [
+    "",
+    "HARD OUTPUT REQUIREMENTS:",
+    "- HEADLINE maps to title.",
+    "- Return valid JSON only with these exact fields:",
+    "  slug, title, excerpt, contentMarkdown, seoTitle, seoDescription, seoKeywords, readingMinutes",
+    "- contentMarkdown must be markdown text only (no HTML tags).",
+    "- Use markdown section headings and bullets.",
+    "- Do not return contentHtml.",
+  ].join("\n");
 
   return retry(async () => {
     const response = await ai.models.generateContent({
       model: NEWSLETTER_MODEL,
-      contents: prompt,
+      contents: `${prompt}\n${markdownOutputGuard}`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -689,7 +692,7 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
       response.candidates?.[0]?.groundingMetadata?.searchEntryPoint
         ?.renderedContent;
 
-    return { ...parsed, contentMarkdown: parsed.contentMarkdown, contentHtml: "", content: {}, sources };
+    return { ...parsed, contentMarkdown: parsed.contentMarkdown, sources };
   });
 };
 
@@ -702,13 +705,12 @@ export const regenerateSingleStory = async (
   sourcePool?: RawRssItem[],
 ): Promise<NewsletterStory> => {
   await assertNewsletterStaff();
-  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
   return retry(async () => {
     const response = await ai.models.generateContent({
       model: NEWSLETTER_MODEL,
       contents: renderPromptTemplate(
-        promptSettings.newsletterSingleStoryPromptTemplate,
+        PROMPTS.newsletterSingleStoryPromptTemplate,
         {
           instruction,
           currentStoryJson: JSON.stringify(currentStory),
@@ -735,7 +737,6 @@ export const generateStoryFromSelectedArticle = async (
   targetSlotName: string,
 ): Promise<NewsletterStory> => {
   await assertNewsletterStaff();
-  const promptSettings = await getEffectivePromptSettings({ skipAuth: true });
   const ai = getClient();
 
   return retry(async () => {
@@ -748,7 +749,7 @@ export const generateStoryFromSelectedArticle = async (
     const sourceTitle = (selectedItem.title || "").trim();
 
     const prompt = renderPromptTemplate(
-      promptSettings.newsletterSelectedArticlePromptTemplate,
+      PROMPTS.newsletterSelectedArticlePromptTemplate,
       {
         targetSlotName,
         sourceTitle: sourceTitle || "(not provided)",

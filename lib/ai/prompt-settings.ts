@@ -324,10 +324,10 @@ TIMELINESS RULES:
 
 OUTPUT FORMAT (JSON ONLY):
 - Return exactly these fields:
-  slug, title, excerpt, contentHtml, seoTitle, seoDescription, seoKeywords, readingMinutes
-- contentHtml must be valid clean HTML for publication.
-- Use semantic headings for section labels (h2/h3), paragraph tags, and list tags where needed.
-- Do not output markdown.
+  slug, title, excerpt, contentMarkdown, seoTitle, seoDescription, seoKeywords, readingMinutes
+- contentMarkdown must be valid markdown for publication.
+- Use markdown headings for section labels (##/###), regular paragraphs, and list items where needed.
+- Do not output HTML.
 - Target article length: 600-900 words.`,
   newsletterSingleStoryPromptTemplate:
     "Task: {{instruction}}. Context: {{currentStoryJson}}",
