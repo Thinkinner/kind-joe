@@ -232,6 +232,13 @@
       "when": 1778810000000,
       "tag": "0032_remove_visitor_journey_events",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778838000000,
+      "tag": "0033_articles_content_nullable",
+      "breakpoints": true
     }
   ]
 }

@@ -331,6 +331,7 @@ export const publishNewsletterToArticles = async (draftId: string) => {
 
       for (let index = 0; index < newsletterArticles.length; index++) {
         const item = newsletterArticles[index];
+        const articleId = newArticleId();
         const baseSlug = (slugify(item.title) || `article-${Date.now()}`).slice(0, 200);
         let finalSlug = baseSlug;
         for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {

@@ -4,6 +4,7 @@ import {
   PROMPT_SETTINGS_DEFAULTS,
   renderPromptTemplate,
 } from "@/lib/ai/prompt-settings";
+import { injectArticleAssistantFacts } from "@/lib/ai/article-assistant-prompt";
 import {
   NewsletterData,
   RawRssItem,
@@ -629,25 +630,24 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
     timeZoneName: "short",
   });
 
-  // SIMPLIFIED PROMPT: Removed complex <br/> requirements to reduce JSON errors.
-  // We let the frontend handle spacing between paragraphs.
-  const prompt = renderPromptTemplate(
-    PROMPTS.newsletterFullArticlePromptTemplate,
-    {
-      currentDateTimeString,
-      headline: story.headline,
-      summary: story.summary,
-    },
-  );
+  const sourceFacts = [
+    `As-of timestamp: ${currentDateTimeString}`,
+    `Story headline: ${story.headline || "(none provided)"}`,
+    `Story context: ${story.summary || "(none provided)"}`,
+    `Source URL: ${story.sourceUrl || "(none provided)"}`,
+    `Source name: ${story.sourceName || "(none provided)"}`,
+  ].join("\n");
+  const prompt = injectArticleAssistantFacts(sourceFacts);
   const markdownOutputGuard = [
     "",
-    "HARD OUTPUT REQUIREMENTS:",
+    "NEWSLETTER OUTPUT OVERRIDE (strict):",
     "- HEADLINE maps to title.",
     "- Return valid JSON only with these exact fields:",
     "  slug, title, excerpt, contentMarkdown, seoTitle, seoDescription, seoKeywords, readingMinutes",
     "- contentMarkdown must be markdown text only (no HTML tags).",
     "- Use markdown section headings and bullets.",
     "- Do not return contentHtml.",
+    "- Do not return category or tags in this response shape.",
   ].join("\n");
 
   return retry(async () => {
