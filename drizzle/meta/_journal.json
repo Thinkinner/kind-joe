@@ -239,6 +239,13 @@
       "when": 1778838000000,
       "tag": "0033_articles_content_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778933000000,
+      "tag": "0034_rss_auto_writer_queue",
+      "breakpoints": true
     }
   ]
 }

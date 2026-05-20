@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { universalParser } from "@/lib/content/parser";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
+import { generateArticleAssistAll } from "@/lib/ai/article-assist-service";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -590,6 +591,48 @@ export async function POST(req: Request) {
         sourceTitle: resolvedInput.sourceTitle,
         previewText: summarizeForMode(stripHtml(resolvedInput.content), 1200),
         charCount: resolvedInput.content.length,
+      });
+    }
+
+    if (mode === "all") {
+      const generated = await generateArticleAssistAll({
+        html: resolvedInput.content,
+        title: String(title ?? ""),
+        blocks,
+        sourceUrl: resolvedInput.sourceUrl,
+        sourceTitle: resolvedInput.sourceTitle,
+        customPrompt,
+      });
+      return NextResponse.json({
+        slug: generated.slug,
+        category: generated.category,
+        tags: generated.tags,
+        excerpt: generated.excerpt,
+        suggestionType: "",
+        options: [],
+        rationale: "",
+        seoScore: undefined,
+        seoFeedback: "",
+        tone: "",
+        bias: "",
+        suggestions: [],
+        seoTitle: "",
+        seoDescription: generated.seoDescription,
+        suggestedCoverPrompt: "",
+        readingMinutes: undefined,
+        draftMarkdown: generated.draftMarkdown,
+        draftHtml: "",
+        draftBlocks: undefined,
+        title: generated.title,
+        socialHeadlines: [],
+        socialTightHeadline: "",
+        socialCaption: "",
+        commentDraft: "",
+        commentPersona: "",
+        commentEmotion: "",
+        commentIntent: "",
+        commentDelaySeconds: undefined,
+        commentDelayLabel: "",
       });
     }
 

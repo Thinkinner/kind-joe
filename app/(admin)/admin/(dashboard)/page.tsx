@@ -20,6 +20,7 @@ import {
   type TrendState,
 } from "@/lib/analytics/trends";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { RssAutoWriterCard } from "@/components/admin/rss-auto-writer-card";
 
 // --- Types & Constants ---
 type RangeKey = "today" | "week" | "month" | "all";
@@ -316,6 +317,8 @@ export default async function AdminDashboardPage({
 
         {/* Sidebar / Secondary Stats */}
         <section className="space-y-6">
+          <RssAutoWriterCard />
+
           <div className="rounded-xl border border-border bg-gradient-to-br from-foreground/95 via-foreground/95 to-primary/80 p-6 text-white shadow-[0_20px_40px_-26px_rgb(15_23_42/0.55)]">
              <div className="mb-4 w-fit rounded-full bg-primary-foreground/10 p-2 text-indigo-300">
                 <FileText size={20} />

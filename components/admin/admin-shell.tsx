@@ -19,6 +19,7 @@ import {
   History,
   ClipboardList,
   Link2,
+  CheckCheck,
   Moon,
   Sun,
 } from "lucide-react";
@@ -40,6 +41,12 @@ type AdminShellProps = {
 const baseNav = [
   { href: "/admin", label: "Dashboard", icon: Home, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/articles", label: "Articles", icon: FileText, permission: PERMISSIONS.ADMIN_ARTICLES },
+  {
+    href: "/admin/articles/auto-writer-review",
+    label: "RSS approvals",
+    icon: CheckCheck,
+    permission: PERMISSIONS.ADMIN_ARTICLES,
+  },
   { href: "/admin/prompt-settings", label: "Prompt settings", icon: Settings, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/posts", label: "Posts", icon: ImageIcon, permission: PERMISSIONS.ADMIN_POSTS },
   {

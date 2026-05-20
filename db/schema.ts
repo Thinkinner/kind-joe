@@ -324,6 +324,36 @@ export const draftsTable = pgTable("newsletter_drafts", {
 /** Same table as `draftsTable`; kept for older imports / tooling. */
 export const newsletterDrafts = draftsTable;
 
+export const rssAutoWriterQueue = pgTable(
+  "rss_auto_writer_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    rssArticleId: integer("rss_article_id")
+      .notNull()
+      .references(() => newsRssArticles.id, { onDelete: "cascade" }),
+    sourceUrl: text("source_url").notNull(),
+    sourceName: text("source_name"),
+    status: varchar("status", { length: 20 }).notNull().default("queued"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastError: text("last_error"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    articleId: varchar("article_id", { length: 50 }).references(() => articles.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    rssUniqueIdx: uniqueIndex("rss_auto_writer_queue_rss_article_unique").on(
+      t.rssArticleId,
+    ),
+    statusIdx: index("rss_auto_writer_queue_status_idx").on(t.status, t.createdAt),
+    lockIdx: index("rss_auto_writer_queue_lock_idx").on(t.lockedAt),
+    sourceUrlIdx: index("rss_auto_writer_queue_source_url_idx").on(t.sourceUrl),
+  }),
+);
+
 export const aiAutomationRssSources = pgTable("ai_automation_rss_sources", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

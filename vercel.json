@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/rss-auto-writer",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
