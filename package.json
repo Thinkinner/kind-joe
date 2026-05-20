@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:worker": "tsx scripts/workers/discord-listener-worker.ts",
+    "worker:rss-auto-writer": "tsx scripts/workers/rss-auto-writer-worker.ts",
+    "worker:rss-auto-writer-ingest": "tsx scripts/workers/rss-auto-writer-ingest-worker.ts",
+    "worker:rss-auto-writer-queue": "tsx scripts/workers/rss-auto-writer-queue-worker.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

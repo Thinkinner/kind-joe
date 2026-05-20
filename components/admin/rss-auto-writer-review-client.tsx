@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Loader2, Play, RefreshCw, Trash2 } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -30,6 +30,7 @@ export function RssAutoWriterReviewClient() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [runningWorker, setRunningWorker] = useState(false);
   const [queueStats, setQueueStats] = useState<QueueStats>({
     queued: 0,
     processing: 0,
@@ -91,6 +92,28 @@ export function RssAutoWriterReviewClient() {
     }
   };
 
+  const runWorkerNow = async () => {
+    setRunningWorker(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/rss-auto-writer/run", {
+        method: "POST",
+      });
+      const payload = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!res.ok || payload.success !== true) {
+        throw new Error(payload.error || "Could not run auto-writer.");
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not run auto-writer.");
+    } finally {
+      setRunningWorker(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -102,19 +125,34 @@ export function RssAutoWriterReviewClient() {
             Approving publishes the story and assigns you as the author.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void runWorkerNow()}
+            disabled={runningWorker}
+            className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {runningWorker ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            Run Auto-Writer Now
+          </button>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error ? (

@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Link2,
   CheckCheck,
+  Activity,
   Moon,
   Sun,
 } from "lucide-react";
@@ -46,6 +47,12 @@ const baseNav = [
     label: "RSS approvals",
     icon: CheckCheck,
     permission: PERMISSIONS.ADMIN_ARTICLES,
+  },
+  {
+    href: "/admin/rss-auto-writer",
+    label: "RSS live monitor",
+    icon: Activity,
+    permission: PERMISSIONS.ADMIN_DASHBOARD,
   },
   { href: "/admin/prompt-settings", label: "Prompt settings", icon: Settings, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/posts", label: "Posts", icon: ImageIcon, permission: PERMISSIONS.ADMIN_POSTS },

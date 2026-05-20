@@ -100,6 +100,28 @@ Use Railway Cron in your service settings:
 - URL: `https://<your-domain>/api/internal/rss-auto-writer`
 - Header: `Authorization: Bearer <CRON_SECRET>`
 
+### Alternative: Always-On Railway Workers (No Cron)
+
+If you prefer not to rely on cron, run two dedicated worker services in Railway for smoother flow:
+
+1) **Ingest worker** (scans RSS + fills queue)
+- Start command: `npm run worker:rss-auto-writer-ingest`
+- Recommended replicas: `1`
+- Runs immediately on boot, then every `RSS_AUTO_WRITER_INGEST_INTERVAL_MINUTES` (default `60`)
+
+2) **Queue worker** (drains queue continuously)
+- Start command: `npm run worker:rss-auto-writer-queue`
+- Recommended replicas: `1`
+- Runs immediately on boot, then every `RSS_AUTO_WRITER_QUEUE_INTERVAL_SECONDS` (default `45`)
+- Processes up to `RSS_AUTO_WRITER_WRITER_MAX_PER_RUN` queue items each cycle (default `5`)
+
+Optional worker env vars:
+- `RSS_AUTO_WRITER_INGEST_INTERVAL_MINUTES` (default `60`)
+- `RSS_AUTO_WRITER_INGEST_LIMIT` (default `40`)
+- `RSS_AUTO_WRITER_QUEUE_INTERVAL_SECONDS` (default `45`)
+- `RSS_AUTO_WRITER_WRITER_MAX_PER_RUN` (default `5`)
+- `RSS_AUTO_WRITER_RUN_ONCE=true` (manual one-shot testing)
+
 ### Monitoring and Recovery
 
 - Response includes `ingestedScanned`, `queued`, `writerProcessed`, `skipped`, `failed`, `queueStats`, and per-item reasons.
@@ -107,7 +129,7 @@ Use Railway Cron in your service settings:
   - `queued` -> `processing` -> `done`
   - `queued`/`failed` -> `processing` -> `failed` (retryable)
   - duplicate checks result in `skipped`
-- Writer claims only one queue item per run.
+- Queue worker can process multiple items per run via `RSS_AUTO_WRITER_WRITER_MAX_PER_RUN`.
 - Failed queue items retry automatically up to attempt cap (`MAX_ATTEMPTS` in code).
 
 ### Rollback / Disable

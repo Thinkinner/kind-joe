@@ -23,9 +23,21 @@ export async function POST(request: NextRequest) {
   const ingestLimit = Number.isFinite(limitRaw)
     ? Math.trunc(limitRaw)
     : undefined;
+  const writerMaxRaw = Number(searchParams.get("writerMax") || "");
+  const writerMaxPerRun = Number.isFinite(writerMaxRaw)
+    ? Math.trunc(writerMaxRaw)
+    : undefined;
+  const mode = (searchParams.get("mode") || "full").toLowerCase();
+  const ingestEnabled = mode !== "writer";
+  const writerEnabled = mode !== "ingest";
 
   try {
-    const summary = await runRssAutoWriter({ ingestLimit });
+    const summary = await runRssAutoWriter({
+      ingestLimit,
+      writerMaxPerRun,
+      ingestEnabled,
+      writerEnabled,
+    });
     return NextResponse.json({ success: true, ...summary });
   } catch (error) {
     console.error("admin rss-auto-writer run failed", error);
