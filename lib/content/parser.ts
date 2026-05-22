@@ -53,8 +53,13 @@ export function translateTipTap(node: JSONNode | JSONDoc | JSONText): string {
       return node.content?.map((item, i) => `${i + 1}. ${translateTipTap(item)}`).join("\n") || "";
     case "listItem":
       return content;
-    case "blockquote":
-      return `> ${content}`;
+    case "blockquote": {
+      const quoted = content
+        .split("\n")
+        .map((line) => (line.trim() ? `> ${line}` : ">"))
+        .join("\n");
+      return quoted;
+    }
     case "horizontalRule":
       return "---";
     case "image":

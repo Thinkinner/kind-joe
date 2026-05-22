@@ -8,6 +8,7 @@ import {
   tags,
   users,
 } from "@/db/schema";
+import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 
 const FEATURED_TAG_SLUG = "ventura-county";
@@ -139,6 +140,7 @@ export type VenturaArticleDetail = {
   authorAlias: string | null;
   authorName: string;
   authorAvatar: string | null;
+  contentMarkdown: string | null;
   contentHtml: string | null;
   content: unknown;
   publishedAt: Date | null;
@@ -168,6 +170,7 @@ export async function getVenturaArticleDetailBySlug(
       authorAlias: sql<string | null>`nullif(${users.aliasFullName}, '')`,
       authorName: users.name,
       authorAvatar: users.avatarUrl,
+      contentMarkdown: articles.contentMarkdown,
       contentHtml: articles.contentHtml,
       content: articles.content,
       publishedAt: articles.publishedAt,
@@ -217,6 +220,12 @@ export async function getVenturaArticleDetailBySlug(
       ? await getPredictionMarketById(article.predictionId)
       : null;
 
+  const contentMarkdown = resolveArticleContentMarkdown({
+    contentMarkdown: article.contentMarkdown,
+    content: article.content,
+    contentHtml: article.contentHtml,
+  });
+
   return {
     id: article.id,
     slug: article.slug,
@@ -228,6 +237,7 @@ export async function getVenturaArticleDetailBySlug(
     authorAlias: article.authorAlias,
     authorName: article.authorName,
     authorAvatar: article.authorAvatar,
+    contentMarkdown,
     contentHtml: article.contentHtml,
     content: article.content,
     publishedAt: article.publishedAt,

@@ -13,6 +13,7 @@ import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 
 // Components
 import ArticleContent from "@/components/stories/article-single-page-content";
+import type { JSONDoc } from "@/lib/content/parser";
 import ShareButtons from "@/components/stories/share-buttons";
 import GetEmail from "@/components/stories/kindjoe-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
@@ -126,9 +127,13 @@ export default async function ArticleBySlug(props: {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("") || "KJ";
 
-  const contentMarkdown =
-    data.contentMarkdown && data.contentMarkdown.trim().length > 0
-      ? data.contentMarkdown
+  const contentMarkdown = data.contentMarkdown ?? null;
+  const contentDoc =
+    a.content &&
+    typeof a.content === "object" &&
+    !Array.isArray(a.content) &&
+    (a.content as JSONDoc).type === "doc"
+      ? (a.content as JSONDoc)
       : null;
   const chainEnabled = true;
 
@@ -252,7 +257,7 @@ export default async function ArticleBySlug(props: {
 
             <div id="article-content" className="mt-8 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10">
               <div>
-                <ArticleContent markdown={contentMarkdown} />
+                <ArticleContent markdown={contentMarkdown} value={contentDoc} />
               </div>
               <ArticleTransparencyPanel
                 publishedAt={a.publishedAt}

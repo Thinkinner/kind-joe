@@ -70,6 +70,7 @@ export default function VenturaContentApiDocsPage() {
   "authorAlias": "Joe Ventura",
   "authorName": "Joseph Smith",
   "authorAvatar": "https://cdn.example.com/avatar.png",
+  "contentMarkdown": "### LEDE\\n\\nFull editorial body in markdown...\\n\\n### THE OTHER SIDE\\n\\nOpposing view...",
   "contentHtml": "<p>...</p>",
   "content": {},
   "publishedAt": "2026-04-20T15:40:00.000Z",
@@ -130,7 +131,11 @@ export default function VenturaContentApiDocsPage() {
       <h2>Integration checklist</h2>
       <ul>
         <li>Fetch from `GET /api/ventura/articles` for Ventura lists.</li>
-        <li>Fetch full editorial body from `GET /api/ventura/articles/:slug`.</li>
+        <li>
+          Fetch full editorial body from `GET /api/ventura/articles/:slug` using
+          `contentMarkdown` (resolved from stored markdown with legacy jsonb/html
+          fallback).
+        </li>
         <li>Link users to canonical story URLs using each article slug.</li>
         <li>Cache API responses and avoid aggressive request polling.</li>
       </ul>

@@ -25,8 +25,7 @@ import {
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
 import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
-import { universalParser } from "@/lib/content/parser";
-import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
+import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 
 const MAX_LIST_PAGE = 50;
 const TOPIC_KEYWORDS: Record<TopicSlug, string[]> = {
@@ -324,11 +323,11 @@ export async function getFullArticleBySlug(slug: string) {
 
   if (!row[0]) return null;
 
-  const storedMarkdown = (row[0].contentMarkdown ?? "").trim();
-  const fallbackMarkdown = normalizeArticleMarkdown(
-    universalParser(row[0].article.content ?? row[0].article.contentHtml ?? ""),
-  ).trim();
-  const resolvedMarkdown = storedMarkdown || fallbackMarkdown || null;
+  const resolvedMarkdown = resolveArticleContentMarkdown({
+    contentMarkdown: row[0].contentMarkdown,
+    content: row[0].article.content,
+    contentHtml: row[0].article.contentHtml,
+  });
 
   return {
     article: row[0].article,
