@@ -58,6 +58,37 @@ When an article starts from outside reporting:
 
 `check:public-links` validates core nav/footer/legal/support routes for HTTP success and non-placeholder content.
 
+## RSS News Read API (Cross-App Access)
+
+Use this read-only API when another app needs `news_rss_articles` data.
+
+- Endpoint: `GET /api/rss-news/articles`
+- Auth:
+  - `Authorization: Bearer <RSS_NEWS_READ_API_KEY>`
+  - or `x-api-key: <RSS_NEWS_READ_API_KEY>`
+- Query params:
+  - `limit` (default `50`, max from `RSS_NEWS_READ_MAX_LIMIT`, capped at `2000`)
+  - `offset` (default `0`, max `5000`)
+  - `cursor` (id-cursor pagination; best with default sort `id desc`)
+  - `ids` (comma-separated article ids)
+  - `sourceId` or `sourceIds` (comma-separated source ids)
+  - `aiProcessed=true|false`
+  - `hasImage=true|false`
+  - `q` (title/modifiedTitle/contentSnippet search)
+  - `createdFrom`, `createdTo` (ISO datetime)
+  - `publishedFrom`, `publishedTo` (ISO datetime)
+  - `sortBy=id|createdAt|publishedAt`
+  - `sortOrder=asc|desc`
+  - `fields` (comma-separated projection, e.g. `id,title,link,publishedAt`)
+
+Response includes `items`, `nextCursor`, and `hasMore`.
+
+Required env var in production:
+- `RSS_NEWS_READ_API_KEY`
+
+Optional:
+- `RSS_NEWS_READ_MAX_LIMIT` (default `500`)
+
 ## Autonomous RSS Auto-Writer (Railway)
 
 The app includes an autonomous RSS-to-draft writer job for `news_rss_articles`.
