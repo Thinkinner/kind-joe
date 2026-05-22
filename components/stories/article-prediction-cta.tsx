@@ -23,10 +23,12 @@ export function ArticlePredictionCta({
   articleSlug,
   market,
   canCreate,
+  viewerId = null,
 }: {
   articleSlug: string;
   market: PredictionMarketView | null;
   canCreate: boolean;
+  viewerId?: string | null;
 }) {
   const router = useRouter();
   const [currentMarket, setCurrentMarket] = useState<PredictionMarketView | null>(market);
@@ -149,6 +151,7 @@ export function ArticlePredictionCta({
               slug={currentMarket.slug}
               nextPath={`/${articleSlug}`}
               theme="light"
+              initialViewerId={viewerId}
             />
           </div>
         </div>

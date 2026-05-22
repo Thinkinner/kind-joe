@@ -323,15 +323,18 @@ export async function getFullArticleBySlug(slug: string) {
 
   if (!row[0]) return null;
 
-  const resolvedMarkdown = resolveArticleContentMarkdown({
+  const contentSources = {
     contentMarkdown: row[0].contentMarkdown,
     content: row[0].article.content,
     contentHtml: row[0].article.contentHtml,
-  });
+  };
+  const resolvedMarkdown = resolveArticleContentMarkdown(contentSources);
 
   return {
     article: row[0].article,
     contentMarkdown: resolvedMarkdown,
+    rawContentMarkdown: row[0].contentMarkdown,
+    contentSources,
     authorAlias: row[0].authorAlias,
     authorProfileName: row[0].authorProfileName,
     authorName: row[0].authorName,

@@ -56,6 +56,8 @@ type CandidateRow = {
   title: string;
   excerpt: string | null;
   content: unknown;
+  contentMarkdown: string | null;
+  contentHtml: string | null;
   seo: unknown;
   predictionId: number | null;
   authorAvatar: string | null;
@@ -76,6 +78,8 @@ export type RelatedChainItem = {
   title: string;
   excerpt: string | null;
   content: unknown;
+  contentMarkdown: string | null;
+  contentHtml: string | null;
   seo: unknown;
   predictionId: number | null;
   authorAvatar: string | null;
@@ -452,6 +456,8 @@ async function getSemanticCandidates(
       title: articles.title,
       excerpt: articles.excerpt,
       content: articles.content,
+      contentMarkdown: articles.contentMarkdown,
+      contentHtml: articles.contentHtml,
       seo: articles.seo,
       predictionId: articles.predictionId,
       authorAvatar: users.avatarUrl,
@@ -505,6 +511,8 @@ async function getFallbackArticles(
       title: articles.title,
       excerpt: articles.excerpt,
       content: articles.content,
+      contentMarkdown: articles.contentMarkdown,
+      contentHtml: articles.contentHtml,
       seo: articles.seo,
       predictionId: articles.predictionId,
       authorAvatar: users.avatarUrl,
@@ -531,6 +539,8 @@ async function getFallbackArticles(
     title: row.title,
     excerpt: row.excerpt,
     content: row.content,
+    contentMarkdown: row.contentMarkdown,
+    contentHtml: row.contentHtml,
     seo: row.seo,
     predictionId: row.predictionId,
     authorAvatar: row.authorAvatar,
@@ -581,6 +591,8 @@ function rankSemanticCandidates(
         title: candidate.title,
         excerpt: candidate.excerpt,
         content: candidate.content,
+        contentMarkdown: candidate.contentMarkdown,
+        contentHtml: candidate.contentHtml,
         seo: candidate.seo,
         predictionId: candidate.predictionId,
         authorAvatar: candidate.authorAvatar,

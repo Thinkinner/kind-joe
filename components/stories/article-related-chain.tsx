@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ArticleContent from "@/components/stories/article-single-page-content";
+import { resolveArticleDisplayContent } from "@/lib/content/resolve-article-content-markdown";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import ShareButtons from "@/components/stories/share-buttons";
@@ -15,6 +16,8 @@ type RelatedChainItem = {
   title: string;
   excerpt: string | null;
   content: unknown;
+  contentMarkdown: string | null;
+  contentHtml: string | null;
   seo: unknown;
   predictionId: number | null;
   authorAvatar: string | null;
@@ -60,39 +63,6 @@ function writeSessionSeenIds(ids: Set<string>) {
   } catch {
     // Ignore storage failures.
   }
-}
-
-type JsonDoc = {
-  type: "doc";
-  content?: unknown[];
-};
-
-function parseJsonDoc(value: unknown): JsonDoc | null {
-  if (!value) return null;
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        "type" in parsed &&
-        (parsed as { type?: unknown }).type === "doc"
-      ) {
-        return parsed as JsonDoc;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-  if (
-    typeof value === "object" &&
-    "type" in value &&
-    (value as { type?: unknown }).type === "doc"
-  ) {
-    return value as JsonDoc;
-  }
-  return null;
 }
 
 function parseSeo(
@@ -348,7 +318,13 @@ export default function ArticleRelatedChain({
     <section className={className}>
       <div className="space-y-14">
         {items.map((item) => {
-          const contentDoc = parseJsonDoc(item.content);
+          const { contentMarkdown, contentDoc, preferLegacyDoc } =
+            resolveArticleDisplayContent({
+              contentMarkdown: item.contentMarkdown,
+              content: item.content,
+              contentHtml: item.contentHtml,
+            });
+          const hasBody = Boolean(contentMarkdown?.trim() || contentDoc?.content?.length);
           const seo = parseSeo(item.seo);
           const bylineAlias =
             seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
@@ -482,9 +458,13 @@ export default function ArticleRelatedChain({
                 <p className="mt-4 text-sm leading-relaxed text-neutral-700">{item.excerpt}</p>
               )}
 
-              {contentDoc ? (
+              {hasBody ? (
                 <div className="mt-8 tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
-                  <ArticleContent value={contentDoc} />
+                  <ArticleContent
+                    markdown={contentMarkdown}
+                    value={contentDoc}
+                    preferLegacyDoc={preferLegacyDoc}
+                  />
                 </div>
               ) : null}
 

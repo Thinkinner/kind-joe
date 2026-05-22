@@ -15,6 +15,17 @@ export type JSONNode = {
 };
 export type JSONDoc = { type: "doc"; content?: JSONNode[] };
 
+export function asArticleJsonDoc(content: unknown): JSONDoc | null {
+  if (!content || typeof content !== "object" || Array.isArray(content)) {
+    return null;
+  }
+  const doc = content as JSONDoc;
+  if (doc.type !== "doc" || !Array.isArray(doc.content) || doc.content.length === 0) {
+    return null;
+  }
+  return doc;
+}
+
 /**
  * Translates a TipTap JSON tree into a clean Markdown string.
  */

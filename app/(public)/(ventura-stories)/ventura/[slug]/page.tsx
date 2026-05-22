@@ -13,7 +13,7 @@ import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 
 // Components
 import ArticleContent from "@/components/stories/article-single-page-content";
-import type { JSONDoc } from "@/lib/content/parser";
+import { resolveArticleDisplayContent } from "@/lib/content/resolve-article-content-markdown";
 import ShareButtons from "@/components/stories/share-buttons";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
@@ -120,14 +120,13 @@ export default async function VenturaArticleBySlug(props: {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("") || "JV";
 
-  const contentMarkdown = data.contentMarkdown ?? null;
-  const contentDoc =
-    a.content &&
-    typeof a.content === "object" &&
-    !Array.isArray(a.content) &&
-    (a.content as JSONDoc).type === "doc"
-      ? (a.content as JSONDoc)
-      : null;
+  const contentSources = data.contentSources ?? {
+    contentMarkdown: data.rawContentMarkdown,
+    content: a.content,
+    contentHtml: a.contentHtml,
+  };
+  const { contentMarkdown, contentDoc, preferLegacyDoc } =
+    resolveArticleDisplayContent(contentSources);
   const chainEnabled = true;
 
   return (
@@ -262,7 +261,11 @@ export default async function VenturaArticleBySlug(props: {
             {/* Content Area with Orange Links */}
             <div id="article-content" className="mt-7 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10">
               <div>
-                <ArticleContent markdown={contentMarkdown} value={contentDoc} />
+                <ArticleContent
+                  markdown={contentMarkdown}
+                  value={contentDoc}
+                  preferLegacyDoc={preferLegacyDoc}
+                />
               </div>
               <ArticleTransparencyPanel
                 publishedAt={a.publishedAt}
@@ -278,6 +281,7 @@ export default async function VenturaArticleBySlug(props: {
                   articleSlug={slug}
                   market={linkedPrediction}
                   canCreate={Boolean(viewerId)}
+                  viewerId={viewerId}
                 />
               </div>
               {chainEnabled && (

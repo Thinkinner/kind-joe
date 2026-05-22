@@ -137,6 +137,7 @@ function CommentBlock({
             <span
               className={dark ? "text-[12px] text-[#a1a1aa]" : "text-xs text-slate-400"}
               title={formatTime(node.createdAt)}
+              suppressHydrationWarning
             >
               {dark ? `${relativeTime(node.createdAt)} ago` : relativeTime(node.createdAt)}
             </span>
@@ -243,13 +244,18 @@ export function PredictionMarketComments({
   slug,
   nextPath,
   theme = "light",
+  initialViewerId = null,
 }: {
   slug: string;
   nextPath: string;
   theme?: "light" | "dark";
+  /** From server session so SSR matches the first client paint. */
+  initialViewerId?: string | null;
 }) {
   const { data: sessionData, isPending: sessionPending } = authClient.useSession();
-  const viewerId = sessionData?.user?.id ?? null;
+  const viewerId = sessionPending
+    ? (initialViewerId ?? null)
+    : (sessionData?.user?.id ?? null);
 
   const [comments, setComments] = useState<PredictionCommentNodeView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +324,7 @@ export function PredictionMarketComments({
         </header>
       ) : null}
 
-      {!sessionPending && viewerId ? (
+      {viewerId ? (
         <div className={dark ? "border-b border-[#27272a] px-6 py-6" : "border-b border-slate-200 px-5 py-4"}>
           <div className={dark ? "flex gap-4" : "space-y-2"}>
             {dark ? (
@@ -376,7 +382,7 @@ export function PredictionMarketComments({
             </span>
           ) : null}
         </div>
-      ) : !sessionPending ? (
+      ) : (
         <div
           className={
             dark
@@ -413,7 +419,7 @@ export function PredictionMarketComments({
             </>
           )}
         </div>
-      ) : null}
+      )}
 
       <div className={dark ? "px-6 py-6" : "px-5 py-3"}>
         {loading ? (

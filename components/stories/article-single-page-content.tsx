@@ -410,23 +410,34 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 type ArticleContentProps = {
   value?: JSONDoc | null;
   markdown?: string | null;
+  /** @deprecated Use markdown + value fallback; kept for callers still passing it. */
+  preferLegacyDoc?: boolean;
 };
 
-export default function ArticleContent({ value, markdown }: ArticleContentProps) {
+export default function ArticleContent({
+  value,
+  markdown,
+  preferLegacyDoc = false,
+}: ArticleContentProps) {
   const sansAll = "font-[var(--font-sans),ui-sans-serif,system-ui,sans-serif]";
 
+  const trimmedMarkdown = markdown?.trim() ?? "";
+
   const htmlContent = useMemo(() => {
-    if (markdown) {
-      return marked(normalizeArticleMarkdown(markdown));
-    }
-    return null;
-  }, [markdown]);
+    if (!trimmedMarkdown) return null;
+    return marked(normalizeArticleMarkdown(trimmedMarkdown));
+  }, [trimmedMarkdown]);
+
+  const useLegacyDoc =
+    preferLegacyDoc && !trimmedMarkdown && Boolean(value?.content?.length);
 
   return (
     <article className={`article-content ${sansAll}`}>
       <div className="article-flow max-w-none">
         {htmlContent ? (
           <div className="article-flow-content" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+        ) : useLegacyDoc && value?.content ? (
+          value.content.map((node, i) => renderBlock(node, i))
         ) : value?.content ? (
           value.content.map((node, i) => renderBlock(node, i))
         ) : null}

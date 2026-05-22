@@ -220,11 +220,12 @@ export async function getVenturaArticleDetailBySlug(
       ? await getPredictionMarketById(article.predictionId)
       : null;
 
-  const contentMarkdown = resolveArticleContentMarkdown({
+  const contentSources = {
     contentMarkdown: article.contentMarkdown,
     content: article.content,
     contentHtml: article.contentHtml,
-  });
+  };
+  const contentMarkdown = resolveArticleContentMarkdown(contentSources);
 
   return {
     id: article.id,
