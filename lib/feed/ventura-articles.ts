@@ -12,6 +12,7 @@ import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-con
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 
 const FEATURED_TAG_SLUG = "ventura-county";
+const MAX_LEGACY_LIST = 50;
 
 function publishedFilter(now = new Date()) {
   return and(
@@ -79,7 +80,8 @@ export async function listVenturaArticleSummaries(): Promise<VenturaArticleSumma
     .innerJoin(tags, eq(tags.id, articleTags.tagId))
     .leftJoin(users, eq(users.id, articles.authorId))
     .where(and(eq(tags.slug, FEATURED_TAG_SLUG), publishedFilter(now)))
-    .orderBy(desc(articles.publishedAt));
+    .orderBy(desc(articles.publishedAt))
+    .limit(MAX_LEGACY_LIST);
 
   return rows;
 }

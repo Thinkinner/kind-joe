@@ -5,6 +5,7 @@ import {
   clampIngestLimit,
   decodeIncomingCursor,
   decodeSignalsCursor,
+  getIncomingEventDetailById,
   type IncomingEventAdminRow,
   listIncomingEventsAdmin,
   listSignalsAdmin,
@@ -21,6 +22,19 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
+  const incomingEventIdRaw = url.searchParams.get("incomingEventId");
+  const incomingEventId = incomingEventIdRaw
+    ? Number.parseInt(incomingEventIdRaw, 10)
+    : NaN;
+
+  if (Number.isFinite(incomingEventId) && incomingEventId > 0) {
+    const event = await getIncomingEventDetailById(incomingEventId);
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+    return NextResponse.json({ incomingEvent: event });
+  }
+
   const includeIncoming = url.searchParams.get("includeIncoming") !== "0";
   const includeSignals = url.searchParams.get("includeSignals") !== "0";
   const incomingLimit = clampIngestLimit(url.searchParams.get("incomingLimit"));

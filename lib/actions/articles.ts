@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { db } from "@/db";
 import {
   articles,
@@ -239,7 +240,7 @@ function isMissingContentMarkdownColumnError(error: unknown): boolean {
   );
 }
 
-export async function getFullArticleBySlug(slug: string) {
+export const getFullArticleBySlug = cache(async function getFullArticleBySlug(slug: string) {
   const now = new Date();
   const baseSelect = {
     article: {
@@ -342,7 +343,7 @@ export async function getFullArticleBySlug(slug: string) {
     seo: row[0].seo,
     tags: row[0].tags, // Now explicitly returned
   };
-}
+});
 
 export async function getArticleCategories(articleId: string) {
   return await db

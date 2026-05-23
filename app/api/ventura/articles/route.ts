@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  listVenturaArticleSummaries,
   listVenturaArticleSummariesPage,
 } from "@/lib/feed/ventura-articles";
 
@@ -21,6 +20,6 @@ export async function GET(request: Request) {
     return NextResponse.json(page);
   }
 
-  const articles = await listVenturaArticleSummaries();
-  return NextResponse.json(articles);
+  const page = await listVenturaArticleSummariesPage({ limit: 50, offset: 0 });
+  return NextResponse.json(page.items);
 }

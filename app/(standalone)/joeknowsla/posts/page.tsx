@@ -9,6 +9,8 @@ type JoeKnowsLaPostCard = {
   destinationUrl: string;
 };
 
+const MAX_STANDALONE_POSTS = 50;
+
 async function getJoeKnowsLaPostsFromDb(): Promise<JoeKnowsLaPostCard[]> {
   if (!process.env.DATABASE_URL) return [];
   try {
@@ -26,7 +28,8 @@ async function getJoeKnowsLaPostsFromDb(): Promise<JoeKnowsLaPostCard[]> {
         desc(joeknowslaPosts.isPinned),
         asc(joeknowslaPosts.order),
         desc(joeknowslaPosts.id),
-      );
+      )
+      .limit(MAX_STANDALONE_POSTS);
 
     return rows;
   } catch (error) {

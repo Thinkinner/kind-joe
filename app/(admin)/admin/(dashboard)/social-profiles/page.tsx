@@ -360,7 +360,7 @@ export default function AdminSocialProfilesPage() {
   );
 
   const loadProfiles = async () => {
-    const res = await fetch("/api/admin/social-profiles", { cache: "no-store" });
+    const res = await fetch("/api/admin/social-profiles?limit=200", { cache: "no-store" });
     const data = (await res.json().catch(() => null)) as
       | { error?: string }
       | SocialProfile[]

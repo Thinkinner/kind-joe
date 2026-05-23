@@ -72,7 +72,7 @@ function generateTemporaryPassword(): string {
   return out;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
   if (!staff.ok) {
     return NextResponse.json(
@@ -80,6 +80,12 @@ export async function GET() {
       { status: staff.reason === "unauthenticated" ? 401 : 403 },
     );
   }
+
+  const { searchParams } = new URL(req.url);
+  const rawLimit = Number.parseInt(searchParams.get("limit") ?? "100", 10);
+  const rawOffset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 100;
+  const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
 
   const [viewerRow] = await db
     .select({
@@ -110,7 +116,9 @@ export async function GET() {
       createdAt: authUser.createdAt,
     })
     .from(authUser)
-    .orderBy(authUser.email);
+    .orderBy(authUser.email)
+    .limit(limit)
+    .offset(offset);
 
   const out = rows.map((row) => {
     const real = parseStaffRolesFromDb(row);

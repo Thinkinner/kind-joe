@@ -1,4 +1,4 @@
-import { syncRealTimeNews } from "@/lib/aggregator";
+import { purgeOldSignals, syncRealTimeNews } from "@/lib/aggregator";
 import { NextResponse } from "next/server";
 
 // This tells Next.js not to cache this route
@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   try {
     console.log("🕒 Cron: RSS sync (no feeds configured)");
     const newSignals = await syncRealTimeNews();
+    await purgeOldSignals();
 
     return NextResponse.json({
       success: true,

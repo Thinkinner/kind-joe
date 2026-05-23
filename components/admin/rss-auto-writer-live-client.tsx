@@ -27,7 +27,7 @@ type QueueItem = {
   articleTitle: string | null;
 };
 
-const REFRESH_MS = 5000;
+const REFRESH_MS = 30_000;
 
 export function RssAutoWriterLiveClient() {
   const [loading, setLoading] = useState(true);
@@ -84,10 +84,25 @@ export function RssAutoWriterLiveClient() {
 
   useEffect(() => {
     void load();
-    const timer = setInterval(() => {
+
+    const tick = () => {
+      if (document.visibilityState === "hidden") return;
       void load(true);
-    }, REFRESH_MS);
-    return () => clearInterval(timer);
+    };
+
+    const timer = setInterval(tick, REFRESH_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void load(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const runFlow = async (mode: "ingest" | "writer" | "full", writerMax?: number) => {

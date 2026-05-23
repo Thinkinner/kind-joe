@@ -53,6 +53,8 @@ Paginated response shape:
 
 ### Example request
 
+Unpaginated requests return up to **50** items. Use `limit` and `offset` for larger or incremental loads.
+
 ```bash
 curl "https://kindjoe.com/api/ventura/posts"
 ```
@@ -126,6 +128,8 @@ Paginated response shape:
 
 ### Example request
 
+Unpaginated requests return up to **50** items. Use `limit` and `offset` for larger or incremental loads.
+
 ```bash
 curl "https://kindjoe.com/api/ventura/articles"
 ```
@@ -138,6 +142,8 @@ Returns the same published Ventura-tagged article list.
 Supports the same optional `limit` and `offset` query params.
 
 ### Example request
+
+Unpaginated requests return up to **50** items. Use `limit` and `offset` for larger or incremental loads.
 
 ```bash
 curl "https://kindjoe.com/api/articles/ventura-county"

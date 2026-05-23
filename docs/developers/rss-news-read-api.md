@@ -22,8 +22,8 @@ If missing/invalid, API returns `401 Unauthorized`.
 ### Pagination
 
 - `limit` - number of rows (default `50`)
-  - max is controlled by `RSS_NEWS_READ_MAX_LIMIT` (default `500`)
-  - hard cap `2000`
+  - max is controlled by `RSS_NEWS_READ_MAX_LIMIT` (default `200`)
+  - hard cap `500`
 - `cursor` - id cursor pagination (best with default `sortBy=id&sortOrder=desc`)
 - `offset` - offset pagination (default `0`, max `5000`)
 
@@ -62,7 +62,7 @@ If missing/invalid, API returns `401 Unauthorized`.
   - `createdAt`
   - `aiProcessed`
 
-If `fields` is omitted, all fields above are returned.
+If `fields` is omitted, metadata fields are returned (`contentSnippet` is excluded). Add `fields=contentSnippet` (or include it in a comma-separated list) when you need snippet text.
 
 ## Response Shape
 
@@ -71,7 +71,7 @@ If `fields` is omitted, all fields above are returned.
   "success": true,
   "count": 50,
   "limit": 50,
-  "maxLimit": 500,
+  "maxLimit": 200,
   "offset": 0,
   "sortBy": "id",
   "sortOrder": "desc",
@@ -87,7 +87,6 @@ If `fields` is omitted, all fields above are returned.
       "modifiedTitle": null,
       "link": "https://example.com/article",
       "imageUrl": "https://example.com/image.jpg",
-      "contentSnippet": "Snippet...",
       "publishedAt": "2026-05-21T08:00:00.000Z",
       "createdAt": "2026-05-21T08:01:10.000Z",
       "aiProcessed": false
@@ -112,14 +111,21 @@ curl "https://YOUR_DOMAIN/api/rss-news/articles?limit=100&q=ventura&hasImage=tru
   -H "x-api-key: YOUR_RSS_NEWS_READ_API_KEY"
 ```
 
-### 3) Select Only Needed Fields
+### 3) Include Snippets When Needed
+
+```bash
+curl "https://YOUR_DOMAIN/api/rss-news/articles?limit=100&fields=id,title,link,publishedAt,sourceName,contentSnippet" \
+  -H "Authorization: Bearer YOUR_RSS_NEWS_READ_API_KEY"
+```
+
+### 4) Select Only Needed Fields
 
 ```bash
 curl "https://YOUR_DOMAIN/api/rss-news/articles?limit=100&fields=id,title,link,publishedAt,sourceName" \
   -H "Authorization: Bearer YOUR_RSS_NEWS_READ_API_KEY"
 ```
 
-### 4) Cursor Pagination
+### 5) Cursor Pagination
 
 ```bash
 # first page
@@ -131,7 +137,7 @@ curl "https://YOUR_DOMAIN/api/rss-news/articles?limit=100&cursor=12345" \
   -H "Authorization: Bearer YOUR_RSS_NEWS_READ_API_KEY"
 ```
 
-### 5) Fetch by Multiple IDs/Sources
+### 6) Fetch by Multiple IDs/Sources
 
 ```bash
 curl "https://YOUR_DOMAIN/api/rss-news/articles?ids=101,102,103&sourceIds=1,2" \
@@ -141,7 +147,7 @@ curl "https://YOUR_DOMAIN/api/rss-news/articles?ids=101,102,103&sourceIds=1,2" \
 ## Recommended Env Vars
 
 - `RSS_NEWS_READ_API_KEY` (required in production)
-- `RSS_NEWS_READ_MAX_LIMIT` (optional, default `500`)
+- `RSS_NEWS_READ_MAX_LIMIT` (optional, default `200`)
 
 ## Notes
 

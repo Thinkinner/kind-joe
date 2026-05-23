@@ -67,7 +67,7 @@ function isAuthorized(request: Request): boolean {
   const authHeader = request.headers.get("authorization") || "";
   if (authHeader === `Bearer ${secret}`) return true;
 
-  const apiKeyHeader = request.headers.get("x-api-key") || "";
+  const apiKeyHeader = (request.headers.get("x-api-key") || "").trim();
   return apiKeyHeader === secret;
 }
 
@@ -82,10 +82,10 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const configuredMaxLimit = parsePositiveInt(
-    process.env.RSS_NEWS_READ_MAX_LIMIT || "500",
-    500,
+    process.env.RSS_NEWS_READ_MAX_LIMIT || "200",
+    200,
   );
-  const maxLimit = Math.min(configuredMaxLimit, 2000);
+  const maxLimit = Math.min(configuredMaxLimit, 500);
   const limit = Math.min(parsePositiveInt(searchParams.get("limit"), 50), maxLimit);
   const cursorId = parsePositiveInt(searchParams.get("cursor"), 0);
   const offset = Math.min(parsePositiveInt(searchParams.get("offset"), 0), 5000);
@@ -133,6 +133,22 @@ export async function GET(request: Request) {
   if (publishedFrom) conditions.push(gte(newsRssArticles.publishedAt, publishedFrom));
   if (publishedTo) conditions.push(lte(newsRssArticles.publishedAt, publishedTo));
 
+  const defaultFields = new Set([
+    "id",
+    "sourceId",
+    "sourceName",
+    "sourceUrl",
+    "title",
+    "modifiedTitle",
+    "link",
+    "imageUrl",
+    "publishedAt",
+    "createdAt",
+    "aiProcessed",
+  ]);
+  const activeFields = fields.size > 0 ? fields : defaultFields;
+  const includeSnippet = activeFields.has("contentSnippet");
+
   const orderBy =
     sortBy === "publishedAt"
       ? sortOrder === "asc"
@@ -156,7 +172,7 @@ export async function GET(request: Request) {
       modifiedTitle: newsRssArticles.modifiedTitle,
       link: newsRssArticles.link,
       imageUrl: newsRssArticles.imageUrl,
-      contentSnippet: newsRssArticles.contentSnippet,
+      ...(includeSnippet ? { contentSnippet: newsRssArticles.contentSnippet } : {}),
       publishedAt: newsRssArticles.publishedAt,
       createdAt: newsRssArticles.createdAt,
       aiProcessed: newsRssArticles.aiProcessed,
@@ -177,6 +193,15 @@ export async function GET(request: Request) {
       ? pageRows[pageRows.length - 1]?.id ?? null
       : null;
 
+  console.info("[rss-news/articles] read", {
+    ip: requestIp(request),
+    limit,
+    offset,
+    count: pageRows.length,
+    hasSnippet: activeFields.has("contentSnippet"),
+    hasQuery: q.length > 0,
+  });
+
   return NextResponse.json({
     success: true,
     count: pageRows.length,
@@ -188,28 +213,28 @@ export async function GET(request: Request) {
     nextCursor,
     hasMore,
     items: pageRows.map((row) => ({
-      ...(fields.size === 0 || fields.has("id") ? { id: row.id } : {}),
-      ...(fields.size === 0 || fields.has("sourceId") ? { sourceId: row.sourceId } : {}),
-      ...(fields.size === 0 || fields.has("sourceName")
+      ...(activeFields.has("id") ? { id: row.id } : {}),
+      ...(activeFields.has("sourceId") ? { sourceId: row.sourceId } : {}),
+      ...(activeFields.has("sourceName")
         ? { sourceName: row.sourceName }
         : {}),
-      ...(fields.size === 0 || fields.has("sourceUrl") ? { sourceUrl: row.sourceUrl } : {}),
-      ...(fields.size === 0 || fields.has("title") ? { title: row.title } : {}),
-      ...(fields.size === 0 || fields.has("modifiedTitle")
+      ...(activeFields.has("sourceUrl") ? { sourceUrl: row.sourceUrl } : {}),
+      ...(activeFields.has("title") ? { title: row.title } : {}),
+      ...(activeFields.has("modifiedTitle")
         ? { modifiedTitle: row.modifiedTitle }
         : {}),
-      ...(fields.size === 0 || fields.has("link") ? { link: row.link } : {}),
-      ...(fields.size === 0 || fields.has("imageUrl") ? { imageUrl: row.imageUrl } : {}),
-      ...(fields.size === 0 || fields.has("contentSnippet")
+      ...(activeFields.has("link") ? { link: row.link } : {}),
+      ...(activeFields.has("imageUrl") ? { imageUrl: row.imageUrl } : {}),
+      ...(activeFields.has("contentSnippet")
         ? { contentSnippet: row.contentSnippet }
         : {}),
-      ...(fields.size === 0 || fields.has("publishedAt")
+      ...(activeFields.has("publishedAt")
         ? { publishedAt: row.publishedAt?.toISOString?.() ?? null }
         : {}),
-      ...(fields.size === 0 || fields.has("createdAt")
+      ...(activeFields.has("createdAt")
         ? { createdAt: row.createdAt?.toISOString?.() ?? null }
         : {}),
-      ...(fields.size === 0 || fields.has("aiProcessed")
+      ...(activeFields.has("aiProcessed")
         ? { aiProcessed: row.aiProcessed }
         : {}),
     })),

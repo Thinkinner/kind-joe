@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { unstable_cache } from "next/cache";
 import {
   and,
   desc,
@@ -34,6 +35,7 @@ const MAX_EMBEDDING_TEXT_CHARS = 6000;
 const MAX_CANDIDATES = 250;
 const MIN_SEMANTIC_SIMILARITY = 0.46;
 const MIN_RELATED_SCORE = 0.4;
+const RELATED_CHAIN_CACHE_SECONDS = 300;
 
 type ArticleTopicRow = {
   id: string;
@@ -55,10 +57,6 @@ type CandidateRow = {
   slug: string;
   title: string;
   excerpt: string | null;
-  content: unknown;
-  contentMarkdown: string | null;
-  contentHtml: string | null;
-  seo: unknown;
   predictionId: number | null;
   authorAvatar: string | null;
   coverImageUrl: string | null;
@@ -70,6 +68,24 @@ type CandidateRow = {
   categories: string[];
   embedding: number[] | null;
   hasVenturaTag: boolean;
+};
+
+type ScoredRelatedItem = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  predictionId: number | null;
+  authorAvatar: string | null;
+  hasVenturaTag: boolean;
+  coverImageUrl: string | null;
+  readingMinutes: number | null;
+  publishedAt: string | null;
+  publishAt: string | null;
+  category: string | null;
+  score: number;
+  semanticSimilarity: number;
+  href: string;
 };
 
 export type RelatedChainItem = {
@@ -455,10 +471,6 @@ async function getSemanticCandidates(
       slug: articles.slug,
       title: articles.title,
       excerpt: articles.excerpt,
-      content: articles.content,
-      contentMarkdown: articles.contentMarkdown,
-      contentHtml: articles.contentHtml,
-      seo: articles.seo,
       predictionId: articles.predictionId,
       authorAvatar: users.avatarUrl,
       coverImageUrl: articles.coverImageUrl,
@@ -494,7 +506,7 @@ async function getSemanticCandidates(
 async function getFallbackArticles(
   sourceArticle: ArticleTopicRow,
   seenArticleIds: Set<string>,
-): Promise<RelatedChainItem[]> {
+): Promise<ScoredRelatedItem[]> {
   const excludedIds = Array.from(new Set([...seenArticleIds, sourceArticle.id]));
   const baseWhere =
     excludedIds.length > 0
@@ -510,10 +522,6 @@ async function getFallbackArticles(
       slug: articles.slug,
       title: articles.title,
       excerpt: articles.excerpt,
-      content: articles.content,
-      contentMarkdown: articles.contentMarkdown,
-      contentHtml: articles.contentHtml,
-      seo: articles.seo,
       predictionId: articles.predictionId,
       authorAvatar: users.avatarUrl,
       coverImageUrl: articles.coverImageUrl,
@@ -538,10 +546,6 @@ async function getFallbackArticles(
     slug: row.slug,
     title: row.title,
     excerpt: row.excerpt,
-    content: row.content,
-    contentMarkdown: row.contentMarkdown,
-    contentHtml: row.contentHtml,
-    seo: row.seo,
     predictionId: row.predictionId,
     authorAvatar: row.authorAvatar,
     hasVenturaTag: venturaSet.has(row.id),
@@ -556,11 +560,42 @@ async function getFallbackArticles(
   }));
 }
 
+async function hydrateRelatedChainContent(
+  items: ScoredRelatedItem[],
+): Promise<RelatedChainItem[]> {
+  if (items.length === 0) return [];
+
+  const ids = items.map((item) => item.id);
+  const contentRows = await db
+    .select({
+      id: articles.id,
+      content: articles.content,
+      contentMarkdown: articles.contentMarkdown,
+      contentHtml: articles.contentHtml,
+      seo: articles.seo,
+    })
+    .from(articles)
+    .where(inArray(articles.id, ids));
+
+  const contentById = new Map(contentRows.map((row) => [row.id, row]));
+
+  return items.map((item) => {
+    const content = contentById.get(item.id);
+    return {
+      ...item,
+      content: content?.content ?? null,
+      contentMarkdown: content?.contentMarkdown ?? null,
+      contentHtml: content?.contentHtml ?? null,
+      seo: content?.seo ?? null,
+    };
+  });
+}
+
 function rankSemanticCandidates(
   sourceEmbedding: number[],
   sourceArticle: ArticleTopicRow,
   candidates: CandidateRow[],
-): RelatedChainItem[] {
+): ScoredRelatedItem[] {
   const sourceTags = normalizeList(sourceArticle.tags);
   const sourceCategories = normalizeList(sourceArticle.categories);
   const now = new Date();
@@ -590,10 +625,6 @@ function rankSemanticCandidates(
         slug: candidate.slug,
         title: candidate.title,
         excerpt: candidate.excerpt,
-        content: candidate.content,
-        contentMarkdown: candidate.contentMarkdown,
-        contentHtml: candidate.contentHtml,
-        seo: candidate.seo,
         predictionId: candidate.predictionId,
         authorAvatar: candidate.authorAvatar,
         hasVenturaTag: candidate.hasVenturaTag,
@@ -613,7 +644,7 @@ function rankSemanticCandidates(
     )
     .sort((a, b) => b.score - a.score);
 
-  const diversityPicked: RelatedChainItem[] = [];
+  const diversityPicked: ScoredRelatedItem[] = [];
   const categoryCount = new Map<string, number>();
   for (const item of ranked) {
     const key = (item.category ?? "uncategorized").toLowerCase();
@@ -627,40 +658,33 @@ function rankSemanticCandidates(
   return diversityPicked;
 }
 
-export async function getRelatedChainBySlug(input: {
-  slug: string;
-  seenArticleIds?: string[];
-  cursor?: number;
-  limit?: number;
-}): Promise<RelatedChainResult | null> {
-  const sourceArticle = await getPublishedArticleBySlug(input.slug);
+type CachedRelatedRank = {
+  sourceArticleId: string;
+  merged: ScoredRelatedItem[];
+  source: "semantic" | "fallback";
+};
+
+async function buildRankedRelatedList(slug: string): Promise<CachedRelatedRank | null> {
+  const sourceArticle = await getPublishedArticleBySlug(slug);
   if (!sourceArticle) return null;
 
-  const seenIds = new Set<string>((input.seenArticleIds ?? []).filter(Boolean));
-  seenIds.add(sourceArticle.id);
-
-  const cursor = Math.max(0, input.cursor ?? 0);
-  const limit = Math.min(Math.max(input.limit ?? 3, 1), 8);
+  const sourceOnlySeen = new Set([sourceArticle.id]);
   const sourceEmbedding = await ensureEmbedding(sourceArticle);
 
   if (!sourceEmbedding) {
-    const fallbackItems = await getFallbackArticles(sourceArticle, seenIds);
-    const paged = fallbackItems.slice(cursor, cursor + limit);
-    const nextCursor = cursor + limit < fallbackItems.length ? cursor + limit : null;
+    const fallbackItems = await getFallbackArticles(sourceArticle, sourceOnlySeen);
     return {
-      items: paged,
-      hasMore: nextCursor !== null,
-      nextCursor,
+      sourceArticleId: sourceArticle.id,
+      merged: fallbackItems,
       source: "fallback",
     };
   }
 
-  const candidates = await getSemanticCandidates(sourceArticle, seenIds);
+  const candidates = await getSemanticCandidates(sourceArticle, sourceOnlySeen);
   const ranked = rankSemanticCandidates(sourceEmbedding, sourceArticle, candidates);
-  const fallbackItems = await getFallbackArticles(sourceArticle, seenIds);
+  const fallbackItems = await getFallbackArticles(sourceArticle, sourceOnlySeen);
 
-  // After semantic related stories are consumed, continue with latest stories.
-  const merged = [...ranked];
+  const merged: ScoredRelatedItem[] = [...ranked];
   const seenInMerged = new Set(merged.map((item) => item.id));
   for (const item of fallbackItems) {
     if (seenInMerged.has(item.id)) continue;
@@ -668,13 +692,67 @@ export async function getRelatedChainBySlug(input: {
     merged.push(item);
   }
 
-  const paged = merged.slice(cursor, cursor + limit);
-  const nextCursor = cursor + limit < merged.length ? cursor + limit : null;
   return {
-    items: paged,
+    sourceArticleId: sourceArticle.id,
+    merged,
+    source: ranked.length > 0 ? "semantic" : "fallback",
+  };
+}
+
+const getCachedRankedRelatedList = unstable_cache(
+  buildRankedRelatedList,
+  ["related-chain-ranked"],
+  { revalidate: RELATED_CHAIN_CACHE_SECONDS },
+);
+
+function pageRankedRelatedList(
+  merged: ScoredRelatedItem[],
+  seenIds: Set<string>,
+  cursor: number,
+  limit: number,
+): { items: ScoredRelatedItem[]; nextCursor: number | null } {
+  const page: ScoredRelatedItem[] = [];
+  let idx = Math.max(0, cursor);
+
+  while (page.length < limit && idx < merged.length) {
+    const item = merged[idx];
+    idx += 1;
+    if (seenIds.has(item.id)) continue;
+    page.push(item);
+  }
+
+  return {
+    items: page,
+    nextCursor: idx < merged.length ? idx : null,
+  };
+}
+
+export async function getRelatedChainBySlug(input: {
+  slug: string;
+  seenArticleIds?: string[];
+  cursor?: number;
+  limit?: number;
+}): Promise<RelatedChainResult | null> {
+  const ranked = await getCachedRankedRelatedList(input.slug);
+  if (!ranked) return null;
+
+  const seenIds = new Set<string>((input.seenArticleIds ?? []).filter(Boolean));
+  seenIds.add(ranked.sourceArticleId);
+
+  const cursor = Math.max(0, input.cursor ?? 0);
+  const limit = Math.min(Math.max(input.limit ?? 3, 1), 8);
+  const { items: paged, nextCursor } = pageRankedRelatedList(
+    ranked.merged,
+    seenIds,
+    cursor,
+    limit,
+  );
+
+  return {
+    items: await hydrateRelatedChainContent(paged),
     hasMore: nextCursor !== null,
     nextCursor,
-    source: ranked.length > 0 ? "semantic" : "fallback",
+    source: ranked.source,
   };
 }
 

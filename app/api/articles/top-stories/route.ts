@@ -58,7 +58,8 @@ export async function GET() {
         publishedFilter(now)
       )
     )
-    .orderBy(desc(articles.publishedAt));
+    .orderBy(desc(articles.publishedAt))
+    .limit(20);
 
   return NextResponse.json(rows);
 }

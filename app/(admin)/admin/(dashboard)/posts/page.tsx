@@ -99,7 +99,7 @@ export default function AdminPostsPage() {
   }, [searchParams]);
 
   const load = async () => {
-    const res = await fetch(apiBase, { cache: "no-store" });
+    const res = await fetch(`${apiBase}?limit=200`, { cache: "no-store" });
     if (!res.ok) throw new Error("load");
     setPosts(await res.json());
   };

@@ -67,7 +67,7 @@ Use this read-only API when another app needs `news_rss_articles` data.
   - `Authorization: Bearer <RSS_NEWS_READ_API_KEY>`
   - or `x-api-key: <RSS_NEWS_READ_API_KEY>`
 - Query params:
-  - `limit` (default `50`, max from `RSS_NEWS_READ_MAX_LIMIT`, capped at `2000`)
+  - `limit` (default `50`, max from `RSS_NEWS_READ_MAX_LIMIT`, capped at `500`)
   - `offset` (default `0`, max `5000`)
   - `cursor` (id-cursor pagination; best with default sort `id desc`)
   - `ids` (comma-separated article ids)
@@ -87,7 +87,7 @@ Required env var in production:
 - `RSS_NEWS_READ_API_KEY`
 
 Optional:
-- `RSS_NEWS_READ_MAX_LIMIT` (default `500`)
+- `RSS_NEWS_READ_MAX_LIMIT` (default `200`)
 
 ## Autonomous RSS Auto-Writer (Railway)
 

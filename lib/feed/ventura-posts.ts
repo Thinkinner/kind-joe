@@ -2,6 +2,8 @@ import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { venturaPosts } from "@/db/schema";
 
+const MAX_LEGACY_LIST = 50;
+
 export type VenturaPostCard = {
   id: number;
   imageUrl: string;
@@ -48,7 +50,8 @@ export async function listVenturaPosts(): Promise<VenturaPost[]> {
         desc(venturaPosts.isPinned),
         asc(venturaPosts.order),
         desc(venturaPosts.id),
-      );
+      )
+      .limit(MAX_LEGACY_LIST);
 
     return rows;
   } catch (error) {

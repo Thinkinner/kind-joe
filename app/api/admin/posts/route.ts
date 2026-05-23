@@ -27,7 +27,7 @@ const CreateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
   if (!staff.ok) {
     return NextResponse.json(
@@ -36,8 +36,19 @@ export async function GET() {
     );
   }
 
+  const { searchParams } = new URL(req.url);
+  const rawLimit = Number.parseInt(searchParams.get("limit") ?? "50", 10);
+  const rawOffset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 50;
+  const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+
   const [data, clickRows] = await Promise.all([
-    db.select().from(posts).orderBy(desc(posts.isPinned), desc(posts.createdAt)),
+    db
+      .select()
+      .from(posts)
+      .orderBy(desc(posts.isPinned), desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset),
     db
       .select({
         postId: clicks.postId,

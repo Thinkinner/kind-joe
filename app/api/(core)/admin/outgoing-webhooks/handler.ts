@@ -27,7 +27,7 @@ export async function GET() {
 
   const [webhooks, recentEvents, deliveries] = await Promise.all([
     listOutgoingWebhooksAdmin(),
-    getIncomingEventsAdmin(200),
+    getIncomingEventsAdmin(50),
     getWebhookDeliverySummaryAdmin(),
   ]);
   return NextResponse.json({ webhooks, recentEvents, deliveries });

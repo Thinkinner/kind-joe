@@ -2,6 +2,8 @@ import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { joeknowslaPosts } from "@/db/schema";
 
+const MAX_LEGACY_LIST = 50;
+
 export type JoeKnowsLaPostCard = {
   id: number;
   imageUrl: string;
@@ -50,7 +52,8 @@ export async function listJoeKnowsLaPosts(): Promise<JoeKnowsLaPost[]> {
         desc(joeknowslaPosts.isPinned),
         asc(joeknowslaPosts.order),
         desc(joeknowslaPosts.id),
-      );
+      )
+      .limit(MAX_LEGACY_LIST);
 
     return rows;
   } catch (error) {

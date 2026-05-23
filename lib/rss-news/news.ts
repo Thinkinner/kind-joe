@@ -45,7 +45,7 @@ export async function getRenderableArticles(limit = 36): Promise<ArticleWithSour
     .innerJoin(newsRssSource, eq(newsRssArticles.sourceId, newsRssSource.id))
     .where(and(isNotNull(newsRssArticles.imageUrl)))
     .orderBy(desc(newsRssArticles.publishedAt), desc(newsRssArticles.id))
-    .limit(limit * 5);
+    .limit(limit * 2);
 
   const out: ArticleWithSource[] = [];
   let i = 0;

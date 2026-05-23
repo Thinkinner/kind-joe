@@ -159,10 +159,22 @@ export async function listOutgoingWebhooksAdmin() {
     .orderBy(desc(outgoingWebhooks.id));
 }
 
-export async function getIncomingEventsAdmin(limit = 200) {
-  const capped = Math.max(1, Math.min(500, limit));
+export async function getIncomingEventsAdmin(limit = 50) {
+  const capped = Math.max(1, Math.min(100, limit));
   return db
-    .select()
+    .select({
+      id: incomingEvents.id,
+      externalEventId: incomingEvents.externalEventId,
+      source: incomingEvents.source,
+      text: incomingEvents.text,
+      sourceUrl: incomingEvents.sourceUrl,
+      sourceDisplayName: incomingEvents.sourceDisplayName,
+      sourceHandle: incomingEvents.sourceHandle,
+      sourceAvatarUrl: incomingEvents.sourceAvatarUrl,
+      sourceVerified: incomingEvents.sourceVerified,
+      receivedAt: incomingEvents.receivedAt,
+      createdAt: incomingEvents.createdAt,
+    })
     .from(incomingEvents)
     .orderBy(desc(incomingEvents.receivedAt))
     .limit(capped);

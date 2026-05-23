@@ -242,7 +242,7 @@ export default function StaffUsersPage() {
 
   const load = async () => {
     const [usersRes, invRes] = await Promise.all([
-      fetch("/api/admin/staff-users", { cache: "no-store" }),
+      fetch("/api/admin/staff-users?limit=500", { cache: "no-store" }),
       fetch("/api/admin/staff-invitations", { cache: "no-store" }),
     ]);
     if (!usersRes.ok) throw new Error("users");

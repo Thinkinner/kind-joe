@@ -142,7 +142,8 @@ export async function getFreshNewsRssArticlesForNewsletter(): Promise<
       desc(
         sql`coalesce(${newsRssArticles.publishedAt}, ${newsRssArticles.createdAt})`,
       ),
-    );
+    )
+    .limit(200);
 
   return rows.map(mapNewsRssRowToRawItem);
 }

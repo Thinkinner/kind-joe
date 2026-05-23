@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  listJoeKnowsLaPosts,
   listJoeKnowsLaPostsPage,
 } from "@/lib/feed/joeknowsla-posts";
 
@@ -21,6 +20,6 @@ export async function GET(request: Request) {
     return NextResponse.json(page);
   }
 
-  const posts = await listJoeKnowsLaPosts();
-  return NextResponse.json(posts);
+  const page = await listJoeKnowsLaPostsPage({ limit: 50, offset: 0 });
+  return NextResponse.json(page.items);
 }

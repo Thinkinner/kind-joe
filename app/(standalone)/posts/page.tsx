@@ -5,6 +5,8 @@ import { posts } from "@/db/schema";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
+const MAX_STANDALONE_POSTS = 50;
+
 export const dynamic = "force-dynamic";
 
 async function getPostsFromDb(): Promise<PostCard[]> {
@@ -18,7 +20,8 @@ async function getPostsFromDb(): Promise<PostCard[]> {
     })
     .from(posts)
     .where(or(eq(posts.isActive, true), isNull(posts.isActive)))
-    .orderBy(desc(posts.isPinned), asc(posts.order), desc(posts.id));
+    .orderBy(desc(posts.isPinned), asc(posts.order), desc(posts.id))
+    .limit(MAX_STANDALONE_POSTS);
 
   return rows;
 }

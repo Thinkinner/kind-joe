@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { incomingEvents, signals } from "@/db/schema";
-import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 50;
@@ -79,7 +79,7 @@ export type IncomingEventAdminRow = {
   sourceHandle: string | null;
   sourceAvatarUrl: string | null;
   sourceVerified: boolean;
-  payload: Record<string, unknown>;
+  payload: Record<string, unknown> | null;
   meta: Record<string, unknown> | null;
   receivedAt: string;
   createdAt: string;
@@ -134,7 +134,20 @@ export async function listIncomingEventsAdmin(params: {
       : undefined;
 
   const raw = await db
-    .select()
+    .select({
+      id: incomingEvents.id,
+      externalEventId: incomingEvents.externalEventId,
+      source: incomingEvents.source,
+      text: incomingEvents.text,
+      sourceUrl: incomingEvents.sourceUrl,
+      sourceDisplayName: incomingEvents.sourceDisplayName,
+      sourceHandle: incomingEvents.sourceHandle,
+      sourceAvatarUrl: incomingEvents.sourceAvatarUrl,
+      sourceVerified: incomingEvents.sourceVerified,
+      receivedAt: incomingEvents.receivedAt,
+      createdAt: incomingEvents.createdAt,
+      payloadSignalId: sql<string | null>`${incomingEvents.payload}->>'id'`,
+    })
     .from(incomingEvents)
     .where(whereClause)
     .orderBy(desc(incomingEvents.receivedAt), desc(incomingEvents.id))
@@ -146,14 +159,20 @@ export async function listIncomingEventsAdmin(params: {
 
   const candidateIds = new Set<string>();
   for (const r of page) {
-    const fromPayload = payloadSignalId(r.payload);
+    const fromPayload =
+      typeof r.payloadSignalId === "string" && r.payloadSignalId.trim()
+        ? r.payloadSignalId.trim()
+        : null;
     if (fromPayload) candidateIds.add(fromPayload);
     if (r.externalEventId?.trim()) candidateIds.add(r.externalEventId.trim());
   }
   const existing = await filterExistingSignalIds([...candidateIds]);
 
   const rows: IncomingEventAdminRow[] = page.map((r) => {
-    const pid = payloadSignalId(r.payload);
+    const pid =
+      typeof r.payloadSignalId === "string" && r.payloadSignalId.trim()
+        ? r.payloadSignalId.trim()
+        : null;
     const ext = r.externalEventId?.trim() ?? null;
     const hasMatchingSignal =
       (pid !== null && existing.has(pid)) ||
@@ -169,8 +188,8 @@ export async function listIncomingEventsAdmin(params: {
       sourceHandle: r.sourceHandle,
       sourceAvatarUrl: r.sourceAvatarUrl,
       sourceVerified: r.sourceVerified,
-      payload: r.payload,
-      meta: r.meta ?? null,
+      payload: null,
+      meta: null,
       receivedAt: r.receivedAt.toISOString(),
       createdAt: r.createdAt.toISOString(),
       hasMatchingSignal,
@@ -182,6 +201,44 @@ export async function listIncomingEventsAdmin(params: {
     : null;
 
   return { rows, nextCursor };
+}
+
+export async function getIncomingEventDetailById(
+  eventId: number,
+): Promise<IncomingEventAdminRow | null> {
+  const [row] = await db
+    .select()
+    .from(incomingEvents)
+    .where(eq(incomingEvents.id, eventId))
+    .limit(1);
+
+  if (!row) return null;
+
+  const pid = payloadSignalId(row.payload);
+  const ext = row.externalEventId?.trim() ?? null;
+  const existing = await filterExistingSignalIds(
+    [pid, ext].filter((id): id is string => Boolean(id)),
+  );
+  const hasMatchingSignal =
+    (pid !== null && existing.has(pid)) ||
+    (ext !== null && existing.has(ext));
+
+  return {
+    id: row.id,
+    externalEventId: row.externalEventId,
+    source: row.source,
+    text: row.text,
+    sourceUrl: row.sourceUrl,
+    sourceDisplayName: row.sourceDisplayName,
+    sourceHandle: row.sourceHandle,
+    sourceAvatarUrl: row.sourceAvatarUrl,
+    sourceVerified: row.sourceVerified,
+    payload: row.payload,
+    meta: row.meta ?? null,
+    receivedAt: row.receivedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    hasMatchingSignal,
+  };
 }
 
 export async function filterExistingSignalIds(

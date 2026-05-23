@@ -9,6 +9,8 @@ type VenturaPostCard = {
   destinationUrl: string;
 };
 
+const MAX_STANDALONE_POSTS = 50;
+
 async function getVenturaPostsFromDb(): Promise<VenturaPostCard[]> {
   if (!process.env.DATABASE_URL) return [];
   try {
@@ -24,7 +26,8 @@ async function getVenturaPostsFromDb(): Promise<VenturaPostCard[]> {
         desc(venturaPosts.isPinned),
         asc(venturaPosts.order),
         desc(venturaPosts.id),
-      );
+      )
+      .limit(MAX_STANDALONE_POSTS);
 
     return rows;
   } catch (error) {

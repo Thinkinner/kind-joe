@@ -45,7 +45,7 @@ export function SuperAdminPageAccessPanel() {
   const [drafts, setDrafts] = useState<Record<string, AppPermission[]>>({});
 
   const load = async () => {
-    const res = await fetch("/api/admin/staff-users", { cache: "no-store" });
+    const res = await fetch("/api/admin/staff-users?limit=500", { cache: "no-store" });
     if (!res.ok) throw new Error("Could not load staff users");
     const data = (await res.json()) as StaffAccessRow[];
     setRows(data);

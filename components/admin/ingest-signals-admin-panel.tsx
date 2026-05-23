@@ -106,6 +106,7 @@ export function IngestSignalsAdminPanel() {
   const [detailEvent, setDetailEvent] = useState<IncomingEventAdminRow | null>(
     null,
   );
+  const [detailLoading, setDetailLoading] = useState(false);
   const [detailTab, setDetailTab] = useState<"payload" | "meta" | "raw">("payload");
   const [copied, setCopied] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -195,6 +196,29 @@ export function IngestSignalsAdminPanel() {
       setLastUpdated(new Date());
     } finally {
       setLoadingMoreSignals(false);
+    }
+  }
+
+  async function openIncomingEventDetail(evt: IncomingEventAdminRow) {
+    setDetailEvent(evt);
+    setDetailLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/ingest-data?incomingEventId=${evt.id}`,
+        { method: "GET", credentials: "include" },
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        incomingEvent?: IncomingEventAdminRow;
+        error?: string;
+      };
+      if (!res.ok || !body.incomingEvent) {
+        toast.error(body.error ?? "Could not load event payload.");
+        setDetailEvent(null);
+        return;
+      }
+      setDetailEvent(body.incomingEvent);
+    } finally {
+      setDetailLoading(false);
     }
   }
 
@@ -346,7 +370,7 @@ export function IngestSignalsAdminPanel() {
                           variant="ghost"
                           size="icon-sm"
                           className="h-7 w-7"
-                          onClick={() => setDetailEvent(evt)}
+                          onClick={() => void openIncomingEventDetail(evt)}
                           aria-label="View payload JSON"
                         >
                           <Code2 className="h-3.5 w-3.5" />
@@ -462,6 +486,9 @@ export function IngestSignalsAdminPanel() {
           </DialogHeader>
           {detailEvent ? (
             <div className="space-y-4 px-6 pb-5 pt-1">
+              {detailLoading ? (
+                <p className="text-sm text-muted-foreground">Loading payload…</p>
+              ) : null}
               <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as "payload" | "meta" | "raw")}>
                 <TabsList className="rounded-lg border border-border bg-muted p-1">
                   <TabsTrigger value="payload" className="rounded-md">

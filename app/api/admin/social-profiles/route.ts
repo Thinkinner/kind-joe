@@ -77,7 +77,7 @@ const CreateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_POSTS);
   if (!staff.ok) {
     return NextResponse.json(
@@ -86,11 +86,19 @@ export async function GET() {
     );
   }
 
+  const { searchParams } = new URL(req.url);
+  const rawLimit = Number.parseInt(searchParams.get("limit") ?? "100", 10);
+  const rawOffset = Number.parseInt(searchParams.get("offset") ?? "0", 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 100;
+  const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+
   try {
     const rows = await db
       .select()
       .from(socialProfiles)
-      .orderBy(desc(socialProfiles.isActive), asc(socialProfiles.handle));
+      .orderBy(desc(socialProfiles.isActive), asc(socialProfiles.handle))
+      .limit(limit)
+      .offset(offset);
     return NextResponse.json(rows);
   } catch (error) {
     if (isMissingSocialProfilesTable(error)) {

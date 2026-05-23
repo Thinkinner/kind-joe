@@ -1,14 +1,17 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+function parsePoolMax(): number {
+  const parsed = Number.parseInt(process.env.DB_POOL_MAX ?? "2", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2;
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 10,
+  max: parsePoolMax(),
   idleTimeoutMillis: 10000,
-  // 🚨 Give the DB 30 seconds to wait for Gemini
-  connectionTimeoutMillis: 30000, 
-  // 🚨 Send heartbeats to the DB so it doesn't close the connection
-  keepAlive: true, 
+  connectionTimeoutMillis: 30000,
+  keepAlive: true,
   ssl: { rejectUnauthorized: false },
 });
 

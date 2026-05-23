@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listVenturaPosts, listVenturaPostsPage } from "@/lib/feed/ventura-posts";
+import { listVenturaPostsPage } from "@/lib/feed/ventura-posts";
 
 export const revalidate = 60;
 
@@ -18,6 +18,6 @@ export async function GET(request: Request) {
     return NextResponse.json(page);
   }
 
-  const posts = await listVenturaPosts();
-  return NextResponse.json(posts);
+  const page = await listVenturaPostsPage({ limit: 50, offset: 0 });
+  return NextResponse.json(page.items);
 }
