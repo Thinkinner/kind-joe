@@ -180,7 +180,7 @@ export default async function RootLayout({
         <main className="min-h-dvh min-w-0">{children}</main>
         <CookieConsent />
         <Toaster position="top-center" richColors closeButton />
-        <Analytics />
+        <Analytics debug={process.env.NODE_ENV === "development"} />
         <Script
           id="ld-website"
           type="application/ld+json"

@@ -17,6 +17,24 @@ export default function DevelopersChangelogPage() {
 
       <section className="mt-8 border-l-2 border-slate-200 pl-5">
         <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700">
+          2026-05-23
+        </p>
+
+        <div className="mt-4 space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">KindJoe post cards documentation</h2>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-700">
+              <li>Published internal reference for `posts` schema and article editor integration.</li>
+              <li>Added feed indexes and scoped admin click aggregation for lower DB cost.</li>
+              <li>Added `npm run db:seed-posts` helper for a single sample feed tile.</li>
+              <li>Removed `article_pageviews` and in-app view tracking; admin dashboard is content-focused.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8 border-l-2 border-slate-200 pl-5">
+        <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700">
           2026-04-23
         </p>
 

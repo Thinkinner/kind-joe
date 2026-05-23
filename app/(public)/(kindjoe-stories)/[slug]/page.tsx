@@ -17,7 +17,6 @@ import { resolveArticleDisplayContent } from "@/lib/content/resolve-article-cont
 import ShareButtons from "@/components/stories/share-buttons";
 import GetEmail from "@/components/stories/kindjoe-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
-import ArticleTracker from "@/components/article-tracker";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
@@ -138,7 +137,6 @@ export default async function ArticleBySlug(props: {
 
   return (
     <main className={`bg-neutral-50/70 py-6 sm:py-8 ${googleSans.variable}`}>
-      <ArticleTracker articleId={a.id} />
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-5 lg:px-6">
         <div className="grid gap-7 md:grid-cols-[minmax(0,1fr)_300px] md:items-start lg:grid-cols-[minmax(0,1fr)_340px]">
           <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_10px_30px_-22px_rgba(15,23,42,0.35)]">

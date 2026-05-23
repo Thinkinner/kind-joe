@@ -45,7 +45,6 @@ async function main() {
       await pool.query<{ table_name: string; row_count: number }>(`
         SELECT 'news_rss_articles' AS table_name, COUNT(*)::int AS row_count FROM news_rss_articles
         UNION ALL SELECT 'articles', COUNT(*)::int FROM articles
-        UNION ALL SELECT 'article_pageviews', COUNT(*)::int FROM article_pageviews
         UNION ALL SELECT 'incoming_events', COUNT(*)::int FROM incoming_events
         UNION ALL SELECT 'article_embeddings', COUNT(*)::int FROM article_embeddings
       `)

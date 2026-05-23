@@ -56,12 +56,7 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    return NextResponse.json(
-      data.map((row) => ({
-        ...row,
-        clickCount: 0,
-      })),
-    );
+    return NextResponse.json(data);
   } catch (error) {
     if (isMissingJoeKnowsLaPostsTable(error)) {
       return NextResponse.json(

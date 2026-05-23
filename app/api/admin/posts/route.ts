@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { clicks, posts } from "@/db/schema";
+import { posts } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 
@@ -42,33 +42,14 @@ export async function GET(req: NextRequest) {
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 50;
   const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
 
-  const [data, clickRows] = await Promise.all([
-    db
-      .select()
-      .from(posts)
-      .orderBy(desc(posts.isPinned), desc(posts.createdAt))
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({
-        postId: clicks.postId,
-        count: sql<number>`CAST(COUNT(${clicks.id}) AS INT)`,
-      })
-      .from(clicks)
-      .groupBy(clicks.postId),
-  ]);
+  const data = await db
+    .select()
+    .from(posts)
+    .orderBy(desc(posts.isPinned), desc(posts.createdAt))
+    .limit(limit)
+    .offset(offset);
 
-  const clickMap = new Map<number, number>();
-  for (const row of clickRows) {
-    clickMap.set(row.postId ?? 0, row.count ?? 0);
-  }
-
-  return NextResponse.json(
-    data.map((row) => ({
-      ...row,
-      clickCount: clickMap.get(row.id) ?? 0,
-    })),
-  );
+  return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {

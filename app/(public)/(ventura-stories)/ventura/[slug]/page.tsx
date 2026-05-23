@@ -17,7 +17,6 @@ import { resolveArticleDisplayContent } from "@/lib/content/resolve-article-cont
 import ShareButtons from "@/components/stories/share-buttons";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
 import FocusableImage from "@/components/stories/focusable-image";
-import ArticleTracker from "@/components/article-tracker";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
@@ -131,8 +130,6 @@ export default async function VenturaArticleBySlug(props: {
 
   return (
     <main className={`py-4 sm:py-6 lg:py-10 ${googleSans.variable}`}>
-      <ArticleTracker articleId={a.id} />
-
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-5 lg:px-6">
         <div className="grid gap-7 md:grid-cols-[minmax(0,1fr)_280px] md:items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
           {/* MAIN ARTICLE */}

@@ -89,35 +89,6 @@ function parseSeo(
   return {};
 }
 
-function sendRelatedEvent(input: {
-  eventType: "impression" | "click" | "scroll_load";
-  articleId: string;
-  sourceArticleId: string;
-}) {
-  const payload = JSON.stringify({
-    eventType: input.eventType,
-    articleId: input.articleId,
-    sourceArticleId: input.sourceArticleId,
-    referrer: typeof window !== "undefined" ? window.location.pathname : null,
-  });
-
-  try {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon("/api/articles/track-related", payload);
-      return;
-    }
-  } catch {
-    // Ignore and fallback to fetch below.
-  }
-
-  void fetch("/api/articles/track-related", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: payload,
-    keepalive: true,
-  });
-}
-
 type Props = {
   slug: string;
   articleId: string;
@@ -145,7 +116,6 @@ export default function ArticleRelatedChain({
     Record<string, PredictionMarketView | null>
   >({});
   const seenRef = useRef<Set<string>>(new Set([articleId]));
-  const impressionRef = useRef<Set<string>>(new Set());
   const loadingPredictionRef = useRef<Set<string>>(new Set());
   const loadedAtHalfRef = useRef<Set<string>>(new Set());
   const relatedArticleRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -174,14 +144,6 @@ export default function ArticleRelatedChain({
       setLoadedOnce(true);
       setHasMore(payload.hasMore);
       setCursor(payload.nextCursor ?? cursor);
-
-      if (payload.items.length > 0) {
-        sendRelatedEvent({
-          eventType: "scroll_load",
-          articleId: payload.items[0].id,
-          sourceArticleId: articleId,
-        });
-      }
 
       setItems((prev) => {
         const existing = new Set(prev.map((item) => item.id));
@@ -288,18 +250,6 @@ export default function ArticleRelatedChain({
         });
     }
   }, [items, marketsByArticleId]);
-
-  useEffect(() => {
-    for (const item of items) {
-      if (impressionRef.current.has(item.id)) continue;
-      impressionRef.current.add(item.id);
-      sendRelatedEvent({
-        eventType: "impression",
-        articleId: item.id,
-        sourceArticleId: articleId,
-      });
-    }
-  }, [articleId, items]);
 
   if (!loadedOnce && loading) {
     return (

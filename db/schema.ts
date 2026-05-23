@@ -87,30 +87,6 @@ export const articles = pgTable(
   }),
 );
 
-export const articlePageviews = pgTable(
-  "article_pageviews",
-  {
-    id: serial("id").primaryKey(),
-    articleId: varchar("article_id", { length: 50 })
-      .notNull()
-      .references(() => articles.id, { onDelete: "cascade" }),
-    utmSource: varchar("utm_source", { length: 100 }),
-    utmMedium: varchar("utm_medium", { length: 100 }),
-    utmCampaign: varchar("utm_campaign", { length: 100 }),
-    referrer: text("referrer"),
-    trafficSource: varchar("traffic_source", { length: 100 }),
-    visitorId: varchar("visitor_id", { length: 128 }),
-    viewedAt: timestamp("viewed_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (t) => ({
-    articleIdx: index("pageviews_article_id_idx").on(t.articleId),
-    sourceIdx: index("pageviews_traffic_source_idx").on(t.trafficSource),
-    dateIdx: index("pageviews_viewed_at_idx").on(t.viewedAt),
-  }),
-);
-
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 80 }).notNull().unique(),
@@ -364,38 +340,66 @@ export const aiAutomationRssSources = pgTable("ai_automation_rss_sources", {
 
 export { aiAutomationRssSources as AI_Automations_Source };
 
-export const posts = pgTable("posts", {
-  id: serial("id").primaryKey(),
-  imageUrl: text("image_url").notNull(),
-  destinationUrl: text("destination_url").notNull(),
-  caption: text("caption"),
-  isPinned: boolean("is_pinned").default(false),
-  order: integer("order").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const posts = pgTable(
+  "posts",
+  {
+    id: serial("id").primaryKey(),
+    imageUrl: text("image_url").notNull(),
+    destinationUrl: text("destination_url").notNull(),
+    caption: text("caption"),
+    isPinned: boolean("is_pinned").default(false),
+    order: integer("order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    feedIdx: index("posts_feed_idx").on(t.isActive, t.isPinned, t.order, t.id),
+  }),
+);
 
-export const venturaPosts = pgTable("ventura_posts", {
-  id: serial("id").primaryKey(),
-  imageUrl: text("image_url").notNull(),
-  destinationUrl: text("destination_url").notNull(),
-  caption: text("caption"),
-  isPinned: boolean("is_pinned").default(false),
-  order: integer("order").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const venturaPosts = pgTable(
+  "ventura_posts",
+  {
+    id: serial("id").primaryKey(),
+    imageUrl: text("image_url").notNull(),
+    destinationUrl: text("destination_url").notNull(),
+    caption: text("caption"),
+    isPinned: boolean("is_pinned").default(false),
+    order: integer("order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    feedIdx: index("ventura_posts_feed_idx").on(
+      t.isActive,
+      t.isPinned,
+      t.order,
+      t.id,
+    ),
+  }),
+);
 
-export const joeknowslaPosts = pgTable("joeknowsla_posts", {
-  id: serial("id").primaryKey(),
-  imageUrl: text("image_url").notNull(),
-  destinationUrl: text("destination_url").notNull(),
-  caption: text("caption"),
-  isPinned: boolean("is_pinned").default(false),
-  order: integer("order").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const joeknowslaPosts = pgTable(
+  "joeknowsla_posts",
+  {
+    id: serial("id").primaryKey(),
+    imageUrl: text("image_url").notNull(),
+    destinationUrl: text("destination_url").notNull(),
+    caption: text("caption"),
+    isPinned: boolean("is_pinned").default(false),
+    order: integer("order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    feedIdx: index("joeknowsla_posts_feed_idx").on(
+      t.isActive,
+      t.isPinned,
+      t.order,
+      t.id,
+    ),
+  }),
+);
 
 export const kindjoeClipSubmissions = pgTable(
   "kindjoe_clip_submissions",
@@ -518,24 +522,6 @@ export const socialProfileSocialLinks = pgTable(
     ),
   }),
 );
-
-export const clicks = pgTable("clicks", {
-  id: serial("id").primaryKey(),
-  postId: integer("post_id")
-    .notNull()
-    .references(() => posts.id, { onDelete: "cascade" }),
-  clickedAt: timestamp("clicked_at").defaultNow(),
-  device: text("device"),
-  referrer: text("referrer"),
-});
-
-export const postRelations = relations(posts, ({ many }) => ({
-  clicks: many(clicks),
-}));
-
-export const clickRelations = relations(clicks, ({ one }) => ({
-  post: one(posts, { fields: [clicks.postId], references: [posts.id] }),
-}));
 
 export const signals = pgTable("signals", {
   id: text("id").primaryKey(),

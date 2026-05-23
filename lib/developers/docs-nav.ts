@@ -23,6 +23,11 @@ export const developerDocsNav: DeveloperDocsNavSection[] = [
         href: "/developers/getting-started",
         description: "Integration basics and first API request.",
       },
+      {
+        title: "KindJoe post cards",
+        href: "/developers/kindjoe-posts",
+        description: "Feed tiles schema, article editor flow, and DB notes.",
+      },
     ],
   },
   {

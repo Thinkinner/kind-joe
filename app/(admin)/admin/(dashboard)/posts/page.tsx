@@ -9,7 +9,6 @@ import {
   ImagePlus,
   Layout,
   Loader2,
-  MousePointerClick,
   Pencil,
   Pin,
   Plus,
@@ -38,7 +37,6 @@ type Post = {
   isPinned: boolean | null;
   order: number | null;
   isActive: boolean | null;
-  clickCount?: number | null;
 };
 
 type FeedType = "kindjoe" | "ventura" | "joeknowsla";
@@ -457,14 +455,6 @@ export default function AdminPostsPage() {
                 Scheduled
               </div>
             )}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-foreground/45 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-              <MousePointerClick className="h-3 w-3" />
-              {new Intl.NumberFormat("en", {
-                notation: "compact",
-                maximumFractionDigits: 1,
-              }).format(p.clickCount ?? 0)}{" "}
-              clicks
-            </div>
             <div className="absolute inset-0 bg-foreground/45 opacity-0 transition-opacity group-hover:opacity-100">
               <div className="absolute right-2 top-2 flex gap-1">
                 <Button

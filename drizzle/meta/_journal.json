@@ -246,6 +246,27 @@
       "when": 1778933000000,
       "tag": "0034_rss_auto_writer_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779020000000,
+      "tag": "0035_posts_feed_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779021000000,
+      "tag": "0036_drop_unused_analytics_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1779022000000,
+      "tag": "0037_drop_article_pageviews",
+      "breakpoints": true
     }
   ]
 }
