@@ -14,12 +14,12 @@ export default function DevelopersHomePage() {
           Build with KindJoe content APIs
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-slate-600">
-          Use KindJoe APIs to fetch public stories, render Ventura content on partner sites, and
-          stay synced with updates. This portal is your source for endpoint docs, integration
-          guides, and release notes.
+          Use KindJoe APIs to fetch public stories, publish from partner apps like Hope, and
+          integrate Ventura content on partner sites. This portal covers endpoint docs,
+          integration guides, and release notes.
         </p>
         <div className="mt-5 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-          Read-only content APIs for partner integrations
+          Read APIs + server-to-server publish for partners
         </div>
       </section>
 

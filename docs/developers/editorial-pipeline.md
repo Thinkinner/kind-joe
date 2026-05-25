@@ -58,6 +58,19 @@ When an article starts from outside reporting:
 
 `check:public-links` validates core nav/footer/legal/support routes for HTTP success and non-placeholder content.
 
+## Partner Publish API (Hope → Kind Joe)
+
+Use this when **Hope** (or another partner) publishes approved stories to Kind Joe.
+
+- Endpoint: `POST /api/partner/publish`
+- Auth: `HOPE_PUBLISH_API_KEY` (Bearer or `x-api-key`, same value on both apps)
+- Creates: live CMS article + post card (`posts` or `ventura_posts`)
+- Full spec: [partner-publish-api.md](./partner-publish-api.md) and `/developers/apis/partner-publish`
+
+Required on Kind Joe (production):
+
+- `HOPE_PUBLISH_API_KEY`
+
 ## RSS News Read API (Cross-App Access)
 
 Use this read-only API when another app needs `news_rss_articles` data.

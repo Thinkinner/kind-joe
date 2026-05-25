@@ -38,6 +38,11 @@ export const developerDocsNav: DeveloperDocsNavSection[] = [
         href: "/developers/apis/ventura-content",
         description: "Read-only API for Ventura stories.",
       },
+      {
+        title: "Partner Publish API (Hope)",
+        href: "/developers/apis/partner-publish",
+        description: "Publish live articles + post cards from Hope.",
+      },
     ],
   },
   {

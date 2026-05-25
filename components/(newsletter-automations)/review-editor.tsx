@@ -57,6 +57,12 @@ import {
 import { AdminBlockEditor } from "@/components/admin/cms/admin-block-editor";
 import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
 import { generateEmailHtml } from "@/lib/(newsletter-automations)/email-template-service";
+import {
+  formatGenerationError,
+  formatGenerationErrorMessage,
+  type FormattedGenerationError,
+  type GenerationErrorContext,
+} from "@/lib/(newsletter-automations)/generation-errors";
 import ArticleSelectionModal from "./article-selection-modal";
 
 /** Keep manual lead text when set; otherwise auto-fill from story summaries. */
@@ -152,6 +158,22 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [generationError, setGenerationError] =
+    useState<FormattedGenerationError | null>(null);
+
+  const reportGenerationError = (
+    error: unknown,
+    context: GenerationErrorContext = {},
+  ) => {
+    setGenerationError(formatGenerationError(error, context));
+    setErrorMsg(formatGenerationErrorMessage(error, context));
+    setSuccessMsg("");
+  };
+
+  const clearGenerationError = () => {
+    setGenerationError(null);
+    setErrorMsg("");
+  };
   const [successMsg, setSuccessMsg] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -685,19 +707,23 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   // Batch Generation (Skips already generated ones)
   const handleGenerateArticles = async () => {
     if (hasMissingImages) {
+      clearGenerationError();
       setErrorMsg("Each story needs an image URL before generating articles.");
       return;
     }
 
     setIsProcessing(true);
     setLoadingText("Initializing writer...");
-    setErrorMsg("");
+    clearGenerationError();
     setSuccessMsg("");
 
     try {
       const settings = await getSettings();
-      if (!settings.authorId)
-        throw new Error("Please set Author ID in settings.");
+      if (!settings.authorId) {
+        throw new Error(
+          "Please set Author ID in newsletter settings (Admin → Newsletter).",
+        );
+      }
 
       let currentArticles = [...articles];
       let currentStories = [...data.stories];
@@ -763,11 +789,14 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             },
             articles: currentArticles,
           });
-        } catch (artError: any) {
+        } catch (artError: unknown) {
           console.error(`Failed at article ${i + 1}:`, artError);
-          setErrorMsg(
-            `Failed at article ${i + 1}. Click generate again to resume.`,
-          );
+          reportGenerationError(artError, {
+            step: "ai_article",
+            storyIndex: i,
+            storyTotal: data.stories.length,
+            headline: story.headline,
+          });
           break;
         }
       }
@@ -776,9 +805,10 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
         currentArticles.every((a) => a?.contentMarkdown?.trim().length > 50)
       ) {
         setSuccessMsg("All articles generated!");
+        clearGenerationError();
       }
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err: unknown) {
+      reportGenerationError(err, { step: "settings" });
     } finally {
       setIsProcessing(false);
       setLoadingText("");
@@ -789,7 +819,7 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
   const handleRegenerateSingleArticle = async (index: number) => {
     setIsProcessing(true);
     setLoadingText("Regenerating article...");
-    setErrorMsg("");
+    clearGenerationError();
 
     try {
       const story = data.stories[index];
@@ -846,9 +876,15 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
       });
 
       setSuccessMsg("Article regenerated successfully!");
+      clearGenerationError();
       setTimeout(() => setSuccessMsg(""), 2000);
-    } catch (err: any) {
-      setErrorMsg("Regeneration failed: " + err.message);
+    } catch (err: unknown) {
+      reportGenerationError(err, {
+        step: "ai_article",
+        storyIndex: index,
+        storyTotal: data.stories.length,
+        headline: data.stories[index]?.headline,
+      });
     } finally {
       setIsProcessing(false);
       setLoadingText("");
@@ -974,17 +1010,20 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
       setSuccessMsg("Published Successfully!");
       setTimeout(() => onUpdate(), 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const message = err?.message || "Publishing failed.";
+      const message =
+        err instanceof Error && err.message ? err.message : "Publishing failed.";
       if (
         typeof message === "string" &&
         message.toLowerCase().includes("already published")
       ) {
         setDraftStatus("sent");
         setIsAlreadyPublished(true);
+        setErrorMsg(message);
+      } else {
+        reportGenerationError(err, { step: "publish" });
       }
-      setErrorMsg(message);
     } finally {
       setIsProcessing(false);
       setLoadingText("");
@@ -1047,7 +1086,31 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             {errorMsg && (
               <div className="flex items-start gap-2 border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span className="min-w-0 break-words">{errorMsg}</span>
+                <div className="min-w-0 space-y-2">
+                  {generationError ? (
+                    <>
+                      <p className="font-semibold">{generationError.title}</p>
+                      <p>
+                        <span className="font-medium">Reason:</span>{" "}
+                        {generationError.reason}
+                      </p>
+                      {generationError.hints.length > 0 ? (
+                        <div>
+                          <p className="font-medium">What to try:</p>
+                          <ul className="mt-1 list-disc space-y-1 pl-5">
+                            {generationError.hints.map((hint) => (
+                              <li key={hint}>{hint}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="min-w-0 break-words whitespace-pre-wrap">
+                      {errorMsg}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             {successMsg && (
@@ -1136,7 +1199,11 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
               type="button"
               onClick={handleGenerateArticles}
               disabled={isProcessing || hasMissingImages}
-              title="Generate full articles"
+              title={
+                hasMissingImages
+                  ? "Add an image URL to every story before generating articles"
+                  : "Generate full articles for all stories"
+              }
               className="inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border border-orange-700 bg-orange-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:basis-auto sm:flex-initial"
             >
               {isProcessing ? (

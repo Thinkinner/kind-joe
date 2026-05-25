@@ -41,7 +41,21 @@ function normalizeBaseUrl(value: string | undefined): string | null {
   return `https://${raw}`;
 }
 
+function isServerActionRequest(request: NextRequest): boolean {
+  return (
+    request.headers.has("next-action") ||
+    request.headers.has("Next-Action") ||
+    request.headers.has("x-action")
+  );
+}
+
 export function proxy(request: NextRequest) {
+  // Never rewrite/redirect Server Action POSTs — redirects return HTML and break RSC.
+  if (isServerActionRequest(request)) {
+    return NextResponse.next();
+  }
+
+  const method = request.method.toUpperCase();
   const adminHost =
     normalizeHostFromEnv(process.env.ADMIN_DASHBOARD_HOST) ??
     normalizeHostFromEnv(process.env.NEXT_PUBLIC_ADMIN_URL);
@@ -89,7 +103,13 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  if (adminHost && adminSiteBase && host !== adminHost && path.startsWith("/admin")) {
+  if (
+    method === "GET" &&
+    adminHost &&
+    adminSiteBase &&
+    host !== adminHost &&
+    path.startsWith("/admin")
+  ) {
     const target = new URL(`${path}${search}`, adminSiteBase);
     if (target.href !== request.nextUrl.href) {
       return NextResponse.redirect(target);

@@ -30,6 +30,10 @@ import {
   NEWSLETTER_INGEST_FRESH_HOURS,
 } from "@/lib/(newsletter-automations)/constants";
 import { fetchAllFeeds } from "@/lib/(newsletter-automations)/rss-service";
+import {
+  formatGenerationErrorMessage,
+  type GenerationStep,
+} from "@/lib/(newsletter-automations)/generation-errors";
 
 type AppView = "generator" | "history";
 
@@ -48,6 +52,7 @@ export function NewsletterAutomationClient() {
   const [genStatus, setGenStatus] = useState<GenerationStatus>(
     GenerationStatus.IDLE,
   );
+  const [generationError, setGenerationError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -76,8 +81,10 @@ export function NewsletterAutomationClient() {
   }, []);
 
   const handleGenerate = async () => {
+    setGenerationError(null);
     setGenStatus(GenerationStatus.FETCHING_RSS);
     const toastId = toast.loading("Loading articles…");
+    let step: GenerationStep = "load_ingest";
 
     try {
       let rawItems = await getFreshNewsRssArticlesForNewsletter();
@@ -85,14 +92,16 @@ export function NewsletterAutomationClient() {
         toast.loading("No recent ingest — fetching default RSS feeds…", {
           id: toastId,
         });
+        step = "fetch_rss";
         rawItems = await fetchAllFeeds(DEFAULT_SOURCES);
       }
       if (!rawItems.length) {
         throw new Error(
-          "No articles found. Add data to news_rss_articles (last few hours) or check RSS proxies for default feeds.",
+          "No articles found. Add rows to news_rss_articles (last few hours) or check RSS feed proxies.",
         );
       }
 
+      step = "ai_newsletter";
       setGenStatus(GenerationStatus.PROCESSING_AI);
       toast.loading("AI drafting...", { id: toastId });
       const generatedNewsletter = await generateNewsletter(
@@ -100,10 +109,12 @@ export function NewsletterAutomationClient() {
         personalization,
       );
 
+      step = "upload_images";
       setGenStatus(GenerationStatus.UPLOADING_IMAGES);
       toast.loading("Optimizing images...", { id: toastId });
       const finalNewsletter = await processNewsletterImages(generatedNewsletter);
 
+      step = "save_draft";
       const newDraft: NewsletterDraft = {
         id: crypto.randomUUID(),
         createdAt: Date.now(),
@@ -117,8 +128,12 @@ export function NewsletterAutomationClient() {
       toast.success("Done!", { id: toastId });
       router.push(`/admin/newsletter/history/${newDraft.id}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Generation failed";
-      toast.error(message, { id: toastId });
+      const message = formatGenerationErrorMessage(err, { step });
+      setGenerationError(message);
+      toast.error(message.split("\n")[0] ?? "Generation failed", {
+        id: toastId,
+        duration: 12000,
+      });
     } finally {
       setGenStatus(GenerationStatus.IDLE);
     }
@@ -288,6 +303,16 @@ export function NewsletterAutomationClient() {
               config={personalization}
               setConfig={setPersonalization}
             />
+
+            {generationError ? (
+              <div className="mb-24 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-950 shadow-sm">
+                <p className="font-semibold">Newsletter generation failed</p>
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed">
+                  {generationError}
+                </pre>
+              </div>
+            ) : null}
+
             <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/80 bg-white/90 backdrop-blur">
               <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <div className="text-xs text-slate-600">

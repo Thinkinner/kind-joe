@@ -15,6 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:audit": "tsx scripts/db-usage-audit.ts",
     "db:verify-analytics-cleanup": "tsx scripts/verify-analytics-cleanup.ts",
+    "db:verify-auth-schema": "tsx scripts/verify-auth-schema.ts",
     "signals:backfill-enrichment": "tsx scripts/backfill-signal-enrichment.ts",
     "articles:backfill-embeddings": "tsx scripts/backfill-article-embeddings.ts",
     "auth:promote-staff": "tsx scripts/promote-auth-staff.ts",

@@ -267,6 +267,13 @@
       "when": 1779022000000,
       "tag": "0037_drop_article_pageviews",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1779023000000,
+      "tag": "0038_auth_user_schema_repair",
+      "breakpoints": true
     }
   ]
 }

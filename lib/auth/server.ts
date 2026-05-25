@@ -10,6 +10,11 @@ import {
   type AppPermission,
   userHasPermission,
 } from "@/lib/auth/permissions";
+import {
+  formatDrizzleQueryError,
+  isMissingColumnError,
+} from "@/lib/db/format-drizzle-error";
+import { parseStaffRolesFromDb } from "@/lib/auth/staff-roles";
 
 export type AuthAppUser = {
   id: string;
@@ -43,32 +48,78 @@ function readerLoginRedirectPath(loginPath: string, nextPath: string): string {
 
 async function hydrateAuthUserFromDb(user: AuthAppUser): Promise<AuthAppUser> {
   if (!user?.id) return user;
-  const [row] = await db
-    .select({
-      accountType: authUser.accountType,
-      staffRole: authUser.staffRole,
-      staffRoles: authUser.staffRoles,
-      adminPageAccess: authUser.adminPageAccess,
-      forcePasswordChange: authUser.forcePasswordChange,
-    })
-    .from(authUser)
-    .where(eq(authUser.id, user.id))
-    .limit(1);
-  if (!row) return user;
-  return {
-    ...user,
-    accountType: row.accountType ?? user.accountType,
-    staffRole: row.staffRole ?? user.staffRole,
-    staffRoles: row.staffRoles ?? user.staffRoles,
-    adminPageAccess:
-      row.adminPageAccess === undefined
-        ? (user.adminPageAccess ?? null)
-        : row.adminPageAccess,
-    forcePasswordChange:
-      row.forcePasswordChange === undefined
-        ? (user.forcePasswordChange ?? false)
-        : row.forcePasswordChange,
-  };
+
+  try {
+    const [row] = await db
+      .select({
+        accountType: authUser.accountType,
+        staffRole: authUser.staffRole,
+        staffRoles: authUser.staffRoles,
+        adminPageAccess: authUser.adminPageAccess,
+        forcePasswordChange: authUser.forcePasswordChange,
+      })
+      .from(authUser)
+      .where(eq(authUser.id, user.id))
+      .limit(1);
+    if (!row) return user;
+    return {
+      ...user,
+      accountType: row.accountType ?? user.accountType,
+      staffRole: row.staffRole ?? user.staffRole,
+      staffRoles: row.staffRoles ?? user.staffRoles,
+      adminPageAccess:
+        row.adminPageAccess === undefined
+          ? (user.adminPageAccess ?? null)
+          : row.adminPageAccess,
+      forcePasswordChange:
+        row.forcePasswordChange === undefined
+          ? (user.forcePasswordChange ?? false)
+          : row.forcePasswordChange,
+    };
+  } catch (err) {
+    const detail = formatDrizzleQueryError(err);
+    logAuthEvent("error", "auth_hydrate_user_query_failed", {
+      userId: user.id,
+      detail,
+    });
+
+    if (
+      isMissingColumnError(err, "staff_roles") ||
+      isMissingColumnError(err, "admin_page_access")
+    ) {
+      try {
+        const [legacy] = await db
+          .select({
+            accountType: authUser.accountType,
+            staffRole: authUser.staffRole,
+            forcePasswordChange: authUser.forcePasswordChange,
+          })
+          .from(authUser)
+          .where(eq(authUser.id, user.id))
+          .limit(1);
+        if (!legacy) return user;
+        const staffRoles = parseStaffRolesFromDb(legacy);
+        return {
+          ...user,
+          accountType: legacy.accountType ?? user.accountType,
+          staffRole: legacy.staffRole ?? user.staffRole,
+          staffRoles,
+          adminPageAccess: user.adminPageAccess ?? null,
+          forcePasswordChange:
+            legacy.forcePasswordChange ?? user.forcePasswordChange ?? false,
+        };
+      } catch (legacyErr) {
+        logAuthEvent("error", "auth_hydrate_user_legacy_fallback_failed", {
+          userId: user.id,
+          detail: formatDrizzleQueryError(legacyErr),
+        });
+      }
+    }
+
+    throw new Error(
+      `Could not load staff permissions from the database. ${detail}`,
+    );
+  }
 }
 
 export async function getServerSession() {

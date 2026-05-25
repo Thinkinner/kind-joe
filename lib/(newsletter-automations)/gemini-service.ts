@@ -13,6 +13,7 @@ import {
 } from "@/lib/(newsletter-automations)/types";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
+import { formatGenerationErrorMessage } from "@/lib/(newsletter-automations)/generation-errors";
 
 const NEWSLETTER_MODEL =
   process.env.GEMINI_NEWSLETTER_MODEL ?? "gemini-3-flash-preview";
@@ -24,9 +25,20 @@ async function assertNewsletterStaff() {
 
 const getClient = () => {
   const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) throw new Error("GOOGLE_API_KEY not found in environment variables");
+  if (!apiKey) {
+    throw new Error(
+      "GOOGLE_API_KEY not found in environment variables. Add it to .env.local and restart the dev server.",
+    );
+  }
   return new GoogleGenAI({ apiKey });
 };
+
+function rethrowGeminiError(
+  error: unknown,
+  context: Parameters<typeof formatGenerationErrorMessage>[1],
+): never {
+  throw new Error(formatGenerationErrorMessage(error, context));
+}
 
 const PROMPTS = PROMPT_SETTINGS_DEFAULTS;
 
@@ -141,7 +153,9 @@ function parseGeneratedJson<T>(rawText: string): T {
     }
   }
 
-  throw new Error("Unable to parse model JSON payload.");
+  throw new Error(
+    "Unable to parse model JSON payload. The AI response was not valid JSON — try again.",
+  );
 }
 
 function normalizeSubject(raw: string): string {
@@ -586,7 +600,9 @@ export const generateNewsletter = async (
           "Newsletter JSON Parse Error. Raw text:\n",
           response.text,
         );
-        throw new Error("AI generated malformed newsletter data. Try again.");
+        throw new Error(
+          "AI generated malformed newsletter JSON. The draft could not be parsed — click Start generation again.",
+        );
       }
 
       data.date = new Date().toLocaleDateString("en-US", {
@@ -608,7 +624,7 @@ export const generateNewsletter = async (
     });
   } catch (error) {
     console.error("Gemini Newsletter Error:", error);
-    throw error;
+    rethrowGeminiError(error, { step: "ai_newsletter" });
   }
 };
 
@@ -677,14 +693,19 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
         readingMinutes: number;
       }>(response.text || "{}");
     } catch (e) {
-      // CRITICAL LOGGING: This will show up in your terminal if it fails again.
       console.error(
         "Article JSON Parse Error.\n--- RAW TEXT START ---\n",
         response.text,
         "\n--- RAW TEXT END ---",
       );
       throw new Error(
-        "The AI generated malformed data. Please click 'Generate' again.",
+        "AI generated malformed article JSON. Click Generate again for this story.",
+      );
+    }
+
+    if (!parsed.contentMarkdown?.trim() || parsed.contentMarkdown.trim().length < 50) {
+      throw new Error(
+        "AI returned an empty or very short article body. Regenerate this story.",
       );
     }
 
@@ -693,6 +714,11 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
         ?.renderedContent;
 
     return { ...parsed, contentMarkdown: parsed.contentMarkdown, sources };
+  }).catch((error) => {
+    rethrowGeminiError(error, {
+      step: "ai_article",
+      headline: story.headline,
+    });
   });
 };
 
