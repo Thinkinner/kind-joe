@@ -17,7 +17,9 @@ const ARTICLE_ALL_SCHEMA: Schema = {
 
 const INPUT_LIMIT_ALL = 7000;
 const MAX_OUTPUT_TOKENS_ALL = 1800;
-const DEFAULT_MODEL = "gemini-3.1-flash-lite-preview";
+/** Default for CMS article assistant + RSS auto-writer (override via GEMINI_ARTICLE_ASSIST_MODEL). */
+export const ARTICLE_ASSIST_MODEL =
+  process.env.GEMINI_ARTICLE_ASSIST_MODEL?.trim() || "gemini-3.5-flash";
 
 function normalizeTagValue(tag: string): string {
   return String(tag)
@@ -258,7 +260,7 @@ export async function generateArticleAssistAll(input: {
 
   const runModel = async (contents: string) =>
     ai.models.generateContent({
-      model: input.model || DEFAULT_MODEL,
+      model: input.model || ARTICLE_ASSIST_MODEL,
       contents,
       config: {
         responseMimeType: "application/json",

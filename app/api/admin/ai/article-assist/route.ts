@@ -4,7 +4,10 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
 import { universalParser } from "@/lib/content/parser";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
-import { generateArticleAssistAll } from "@/lib/ai/article-assist-service";
+import {
+  ARTICLE_ASSIST_MODEL,
+  generateArticleAssistAll,
+} from "@/lib/ai/article-assist-service";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -764,7 +767,7 @@ export async function POST(req: Request) {
 
     const runModel = async (contents: string) =>
       ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
+        model: ARTICLE_ASSIST_MODEL,
         contents,
         config: {
           responseMimeType: "application/json",
