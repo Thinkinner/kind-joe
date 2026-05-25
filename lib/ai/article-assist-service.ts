@@ -16,10 +16,27 @@ const ARTICLE_ALL_SCHEMA: Schema = {
 };
 
 const INPUT_LIMIT_ALL = 7000;
-const MAX_OUTPUT_TOKENS_ALL = 1800;
-/** Default for CMS article assistant + RSS auto-writer (override via GEMINI_ARTICLE_ASSIST_MODEL). */
+/** Full-article JSON needs headroom; 1800 truncates mid-JSON on gemini-3.5-flash. */
+const MAX_OUTPUT_TOKENS_ALL = 8192;
+/** CMS article assistant + RSS auto-writer (override via GEMINI_ARTICLE_ASSIST_MODEL). */
 export const ARTICLE_ASSIST_MODEL =
   process.env.GEMINI_ARTICLE_ASSIST_MODEL?.trim() || "gemini-3.5-flash";
+
+/** Gemini 3.5+ ignores temperature; omit it to match API guidance. */
+function articleAssistGenerateConfig(options: {
+  responseSchema: Schema;
+  maxOutputTokens: number;
+}): {
+  responseMimeType: "application/json";
+  responseSchema: Schema;
+  maxOutputTokens: number;
+} {
+  return {
+    responseMimeType: "application/json",
+    responseSchema: options.responseSchema,
+    maxOutputTokens: options.maxOutputTokens,
+  };
+}
 
 function normalizeTagValue(tag: string): string {
   return String(tag)
@@ -121,7 +138,17 @@ function parseGeneratedJson<T>(rawText: string): T {
     }
   }
 
-  throw new Error("AI returned malformed data. Please try again.");
+  const trimmed = (rawText || "").trim();
+  const likelyTruncated =
+    trimmed.length > 0 &&
+    trimmed.startsWith("{") &&
+    !trimmed.endsWith("}") &&
+    extractBalancedJsonObject(trimmed) == null;
+  throw new Error(
+    likelyTruncated
+      ? "AI response was cut off (output too long). Please try again."
+      : "AI returned malformed data. Please try again.",
+  );
 }
 
 function buildMinimumTags(input: {
@@ -262,12 +289,10 @@ export async function generateArticleAssistAll(input: {
     ai.models.generateContent({
       model: input.model || ARTICLE_ASSIST_MODEL,
       contents,
-      config: {
-        responseMimeType: "application/json",
+      config: articleAssistGenerateConfig({
         responseSchema: ARTICLE_ALL_SCHEMA,
-        temperature: 0.1,
         maxOutputTokens: MAX_OUTPUT_TOKENS_ALL,
-      },
+      }),
     });
 
   const response = await runModel(requestContents);

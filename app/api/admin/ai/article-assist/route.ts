@@ -188,13 +188,13 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
 };
 
 const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
-  all: 1800,
+  all: 8192,
   slug: 120,
   category: 120,
   tags: 220,
   excerpt: 220,
   seo: 380,
-  content: 1100,
+  content: 4096,
   title: 120,
   socialCopy: 420,
   predictionSuggestion: 260,
@@ -772,7 +772,6 @@ export async function POST(req: Request) {
         config: {
           responseMimeType: "application/json",
           responseSchema,
-          temperature: 0.1,
           maxOutputTokens: MAX_OUTPUT_TOKENS[mode],
         },
       });
