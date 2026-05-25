@@ -2,6 +2,9 @@ import type { NewsletterStory } from "@/lib/(newsletter-automations)/types";
 
 const ABSOLUTE_URL_RE = /^https?:\/\//i;
 const LOCAL_HOST_RE = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)(:\d+)?$/i;
+/** Admin dashboard hosts must never be used for public newsletter preview links. */
+const ADMIN_HOST_RE = /^admin(?:\.|$)/i;
+const DEFAULT_PUBLIC_SITE = "https://www.kindjoe.com";
 
 function hostFromMaybeUrl(raw: string): string {
   const input = raw.trim();
@@ -18,12 +21,26 @@ export function normalizeSiteBase(raw?: string): string {
   const value = (raw || "").trim().replace(/\/+$/, "");
   if (value) {
     const host = hostFromMaybeUrl(value);
-    if (LOCAL_HOST_RE.test(host)) {
-      return "https://www.kindjoe.com";
+    if (LOCAL_HOST_RE.test(host) || ADMIN_HOST_RE.test(host)) {
+      return DEFAULT_PUBLIC_SITE;
     }
     return value;
   }
-  return "https://www.kindjoe.com";
+  return DEFAULT_PUBLIC_SITE;
+}
+
+/** Public share URL for a newsletter draft (never uses the admin dashboard host). */
+export function buildNewsletterPreviewPath(draftId: string): string {
+  const id = draftId.trim();
+  return `/kindjoe/newsletter/preview/${id}`;
+}
+
+export function buildNewsletterPreviewUrl(
+  draftId: string,
+  siteBase?: string,
+): string {
+  const base = normalizeSiteBase(siteBase);
+  return `${base}${buildNewsletterPreviewPath(draftId)}`;
 }
 
 export function normalizeStorySlug(rawSlug?: string): string {

@@ -34,6 +34,7 @@ import {
   WebhookPayload,
 } from "@/lib/(newsletter-automations)/types";
 import {
+  buildNewsletterPreviewUrl,
   normalizeSiteBase,
   normalizeStorySlug,
 } from "@/lib/(newsletter-automations)/newsletter-links";
@@ -462,11 +463,10 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
   const handleCopyPreviewLink = async () => {
     try {
-      const path = `/kindjoe/newsletter/preview/${draft.id}`;
-      const publicBase = normalizeSiteBase(
+      const previewUrl = buildNewsletterPreviewUrl(
+        draft.id,
         typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SITE_URL : undefined,
       );
-      const previewUrl = `${publicBase}${path}`;
       await navigator.clipboard.writeText(previewUrl);
       setSuccessMsg("Public preview link copied.");
       setTimeout(() => setSuccessMsg(""), 2000);

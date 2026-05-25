@@ -32,6 +32,7 @@ import {
 
 import { NewsletterDraft } from "@/lib/(newsletter-automations)/types";
 import { deriveNewsletterLeadFromStories } from "@/lib/(newsletter-automations)/newsletter-lead";
+import { buildNewsletterPreviewUrl } from "@/lib/(newsletter-automations)/newsletter-links";
 import {
   getDrafts,
   deleteDraft,
@@ -269,7 +270,11 @@ const HistoryView: React.FC = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    toast.message("Public view coming soon");
+                    const url = buildNewsletterPreviewUrl(
+                      draft.id,
+                      process.env.NEXT_PUBLIC_SITE_URL,
+                    );
+                    window.open(url, "_blank", "noopener,noreferrer");
                   }}
                 >
                   <Eye className="h-4 w-4" />

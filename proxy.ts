@@ -90,6 +90,8 @@ export function proxy(request: NextRequest) {
       path.startsWith("/api/auth") ||
       path.startsWith("/api/admin") ||
       path.startsWith("/api/webhooks") ||
+      path.startsWith("/kindjoe/newsletter/preview") ||
+      path.startsWith("/newsletter/preview") ||
       path.startsWith("/_next") ||
       path.startsWith("/favicon") ||
       path === "/icon.svg" ||
