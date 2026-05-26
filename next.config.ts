@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/articles/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

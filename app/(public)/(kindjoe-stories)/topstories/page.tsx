@@ -122,7 +122,7 @@ export default async function KindjoeTopStoriesPage() {
                   </div>
 
                   <h2 className="font-semibold text-lg leading-snug">
-                    <Link href={`/articles/${article.slug}`}>
+                    <Link href={`/${article.slug}`}>
                       {article.title}
                     </Link>
                   </h2>

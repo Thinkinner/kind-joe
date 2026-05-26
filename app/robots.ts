@@ -1,17 +1,21 @@
 // app/robots.ts
 import { MetadataRoute } from "next";
+import { publicSiteUrl } from "@/lib/site/public-site-url";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kindjoe.com";
-
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin"],
+        disallow: [
+          "/admin",
+          "/api/",
+          "/kindjoe/newsletter/preview/",
+          "/newsletter/preview/",
+        ],
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: publicSiteUrl("/sitemap.xml"),
   };
 }

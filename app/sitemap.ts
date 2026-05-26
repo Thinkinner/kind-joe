@@ -1,8 +1,9 @@
 // app/sitemap.ts
 import { MetadataRoute } from "next";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, articleTags, tags } from "@/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { publicSiteOrigin, publicSiteUrl } from "@/lib/site/public-site-url";
 
 // ... keep your publishedWhereForSitemap function exactly as it was ...
 function publishedWhereForSitemap(now = new Date()) {
@@ -24,8 +25,7 @@ function publishedWhereForSitemap(now = new Date()) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Make sure your env variable is https://www.kindjoe.com (no trailing slash)
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.kindjoe.com";
+  const baseUrl = publicSiteOrigin();
   const now = new Date();
 
   const rows = await db
@@ -34,53 +34,52 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       updatedAt: articles.updatedAt,
       publishedAt: articles.publishedAt,
       createdAt: articles.createdAt,
+      isVentura: sql<boolean>`bool_or(${tags.slug} = 'ventura-county')`,
     })
     .from(articles)
-    .where(publishedWhereForSitemap(now));
+    .leftJoin(articleTags, eq(articleTags.articleId, articles.id))
+    .leftJoin(tags, eq(tags.id, articleTags.tagId))
+    .where(publishedWhereForSitemap(now))
+    .groupBy(
+      articles.slug,
+      articles.updatedAt,
+      articles.publishedAt,
+      articles.createdAt,
+    );
 
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/privacy-policy`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/terms-of-service`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/editorial-policy`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-  ];
+  const staticPaths = [
+    "/",
+    "/about",
+    "/contact",
+    "/news",
+    "/tech",
+    "/politics",
+    "/business",
+    "/opinion",
+    "/topstories",
+    "/ventura-county",
+    "/ventura/articles",
+    "/newsletter",
+    "/privacy-policy",
+    "/terms-of-service",
+    "/disclaimer",
+    "/editorial-policy",
+  ] as const;
+
+  const staticPages: MetadataRoute.Sitemap = staticPaths.map((path) => ({
+    url: publicSiteUrl(path, baseUrl),
+    lastModified: now,
+    changeFrequency: path === "/" ? ("daily" as const) : ("monthly" as const),
+    priority: path === "/" ? 1 : 0.7,
+  }));
 
   return [
     ...staticPages,
     ...rows.map((a) => ({
-      url: `${baseUrl}/${a.slug}`,
+      url: publicSiteUrl(
+        a.isVentura ? `/ventura/${a.slug}` : `/${a.slug}`,
+        baseUrl,
+      ),
       lastModified: a.updatedAt ?? a.publishedAt ?? a.createdAt ?? now,
     })),
   ];

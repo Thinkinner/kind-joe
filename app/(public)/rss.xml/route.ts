@@ -1,8 +1,9 @@
 // app/rss.xml/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/db"; // adjust to your actual db path
-import { articles, users } from "@/db/schema";
-import { and, eq, isNotNull, gte, lt } from "drizzle-orm";
+import { articles, articleTags, tags, users } from "@/db/schema";
+import { and, eq, isNotNull, gte, lt, sql } from "drizzle-orm";
+import { publicSiteOrigin, publicSiteUrl } from "@/lib/site/public-site-url";
 
 // Helper: get start/end of "today" in UTC
 function getTodayRangeUTC() {
@@ -12,13 +13,12 @@ function getTodayRangeUTC() {
   return { start, end };
 }
 
-// Change this to your canonical site URL
-const SITE_URL = "https://example.com";
-const SITE_TITLE = "My News Site";
-const SITE_DESCRIPTION = "Latest news and articles from My News Site";
+const SITE_TITLE = "Kind Joe";
+const SITE_DESCRIPTION = "Latest news and articles from Kind Joe";
 const SITE_LANGUAGE = "en-us"; // or whatever you use
 
 export async function GET() {
+  const siteUrl = publicSiteOrigin();
   const { start, end } = getTodayRangeUTC();
 
   // Fetch today's published articles with author
@@ -32,9 +32,12 @@ export async function GET() {
       authorName: users.name,
       coverImageUrl: articles.coverImageUrl,
       contentHtml: articles.contentHtml,
+      isVentura: sql<boolean>`bool_or(${tags.slug} = 'ventura-county')`,
     })
     .from(articles)
     .innerJoin(users, eq(articles.authorId, users.id))
+    .leftJoin(articleTags, eq(articleTags.articleId, articles.id))
+    .leftJoin(tags, eq(tags.id, articleTags.tagId))
     .where(
       and(
         eq(articles.isDraft, false),
@@ -43,12 +46,25 @@ export async function GET() {
         lt(articles.publishedAt, end),
       ),
     )
-    .orderBy(articles.publishedAt); // newest last or first depending on your preference
+    .groupBy(
+      articles.id,
+      articles.slug,
+      articles.title,
+      articles.excerpt,
+      articles.publishedAt,
+      users.name,
+      articles.coverImageUrl,
+      articles.contentHtml,
+    )
+    .orderBy(articles.publishedAt);
 
   // Build RSS items
   const itemsXml = rows
   .map((article) => {
-    const url = `${SITE_URL}/articles/${article.slug}`;
+    const path = article.isVentura
+      ? `/ventura/${article.slug}`
+      : `/${article.slug}`;
+    const url = publicSiteUrl(path, siteUrl);
     const pubDate = article.publishedAt
       ? new Date(article.publishedAt).toUTCString()
       : new Date().toUTCString();
@@ -81,11 +97,11 @@ export async function GET() {
 >
   <channel>
     <title>${SITE_TITLE}</title>
-    <link>${SITE_URL}</link>
+    <link>${siteUrl}</link>
     <description>${SITE_DESCRIPTION}</description>
     <language>${SITE_LANGUAGE}</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-    <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="${publicSiteUrl("/rss.xml", siteUrl)}" rel="self" type="application/rss+xml" />
     ${itemsXml}
   </channel>
 </rss>`;
