@@ -33,43 +33,37 @@ export function ArticleCard({
     return (
       <Link
         href={path}
-        className="group flex w-full max-w-full min-w-0 items-start gap-3 overflow-hidden py-4 sm:gap-4 sm:py-5"
+        className="group flex h-full min-w-0 flex-col overflow-hidden"
       >
-        <div className="relative h-[4.25rem] w-[4.75rem] shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-24 sm:w-28 md:h-[6.5rem] md:w-32">
+        <div className="relative aspect-[16/10] overflow-hidden rounded-md bg-slate-100 sm:rounded-lg">
           <img
             src={optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
-              width: 640,
+              width: 900,
             })}
             alt={article.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 basis-0 flex-col gap-1 overflow-hidden sm:gap-1.5">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 pt-2 sm:gap-1.5 sm:pt-3">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
             <span
-              className={`${brandColor} max-w-full truncate rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white`}
+              className={`${brandColor} w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white sm:px-2 sm:text-[10px]`}
             >
               {article.category || "News"}
             </span>
             {timeAgo ? (
-              <span className="shrink-0 text-[11px] font-medium text-slate-400 sm:text-xs">
+              <span className="shrink-0 text-[10px] font-medium text-slate-400 sm:text-xs">
                 {timeAgo}
               </span>
             ) : null}
           </div>
 
           <h3
-            className={`line-clamp-3 min-w-0 break-words font-[Poppins] text-[15px] font-bold leading-snug text-slate-900 transition-colors sm:text-base md:text-[17px] ${hoverColor}`}
+            className={`line-clamp-3 min-w-0 break-words font-[Poppins] text-[13px] font-bold leading-snug text-slate-900 transition-colors sm:text-base ${hoverColor}`}
           >
             {article.title}
           </h3>
-
-          {article.excerpt ? (
-            <p className="line-clamp-2 min-w-0 break-words text-sm leading-relaxed text-slate-600">
-              {article.excerpt}
-            </p>
-          ) : null}
         </div>
       </Link>
     );

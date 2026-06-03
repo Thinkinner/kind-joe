@@ -17,7 +17,7 @@ I pushed the updates to **preview** (not on the live site yet).
 **What we changed:**
 - **Kind Joe stories show first** on the homepage (our own articles, not outside links)
 - **RSS / outside news links** moved to the **bottom** and only **a few** show (labeled “External sources”)
-- **Markets ticker** moved under the navbar on all pages
+- **Markets snapshot (stocks ticker)** — moved out of the homepage sidebar and put in a **bar right under the navbar**. It shows on **every public page** now (not just the homepage), so live market numbers are always visible at the top.
 - **Trust bar** added (About, Editorial, Contact)
 - **Editor’s picks** + **newsletter** in the sidebar
 - **Empty ad boxes hidden** for now — we’ll turn ads on after approval
@@ -44,7 +44,7 @@ Hey team —
 **What changed:**
 - **Our Kind Joe stories show first**
 - **Outside RSS links** moved to the **bottom** (only a few for now)
-- **Markets ticker** under the navbar site-wide
+- **Markets snapshot (stocks ticker)** — now in a **bar under the navbar on every page** (was on the homepage sidebar before)
 - **Trust bar**, newsletter, Editor’s picks added
 - **Ad placeholders hidden** until we’re approved
 

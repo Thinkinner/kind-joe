@@ -66,34 +66,36 @@ export function ArticleList({
   };
 
   const gridClass =
-    columns === 2
-      ? "grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2"
-      : "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3";
+    cardVariant === "elevated"
+      ? columns === 2
+        ? "grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8"
+        : "grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8 xl:grid-cols-3"
+      : columns === 2
+        ? "grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2"
+        : "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3";
 
-  const listClass =
-    "flex w-full min-w-0 max-w-full flex-col divide-y divide-slate-200 overflow-hidden";
-  const containerClass = cardVariant === "elevated" ? listClass : gridClass;
+  const containerClass = gridClass;
 
   if (loadingInitial) {
     return (
       <div className={containerClass}>
-        {Array.from({ length: columns === 2 ? 4 : 6 }).map((_, i) => (
+        {Array.from({ length: cardVariant === "elevated" ? 6 : columns === 2 ? 4 : 6 }).map((_, i) => (
           <div
             key={i}
             className={
               cardVariant === "elevated"
-                ? "flex animate-pulse gap-4 py-5"
+                ? "flex animate-pulse flex-col gap-3"
                 : "h-64 rounded-2xl bg-slate-100 sm:h-72"
             }
             aria-hidden
           >
             {cardVariant === "elevated" ? (
               <>
-                <div className="h-24 w-28 shrink-0 rounded-md bg-slate-100" />
-                <div className="flex flex-1 flex-col gap-2 py-1">
-                  <div className="h-3 w-16 rounded bg-slate-100" />
+                <div className="aspect-[16/10] w-full rounded-lg bg-slate-100" />
+                <div className="flex flex-col gap-2">
+                  <div className="h-3 w-20 rounded bg-slate-100" />
                   <div className="h-4 w-full rounded bg-slate-100" />
-                  <div className="h-4 w-[80%] rounded bg-slate-100" />
+                  <div className="h-4 w-[75%] rounded bg-slate-100" />
                 </div>
               </>
             ) : null}
@@ -112,12 +114,10 @@ export function ArticleList({
   }
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-10">
+    <div className="flex w-full min-w-0 flex-col gap-10">
       <div className={containerClass}>
         {articles.map((article) => (
-          <div key={article.id} className="min-w-0 w-full max-w-full">
-            <ArticleCard article={article} variant={cardVariant} />
-          </div>
+          <ArticleCard key={article.id} article={article} variant={cardVariant} />
         ))}
       </div>
 

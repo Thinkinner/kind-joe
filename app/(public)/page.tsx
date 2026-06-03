@@ -26,7 +26,7 @@ export default function HomePage() {
       <FeaturedStoriesCarouselHero />
       <PublisherTrustBar />
 
-      <main className="mx-auto max-w-7xl px-4 pb-12 pt-4 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8 lg:pt-8">
+      <main className="w-full px-4 pb-12 pt-4 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8 lg:pt-8">
         <SectionHeader
           as="h1"
           eyebrow="Original reporting"
@@ -35,16 +35,16 @@ export default function HomePage() {
           actions={<TopicPills />}
         />
 
-        <div className="grid w-full min-w-0 max-w-full items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-12">
-          <div className="order-2 min-w-0 w-full max-w-full lg:order-1">
+        <div className="grid w-full min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-12">
+          <div className="order-2 min-w-0 w-full lg:order-1">
             <ArticleList
-              columns={2}
+              columns={3}
               cardVariant="elevated"
               emptyMessage="New stories are on the way. Check back soon or browse our topic pages."
             />
           </div>
 
-          <aside className="order-1 flex min-w-0 w-full max-w-full flex-col gap-5 lg:order-2 lg:sticky lg:top-24 lg:gap-6">
+          <aside className="order-1 flex min-w-0 w-full flex-col gap-5 lg:order-2 lg:sticky lg:top-24 lg:gap-6">
             <HomepageSidebar />
           </aside>
         </div>
