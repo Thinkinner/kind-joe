@@ -27,8 +27,71 @@ import {
 import { ArticleSummary } from "@/types/article";
 import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
+import { titleAttentionScore } from "@/lib/format/title-attention-score";
 
 const MAX_LIST_PAGE = 50;
+const TOP_STORY_TAG_SLUG = "kindjoetopstories";
+const SIDEBAR_POOL_LIMIT = 72;
+const LATEST_FEED_EXCLUDE_COUNT = 9;
+
+function publishedArticlesFilter(now = new Date()) {
+  return and(
+    eq(articles.isDraft, false),
+    isNull(articles.deletedAt),
+    or(
+      and(isNotNull(articles.publishedAt), lte(articles.publishedAt, now)),
+      and(
+        isNull(articles.publishedAt),
+        isNotNull(articles.publishAt),
+        lte(articles.publishAt, now),
+      ),
+    ),
+  );
+}
+
+const articleSummarySelect = {
+  id: articles.id,
+  slug: articles.slug,
+  title: articles.title,
+  excerpt: articles.excerpt,
+  coverImageUrl: articles.coverImageUrl,
+  category: articles.category,
+  publishedAt: articles.publishedAt,
+  readingMinutes: articles.readingMinutes,
+  authorName: sql<string | null>`coalesce(
+    nullif(${articles.seo}->>'authorName', ''),
+    nullif(${authUser.aliasFullName}, ''),
+    nullif(${authUser.name}, ''),
+    nullif(${users.aliasFullName}, ''),
+    ${users.name}
+  )`,
+  authorAvatarUrl: users.avatarUrl,
+  tags: sql<unknown[]>`COALESCE(
+    (SELECT json_agg(t.*)
+     FROM ${articleTags} at
+     INNER JOIN ${tags} t ON at.tag_id = t.id
+     WHERE at.article_id = ${articles.id}),
+    '[]'
+  )`,
+};
+
+function mapArticleSummaryRows(
+  results: Array<{
+    publishedAt: Date | null;
+    authorName: string | null;
+    authorAvatarUrl: string | null;
+    readingMinutes: number | null;
+    [key: string]: unknown;
+  }>,
+): ArticleSummary[] {
+  return results.map((a) => ({
+    ...(a as ArticleSummary),
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    authorName: a.authorName ?? "KindJoe Staff",
+    authorAvatarUrl: a.authorAvatarUrl ?? null,
+    readingMinutes: a.readingMinutes ?? 0,
+  }));
+}
 const TOPIC_KEYWORDS: Record<TopicSlug, string[]> = {
   tech: ["tech", "technology", "ai", "crypto", "web3"],
   politics: ["politic", "government", "election", "policy"],
@@ -137,6 +200,75 @@ export async function getArticlesAction(limit: number, offset: number) {
     }));
   } catch (error) {
     console.error("Action Error:", error);
+    return [];
+  }
+}
+
+function excludingHeroTopStoriesFilter() {
+  return sql`NOT EXISTS (
+    SELECT 1 FROM ${articleTags} at
+    INNER JOIN ${tags} t ON t.id = at.tag_id
+    WHERE at.article_id = ${articles.id}
+    AND t.slug = ${TOP_STORY_TAG_SLUG}
+  )`;
+}
+
+/** Sidebar: strongest recent headlines, excluding hero top stories + first Latest grid page. */
+export async function getEditorsPicksAction(limit = 5): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const now = new Date();
+
+  try {
+    const latestBatch = await getArticlesAction(LATEST_FEED_EXCLUDE_COUNT, 0);
+    const excludeIds = new Set(latestBatch.map((article) => article.id));
+
+    const poolResults = await db
+      .select(articleSummarySelect)
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
+      .where(
+        and(publishedArticlesFilter(now), excludingHeroTopStoriesFilter()),
+      )
+      .orderBy(desc(articles.publishedAt))
+      .limit(SIDEBAR_POOL_LIMIT);
+
+    const pool = mapArticleSummaryRows(poolResults).filter(
+      (article) => !excludeIds.has(article.id),
+    );
+
+    const ranked = pool
+      .map((article) => ({
+        article,
+        score: titleAttentionScore(article.title),
+      }))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const bTime = b.article.publishedAt
+          ? new Date(b.article.publishedAt).getTime()
+          : 0;
+        const aTime = a.article.publishedAt
+          ? new Date(a.article.publishedAt).getTime()
+          : 0;
+        return bTime - aTime;
+      });
+
+    let picks = ranked.slice(0, safeLimit).map((entry) => entry.article);
+
+    if (picks.length < safeLimit) {
+      const pickedIds = new Set(picks.map((article) => article.id));
+      const backfill = mapArticleSummaryRows(poolResults)
+        .filter(
+          (article) =>
+            !pickedIds.has(article.id) && !excludeIds.has(article.id),
+        )
+        .slice(0, safeLimit - picks.length);
+      picks = [...picks, ...backfill];
+    }
+
+    return picks;
+  } catch (error) {
+    console.error("Editors picks action error:", error);
     return [];
   }
 }
