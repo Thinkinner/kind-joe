@@ -124,7 +124,7 @@ export default function Navbar({
 
   return (
     <>
-      <header className="sticky top-0 z-[60] border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
+      <header className="border-b border-white/[0.04] bg-[#030304] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-600/25 to-transparent" />
 
         <nav className="relative mx-auto max-w-[1440px] px-3 pb-2 sm:px-5 sm:pb-2 lg:px-8 lg:pb-0">

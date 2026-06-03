@@ -109,7 +109,12 @@ const About: React.FC = () => {
               </span>
             </h1>
             <p className="text-lg text-indigo-100 mb-8 leading-relaxed max-w-lg">
-              Kind Joe is a global digital news outlet delivering the latest breaking stories, trending topics, and must-see viral videos from around the world. Our mission is to provide fast, engaging, and reliable coverage that keeps readers informed about the moments shaping online culture and international news.
+              Kind Joe is an independent digital news publisher based in Ventura
+              County, California. We publish original reporting, analysis, and
+              local coverage on kindjoe.com — written and edited by our team.
+              Our mission is to deliver clear, engaging journalism that keeps
+              readers informed about the stories that matter in our community
+              and beyond.
             </p>
           </div>
           <div className="relative lg:h-[500px] w-full rounded-3xl overflow-hidden shadow-lg">
@@ -141,7 +146,18 @@ const About: React.FC = () => {
         <div className="max-w-7xl mx-auto text-center relative z-10">
           <h2 className="text-3xl font-bold text-slate-900 mb-6">Our Mission & Values</h2>
           <p className="text-lg text-slate-700 mb-12 max-w-3xl mx-auto">
-            Based in the vibrant city of Los Angeles, California, Kind Joe was founded in 2023 by a passionate team of 20 developers and editors. Our collective mission is to foster a more empathetic internet by providing transparent, fact-based journalism that informs, inspires, and connects our diverse readership. We believe in the power of stories to uplift and unite.
+            Kind Joe was founded to foster a more informed, empathetic internet
+            through transparent, fact-based journalism. We publish original
+            articles on kindjoe.com, follow our{" "}
+            <a href="/editorial-policy" className="text-red-700 underline">
+              editorial policy
+            </a>
+            , and clearly label third-party headline links when we reference
+            external sources. Questions?{" "}
+            <a href="/contact" className="text-red-700 underline">
+              Contact our team
+            </a>
+            .
           </p>
 
           {/* Stats/Values Section - moved here for better context */}

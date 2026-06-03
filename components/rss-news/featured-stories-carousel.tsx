@@ -22,7 +22,7 @@ function storyGridColsClass(chunkSize: number) {
 function StoryCardSkeleton() {
   return (
     <div
-      className="relative h-64 w-full overflow-hidden rounded-2xl shadow-lg md:h-80"
+      className="relative h-52 w-full overflow-hidden rounded-xl shadow-lg sm:h-64 sm:rounded-2xl md:h-80"
       aria-hidden
     >
       <Skeleton className="absolute inset-0 h-full w-full rounded-2xl bg-white/10" />
@@ -129,7 +129,7 @@ export function FeaturedStoriesCarouselHero() {
   }
 
   return (
-    <div className="relative w-full min-w-0 max-w-full overflow-x-clip overflow-hidden px-6 py-8 md:px-10">
+    <div className="relative w-full min-w-0 max-w-full overflow-x-clip pb-20 sm:pb-16 md:pb-16">
       {/* 
         🎥 VIDEO BACKGROUND
       */}
@@ -149,10 +149,15 @@ export function FeaturedStoriesCarouselHero() {
       <div className="absolute inset-0 bg-black/40" />
 
       {/* MAIN CONTENT */}
-      <div className="relative z-10 flex flex-col gap-6">
-        <h2 className="text-white text-3xl md:text-5xl font-bold font-[Poppins]">
-          Today's Stories
-        </h2>
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:gap-6 sm:px-6 sm:py-10 md:px-8 lg:py-12">
+        <div className="space-y-1.5 sm:space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400 sm:text-[11px] sm:tracking-[0.25em]">
+            Featured
+          </p>
+          <h2 className="font-[Poppins] text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
+            Today&apos;s top stories
+          </h2>
+        </div>
 
         {loading && (
           <div
@@ -193,11 +198,12 @@ export function FeaturedStoriesCarouselHero() {
                           // 3. hover:!blur-none -> BUT if I am the specific card hovered, remove blur
                           // 4. hover:!brightness-100 -> And remove darkness
                           className="
-                            relative w-full h-64 md:h-80 rounded-2xl overflow-hidden group shadow-lg 
-                            hover:shadow-2xl hover:-translate-y-1 hover:z-10
+                            relative h-52 w-full overflow-hidden rounded-xl shadow-lg group
                             transition-all duration-500 ease-out
-                            group-hover/list:blur-[3px] group-hover/list:brightness-75
-                            hover:!blur-none hover:!brightness-100
+                            sm:h-64 sm:rounded-2xl md:h-80
+                            [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:z-10 [@media(hover:hover)]:hover:shadow-2xl
+                            [@media(hover:hover)]:group-hover/list:blur-[3px] [@media(hover:hover)]:group-hover/list:brightness-75
+                            [@media(hover:hover)]:hover:!blur-none [@media(hover:hover)]:hover:!brightness-100
                           "
                         >
                           <img
@@ -206,12 +212,12 @@ export function FeaturedStoriesCarouselHero() {
                             alt={story.title}
                           />
 
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl p-4 transition-colors duration-300 group-hover:bg-black/90">
-                            <div className="w-6 h-1 bg-red-600 mb-2" />
-                            <h3 className="text-white text-sm md:text-base font-bold leading-snug">
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-3 backdrop-blur-xl transition-colors duration-300 sm:p-4 [@media(hover:hover)]:group-hover:bg-black/90">
+                            <div className="mb-1.5 h-1 w-5 bg-red-600 sm:mb-2 sm:w-6" />
+                            <h3 className="line-clamp-3 text-sm font-bold leading-snug text-white sm:line-clamp-2 md:text-base">
                               {story.title}
                             </h3>
-                            <p className="text-white text-xs mt-1 flex items-center gap-1">
+                            <p className="mt-1 flex items-center gap-1 text-[11px] text-white sm:text-xs">
                               <span className="text-blue-400 group-hover:text-blue-300 transition-colors">
                                 Read Full Story
                               </span>

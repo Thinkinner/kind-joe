@@ -67,6 +67,12 @@ const EditorialPolicy: React.FC = () => {
               <p className="text-slate-600">
                 We clearly cite our sources, credit creators, and disclose when viral content cannot be independently verified. We aim to provide context, not confusion.
               </p>
+              <p className="text-slate-600 mt-4">
+                Original Kind Joe articles are published and hosted on kindjoe.com.
+                When we link to headlines on other publishers, those links are
+                labeled as external, open in a new tab, and are separate from
+                our on-site reporting.
+              </p>
             </section>
 
             <div className="w-full h-px bg-slate-200 my-12"></div>

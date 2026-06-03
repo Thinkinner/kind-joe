@@ -15,11 +15,15 @@ const BATCH_SIZE = 9; // 3x3 grid looks nice
 type ArticleListProps = {
   topic?: TopicSlug;
   emptyMessage?: string;
+  columns?: 2 | 3;
+  cardVariant?: "default" | "elevated";
 };
 
 export function ArticleList({
   topic,
   emptyMessage = "No articles found.",
+  columns = 3,
+  cardVariant = "default",
 }: ArticleListProps = {}) {
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -61,31 +65,59 @@ export function ArticleList({
     });
   };
 
+  const gridClass =
+    columns === 2
+      ? "grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2"
+      : "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3";
+
+  const listClass =
+    "flex w-full min-w-0 max-w-full flex-col divide-y divide-slate-200 overflow-hidden";
+  const containerClass = cardVariant === "elevated" ? listClass : gridClass;
+
   if (loadingInitial) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="animate-spin text-red-600" size={40} />
-        <p className="text-sm text-gray-500 font-medium animate-pulse">
-          Loading stories...
-        </p>
+      <div className={containerClass}>
+        {Array.from({ length: columns === 2 ? 4 : 6 }).map((_, i) => (
+          <div
+            key={i}
+            className={
+              cardVariant === "elevated"
+                ? "flex animate-pulse gap-4 py-5"
+                : "h-64 rounded-2xl bg-slate-100 sm:h-72"
+            }
+            aria-hidden
+          >
+            {cardVariant === "elevated" ? (
+              <>
+                <div className="h-24 w-28 shrink-0 rounded-md bg-slate-100" />
+                <div className="flex flex-1 flex-col gap-2 py-1">
+                  <div className="h-3 w-16 rounded bg-slate-100" />
+                  <div className="h-4 w-full rounded bg-slate-100" />
+                  <div className="h-4 w-[80%] rounded bg-slate-100" />
+                </div>
+              </>
+            ) : null}
+          </div>
+        ))}
       </div>
     );
   }
 
   if (articles.length === 0) {
     return (
-      <div className="text-center py-20 border-2 border-dashed rounded-xl">
-        <p className="text-gray-500">{emptyMessage}</p>
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
+        <p className="text-slate-500">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      {/* Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-10">
+      <div className={containerClass}>
         {articles.map((article) => (
-          <ArticleCard key={article.id} article={article} />
+          <div key={article.id} className="min-w-0 w-full max-w-full">
+            <ArticleCard article={article} variant={cardVariant} />
+          </div>
         ))}
       </div>
 
@@ -95,7 +127,7 @@ export function ArticleList({
           <button
             onClick={handleLoadMore}
             disabled={isPending}
-            className="group relative flex items-center gap-2 px-10 py-4 bg-slate-950 text-white rounded-full font-bold transition-all hover:bg-red-600 disabled:opacity-50 disabled:hover:bg-slate-950 overflow-hidden"
+            className="group relative flex w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:bg-red-600 disabled:opacity-50 sm:w-auto sm:max-w-none sm:px-8 sm:py-3.5"
           >
             {isPending ? (
               <>

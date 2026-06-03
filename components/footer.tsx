@@ -222,6 +222,11 @@ export function Footer() {
 
         {/* Bottom Section: Socials & Copyright */}
         <div className="space-y-6">
+          <p className="text-sm text-gray-500 leading-relaxed max-w-3xl">
+            Kind Joe publishes original journalism on kindjoe.com. Third-party
+            headline links on our homepage are clearly labeled and open external
+            publishers in a new tab.
+          </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-400">
             <Link
               href="/privacy-policy"

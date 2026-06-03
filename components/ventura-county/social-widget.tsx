@@ -36,7 +36,7 @@ export const SocialWidget: React.FC = () => {
   const mainLink = "https://www.instagram.com/TheKindJoe";
 
   return (
-    <div className="w-full max-w-xl bg-white/95 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden font-sans">
+    <div className="w-full rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-shadow duration-300 hover:shadow-md overflow-hidden font-sans">
       {/* Cover */}
       <div className="relative w-full aspect-[16/9] group cursor-pointer bg-neutral-100">
         <img
@@ -59,11 +59,11 @@ export const SocialWidget: React.FC = () => {
             href={mainLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3.5 bg-red-600 hover:bg-red-700 rounded-xl flex justify-center items-center gap-2.5 shadow-lg shadow-red-600/40 transform group-hover:translate-y-[-2px] group-hover:shadow-xl transition-all duration-300"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-3 py-3 shadow-lg shadow-red-600/40 transition-all duration-300 hover:bg-red-700 sm:gap-2.5 sm:px-4 sm:py-3.5 [@media(hover:hover)]:group-hover:translate-y-[-2px] [@media(hover:hover)]:group-hover:shadow-xl"
           >
-            <Instagram className="text-white w-5 h-5" />
-            <span className="text-white text-sm md:text-base font-semibold text-center">
-              Watch The Kindjoe Show: Exclusive
+            <Instagram className="h-5 w-5 shrink-0 text-white" />
+            <span className="text-center text-xs font-semibold leading-tight text-white sm:text-sm md:text-base">
+              Watch The Kindjoe Show
             </span>
           </a>
         </div>

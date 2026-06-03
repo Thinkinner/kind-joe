@@ -1,10 +1,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
 /** Shown only while Finnhub data loads — section title is already visible above. */
-export function StocksTickerSkeleton() {
+export function StocksTickerSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div className="w-full overflow-hidden py-1" aria-hidden>
-      <Skeleton className="h-11 w-full max-w-full rounded-lg bg-neutral-200/90" />
+      <Skeleton
+        className={`w-full max-w-full rounded-md bg-white/10 ${compact ? "h-6" : "h-11 rounded-lg bg-neutral-200/90"}`}
+      />
     </div>
   );
 }

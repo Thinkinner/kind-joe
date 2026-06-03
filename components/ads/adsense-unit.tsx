@@ -33,50 +33,83 @@ export default function AdsenseUnit({
   const adClient = isDev ? "ca-pub-3940256099942544" : "ca-pub-2956404262281420";
   const resolvedSlot = isDev ? "6300978111" : slot;
   const shouldRenderPreview = !adClient || !resolvedSlot;
+  const containerRef = useRef<HTMLDivElement>(null);
   const adRef = useRef<HTMLModElement | null>(null);
+  const pushedRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     if (shouldRenderPreview) return;
+
     setIsCollapsed(false);
+    pushedRef.current = false;
 
     const adElement = adRef.current;
-    if (!adElement) return;
+    const container = containerRef.current;
+    if (!adElement || !container) return;
 
     const getAdStatus = () => adElement.getAttribute("data-ad-status");
     const hasRenderedAd = () => getAdStatus() === "filled";
     const isExplicitlyUnfilled = () => getAdStatus() === "unfilled";
 
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch {
-      // Avoid crashing the page if AdSense has not finished bootstrapping yet.
+    const tryPush = () => {
+      if (pushedRef.current) return true;
+      if (container.offsetWidth <= 0) return false;
+
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        pushedRef.current = true;
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    let resizeObserver: ResizeObserver | null = null;
+
+    const startObservers = () => {
+      const observer = new MutationObserver(() => {
+        if (isExplicitlyUnfilled()) {
+          setIsCollapsed(true);
+          return;
+        }
+        if (hasRenderedAd()) {
+          setIsCollapsed(false);
+        }
+      });
+      observer.observe(adElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+
+      const collapseTimer = window.setTimeout(() => {
+        if (!hasRenderedAd()) {
+          setIsCollapsed(true);
+        }
+      }, 4500);
+
+      return () => {
+        observer.disconnect();
+        window.clearTimeout(collapseTimer);
+      };
+    };
+
+    if (!tryPush()) {
+      resizeObserver = new ResizeObserver(() => {
+        if (tryPush()) {
+          resizeObserver?.disconnect();
+          resizeObserver = null;
+        }
+      });
+      resizeObserver.observe(container);
     }
 
-    const observer = new MutationObserver(() => {
-      if (isExplicitlyUnfilled()) {
-        setIsCollapsed(true);
-        return;
-      }
-      if (hasRenderedAd()) {
-        setIsCollapsed(false);
-      }
-    });
-    observer.observe(adElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    });
-
-    const collapseTimer = window.setTimeout(() => {
-      if (!hasRenderedAd()) {
-        setIsCollapsed(true);
-      }
-    }, 4500);
+    const cleanupObservers = startObservers();
 
     return () => {
-      observer.disconnect();
-      window.clearTimeout(collapseTimer);
+      resizeObserver?.disconnect();
+      cleanupObservers();
     };
   }, [shouldRenderPreview, resolvedSlot, adClient, adFormat, adLayout, adLayoutKey]);
 
@@ -95,17 +128,22 @@ export default function AdsenseUnit({
   }
 
   return (
-    <ins
-      ref={adRef}
-      className={`adsbygoogle block ${className ?? ""}`}
-      style={{ display: "block", textAlign: centered ? "center" : undefined }}
-      data-ad-client={adClient}
-      data-ad-slot={resolvedSlot}
-      data-ad-layout={adLayout}
-      data-ad-format={adFormat}
-      data-ad-layout-key={adLayoutKey}
-      data-full-width-responsive="true"
-      data-adtest={isDev ? "on" : undefined}
-    />
+    <div
+      ref={containerRef}
+      className={`w-full min-w-0 ${minHeightClassName} ${className ?? ""}`}
+    >
+      <ins
+        ref={adRef}
+        className="adsbygoogle block w-full"
+        style={{ display: "block", textAlign: centered ? "center" : undefined }}
+        data-ad-client={adClient}
+        data-ad-slot={resolvedSlot}
+        data-ad-layout={adLayout}
+        data-ad-format={adFormat}
+        data-ad-layout-key={adLayoutKey}
+        data-full-width-responsive="true"
+        data-adtest={isDev ? "on" : undefined}
+      />
+    </div>
   );
 }
