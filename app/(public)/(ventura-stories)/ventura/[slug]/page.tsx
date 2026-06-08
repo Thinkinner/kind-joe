@@ -16,6 +16,7 @@ import ArticleContent from "@/components/stories/article-single-page-content";
 import { resolveArticleDisplayContent } from "@/lib/content/resolve-article-content-markdown";
 import ShareButtons from "@/components/stories/share-buttons";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
+import { CouncilTeaEmbed } from "@/components/ventura-county/council-tea-embed";
 import FocusableImage from "@/components/stories/focusable-image";
 import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
@@ -296,6 +297,7 @@ export default async function VenturaArticleBySlug(props: {
           {/* SIDEBAR */}
           <aside className="self-start md:sticky md:top-24">
             <div className="space-y-6">
+              <CouncilTeaEmbed />
               <VenturaGetEmail />
 
               <section className="px-4 lg:px-0">

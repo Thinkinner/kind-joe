@@ -105,6 +105,7 @@ export default function Navbar({
     })),
     { name: "News", href: "/news", title: "KindJoe News" },
     { name: "Ventura County", href: "/ventura-county" },
+    { name: "Council Tea", href: "/council-tea" },
   ] as const;
 
   useEffect(() => {

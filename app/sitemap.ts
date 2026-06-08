@@ -58,6 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/opinion",
     "/topstories",
     "/ventura-county",
+    "/council-tea",
     "/ventura/articles",
     "/newsletter",
     "/privacy-policy",
