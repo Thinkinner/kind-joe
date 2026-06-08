@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { VenturaArticleCard } from "@/components/cards/ventura-article-card";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
+import { CouncilTeaEmbed } from "@/components/ventura-county/council-tea-embed";
 import { getVenturaArticlesAction } from "@/lib/actions/articles";
 import { ArticleSummary } from "@/types/article";
 import { Loader2, ChevronDown } from "lucide-react";
@@ -112,6 +113,7 @@ export default function VenturaCountyPage() {
           {/* Right: Sticky Sidebar */}
           <aside className="w-full lg:w-[350px] xl:w-[400px] shrink-0 lg:sticky lg:top-24 self-start">
             <div className="flex flex-col gap-8">
+              <CouncilTeaEmbed />
               <SocialWidget />
 
               {/* Optional: Add a Ventura specific promo here */}

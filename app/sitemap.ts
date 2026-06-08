@@ -45,6 +45,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily", // Optional: tells Google you update often
       priority: 1, // Optional: tells Google this is the most important page
     },
+    {
+      url: `${baseUrl}/ventura-county`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/council-tea`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
     // I REMOVED THE DUPLICATE OBJECT HERE
     ...rows.map((a) => ({
       url: `${baseUrl}/${a.slug}`,

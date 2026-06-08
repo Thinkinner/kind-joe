@@ -1,6 +1,6 @@
 import Navbar from "@/components/navbar";
 import Ventura_Email_Capture_Modal from "@/components/ventura-county/modal/ventura-email-capture-modal";
-import { Footer, Nav } from "react-day-picker";
+import { Footer } from "@/components/footer";
 
 export default function DashboardLayout({
   children,

@@ -14,6 +14,7 @@ import {
 import ArticleContent from "@/components/stories/article-single-page-content";
 import ShareButtons from "@/components/stories/share-buttons";
 import VenturaGetEmail from "@/components/stories/ventura-get-email";
+import { CouncilTeaEmbed } from "@/components/ventura-county/council-tea-embed";
 import ArticleTracker from "@/components/article-tracker";
 import { RecommendedCard } from "@/components/cards/recommended-card"; // The new horizontal card
 import { formatToLA } from "@/lib/format-date";
@@ -181,6 +182,7 @@ export default async function VenturaArticleBySlug(props: {
 
           {/* SIDEBAR */}
           <aside className="mt-8 lg:mt-0 space-y-8 lg:sticky lg:top-24 self-start">
+            <CouncilTeaEmbed />
             <VenturaGetEmail />
 
             {/* Ventura Promo Box */}
