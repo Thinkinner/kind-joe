@@ -4,5 +4,13 @@
       "path": "/api/internal/rss-auto-writer",
       "schedule": "0 * * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/((?!ads\\.txt$).*)",
+      "has": [{ "type": "host", "value": "kindjoe.com" }],
+      "destination": "https://www.kindjoe.com/$1",
+      "permanent": true
+    }
   ]
 }

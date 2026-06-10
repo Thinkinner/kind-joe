@@ -213,6 +213,29 @@ function excludingHeroTopStoriesFilter() {
   )`;
 }
 
+const publishDateSort = sql`coalesce(${articles.publishedAt}, ${articles.publishAt})`;
+
+async function fetchEditorsPickPool(
+  now: Date,
+  excludeTopStories: boolean,
+) {
+  const conditions = [publishedArticlesFilter(now)];
+  if (excludeTopStories) {
+    conditions.push(excludingHeroTopStoriesFilter());
+  }
+
+  const poolResults = await db
+    .select(articleSummarySelect)
+    .from(articles)
+    .leftJoin(users, eq(articles.authorId, users.id))
+    .leftJoin(authUser, eq(articles.authorId, authUser.id))
+    .where(and(...conditions))
+    .orderBy(desc(publishDateSort))
+    .limit(SIDEBAR_POOL_LIMIT);
+
+  return mapArticleSummaryRows(poolResults);
+}
+
 /** Sidebar: strongest recent headlines, excluding hero top stories + first Latest grid page. */
 export async function getEditorsPicksAction(limit = 5): Promise<ArticleSummary[]> {
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
@@ -222,20 +245,15 @@ export async function getEditorsPicksAction(limit = 5): Promise<ArticleSummary[]
     const latestBatch = await getArticlesAction(LATEST_FEED_EXCLUDE_COUNT, 0);
     const excludeIds = new Set(latestBatch.map((article) => article.id));
 
-    const poolResults = await db
-      .select(articleSummarySelect)
-      .from(articles)
-      .leftJoin(users, eq(articles.authorId, users.id))
-      .leftJoin(authUser, eq(articles.authorId, authUser.id))
-      .where(
-        and(publishedArticlesFilter(now), excludingHeroTopStoriesFilter()),
-      )
-      .orderBy(desc(articles.publishedAt))
-      .limit(SIDEBAR_POOL_LIMIT);
-
-    const pool = mapArticleSummaryRows(poolResults).filter(
+    let pool = (await fetchEditorsPickPool(now, true)).filter(
       (article) => !excludeIds.has(article.id),
     );
+
+    if (pool.length === 0) {
+      pool = (await fetchEditorsPickPool(now, false)).filter(
+        (article) => !excludeIds.has(article.id),
+      );
+    }
 
     const ranked = pool
       .map((article) => ({
@@ -257,7 +275,7 @@ export async function getEditorsPicksAction(limit = 5): Promise<ArticleSummary[]
 
     if (picks.length < safeLimit) {
       const pickedIds = new Set(picks.map((article) => article.id));
-      const backfill = mapArticleSummaryRows(poolResults)
+      const backfill = pool
         .filter(
           (article) =>
             !pickedIds.has(article.id) && !excludeIds.has(article.id),
@@ -266,10 +284,18 @@ export async function getEditorsPicksAction(limit = 5): Promise<ArticleSummary[]
       picks = [...picks, ...backfill];
     }
 
+    if (picks.length === 0) {
+      return getArticlesAction(safeLimit, LATEST_FEED_EXCLUDE_COUNT);
+    }
+
     return picks;
   } catch (error) {
     console.error("Editors picks action error:", error);
-    return [];
+    try {
+      return await getArticlesAction(safeLimit, LATEST_FEED_EXCLUDE_COUNT);
+    } catch {
+      return [];
+    }
   }
 }
 

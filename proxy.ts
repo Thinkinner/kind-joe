@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
+import { ADS_TXT_BODY, adsTxtHeaders } from "@/lib/ads/ads-txt";
 const DEVELOPER_HOSTS = new Set([
   "developer.kindjoe.com",
   "www.developer.kindjoe.com",
@@ -17,6 +17,7 @@ function shouldBypassDeveloperDocsRewrite(pathname: string): boolean {
   if (pathname.startsWith("/api")) return true;
   if (pathname === "/favicon.ico") return true;
   if (pathname === "/robots.txt") return true;
+  if (pathname === "/ads.txt") return true;
   if (pathname === "/sitemap.xml") return true;
   if (pathname.includes(".")) return true;
   return false;
@@ -50,6 +51,13 @@ function isServerActionRequest(request: NextRequest): boolean {
 }
 
 export function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/ads.txt") {
+    return new NextResponse(ADS_TXT_BODY, {
+      status: 200,
+      headers: adsTxtHeaders(),
+    });
+  }
+
   // Never rewrite/redirect Server Action POSTs — redirects return HTML and break RSC.
   if (isServerActionRequest(request)) {
     return NextResponse.next();
@@ -95,7 +103,8 @@ export function proxy(request: NextRequest) {
       path.startsWith("/_next") ||
       path.startsWith("/favicon") ||
       path === "/icon.svg" ||
-      path === "/robots.txt";
+      path === "/robots.txt" ||
+      path === "/ads.txt";
 
     if (!allowedPrefix) {
       if (mainSiteBase) {
