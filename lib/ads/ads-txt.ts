@@ -1,7 +1,7 @@
-/** Single source of truth — keep in sync with public/ads.txt */
-export const ADSENSE_PUBLISHER_ID = "pub-2956404262281420";
+import { ADSENSE_ADS_TXT_CERT, ADSENSE_PUBLISHER_ID } from "@/lib/ads/ads-config";
 
-export const ADS_TXT_LINE = `google.com, ${ADSENSE_PUBLISHER_ID}, DIRECT, f08c47fec0942fa0`;
+/** Single source of truth — keep in sync with public/ads.txt */
+export const ADS_TXT_LINE = `google.com, ${ADSENSE_PUBLISHER_ID}, DIRECT, ${ADSENSE_ADS_TXT_CERT}`;
 
 export const ADS_TXT_BODY = `${ADS_TXT_LINE}\n`;
 

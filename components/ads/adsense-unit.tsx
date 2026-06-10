@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  ADSENSE_TEST_SLOT,
+  resolveAdsenseClient,
+} from "@/lib/ads/ads-config";
 
 declare global {
   interface Window {
@@ -30,8 +34,8 @@ export default function AdsenseUnit({
   centered = false,
 }: AdsenseUnitProps) {
   const isDev = process.env.NODE_ENV !== "production";
-  const adClient = isDev ? "ca-pub-3940256099942544" : "ca-pub-2956404262281420";
-  const resolvedSlot = isDev ? "6300978111" : slot;
+  const adClient = resolveAdsenseClient(!isDev);
+  const resolvedSlot = isDev ? ADSENSE_TEST_SLOT : slot;
   const shouldRenderPreview = !adClient || !resolvedSlot;
   const containerRef = useRef<HTMLDivElement>(null);
   const adRef = useRef<HTMLModElement | null>(null);

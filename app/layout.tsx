@@ -6,6 +6,11 @@ import "./globals.css";
 import GoogleAnalytics from "@/components/google-analytics";
 import CookieConsent from "@/components/modals/cookie-consent";
 import AdsenseScriptLoader from "@/components/ads/adsense-script-loader";
+import {
+  ADSENSE_CLIENT,
+  ADSENSE_PUBLISHER_ID,
+  resolveAdsenseClient,
+} from "@/lib/ads/ads-config";
 
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
@@ -37,11 +42,9 @@ function resolveSiteUrl(raw: string | undefined): string {
 }
 
 const SITE_URL = resolveSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
-const ADSENSE_CLIENT = "ca-pub-2956404262281420";
-const ADSENSE_TEST_CLIENT = "ca-pub-3940256099942544";
 const isDev = process.env.NODE_ENV !== "production";
-const resolvedAdsenseClient = isDev ? ADSENSE_TEST_CLIENT : ADSENSE_CLIENT;
-const fundingChoicesPubId = ADSENSE_CLIENT.replace(/^ca-/, "");
+const resolvedAdsenseClient = resolveAdsenseClient(!isDev);
+const fundingChoicesPubId = ADSENSE_PUBLISHER_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -71,6 +74,9 @@ export const metadata: Metadata = {
     images: ["/brand/logo.svg"],
   },
   robots: { index: true, follow: true },
+  other: {
+    "google-adsense-account": ADSENSE_CLIENT,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -150,7 +156,8 @@ export default async function RootLayout({
             });
           `}
         </Script>
-        <meta name="google-adsense-account" content={resolvedAdsenseClient} />
+        <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
+        <AdsenseScriptLoader client={resolvedAdsenseClient} />
         {/* Subscribe with Google core script */}
         <Script
           src="https://news.google.com/swg/js/v1/swg-basic.js"
@@ -176,7 +183,6 @@ export default async function RootLayout({
         className={`${poppins.variable} ${lora.variable} antialiased h-full bg-background text-foreground`}
       >
         <GoogleAnalytics />
-        <AdsenseScriptLoader client={resolvedAdsenseClient} />
         <main className="min-h-dvh min-w-0">{children}</main>
         <CookieConsent />
         <Toaster position="top-center" richColors closeButton />
