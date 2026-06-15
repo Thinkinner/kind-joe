@@ -7,9 +7,9 @@
   ],
   "redirects": [
     {
-      "source": "/((?!ads\\.txt$).*)",
+      "source": "/:path*",
       "has": [{ "type": "host", "value": "kindjoe.com" }],
-      "destination": "https://www.kindjoe.com/$1",
+      "destination": "https://www.kindjoe.com/:path*",
       "permanent": true
     }
   ]
