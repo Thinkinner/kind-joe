@@ -7,7 +7,9 @@ import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdo
 import {
   ARTICLE_ASSIST_MODEL,
   generateArticleAssistAll,
+  generateSourceFirstArticle,
 } from "@/lib/ai/article-assist-service";
+import { gatherSourceFirstResearch } from "@/lib/ai/source-first-research";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,7 +25,8 @@ type AssistMode =
   | "title"
   | "socialCopy"
   | "predictionSuggestion"
-  | "humanComment";
+  | "humanComment"
+  | "sourceFirstArticle";
 
 const ARTICLE_ALL_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -167,6 +170,8 @@ function schemaForMode(mode: AssistMode): Schema {
       return TITLE_SCHEMA;
     case "socialCopy":
       return SOCIAL_COPY_SCHEMA;
+    case "sourceFirstArticle":
+      return ARTICLE_ALL_SCHEMA;
     case "all":
     default:
       return ARTICLE_ALL_SCHEMA;
@@ -185,6 +190,7 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
   socialCopy: 2200,
   predictionSuggestion: 1600,
   humanComment: 1800,
+  sourceFirstArticle: 2200,
 };
 
 const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
@@ -199,6 +205,7 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   socialCopy: 420,
   predictionSuggestion: 260,
   humanComment: 220,
+  sourceFirstArticle: 8192,
 };
 
 const ASSIST_FETCH_USER_AGENT =
@@ -594,6 +601,62 @@ export async function POST(req: Request) {
         sourceTitle: resolvedInput.sourceTitle,
         previewText: summarizeForMode(stripHtml(resolvedInput.content), 1200),
         charCount: resolvedInput.content.length,
+      });
+    }
+
+    if (mode === "sourceFirstArticle") {
+      const topic = String(title || html || "").trim();
+      const research = await gatherSourceFirstResearch(topic, {
+        searchLimit: 5,
+        minSources: 2,
+      });
+      const generated = await generateSourceFirstArticle({
+        query: research.query,
+        sources: research.sources,
+      });
+
+      return NextResponse.json({
+        slug: generated.slug,
+        category: generated.category,
+        tags: generated.tags,
+        excerpt: generated.excerpt,
+        suggestionType: "",
+        options: [],
+        rationale: "",
+        seoScore: undefined,
+        seoFeedback: "",
+        tone: "",
+        bias: "",
+        suggestions: [],
+        seoTitle: "",
+        seoDescription: generated.seoDescription,
+        suggestedCoverPrompt: "",
+        readingMinutes: undefined,
+        draftMarkdown: generated.draftMarkdown,
+        draftHtml: "",
+        draftBlocks: undefined,
+        title: generated.title,
+        socialHeadlines: [],
+        socialTightHeadline: "",
+        socialCaption: "",
+        commentDraft: "",
+        commentPersona: "",
+        commentEmotion: "",
+        commentIntent: "",
+        commentDelaySeconds: undefined,
+        commentDelayLabel: "",
+        sourceFirst: {
+          query: research.query,
+          sources: research.sources.map((source) => ({
+            id: source.id,
+            title: source.title,
+            url: source.url,
+            publisher: source.publisher,
+            snippet: source.snippet,
+            extractedLength: source.extractedText.length,
+          })),
+          skipped: research.skipped,
+        },
       });
     }
 

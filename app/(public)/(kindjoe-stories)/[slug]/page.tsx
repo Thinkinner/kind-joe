@@ -1,4 +1,5 @@
 // app/[slug]/page.tsx
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation"; // Added redirect
 import { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
@@ -23,6 +24,7 @@ import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
+import { getAuthorProfileByName } from "@/lib/authors/profiles";
 
 export const revalidate = 60;
 
@@ -125,6 +127,7 @@ export default async function ArticleBySlug(props: {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("") || "KJ";
+  const publisherProfile = getAuthorProfileByName(publisherName);
 
   const contentSources = data.contentSources ?? {
     contentMarkdown: data.rawContentMarkdown,
@@ -189,9 +192,18 @@ export default async function ArticleBySlug(props: {
                       </div>
 
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-neutral-900 leading-none">
-                          {publisherName}
-                        </span>
+                        {publisherProfile ? (
+                          <Link
+                            href={`/authors/${publisherProfile.slug}`}
+                            className="text-sm font-bold leading-none text-neutral-900 underline-offset-2 hover:text-red-700 hover:underline"
+                          >
+                            {publisherName}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-bold text-neutral-900 leading-none">
+                            {publisherName}
+                          </span>
+                        )}
                         <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 font-medium">
                           <span>Official Publisher</span>
                           <span className="h-1 w-1 rounded-full bg-neutral-300"></span>

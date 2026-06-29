@@ -68,11 +68,13 @@ export function ArticleList({
   const gridClass =
     cardVariant === "elevated"
       ? columns === 2
-        ? "grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8"
-        : "grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8 xl:grid-cols-3"
+        ? "grid w-full min-w-0 grid-cols-2 gap-px bg-slate-200"
+        : "grid w-full min-w-0 grid-cols-2 gap-px bg-slate-200 xl:grid-cols-3"
       : columns === 2
         ? "grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2"
         : "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3";
+
+  const elevatedCellClass = "min-w-0 bg-white p-3 sm:p-4 lg:p-5";
 
   const containerClass = gridClass;
 
@@ -84,7 +86,7 @@ export function ArticleList({
             key={i}
             className={
               cardVariant === "elevated"
-                ? "flex animate-pulse flex-col gap-3"
+                ? `${elevatedCellClass} flex animate-pulse flex-col gap-3`
                 : "h-64 rounded-2xl bg-slate-100 sm:h-72"
             }
             aria-hidden
@@ -116,9 +118,15 @@ export function ArticleList({
   return (
     <div className="flex w-full min-w-0 flex-col gap-10">
       <div className={containerClass}>
-        {articles.map((article) => (
-          <ArticleCard key={article.id} article={article} variant={cardVariant} />
-        ))}
+        {articles.map((article) =>
+          cardVariant === "elevated" ? (
+            <div key={article.id} className={elevatedCellClass}>
+              <ArticleCard article={article} variant={cardVariant} />
+            </div>
+          ) : (
+            <ArticleCard key={article.id} article={article} variant={cardVariant} />
+          ),
+        )}
       </div>
 
       {/* Pagination Trigger */}

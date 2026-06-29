@@ -28,6 +28,25 @@ type PrefillData = {
   seoDescription?: string;
 };
 
+type SourceFirstSource = {
+  id: string;
+  title: string;
+  url: string;
+  publisher: string;
+  snippet: string;
+  extractedLength: number;
+};
+
+type SourceFirstPayload = {
+  query: string;
+  sources: SourceFirstSource[];
+  skipped?: Array<{
+    url: string;
+    title: string;
+    reason: string;
+  }>;
+};
+
 type InspectResult = {
   inspectOnly: true;
   scraped: boolean;
@@ -51,11 +70,18 @@ type SocialCopyPayload = {
   error?: string;
 };
 
+type SourceFirstAssistPayload = PrefillData & {
+  sourceFirst?: SourceFirstPayload;
+  error?: string;
+};
+
 export function NewArticleWithAssistant() {
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [prefill, setPrefill] = useState<PrefillData | undefined>(undefined);
+  const [sourceFirstResult, setSourceFirstResult] =
+    useState<SourceFirstPayload | null>(null);
   const [scrapePreview, setScrapePreview] = useState<InspectResult | null>(null);
   const [recentArticles, setRecentArticles] = useState<RecentArticle[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
@@ -191,6 +217,50 @@ export function NewArticleWithAssistant() {
     }
   };
 
+  const runSourceFirstAssistant = async () => {
+    if (!source.trim()) return;
+    setLoading(true);
+    setSourceFirstResult(null);
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "sourceFirstArticle",
+          title: source,
+          html: source,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as SourceFirstAssistPayload;
+      if (!res.ok) {
+        throw new Error(data.error || "Source-first assistant request failed");
+      }
+
+      setPrefill({
+        title: String(data.title ?? ""),
+        slug: String(data.slug ?? ""),
+        category: String(data.category ?? "General"),
+        tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+        excerpt: String(data.excerpt ?? ""),
+        draftMarkdown: String(data.draftMarkdown ?? ""),
+        draftHtml: String(data.draftHtml ?? ""),
+        seoDescription: String(data.seoDescription ?? ""),
+      });
+      setSourceFirstResult(data.sourceFirst ?? null);
+      setScrapePreview(null);
+      setStarted(true);
+      toast.success("Source-first draft generated with verified links.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not generate source-first draft",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateSocialFromArticle = async (article: RecentArticle) => {
     setGeneratingForId(article.id);
     try {
@@ -248,7 +318,54 @@ export function NewArticleWithAssistant() {
   };
 
   if (started) {
-    return <AdminArticleForm initialValues={prefill} />;
+    return (
+      <div className="space-y-6">
+        {sourceFirstResult ? (
+          <Card className="space-y-4 border border-emerald-200 bg-emerald-50/60 p-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Source-first research
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">
+                Verified sources used
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Query: {sourceFirstResult.query}
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {sourceFirstResult.sources.map((sourceItem) => (
+                <a
+                  key={sourceItem.id}
+                  href={sourceItem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-emerald-200 bg-white p-4 transition-colors hover:border-emerald-400"
+                >
+                  <p className="text-xs font-semibold text-emerald-700">
+                    {sourceItem.id} · {sourceItem.publisher}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
+                    {sourceItem.title}
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                    {sourceItem.snippet}
+                  </p>
+                </a>
+              ))}
+            </div>
+            {sourceFirstResult.skipped?.length ? (
+              <p className="text-xs text-muted-foreground">
+                Skipped {sourceFirstResult.skipped.length} source
+                {sourceFirstResult.skipped.length === 1 ? "" : "s"} that could not
+                be extracted cleanly.
+              </p>
+            ) : null}
+          </Card>
+        ) : null}
+        <AdminArticleForm initialValues={prefill} />
+      </div>
+    );
   }
 
   return (
@@ -261,12 +378,12 @@ export function NewArticleWithAssistant() {
           </h1>
         </div>
         <p className="text-sm text-background/80">
-          Paste a source URL or raw article text first. Gemini prepares your
-          draft, then opens the same article form with fields prefilled.
+          Paste a topic, source URL, or raw article text first. Gemini prepares
+          your draft, then opens the same article form with fields prefilled.
         </p>
         <p className="text-xs text-background/70">
-          The article editor includes a live quality score and a non-blocking
-          publish confirmation when quality is low.
+          Use source-first mode when you want Google-backed sources with inline
+          links embedded where claims are made.
         </p>
         <div className="relative">
           <WandSparkles className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-violet-300" />
@@ -274,7 +391,7 @@ export function NewArticleWithAssistant() {
             rows={8}
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            placeholder="Paste article URL or raw text content here..."
+            placeholder="Enter a topic, paste article URL, or raw text content here..."
             className="border-border bg-foreground pl-10 text-background placeholder:text-background/60"
           />
         </div>
@@ -290,6 +407,19 @@ export function NewArticleWithAssistant() {
               <Sparkles className="h-4 w-4" />
             )}
             {loading ? "Generating..." : "Ask Gemini and Continue"}
+          </Button>
+          <Button
+            type="button"
+            onClick={runSourceFirstAssistant}
+            disabled={loading || !source.trim()}
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {loading ? "Researching..." : "Research sources and write"}
           </Button>
           <Button variant="ghost" onClick={() => setStarted(true)}>
             Skip and open empty form

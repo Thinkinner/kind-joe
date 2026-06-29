@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Users, Heart, Coffee, Star, Mail, MapPin, Phone, Send } from 'lucide-react';
+import { Users, Heart, Coffee, Star, Mail, MapPin, Send } from 'lucide-react';
 
 import {
   FaTiktok,
@@ -217,14 +217,6 @@ const About: React.FC = () => {
                   </p>
 
                   <div className="space-y-6">
-                    <div className="flex items-start space-x-4">
-                      <Phone className="w-6 h-6 text-blue-300 mt-1" />
-                      <div>
-                        <p className="font-medium">Phone</p>
-                        <p className="text-blue-100">+1 (555) 123-4567</p>
-                      </div>
-                    </div>
-
                     <div className="flex items-start space-x-4">
                       <Mail className="w-6 h-6 text-blue-300 mt-1" />
                       <div>

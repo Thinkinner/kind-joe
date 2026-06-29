@@ -1,5 +1,7 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
+import { SOURCE_FIRST_ARTICLE_PROMPT } from "@/lib/ai/article-assistant-prompt";
+import type { SourceFirstPacket } from "@/lib/ai/source-first-research";
 
 const ARTICLE_ALL_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -16,6 +18,7 @@ const ARTICLE_ALL_SCHEMA: Schema = {
 };
 
 const INPUT_LIMIT_ALL = 7000;
+const SOURCE_FIRST_INPUT_LIMIT = 24000;
 /** Full-article JSON needs headroom; 1800 truncates mid-JSON on gemini-3.5-flash. */
 const MAX_OUTPUT_TOKENS_ALL = 8192;
 /** CMS article assistant + RSS auto-writer (override via GEMINI_ARTICLE_ASSIST_MODEL). */
@@ -322,6 +325,95 @@ export async function generateArticleAssistAll(input: {
       title,
       category,
       sourceText: safeText,
+      existing: tags,
+      minCount: 12,
+    }),
+    excerpt: String(data.excerpt ?? ""),
+    draftMarkdown: normalizedMarkdown,
+    seoDescription: String(data.seoDescription ?? ""),
+  };
+}
+
+export async function generateSourceFirstArticle(input: {
+  query: string;
+  sources: SourceFirstPacket[];
+  model?: string;
+}): Promise<ArticleAssistAllOutput> {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
+
+  if (input.sources.length < 2) {
+    throw new Error("At least 2 verified sources are required.");
+  }
+
+  const sourceText = input.sources
+    .map((source) =>
+      [
+        `Source ID: ${source.id}`,
+        `Title: ${source.title}`,
+        `Publisher: ${source.publisher}`,
+        `URL: ${source.url}`,
+        `Snippet: ${source.snippet}`,
+        `Extracted text: ${source.extractedText}`,
+      ].join("\n"),
+    )
+    .join("\n\n---\n\n");
+
+  const safeSourceText = summarizeForMode(sourceText, SOURCE_FIRST_INPUT_LIMIT);
+  const requestContents = [
+    SOURCE_FIRST_ARTICLE_PROMPT,
+    "Additional output requirements:",
+    "- Keep draftMarkdown in markdown.",
+    "- Use inline markdown links with the exact URLs from the source packets.",
+    "- Do not include raw source packet IDs in the public article unless useful.",
+    "- Tags must be lowercase kebab-case and specific, 12-20 preferred.",
+    "",
+    "INPUT:",
+    JSON.stringify({
+      topic: input.query,
+      sources: safeSourceText,
+      mode: "source-first-article",
+    }),
+  ].join("\n");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const runModel = async (contents: string) =>
+    ai.models.generateContent({
+      model: input.model || ARTICLE_ASSIST_MODEL,
+      contents,
+      config: articleAssistGenerateConfig({
+        responseSchema: ARTICLE_ALL_SCHEMA,
+        maxOutputTokens: MAX_OUTPUT_TOKENS_ALL,
+      }),
+    });
+
+  const response = await runModel(requestContents);
+  let raw = response.text?.trim() || "{}";
+  let data: Record<string, unknown>;
+  try {
+    data = parseGeneratedJson<Record<string, unknown>>(raw);
+  } catch {
+    const retryResponse = await runModel(
+      `${requestContents}\n\nIMPORTANT: Return valid JSON only. No markdown, code fences, or commentary.`,
+    );
+    raw = retryResponse.text?.trim() || "{}";
+    data = parseGeneratedJson<Record<string, unknown>>(raw);
+  }
+
+  const title = String(data.title ?? "");
+  const category = String(data.category ?? "");
+  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
+  const rawDraftMarkdown = String(data.draftMarkdown ?? "").trim();
+  const normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
+
+  return {
+    title,
+    slug: String(data.slug ?? ""),
+    category,
+    tags: buildMinimumTags({
+      title,
+      category,
+      sourceText: safeSourceText,
       existing: tags,
       minCount: 12,
     }),
