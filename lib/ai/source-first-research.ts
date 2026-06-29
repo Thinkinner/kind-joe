@@ -1,43 +1,7 @@
-import { GoogleGenAI, Type, type Schema } from "@google/genai";
-
 const MAX_SOURCE_CHARS = 4500;
+const SOURCE_VALIDATION_TIMEOUT_MS = 3500;
 const SOURCE_URL_USER_AGENT =
   "Mozilla/5.0 (compatible; KindJoeSourceValidator/1.0)";
-const SOURCE_FIRST_RESEARCH_MODEL =
-  process.env.GEMINI_ARTICLE_ASSIST_MODEL?.trim() || "gemini-3.5-flash";
-
-const SOURCE_FIRST_RESEARCH_SCHEMA: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    sources: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          url: { type: Type.STRING },
-          publisher: { type: Type.STRING },
-          snippet: { type: Type.STRING },
-          extractedText: { type: Type.STRING },
-        },
-        required: ["title", "url", "publisher", "snippet", "extractedText"],
-      },
-    },
-    skipped: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          url: { type: Type.STRING },
-          title: { type: Type.STRING },
-          reason: { type: Type.STRING },
-        },
-        required: ["url", "title", "reason"],
-      },
-    },
-  },
-  required: ["sources"],
-};
 
 export type SourceFirstPacket = {
   id: string;
@@ -84,82 +48,6 @@ function isUsablePublicUrl(url: string): boolean {
   }
 }
 
-function cleanJson(text: string): string {
-  if (!text) return "{}";
-  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "");
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1 || start >= end) return cleaned.trim();
-  return cleaned.slice(start, end + 1).trim();
-}
-
-function extractBalancedJsonObject(text: string): string | null {
-  const source = (text || "").trim();
-  if (!source) return null;
-
-  const start = source.indexOf("{");
-  if (start < 0) return null;
-
-  let inString = false;
-  let escaped = false;
-  let depth = 0;
-
-  for (let i = start; i < source.length; i += 1) {
-    const ch = source[i];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === "\\") {
-        escaped = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (ch === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, i + 1).trim();
-    }
-  }
-
-  return null;
-}
-
-function parseGeneratedJson<T>(rawText: string): T {
-  const candidates = [
-    rawText,
-    cleanJson(rawText),
-    extractBalancedJsonObject(rawText),
-    extractBalancedJsonObject(cleanJson(rawText)),
-  ].filter((value): value is string => Boolean(value && value.trim()));
-
-  const seen = new Set<string>();
-  for (const candidate of candidates) {
-    const trimmed = candidate.trim();
-    if (seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    try {
-      return JSON.parse(trimmed) as T;
-    } catch {
-      // Try next candidate.
-    }
-  }
-
-  throw new Error("Google research returned malformed JSON. Please try again.");
-}
-
 type GeminiResearchPayload = {
   sources?: Array<{
     title?: unknown;
@@ -174,6 +62,151 @@ type GeminiResearchPayload = {
     reason?: unknown;
   }>;
 };
+
+type GoogleCustomSearchResponse = {
+  items?: Array<{
+    title?: string;
+    link?: string;
+    snippet?: string;
+    displayLink?: string;
+  }>;
+};
+
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripMarkup(value: string): string {
+  return decodeXmlEntities(value.replace(/<[^>]+>/g, " "));
+}
+
+function getXmlTag(block: string, tag: string): string {
+  const match = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  return match?.[1] ? decodeXmlEntities(match[1]) : "";
+}
+
+function getSourceFromXml(block: string): { name: string; url: string } {
+  const match = block.match(/<source\b[^>]*url=["']([^"']+)["'][^>]*>([\s\S]*?)<\/source>/i);
+  return {
+    url: match?.[1] ? decodeXmlEntities(match[1]) : "",
+    name: match?.[2] ? decodeXmlEntities(match[2]) : "",
+  };
+}
+
+function buildExtractedText(parts: string[]): string {
+  const text = parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(". ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length >= 50 ? text.slice(0, MAX_SOURCE_CHARS) : "";
+}
+
+async function searchGoogleCustom(
+  query: string,
+  limit: number,
+): Promise<GeminiResearchPayload | null> {
+  const cx = (
+    process.env.GOOGLE_SEARCH_ENGINE_ID ??
+    process.env.GOOGLE_CSE_ID ??
+    ""
+  ).trim();
+  if (!cx) return null;
+
+  const apiKey = (
+    process.env.GOOGLE_SEARCH_API_KEY ??
+    process.env.GOOGLE_API_KEY ??
+    ""
+  ).trim();
+  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
+
+  const url = new URL("https://www.googleapis.com/customsearch/v1");
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("cx", cx);
+  url.searchParams.set("q", query);
+  url.searchParams.set("num", String(Math.min(Math.max(limit, 1), 10)));
+
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Google Custom Search failed with status ${response.status}.`);
+  }
+
+  const payload = (await response.json()) as GoogleCustomSearchResponse;
+  return {
+    sources: (payload.items ?? []).map((item) => {
+      const title = String(item.title ?? "").trim();
+      const snippet = String(item.snippet ?? "").trim();
+      const url = String(item.link ?? "").trim();
+      return {
+        title,
+        url,
+        publisher: String(item.displayLink ?? "").trim() || publisherFromUrl(url),
+        snippet,
+        extractedText: buildExtractedText([title, snippet]),
+      };
+    }),
+    skipped: [],
+  };
+}
+
+async function searchGoogleNewsRss(
+  query: string,
+  limit: number,
+): Promise<GeminiResearchPayload> {
+  const url = new URL("https://news.google.com/rss/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("hl", "en-US");
+  url.searchParams.set("gl", "US");
+  url.searchParams.set("ceid", "US:en");
+
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "User-Agent": SOURCE_URL_USER_AGENT,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Google News search failed with status ${response.status}.`);
+  }
+
+  const xml = await response.text();
+  const items = Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/gi))
+    .map((match) => match[1] ?? "")
+    .slice(0, Math.max(limit, 8));
+
+  return {
+    sources: items.map((item) => {
+      const titleWithPublisher = getXmlTag(item, "title");
+      const link = getXmlTag(item, "link");
+      const description = stripMarkup(getXmlTag(item, "description"));
+      const source = getSourceFromXml(item);
+      const suffix = source.name ? ` - ${source.name}` : "";
+      const title =
+        suffix && titleWithPublisher.endsWith(suffix)
+          ? titleWithPublisher.slice(0, -suffix.length).trim()
+          : titleWithPublisher;
+
+      return {
+        title,
+        url: link,
+        publisher: source.name || publisherFromUrl(source.url || link),
+        snippet: description || title,
+        extractedText: buildExtractedText([title, description]),
+      };
+    }),
+    skipped: [],
+  };
+}
 
 function normalizeSourcePacket(
   source: NonNullable<GeminiResearchPayload["sources"]>[number],
@@ -202,7 +235,7 @@ async function validateSourceUrl(
   url: string,
 ): Promise<{ ok: true; url: string } | { ok: false; reason: string }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), SOURCE_VALIDATION_TIMEOUT_MS);
 
   try {
     let response = await fetch(url, {
@@ -258,65 +291,31 @@ export async function gatherSourceFirstResearch(
 ): Promise<SourceFirstResearchResult> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) throw new Error("Search topic is required.");
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
 
-  const requestedLimit = Math.min(Math.max(options.searchLimit ?? 5, 2), 5);
-  const ai = new GoogleGenAI({ apiKey });
-  const researchPrompt = [
-      "Use Google Search grounding and URL context to research this news topic.",
-      `Topic: ${normalizedQuery}`,
-      "",
-      `Find ${requestedLimit} credible, public web sources from distinct publishers.`,
-      "Read enough of each source to produce a source packet that can support a newsroom article.",
-      "Prefer primary reporting, official statements, public records, and reputable local/national news.",
-      "Do not invent URLs, publishers, quotes, facts, or source text.",
-      "Return compact JSON only. No markdown.",
-      "",
-      "For each source:",
-      "- title: page/article title",
-      "- url: exact canonical public URL",
-      "- publisher: source publication or organization",
-      "- snippet: concise summary of what the source supports",
-      "- extractedText: 50-120 words of relevant factual notes from the source, paraphrased or quoted only when clearly supported",
-    ].join("\n");
-  const runResearch = async (contents: string) =>
-    ai.models.generateContent({
-      model: SOURCE_FIRST_RESEARCH_MODEL,
-      contents,
-      config: {
-        tools: [{ googleSearch: {} }, { urlContext: {} }],
-        responseMimeType: "application/json",
-        responseSchema: SOURCE_FIRST_RESEARCH_SCHEMA,
-        maxOutputTokens: 8192,
-      },
-    });
-
-  const response = await runResearch(researchPrompt);
-  let raw = response.text?.trim() || "{}";
-  let payload: GeminiResearchPayload;
-  try {
-    payload = parseGeneratedJson<GeminiResearchPayload>(raw);
-  } catch {
-    const retryResponse = await runResearch(
-      [
-        researchPrompt,
-        "",
-        "IMPORTANT: Return valid, complete JSON only.",
-        "Keep extractedText short. Escape quotes inside strings. Do not end mid-string.",
-      ].join("\n"),
-    );
-    raw = retryResponse.text?.trim() || "{}";
-    payload = parseGeneratedJson<GeminiResearchPayload>(raw);
-  }
+  const requestedLimit = Math.min(Math.max(options.searchLimit ?? 4, 2), 4);
+  const candidateLimit = Math.max(requestedLimit + 2, 5);
+  const payload =
+    (await searchGoogleCustom(normalizedQuery, candidateLimit)) ??
+    (await searchGoogleNewsRss(normalizedQuery, candidateLimit));
   const skipped: SourceFirstResearchResult["skipped"] = [];
   const sources: SourceFirstPacket[] = [];
   const seenHosts = new Set<string>();
 
   const addPayloadSources = async (researchPayload: GeminiResearchPayload) => {
-    for (const item of researchPayload.sources ?? []) {
-      const source = normalizeSourcePacket(item);
-      if (!source) {
+    const normalizedSources = (researchPayload.sources ?? []).map((item) => ({
+      item,
+      source: normalizeSourcePacket(item),
+    }));
+
+    const validations = await Promise.all(
+      normalizedSources.map(async ({ source }) => {
+        if (!source) return null;
+        return validateSourceUrl(source.url);
+      }),
+    );
+
+    for (const [index, { item, source: normalizedSource }] of normalizedSources.entries()) {
+      if (!normalizedSource) {
         skipped.push({
           url: String(item.url ?? ""),
           title: String(item.title ?? ""),
@@ -326,30 +325,34 @@ export async function gatherSourceFirstResearch(
         continue;
       }
 
-      const validation = await validateSourceUrl(source.url);
-      if (!validation.ok) {
+      const validation = validations[index];
+      if (!validation?.ok) {
         skipped.push({
-          url: source.url,
-          title: source.title,
-          reason: validation.reason,
+          url: normalizedSource.url,
+          title: normalizedSource.title,
+          reason: validation?.reason ?? "Source URL could not be validated.",
         });
         continue;
       }
-      source.url = validation.url;
+      normalizedSource.url = validation.url;
 
-      const host = publisherFromUrl(source.url).toLowerCase();
-      if (host && seenHosts.has(host)) {
+      const host = publisherFromUrl(normalizedSource.url).toLowerCase();
+      const dedupeKey =
+        host === "news.google.com"
+          ? normalizedSource.publisher.toLowerCase() || host
+          : host;
+      if (dedupeKey && seenHosts.has(dedupeKey)) {
         skipped.push({
-          url: source.url,
-          title: source.title,
+          url: normalizedSource.url,
+          title: normalizedSource.title,
           reason: "Duplicate publisher skipped.",
         });
         continue;
       }
 
-      source.id = `S${sources.length + 1}`;
-      sources.push(source);
-      if (host) seenHosts.add(host);
+      normalizedSource.id = `S${sources.length + 1}`;
+      sources.push(normalizedSource);
+      if (dedupeKey) seenHosts.add(dedupeKey);
       if (sources.length >= requestedLimit) break;
     }
 
@@ -366,18 +369,9 @@ export async function gatherSourceFirstResearch(
 
   const minSources = options.minSources ?? 2;
   if (sources.length < minSources) {
-    const supplementalResponse = await runResearch(
-      [
-        researchPrompt,
-        "",
-        `Only ${sources.length} usable source${sources.length === 1 ? "" : "s"} passed validation.`,
-        "Find additional credible sources from different publishers.",
-        `Avoid these hostnames: ${Array.from(seenHosts).join(", ") || "none"}.`,
-        "Return complete compact JSON only.",
-      ].join("\n"),
-    );
-    const supplementalPayload = parseGeneratedJson<GeminiResearchPayload>(
-      supplementalResponse.text?.trim() || "{}",
+    const supplementalPayload = await searchGoogleNewsRss(
+      `${normalizedQuery} latest`,
+      candidateLimit + 4,
     );
     await addPayloadSources(supplementalPayload);
   }

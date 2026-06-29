@@ -411,6 +411,7 @@ export async function generateSourceFirstArticle(input: {
     "- Use inline markdown links only with the exact URLs from the source packets.",
     "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
     "- If unsure which source URL supports a sentence, use attribution text without a link.",
+    "- Keep draftMarkdown concise: 350-500 words and under 4,500 characters.",
     "- Do not include raw source packet IDs in the public article unless useful.",
     "- Tags must be lowercase kebab-case and specific, 12-20 preferred.",
     "",

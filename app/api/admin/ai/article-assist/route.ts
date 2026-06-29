@@ -9,10 +9,13 @@ import {
   generateArticleAssistAll,
   generateSourceFirstArticle,
 } from "@/lib/ai/article-assist-service";
-import { gatherSourceFirstResearch } from "@/lib/ai/source-first-research";
+import {
+  gatherSourceFirstResearch,
+  type SourceFirstPacket,
+} from "@/lib/ai/source-first-research";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type AssistMode =
   | "all"
@@ -26,6 +29,7 @@ type AssistMode =
   | "socialCopy"
   | "predictionSuggestion"
   | "humanComment"
+  | "sourceFirstResearch"
   | "sourceFirstArticle";
 
 const ARTICLE_ALL_SCHEMA: Schema = {
@@ -170,6 +174,8 @@ function schemaForMode(mode: AssistMode): Schema {
       return TITLE_SCHEMA;
     case "socialCopy":
       return SOCIAL_COPY_SCHEMA;
+    case "sourceFirstResearch":
+      return ARTICLE_ALL_SCHEMA;
     case "sourceFirstArticle":
       return ARTICLE_ALL_SCHEMA;
     case "all":
@@ -190,6 +196,7 @@ const INPUT_LIMITS: Record<AssistMode, number> = {
   socialCopy: 2200,
   predictionSuggestion: 1600,
   humanComment: 1800,
+  sourceFirstResearch: 2200,
   sourceFirstArticle: 2200,
 };
 
@@ -205,6 +212,7 @@ const MAX_OUTPUT_TOKENS: Record<AssistMode, number> = {
   socialCopy: 420,
   predictionSuggestion: 260,
   humanComment: 220,
+  sourceFirstResearch: 420,
   sourceFirstArticle: 8192,
 };
 
@@ -217,6 +225,29 @@ function isAssistMode(value: unknown): value is AssistMode {
     typeof value === "string" &&
     Object.prototype.hasOwnProperty.call(INPUT_LIMITS, value)
   );
+}
+
+function normalizeSourceFirstSources(value: unknown): SourceFirstPacket[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const source = item as Record<string, unknown>;
+      const url = String(source.url ?? "").trim();
+      const extractedText = String(source.extractedText ?? "").trim();
+      if (!url || !extractedText) return null;
+
+      return {
+        id: String(source.id ?? `S${index + 1}`).trim() || `S${index + 1}`,
+        title: String(source.title ?? "").trim(),
+        url,
+        publisher: String(source.publisher ?? "").trim(),
+        snippet: String(source.snippet ?? "").trim(),
+        extractedText,
+      };
+    })
+    .filter((source): source is SourceFirstPacket => Boolean(source));
 }
 
 function isLoopbackOrPrivateHost(hostname: string): boolean {
@@ -592,24 +623,44 @@ export async function POST(req: Request) {
     const usesCustomDraftPrompt =
       customPrompt.trim().length > 0 && (mode === "all" || mode === "content");
 
-    const resolvedInput = await resolveAssistInput(String(html ?? ""));
-    if (inspectOnly) {
+    if (mode === "sourceFirstResearch") {
+      const topic = String(title || html || "").trim();
+      const research = await gatherSourceFirstResearch(topic, {
+        searchLimit: 4,
+        minSources: 2,
+      });
+
       return NextResponse.json({
-        inspectOnly: true,
-        scraped: resolvedInput.wasScraped,
-        sourceUrl: resolvedInput.sourceUrl,
-        sourceTitle: resolvedInput.sourceTitle,
-        previewText: summarizeForMode(stripHtml(resolvedInput.content), 1200),
-        charCount: resolvedInput.content.length,
+        sourceFirst: {
+          query: research.query,
+          sources: research.sources.map((source) => ({
+            id: source.id,
+            title: source.title,
+            url: source.url,
+            publisher: source.publisher,
+            snippet: source.snippet,
+            extractedText: source.extractedText,
+            extractedLength: source.extractedText.length,
+          })),
+          skipped: research.skipped,
+        },
       });
     }
 
     if (mode === "sourceFirstArticle") {
       const topic = String(title || html || "").trim();
-      const research = await gatherSourceFirstResearch(topic, {
-        searchLimit: 5,
-        minSources: 2,
-      });
+      const providedSources = normalizeSourceFirstSources(body.sources);
+      const research =
+        providedSources.length >= 2
+          ? {
+              query: topic,
+              sources: providedSources,
+              skipped: [],
+            }
+          : await gatherSourceFirstResearch(topic, {
+              searchLimit: 4,
+              minSources: 2,
+            });
       const generated = await generateSourceFirstArticle({
         query: research.query,
         sources: research.sources,
@@ -653,10 +704,23 @@ export async function POST(req: Request) {
             url: source.url,
             publisher: source.publisher,
             snippet: source.snippet,
+            extractedText: source.extractedText,
             extractedLength: source.extractedText.length,
           })),
           skipped: research.skipped,
         },
+      });
+    }
+
+    const resolvedInput = await resolveAssistInput(String(html ?? ""));
+    if (inspectOnly) {
+      return NextResponse.json({
+        inspectOnly: true,
+        scraped: resolvedInput.wasScraped,
+        sourceUrl: resolvedInput.sourceUrl,
+        sourceTitle: resolvedInput.sourceTitle,
+        previewText: summarizeForMode(stripHtml(resolvedInput.content), 1200),
+        charCount: resolvedInput.content.length,
       });
     }
 
@@ -745,25 +809,7 @@ export async function POST(req: Request) {
                 "Then include this exact bold CTA line:",
                 "**Comment JOE to follow updates on this story and join our uncensored newsletter recap, always free.**",
               ].join("\n")
-        : mode === "all"
-          ? usesCustomDraftPrompt
-            ? ""
-            : [
-              "When returning draftMarkdown, generate substantial original article content suitable for publication quality.",
-              "draftMarkdown must be at least 600 words; target 650-900 words for stronger depth.",
-              "Use short paragraphs: 1-2 sentences per paragraph only.",
-              "Write in a natural newsroom voice as one coherent article with a strong lead, contextual body, and clear close.",
-              "Cover: what happened, why it matters, what could happen next, and reader/local impact within the body flow.",
-              "Include at least 2 direct quotes with clear attribution when source material supports it.",
-              "Include at least 3 in-body attribution cues such as 'according to', 'reported by', or named official statements.",
-              "Include one short paragraph that fairly presents a skeptical or opposing perspective.",
-              "Do not output template labels like 'Hook:', 'Quick recap:', 'Your analysis:', 'Local/reader impact:', or 'Actionable takeaway:'.",
-              "Do not output bullet-point sections unless specifically required by the prompt.",
-              "Sources must include attribution language (for example: 'Source: Reuters ...', 'Source: official statement ...', 'Source: X post ...').",
-              "End with a short source attribution paragraph in natural prose.",
-              "Return markdown in draftMarkdown only.",
-            ].join("\n")
-          : mode === "content"
+        : mode === "content"
             ? usesCustomDraftPrompt
               ? ""
               : [

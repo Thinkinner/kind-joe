@@ -94,7 +94,7 @@ Hard rules:
 - Every major claim must be tied to an inline markdown link using the source URL.
 - Embed links where the claim is made, not only in a source list at the bottom.
 - Use at least 3 inline source links when 3 usable sources are available.
-- Write 600-900 words, with a target around 720 words.
+- Write 350-500 words, with a target around 430 words.
 - Use short paragraphs and plain English.
 - Keep the fact box short; it should support the narrative, not replace it.
 - Add context on why the story matters and what comes next.
@@ -109,6 +109,8 @@ Structure:
 7. "What Happens Next" section.
 8. "What We Still Don't Know" section with 3 questions.
 9. Final source note naming the publishers/agencies used.
+
+Keep draftMarkdown under 4,500 characters so the JSON response completes.
 
 Return JSON only with title, slug, category, tags, excerpt, seoDescription, and draftMarkdown.`;
 

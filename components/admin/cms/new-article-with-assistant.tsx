@@ -34,6 +34,7 @@ type SourceFirstSource = {
   url: string;
   publisher: string;
   snippet: string;
+  extractedText: string;
   extractedLength: number;
 };
 
@@ -217,7 +218,7 @@ export function NewArticleWithAssistant() {
     }
   };
 
-  const runSourceFirstAssistant = async () => {
+  const runSourceFirstResearch = async () => {
     if (!source.trim()) return;
     setLoading(true);
     setSourceFirstResult(null);
@@ -226,9 +227,47 @@ export function NewArticleWithAssistant() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "sourceFirstArticle",
+          mode: "sourceFirstResearch",
           title: source,
           html: source,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as SourceFirstAssistPayload;
+      if (!res.ok) {
+        throw new Error(data.error || "Source-first research request failed");
+      }
+
+      const research = data.sourceFirst ?? null;
+      if (!research?.sources?.length) {
+        throw new Error("No verified sources found. Try a more specific topic.");
+      }
+
+      setSourceFirstResult(research);
+      setScrapePreview(null);
+      toast.success("Sources verified. Review them, then generate the draft.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not verify source-first research",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateFromSourceFirstResearch = async () => {
+    if (!source.trim() || !sourceFirstResult?.sources?.length) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai/article-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "sourceFirstArticle",
+          title: sourceFirstResult.query || source,
+          html: sourceFirstResult.query || source,
+          sources: sourceFirstResult.sources,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as SourceFirstAssistPayload;
@@ -246,7 +285,7 @@ export function NewArticleWithAssistant() {
         draftHtml: String(data.draftHtml ?? ""),
         seoDescription: String(data.seoDescription ?? ""),
       });
-      setSourceFirstResult(data.sourceFirst ?? null);
+      setSourceFirstResult(data.sourceFirst ?? sourceFirstResult);
       setScrapePreview(null);
       setStarted(true);
       toast.success("Source-first draft generated with verified links.");
@@ -410,7 +449,7 @@ export function NewArticleWithAssistant() {
           </Button>
           <Button
             type="button"
-            onClick={runSourceFirstAssistant}
+            onClick={runSourceFirstResearch}
             disabled={loading || !source.trim()}
             className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
@@ -419,12 +458,78 @@ export function NewArticleWithAssistant() {
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            {loading ? "Researching..." : "Research sources and write"}
+            {loading ? "Researching..." : "Find verified sources"}
           </Button>
           <Button variant="ghost" onClick={() => setStarted(true)}>
             Skip and open empty form
           </Button>
         </div>
+        {sourceFirstResult ? (
+          <div className="space-y-4 rounded-xl border border-emerald-400/40 bg-emerald-950/20 p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                Source-first research
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-background">
+                Verified sources ready
+              </h2>
+              <p className="mt-1 text-sm text-background/75">
+                Review these links, then generate the article in a separate request.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {sourceFirstResult.sources.map((sourceItem) => (
+                <a
+                  key={sourceItem.id}
+                  href={sourceItem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-emerald-300/30 bg-background/10 p-4 transition-colors hover:border-emerald-300"
+                >
+                  <p className="text-xs font-semibold text-emerald-200">
+                    {sourceItem.id} · {sourceItem.publisher}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-background">
+                    {sourceItem.title}
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-xs text-background/70">
+                    {sourceItem.snippet}
+                  </p>
+                </a>
+              ))}
+            </div>
+            {sourceFirstResult.skipped?.length ? (
+              <p className="text-xs text-background/70">
+                Skipped {sourceFirstResult.skipped.length} source
+                {sourceFirstResult.skipped.length === 1 ? "" : "s"} that could not
+                be validated.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={generateFromSourceFirstResearch}
+                disabled={loading || sourceFirstResult.sources.length < 2}
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {loading ? "Writing..." : "Write article from these sources"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSourceFirstResult(null)}
+                disabled={loading}
+              >
+                Clear sources
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {scrapePreview ? (
           <div className="space-y-3 rounded-xl border border-indigo-400/40 bg-foreground/80 p-4">
             <p className="text-sm font-medium text-indigo-200">
