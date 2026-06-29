@@ -57,6 +57,50 @@ function summarizeForMode(input: string, maxChars: number): string {
   return input.slice(0, maxChars);
 }
 
+function normalizedUrlKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return url.trim().replace(/\/+$/, "");
+  }
+}
+
+function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function keepOnlyVerifiedSourceLinks(
+  markdown: string,
+  sources: SourceFirstPacket[],
+): string {
+  const allowedUrls = new Map<string, string>();
+  const sourceUrlByHost = new Map<string, string>();
+
+  for (const source of sources) {
+    const url = source.url.trim();
+    if (!url) continue;
+    allowedUrls.set(normalizedUrlKey(url), url);
+    const host = hostFromUrl(url);
+    if (host && !sourceUrlByHost.has(host)) sourceUrlByHost.set(host, url);
+  }
+
+  return markdown.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (match, label, url) => {
+    const verifiedUrl = allowedUrls.get(normalizedUrlKey(String(url)));
+    if (verifiedUrl) return `[${label}](${verifiedUrl})`;
+
+    const sameHostSourceUrl = sourceUrlByHost.get(hostFromUrl(String(url)));
+    if (sameHostSourceUrl) return `[${label}](${sameHostSourceUrl})`;
+
+    return String(label);
+  });
+}
+
 function stripHtml(input: string): string {
   return input
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
@@ -364,7 +408,9 @@ export async function generateSourceFirstArticle(input: {
     SOURCE_FIRST_ARTICLE_PROMPT,
     "Additional output requirements:",
     "- Keep draftMarkdown in markdown.",
-    "- Use inline markdown links with the exact URLs from the source packets.",
+    "- Use inline markdown links only with the exact URLs from the source packets.",
+    "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
+    "- If unsure which source URL supports a sentence, use attribution text without a link.",
     "- Do not include raw source packet IDs in the public article unless useful.",
     "- Tags must be lowercase kebab-case and specific, 12-20 preferred.",
     "",
@@ -404,7 +450,10 @@ export async function generateSourceFirstArticle(input: {
   const category = String(data.category ?? "");
   const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
   const rawDraftMarkdown = String(data.draftMarkdown ?? "").trim();
-  const normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
+  const normalizedMarkdown = keepOnlyVerifiedSourceLinks(
+    normalizeArticleMarkdown(rawDraftMarkdown).trim(),
+    input.sources,
+  );
 
   return {
     title,
