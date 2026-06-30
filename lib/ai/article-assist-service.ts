@@ -173,29 +173,87 @@ function hostFromUrl(url: string): string {
   }
 }
 
+function readableSourceLabel(source: SourceFirstPacket): string {
+  const publisher = source.publisher.trim();
+  if (publisher) {
+    return publisher
+      .replace(/^www\./i, "")
+      .replace(/\.(com|org|net|co|us|uk)$/i, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+      .slice(0, 80);
+  }
+
+  return source.title.trim().replace(/\s+/g, " ").slice(0, 80) || "Source";
+}
+
+function labelLooksLikeRawCitation(label: string): boolean {
+  return (
+    /^https?:\/\//i.test(label.trim()) ||
+    /^s\d+$/i.test(label.trim()) ||
+    /^(source|read the source|article link)$/i.test(label.trim())
+  );
+}
+
 function keepOnlyVerifiedSourceLinks(
   markdown: string,
   sources: SourceFirstPacket[],
 ): string {
   const allowedUrls = new Map<string, string>();
   const sourceUrlByHost = new Map<string, string>();
+  const labelByUrl = new Map<string, string>();
+  const labelByHost = new Map<string, string>();
 
   for (const source of sources) {
     const url = source.url.trim();
     if (!url) continue;
+    const label = readableSourceLabel(source);
     allowedUrls.set(normalizedUrlKey(url), url);
+    labelByUrl.set(normalizedUrlKey(url), label);
     const host = hostFromUrl(url);
-    if (host && !sourceUrlByHost.has(host)) sourceUrlByHost.set(host, url);
+    if (host && !sourceUrlByHost.has(host)) {
+      sourceUrlByHost.set(host, url);
+      labelByHost.set(host, label);
+    }
   }
 
-  return markdown.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (match, label, url) => {
-    const verifiedUrl = allowedUrls.get(normalizedUrlKey(String(url)));
-    if (verifiedUrl) return `[${label}](${verifiedUrl})`;
+  const withMarkdownLinks = markdown.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    (match, label, url) => {
+      const key = normalizedUrlKey(String(url));
+      const verifiedUrl = allowedUrls.get(key);
+      if (verifiedUrl) {
+        const safeLabel = labelLooksLikeRawCitation(String(label))
+          ? (labelByUrl.get(key) ?? "Source")
+          : String(label);
+        return `[${safeLabel}](${verifiedUrl})`;
+      }
 
-    const sameHostSourceUrl = sourceUrlByHost.get(hostFromUrl(String(url)));
-    if (sameHostSourceUrl) return `[${label}](${sameHostSourceUrl})`;
+      const host = hostFromUrl(String(url));
+      const sameHostSourceUrl = sourceUrlByHost.get(host);
+      if (sameHostSourceUrl) {
+        const safeLabel = labelLooksLikeRawCitation(String(label))
+          ? (labelByHost.get(host) ?? "Source")
+          : String(label);
+        return `[${safeLabel}](${sameHostSourceUrl})`;
+      }
 
-    return String(label);
+      return String(label);
+    },
+  );
+
+  return withMarkdownLinks.replace(/\[(https?:\/\/[^\]\s]+)\]/g, (match, url) => {
+    const key = normalizedUrlKey(String(url));
+    const verifiedUrl = allowedUrls.get(key);
+    if (verifiedUrl) return `[${labelByUrl.get(key) ?? "Source"}](${verifiedUrl})`;
+
+    const host = hostFromUrl(String(url));
+    const sameHostSourceUrl = sourceUrlByHost.get(host);
+    if (sameHostSourceUrl) {
+      return `[${labelByHost.get(host) ?? "Source"}](${sameHostSourceUrl})`;
+    }
+
+    return "";
   });
 }
 
@@ -512,10 +570,13 @@ export async function generateSourceFirstArticle(input: {
     "- If the sources do not answer something, say what is still unknown.",
     "- Every major claim must be tied to an inline markdown link using the source URL.",
     "- Use inline markdown links only with the exact URLs from the source packets.",
+    "- Link text must be readable words such as the publisher name or story subject.",
+    "- Never use a raw URL, source ID, or bracketed URL as visible link text.",
     "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
     "- If unsure which source URL supports a sentence, use attribution text without a link.",
     "- Write a complete article of 600-850 words.",
     "- Use short paragraphs and plain English.",
+    "- Do not use markdown tables. Write fact boxes as short bullet lists.",
     "- Do not include raw source packet IDs in the public article unless useful.",
     "- Do not stop mid-sentence or mid-section.",
     "- Finish every required section before ending.",
