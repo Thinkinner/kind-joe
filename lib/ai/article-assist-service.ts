@@ -118,50 +118,41 @@ function countMarkdownLinks(markdown: string): number {
   return Array.from(markdown.matchAll(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g)).length;
 }
 
-function buildFallbackSourceFirstMarkdown(input: {
-  query: string;
-  sources: SourceFirstPacket[];
-}): string {
-  const headline = input.sources[0]?.title || titleFromMarkdown(input.query);
-  const primary = input.sources[0];
-  const otherSources = input.sources.slice(1);
-  const sourceLinks = input.sources
-    .map((source) => `[${source.publisher || source.title}](${source.url})`)
-    .join(", ");
+function countWords(markdown: string): number {
+  return markdown
+    .replace(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g, " ")
+    .replace(/[#*_>`-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean).length;
+}
 
-  return [
-    `# ${headline}`,
-    "",
-    primary
-      ? `${primary.snippet || primary.extractedText} [${primary.publisher || "Source"}](${primary.url}).`
-      : "This draft is based only on the source packets available to the assistant.",
-    "",
-    "## What Happened",
-    "",
-    primary
-      ? `${primary.extractedText || primary.snippet} [Read the source](${primary.url}).`
-      : "The available sources do not provide enough detail for a full article.",
-    "",
-    ...otherSources.flatMap((source) => [
-      `${source.snippet || source.extractedText} [${source.publisher || "Source"}](${source.url}).`,
-      "",
-    ]),
-    "## Why It Matters",
-    "",
-    "This story matters only to the extent supported by the sources above. Editors should review the source packets and strengthen this section with confirmed context before publishing.",
-    "",
-    "## What Happens Next",
-    "",
-    "Watch for updated reporting from the same publishers and direct statements from the people or institutions named in the source articles.",
-    "",
-    "## What We Still Don't Know",
-    "",
-    "- Which details have been independently confirmed by more than one direct source.",
-    "- Whether newer reporting changes the timeline or context.",
-    "- What official response, if any, follows from the named parties.",
-    "",
-    `Source note: This draft is based on reporting and source summaries from ${sourceLinks}.`,
-  ].join("\n");
+function missingSourceFirstSections(markdown: string): string[] {
+  const required = [
+    "What Happened",
+    "Why It Matters",
+    "What Happens Next",
+    "What We Still Don't Know",
+    "Source Note",
+  ];
+  const normalized = markdown.toLowerCase();
+  return required.filter(
+    (section) => !normalized.includes(section.toLowerCase()),
+  );
+}
+
+function sourceFirstDraftProblem(markdown: string): string | null {
+  if (!markdown.trim()) return "empty draft";
+  const words = countWords(markdown);
+  if (words < 550) return `too short (${words} words)`;
+  if (countMarkdownLinks(markdown) < 2) return "missing verified inline links";
+  const missingSections = missingSourceFirstSections(markdown);
+  if (missingSections.length > 0) {
+    return `missing sections: ${missingSections.join(", ")}`;
+  }
+  if (!/source note/i.test(markdown)) return "missing source note";
+  return null;
 }
 
 function normalizedUrlKey(url: string): string {
@@ -523,9 +514,11 @@ export async function generateSourceFirstArticle(input: {
     "- Use inline markdown links only with the exact URLs from the source packets.",
     "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
     "- If unsure which source URL supports a sentence, use attribution text without a link.",
-    "- Keep the article concise: 300-450 words and under 3,800 characters.",
+    "- Write a complete article of 600-850 words.",
     "- Use short paragraphs and plain English.",
     "- Do not include raw source packet IDs in the public article unless useful.",
+    "- Do not stop mid-sentence or mid-section.",
+    "- Finish every required section before ending.",
     "",
     "Structure:",
     "1. Markdown H1 headline.",
@@ -552,7 +545,7 @@ export async function generateSourceFirstArticle(input: {
       model: input.model || ARTICLE_ASSIST_MODEL,
       contents,
       config: articleAssistTextGenerateConfig({
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       }),
     });
 
@@ -563,15 +556,18 @@ export async function generateSourceFirstArticle(input: {
     input.sources,
   );
 
-  if (normalizedMarkdown.length < 600 || countMarkdownLinks(normalizedMarkdown) < 1) {
+  let draftProblem = sourceFirstDraftProblem(normalizedMarkdown);
+  if (draftProblem) {
     draftResponse = await runDraftModel(
       [
         draftContents,
         "",
-        "IMPORTANT: The previous draft was too short or lacked verified inline links.",
+        `IMPORTANT: The previous draft was rejected because it was ${draftProblem}.`,
         "Return markdown only.",
-        "Write 300-450 words.",
+        "Write a complete 600-850 word article.",
+        "Include every required section exactly once.",
         "Use at least 2 inline markdown links using exact source URLs from the source packets.",
+        "End with a Source Note section.",
         "Do not return JSON.",
       ].join("\n"),
     );
@@ -580,21 +576,12 @@ export async function generateSourceFirstArticle(input: {
       normalizeArticleMarkdown(rawDraftMarkdown).trim(),
       input.sources,
     );
+    draftProblem = sourceFirstDraftProblem(normalizedMarkdown);
   }
 
-  if (
-    !normalizedMarkdown ||
-    normalizedMarkdown.length < 600 ||
-    countMarkdownLinks(normalizedMarkdown) < 1
-  ) {
-    normalizedMarkdown = keepOnlyVerifiedSourceLinks(
-      normalizeArticleMarkdown(
-        buildFallbackSourceFirstMarkdown({
-          query: input.query,
-          sources: input.sources,
-        }),
-      ).trim(),
-      input.sources,
+  if (draftProblem) {
+    throw new Error(
+      `AI returned an incomplete source-first article draft: ${draftProblem}.`,
     );
   }
   const fallbackTitle = titleFromMarkdown(normalizedMarkdown);
