@@ -17,6 +17,10 @@ import { formatGenerationErrorMessage } from "@/lib/(newsletter-automations)/gen
 
 const NEWSLETTER_MODEL =
   process.env.GEMINI_NEWSLETTER_MODEL ?? "gemini-3-flash-preview";
+const NEWSLETTER_ARTICLE_MODEL =
+  process.env.GEMINI_NEWSLETTER_ARTICLE_MODEL ??
+  process.env.GEMINI_NEWSLETTER_MODEL ??
+  "gemini-3.5-flash";
 
 async function assertNewsletterStaff() {
   const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
@@ -41,6 +45,118 @@ function rethrowGeminiError(
 }
 
 const PROMPTS = PROMPT_SETTINGS_DEFAULTS;
+
+function normalizedUrlKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return url.trim().replace(/\/+$/, "");
+  }
+}
+
+function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function readableLinkLabel(story: NewsletterStory): string {
+  const sourceName = (story.sourceName || "").trim();
+  if (sourceName) return sourceName.slice(0, 80);
+
+  const host = hostFromUrl(story.sourceUrl || "");
+  if (host) {
+    return host
+      .replace(/\.(com|org|net|co|us|uk)$/i, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+      .slice(0, 80);
+  }
+
+  return "Source";
+}
+
+function labelLooksLikeRawCitation(label: string): boolean {
+  return (
+    /^https?:\/\//i.test(label.trim()) ||
+    /^s\d+$/i.test(label.trim()) ||
+    /^(source|read the source|article link)$/i.test(label.trim())
+  );
+}
+
+function sanitizeNewsletterArticleLinks(
+  markdown: string,
+  story: NewsletterStory,
+): string {
+  const sourceUrl = (story.sourceUrl || "").trim();
+  if (!sourceUrl) return markdown.replace(/\[(https?:\/\/[^\]\s]+)\]/g, "");
+
+  const sourceKey = normalizedUrlKey(sourceUrl);
+  const sourceHost = hostFromUrl(sourceUrl);
+  const label = readableLinkLabel(story);
+
+  const withMarkdownLinks = markdown.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    (match, rawLabel, rawUrl) => {
+      const url = String(rawUrl);
+      const urlKey = normalizedUrlKey(url);
+      const urlHost = hostFromUrl(url);
+      if (urlKey !== sourceKey && urlHost !== sourceHost) {
+        return String(rawLabel);
+      }
+
+      const safeLabel = labelLooksLikeRawCitation(String(rawLabel))
+        ? label
+        : String(rawLabel);
+      return `[${safeLabel}](${sourceUrl})`;
+    },
+  );
+
+  return withMarkdownLinks.replace(/\[(https?:\/\/[^\]\s]+)\]/g, (match, rawUrl) => {
+    const url = String(rawUrl);
+    if (normalizedUrlKey(url) === sourceKey || hostFromUrl(url) === sourceHost) {
+      return `[${label}](${sourceUrl})`;
+    }
+    return "";
+  });
+}
+
+function countMarkdownWords(markdown: string): number {
+  return markdown
+    .replace(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g, " ")
+    .replace(/[#*_>`-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean).length;
+}
+
+function countMarkdownLinks(markdown: string): number {
+  return Array.from(markdown.matchAll(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g)).length;
+}
+
+function newsletterArticleProblem(markdown: string): string | null {
+  const trimmed = markdown.trim();
+  if (!trimmed) return "empty article body";
+
+  const words = countMarkdownWords(trimmed);
+  if (words < 550) return `too short (${words} words)`;
+  if (countMarkdownLinks(trimmed) < 1) return "missing readable source hyperlink";
+  if (/public official, a high-profile community event/i.test(trimmed)) {
+    return "contains generic filler";
+  }
+  if (/which specific people or groups organized the confrontation/i.test(trimmed)) {
+    return "contains generic filler";
+  }
+  if (/\[https?:\/\/[^\]]+\]/i.test(trimmed)) {
+    return "contains raw URL citation text";
+  }
+  return null;
+}
 
 async function retry<T>(
   fn: () => Promise<T>,
@@ -661,56 +777,102 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
     "- Return valid JSON only with these exact fields:",
     "  slug, title, excerpt, contentMarkdown, seoTitle, seoDescription, seoKeywords, readingMinutes",
     "- contentMarkdown must be markdown text only (no HTML tags).",
+    "- Write a complete 600-850 word article body.",
     "- Use markdown section headings and bullets.",
+    "- Include readable markdown hyperlinks, not raw visible URLs.",
+    "- Use the publisher or story subject as link text, e.g. [Fox News](SOURCE_URL).",
+    "- Never use raw URLs, bracketed URLs, or source IDs as visible link text.",
+    "- Do not use markdown tables.",
+    "- Do not use generic filler that does not match this story.",
+    "- The article must stay focused on the provided story headline, context, and source URL.",
     "- Do not return contentHtml.",
     "- Do not return category or tags in this response shape.",
   ].join("\n");
 
   return retry(async () => {
-    const response = await ai.models.generateContent({
-      model: NEWSLETTER_MODEL,
-      contents: `${prompt}\n${markdownOutputGuard}`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: articleSchema,
-        temperature: 0.4,
-        maxOutputTokens: 8192,
-      },
-    });
+    let lastProblem = "";
+    let response:
+      | Awaited<ReturnType<typeof ai.models.generateContent>>
+      | undefined;
+    let parsed:
+      | {
+          slug: string;
+          title: string;
+          excerpt: string;
+          contentMarkdown: string;
+          seoTitle: string;
+          seoDescription: string;
+          seoKeywords: string[];
+          readingMinutes: number;
+        }
+      | undefined;
 
-    let parsed;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const retryInstructions =
+        attempt === 0
+          ? ""
+          : [
+              "",
+              `PREVIOUS ARTICLE REJECTED: ${lastProblem}`,
+              "Rewrite from scratch.",
+              "Return complete valid JSON only.",
+              "Make contentMarkdown 600-850 words.",
+              "Use readable markdown links with publisher/story text as link text.",
+            ].join("\n");
 
-    try {
-      parsed = parseGeneratedJson<{
-        slug: string;
-        title: string;
-        excerpt: string;
-        contentMarkdown: string;
-        seoTitle: string;
-        seoDescription: string;
-        seoKeywords: string[];
-        readingMinutes: number;
-      }>(response.text || "{}");
-    } catch (e) {
-      console.error(
-        "Article JSON Parse Error.\n--- RAW TEXT START ---\n",
-        response.text,
-        "\n--- RAW TEXT END ---",
+      response = await ai.models.generateContent({
+        model: NEWSLETTER_ARTICLE_MODEL,
+        contents: `${prompt}\n${markdownOutputGuard}${retryInstructions}`,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: articleSchema,
+          temperature: 0.4,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      try {
+        parsed = parseGeneratedJson<{
+          slug: string;
+          title: string;
+          excerpt: string;
+          contentMarkdown: string;
+          seoTitle: string;
+          seoDescription: string;
+          seoKeywords: string[];
+          readingMinutes: number;
+        }>(response.text || "{}");
+      } catch (e) {
+        console.error(
+          "Article JSON Parse Error.\n--- RAW TEXT START ---\n",
+          response.text,
+          "\n--- RAW TEXT END ---",
+        );
+        throw new Error(
+          "AI generated malformed article JSON. Click Generate again for this story.",
+        );
+      }
+
+      parsed.contentMarkdown = sanitizeNewsletterArticleLinks(
+        parsed.contentMarkdown || "",
+        story,
       );
-      throw new Error(
-        "AI generated malformed article JSON. Click Generate again for this story.",
-      );
+
+      const problem = newsletterArticleProblem(parsed.contentMarkdown);
+      if (!problem) break;
+      lastProblem = problem;
+      parsed = undefined;
     }
 
-    if (!parsed.contentMarkdown?.trim() || parsed.contentMarkdown.trim().length < 50) {
+    if (!parsed) {
       throw new Error(
-        "AI returned an empty or very short article body. Regenerate this story.",
+        `AI returned an unsafe or incomplete article body. Regenerate this story. ${lastProblem}`,
       );
     }
 
     const sources =
-      response.candidates?.[0]?.groundingMetadata?.searchEntryPoint
+      response?.candidates?.[0]?.groundingMetadata?.searchEntryPoint
         ?.renderedContent;
 
     return { ...parsed, contentMarkdown: parsed.contentMarkdown, sources };
