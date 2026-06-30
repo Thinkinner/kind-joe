@@ -9,6 +9,20 @@ import {
 
 const LOCK_STALE_MINUTES = 45;
 const MAX_ATTEMPTS = 3;
+const FALLBACK_TAGS = [
+  "source-first",
+  "news",
+  "verified-sources",
+  "google-news",
+  "article-draft",
+  "current-events",
+  "reporting",
+  "public-interest",
+  "developing-story",
+  "context",
+  "analysis",
+  "kind-joe",
+];
 
 export type SourceFirstJobStatus =
   | "queued"
@@ -56,6 +70,90 @@ export type SourceFirstJobPayload = {
 
 function normalizeTopic(topic: string): string {
   return topic.trim().slice(0, 500);
+}
+
+function stripMarkdownAndUrls(value: string): string {
+  return value
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function toKebab(value: string): string {
+  return stripMarkdownAndUrls(value)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
+function titleLooksBroken(value: string): boolean {
+  const cleaned = stripMarkdownAndUrls(value);
+  return (
+    cleaned.length < 20 ||
+    /\bhttps?\b|news\.google\.com|rss\/articles/i.test(value) ||
+    /^(and|or|but|with|from|by)\b/i.test(cleaned)
+  );
+}
+
+function slugLooksBroken(value: string): boolean {
+  return !value || /https?|news-google|news\.google|rss|articles|cbmi/i.test(value);
+}
+
+function deriveSafeTitle(input: {
+  generatedTitle: string;
+  topic: string;
+  sources: SourceFirstPacket[];
+}): string {
+  if (!titleLooksBroken(input.generatedTitle)) {
+    return stripMarkdownAndUrls(input.generatedTitle).slice(0, 160);
+  }
+
+  const sourceTitle = input.sources
+    .map((source) => stripMarkdownAndUrls(source.title))
+    .find((title) => !titleLooksBroken(title));
+  if (sourceTitle) return sourceTitle.slice(0, 160);
+
+  const topic = stripMarkdownAndUrls(input.topic);
+  return (topic || "Source-first article").slice(0, 160);
+}
+
+function sanitizeTags(tags: string[], title: string): string[] {
+  const cleaned = tags
+    .map(toKebab)
+    .filter((tag) => {
+      if (!tag) return false;
+      if (tag.length > 40) return false;
+      if (/https?|news-google|rss|articles|cbmi/i.test(tag)) return false;
+      return true;
+    });
+
+  const fromTitle = title
+    .split(/\s+/)
+    .map(toKebab)
+    .filter((tag) => tag.length >= 3 && tag.length <= 24);
+
+  return Array.from(new Set([...cleaned, ...fromTitle, ...FALLBACK_TAGS])).slice(
+    0,
+    20,
+  );
+}
+
+function sanitizeDraftMarkdown(markdown: string, title: string): string {
+  const safeTitle = stripMarkdownAndUrls(title);
+  const lines = markdown.split(/\r?\n/);
+  const firstContentIndex = lines.findIndex((line) => line.trim());
+
+  if (firstContentIndex === -1) return `# ${safeTitle}`;
+
+  if (/^#\s+/.test(lines[firstContentIndex].trim())) {
+    lines[firstContentIndex] = `# ${safeTitle}`;
+    return lines.join("\n").trim();
+  }
+
+  return [`# ${safeTitle}`, "", markdown].join("\n").trim();
 }
 
 function serializeJob(row: {
@@ -173,14 +271,28 @@ export async function processSourceFirstArticleJob(
     query: research.query,
     sources: research.sources,
   });
+  const safeTitle = deriveSafeTitle({
+    generatedTitle: generated.title,
+    topic: research.query,
+    sources: research.sources,
+  });
+  const generatedSlug = toKebab(generated.slug);
+  const safeSlug = slugLooksBroken(generatedSlug)
+    ? toKebab(safeTitle)
+    : generatedSlug;
+  const safeTags = sanitizeTags(generated.tags, safeTitle);
+  const safeDraftMarkdown = sanitizeDraftMarkdown(
+    generated.draftMarkdown,
+    safeTitle,
+  );
 
   const result: SourceFirstJobResult = {
-    title: generated.title,
-    slug: generated.slug,
+    title: safeTitle,
+    slug: safeSlug,
     category: generated.category,
-    tags: generated.tags,
+    tags: safeTags,
     excerpt: generated.excerpt,
-    draftMarkdown: generated.draftMarkdown,
+    draftMarkdown: safeDraftMarkdown,
     draftHtml: "",
     seoDescription: generated.seoDescription,
     sourceFirst: {
