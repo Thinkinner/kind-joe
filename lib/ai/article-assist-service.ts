@@ -122,7 +122,7 @@ function buildFallbackSourceFirstMarkdown(input: {
   query: string;
   sources: SourceFirstPacket[];
 }): string {
-  const headline = titleFromMarkdown(input.query);
+  const headline = input.sources[0]?.title || titleFromMarkdown(input.query);
   const primary = input.sources[0];
   const otherSources = input.sources.slice(1);
   const sourceLinks = input.sources
@@ -132,13 +132,15 @@ function buildFallbackSourceFirstMarkdown(input: {
   return [
     `# ${headline}`,
     "",
-    `${input.query} is drawing attention across multiple outlets, with ${primary ? `[${primary.publisher || primary.title}](${primary.url})` : "available reporting"} placing the story at the center of a wider debate.`,
+    primary
+      ? `${primary.snippet || primary.extractedText} [${primary.publisher || "Source"}](${primary.url}).`
+      : "This draft is based only on the source packets available to the assistant.",
     "",
     "## What Happened",
     "",
     primary
-      ? `${primary.snippet || primary.extractedText} [Read the source](${primary.url}).`
-      : "The available sources describe a fast-moving public incident with details still developing.",
+      ? `${primary.extractedText || primary.snippet} [Read the source](${primary.url}).`
+      : "The available sources do not provide enough detail for a full article.",
     "",
     ...otherSources.flatMap((source) => [
       `${source.snippet || source.extractedText} [${source.publisher || "Source"}](${source.url}).`,
@@ -146,17 +148,17 @@ function buildFallbackSourceFirstMarkdown(input: {
     ]),
     "## Why It Matters",
     "",
-    "The story matters because it connects a public official, a high-profile community event, and a broader political conflict that continues to divide voters and advocacy groups.",
+    "This story matters only to the extent supported by the sources above. Editors should review the source packets and strengthen this section with confirmed context before publishing.",
     "",
     "## What Happens Next",
     "",
-    "More details may emerge from organizers, public officials, and law enforcement. The clearest next step is to watch for official statements, any charges or investigations, and how the incident affects future public appearances.",
+    "Watch for updated reporting from the same publishers and direct statements from the people or institutions named in the source articles.",
     "",
     "## What We Still Don't Know",
     "",
-    "- Which specific people or groups organized the confrontation?",
-    "- Whether any additional official action will follow.",
-    "- How the incident will affect the broader political conversation.",
+    "- Which details have been independently confirmed by more than one direct source.",
+    "- Whether newer reporting changes the timeline or context.",
+    "- What official response, if any, follows from the named parties.",
     "",
     `Source note: This draft is based on reporting and source summaries from ${sourceLinks}.`,
   ].join("\n");

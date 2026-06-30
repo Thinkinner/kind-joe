@@ -23,6 +23,11 @@ const FALLBACK_TAGS = [
   "analysis",
   "kind-joe",
 ];
+const GENERIC_FILLER_PATTERNS = [
+  /public official, a high-profile community event/i,
+  /which specific people or groups organized the confrontation/i,
+  /broader political conflict that continues to divide voters/i,
+];
 
 export type SourceFirstJobStatus =
   | "queued"
@@ -156,6 +161,17 @@ function sanitizeDraftMarkdown(markdown: string, title: string): string {
   return [`# ${safeTitle}`, "", markdown].join("\n").trim();
 }
 
+function assertDraftIsSpecific(markdown: string) {
+  const matchedPattern = GENERIC_FILLER_PATTERNS.find((pattern) =>
+    pattern.test(markdown),
+  );
+  if (matchedPattern) {
+    throw new Error(
+      "Generated draft contained generic filler that did not match the source story.",
+    );
+  }
+}
+
 function serializeJob(row: {
   id: string;
   topic: string;
@@ -285,6 +301,7 @@ export async function processSourceFirstArticleJob(
     generated.draftMarkdown,
     safeTitle,
   );
+  assertDraftIsSpecific(safeDraftMarkdown);
 
   const result: SourceFirstJobResult = {
     title: safeTitle,
