@@ -9,6 +9,10 @@ import {
 
 const LOCK_STALE_MINUTES = 45;
 const MAX_ATTEMPTS = 3;
+const SOURCE_FIRST_ARTICLE_MODEL =
+  process.env.SOURCE_FIRST_ARTICLE_MODEL ||
+  process.env.GEMINI_ARTICLE_ASSIST_MODEL ||
+  "gemini-3.5-flash";
 const FALLBACK_TAGS = [
   "source-first",
   "news",
@@ -286,6 +290,7 @@ export async function processSourceFirstArticleJob(
   const generated = await generateSourceFirstArticle({
     query: research.query,
     sources: research.sources,
+    model: SOURCE_FIRST_ARTICLE_MODEL,
   });
   const safeTitle = deriveSafeTitle({
     generatedTitle: generated.title,
