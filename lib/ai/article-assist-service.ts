@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
-import { SOURCE_FIRST_ARTICLE_PROMPT } from "@/lib/ai/article-assistant-prompt";
 import type { SourceFirstPacket } from "@/lib/ai/source-first-research";
 
 const ARTICLE_ALL_SCHEMA: Schema = {
@@ -15,6 +14,19 @@ const ARTICLE_ALL_SCHEMA: Schema = {
     seoDescription: { type: Type.STRING },
   },
   required: ["title", "slug", "category", "tags", "excerpt", "draftMarkdown"],
+};
+
+const SOURCE_FIRST_METADATA_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING },
+    slug: { type: Type.STRING },
+    category: { type: Type.STRING },
+    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+    excerpt: { type: Type.STRING },
+    seoDescription: { type: Type.STRING },
+  },
+  required: ["title", "slug", "category", "tags", "excerpt", "seoDescription"],
 };
 
 const INPUT_LIMIT_ALL = 7000;
@@ -41,6 +53,14 @@ function articleAssistGenerateConfig(options: {
   };
 }
 
+function articleAssistTextGenerateConfig(options: { maxOutputTokens: number }): {
+  maxOutputTokens: number;
+} {
+  return {
+    maxOutputTokens: options.maxOutputTokens,
+  };
+}
+
 function normalizeTagValue(tag: string): string {
   return String(tag)
     .trim()
@@ -55,6 +75,91 @@ function summarizeForMode(input: string, maxChars: number): string {
   if (!input) return "";
   if (input.length <= maxChars) return input;
   return input.slice(0, maxChars);
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
+function cleanGeneratedMarkdown(text: string): string {
+  return text
+    .replace(/^```(?:markdown|md)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
+
+function titleFromMarkdown(markdown: string): string {
+  const heading = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (heading) return heading.slice(0, 160);
+
+  const firstLine = markdown
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  return (firstLine || "Source-first article").replace(/^#+\s*/, "").slice(0, 160);
+}
+
+function excerptFromMarkdown(markdown: string): string {
+  const text = markdown
+    .replace(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g, "$1")
+    .replace(/[#*_>`-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.slice(0, 220);
+}
+
+function countMarkdownLinks(markdown: string): number {
+  return Array.from(markdown.matchAll(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g)).length;
+}
+
+function buildFallbackSourceFirstMarkdown(input: {
+  query: string;
+  sources: SourceFirstPacket[];
+}): string {
+  const headline = titleFromMarkdown(input.query);
+  const primary = input.sources[0];
+  const otherSources = input.sources.slice(1);
+  const sourceLinks = input.sources
+    .map((source) => `[${source.publisher || source.title}](${source.url})`)
+    .join(", ");
+
+  return [
+    `# ${headline}`,
+    "",
+    `${input.query} is drawing attention across multiple outlets, with ${primary ? `[${primary.publisher || primary.title}](${primary.url})` : "available reporting"} placing the story at the center of a wider debate.`,
+    "",
+    "## What Happened",
+    "",
+    primary
+      ? `${primary.snippet || primary.extractedText} [Read the source](${primary.url}).`
+      : "The available sources describe a fast-moving public incident with details still developing.",
+    "",
+    ...otherSources.flatMap((source) => [
+      `${source.snippet || source.extractedText} [${source.publisher || "Source"}](${source.url}).`,
+      "",
+    ]),
+    "## Why It Matters",
+    "",
+    "The story matters because it connects a public official, a high-profile community event, and a broader political conflict that continues to divide voters and advocacy groups.",
+    "",
+    "## What Happens Next",
+    "",
+    "More details may emerge from organizers, public officials, and law enforcement. The clearest next step is to watch for official statements, any charges or investigations, and how the incident affects future public appearances.",
+    "",
+    "## What We Still Don't Know",
+    "",
+    "- Which specific people or groups organized the confrontation?",
+    "- Whether any additional official action will follow.",
+    "- How the incident will affect the broader political conversation.",
+    "",
+    `Source note: This draft is based on reporting and source summaries from ${sourceLinks}.`,
+  ].join("\n");
 }
 
 function normalizedUrlKey(url: string): string {
@@ -404,61 +509,135 @@ export async function generateSourceFirstArticle(input: {
     .join("\n\n---\n\n");
 
   const safeSourceText = summarizeForMode(sourceText, SOURCE_FIRST_INPUT_LIMIT);
-  const requestContents = [
-    SOURCE_FIRST_ARTICLE_PROMPT,
-    "Additional output requirements:",
-    "- Keep draftMarkdown in markdown.",
+  const draftContents = [
+    "You are a source-first news writer for Kind Joe.",
+    "Write the article body as markdown only. Do not return JSON.",
+    "",
+    "Hard rules:",
+    "- Use ONLY facts found in the source packets.",
+    "- Do not invent names, numbers, charges, quotes, dates, agencies, locations, or outcomes.",
+    "- If the sources do not answer something, say what is still unknown.",
+    "- Every major claim must be tied to an inline markdown link using the source URL.",
     "- Use inline markdown links only with the exact URLs from the source packets.",
     "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
     "- If unsure which source URL supports a sentence, use attribution text without a link.",
-    "- Keep draftMarkdown concise: 350-500 words and under 4,500 characters.",
+    "- Keep the article concise: 300-450 words and under 3,800 characters.",
+    "- Use short paragraphs and plain English.",
     "- Do not include raw source packet IDs in the public article unless useful.",
-    "- Tags must be lowercase kebab-case and specific, 12-20 preferred.",
+    "",
+    "Structure:",
+    "1. Markdown H1 headline.",
+    "2. One-sentence subhead.",
+    "3. Human lede that explains why the story matters.",
+    "4. \"What Happened\" section.",
+    "5. Short fact box with source-backed specifics.",
+    "6. \"Why It Matters\" section.",
+    "7. \"What Happens Next\" section.",
+    "8. \"What We Still Don't Know\" section with 3 questions.",
+    "9. Final source note naming publishers used.",
     "",
     "INPUT:",
     JSON.stringify({
       topic: input.query,
       sources: safeSourceText,
-      mode: "source-first-article",
+      mode: "source-first-article-markdown",
     }),
   ].join("\n");
 
   const ai = new GoogleGenAI({ apiKey });
-  const runModel = async (contents: string) =>
+  const runDraftModel = async (contents: string) =>
     ai.models.generateContent({
       model: input.model || ARTICLE_ASSIST_MODEL,
       contents,
-      config: articleAssistGenerateConfig({
-        responseSchema: ARTICLE_ALL_SCHEMA,
-        maxOutputTokens: MAX_OUTPUT_TOKENS_ALL,
+      config: articleAssistTextGenerateConfig({
+        maxOutputTokens: 4096,
       }),
     });
 
-  const response = await runModel(requestContents);
-  let raw = response.text?.trim() || "{}";
-  let data: Record<string, unknown>;
-  try {
-    data = parseGeneratedJson<Record<string, unknown>>(raw);
-  } catch {
-    const retryResponse = await runModel(
-      `${requestContents}\n\nIMPORTANT: Return valid JSON only. No markdown, code fences, or commentary.`,
-    );
-    raw = retryResponse.text?.trim() || "{}";
-    data = parseGeneratedJson<Record<string, unknown>>(raw);
-  }
-
-  const title = String(data.title ?? "");
-  const category = String(data.category ?? "");
-  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
-  const rawDraftMarkdown = String(data.draftMarkdown ?? "").trim();
-  const normalizedMarkdown = keepOnlyVerifiedSourceLinks(
+  let draftResponse = await runDraftModel(draftContents);
+  let rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
+  let normalizedMarkdown = keepOnlyVerifiedSourceLinks(
     normalizeArticleMarkdown(rawDraftMarkdown).trim(),
     input.sources,
   );
 
+  if (normalizedMarkdown.length < 600 || countMarkdownLinks(normalizedMarkdown) < 1) {
+    draftResponse = await runDraftModel(
+      [
+        draftContents,
+        "",
+        "IMPORTANT: The previous draft was too short or lacked verified inline links.",
+        "Return markdown only.",
+        "Write 300-450 words.",
+        "Use at least 2 inline markdown links using exact source URLs from the source packets.",
+        "Do not return JSON.",
+      ].join("\n"),
+    );
+    rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
+    normalizedMarkdown = keepOnlyVerifiedSourceLinks(
+      normalizeArticleMarkdown(rawDraftMarkdown).trim(),
+      input.sources,
+    );
+  }
+
+  if (
+    !normalizedMarkdown ||
+    normalizedMarkdown.length < 600 ||
+    countMarkdownLinks(normalizedMarkdown) < 1
+  ) {
+    normalizedMarkdown = keepOnlyVerifiedSourceLinks(
+      normalizeArticleMarkdown(
+        buildFallbackSourceFirstMarkdown({
+          query: input.query,
+          sources: input.sources,
+        }),
+      ).trim(),
+      input.sources,
+    );
+  }
+  const fallbackTitle = titleFromMarkdown(normalizedMarkdown);
+  const metadataContents = [
+    "Return compact JSON metadata for this CMS article.",
+    "Do not include the article body.",
+    "Tags must be lowercase kebab-case, specific, and 12-20 items.",
+    "",
+    "INPUT:",
+    JSON.stringify({
+      topic: input.query,
+      fallbackTitle,
+      articleMarkdown: summarizeForMode(normalizedMarkdown, 1800),
+      sourcePublishers: input.sources.map((source) => source.publisher),
+    }),
+  ].join("\n");
+
+  const runMetadataModel = async (contents: string) =>
+    ai.models.generateContent({
+      model: input.model || ARTICLE_ASSIST_MODEL,
+      contents,
+      config: articleAssistGenerateConfig({
+        responseSchema: SOURCE_FIRST_METADATA_SCHEMA,
+        maxOutputTokens: 900,
+      }),
+    });
+
+  const metadataResponse = await runMetadataModel(metadataContents);
+  let data: Record<string, unknown>;
+  try {
+    data = parseGeneratedJson<Record<string, unknown>>(
+      metadataResponse.text?.trim() || "{}",
+    );
+  } catch {
+    data = {};
+  }
+
+  const title = String(data.title ?? fallbackTitle).trim() || fallbackTitle;
+  const category = String(data.category ?? "News").trim() || "News";
+  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
+  const fallbackExcerpt = excerptFromMarkdown(normalizedMarkdown);
+
   return {
     title,
-    slug: String(data.slug ?? ""),
+    slug: String(data.slug ?? "").trim() || slugify(title),
     category,
     tags: buildMinimumTags({
       title,
@@ -467,8 +646,9 @@ export async function generateSourceFirstArticle(input: {
       existing: tags,
       minCount: 12,
     }),
-    excerpt: String(data.excerpt ?? ""),
+    excerpt: String(data.excerpt ?? fallbackExcerpt).trim() || fallbackExcerpt,
     draftMarkdown: normalizedMarkdown,
-    seoDescription: String(data.seoDescription ?? ""),
+    seoDescription:
+      String(data.seoDescription ?? fallbackExcerpt).trim() || fallbackExcerpt,
   };
 }

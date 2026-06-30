@@ -330,6 +330,35 @@ export const rssAutoWriterQueue = pgTable(
   }),
 );
 
+export const sourceFirstArticleJobs = pgTable(
+  "source_first_article_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    topic: text("topic").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("queued"),
+    sources: jsonb("sources").default([]).notNull(),
+    result: jsonb("result"),
+    error: text("error"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdBy: text("created_by").references(() => authUser.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    statusIdx: index("source_first_article_jobs_status_idx").on(
+      t.status,
+      t.createdAt,
+    ),
+    lockIdx: index("source_first_article_jobs_lock_idx").on(t.lockedAt),
+    createdByIdx: index("source_first_article_jobs_created_by_idx").on(t.createdBy),
+  }),
+);
+
 export const aiAutomationRssSources = pgTable("ai_automation_rss_sources", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

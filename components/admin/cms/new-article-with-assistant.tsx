@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Copy, Loader2, Sparkles, WandSparkles } from "lucide-react";
 import { AdminArticleForm } from "@/components/admin/cms/admin-article-form";
 import { Button } from "@/components/ui/button";
@@ -71,9 +71,12 @@ type SocialCopyPayload = {
   error?: string;
 };
 
-type SourceFirstAssistPayload = PrefillData & {
-  sourceFirst?: SourceFirstPayload;
-  error?: string;
+type SourceFirstJobPayload = {
+  id: string;
+  topic: string;
+  status: "queued" | "processing" | "done" | "failed" | string;
+  result?: (PrefillData & { sourceFirst?: SourceFirstPayload }) | null;
+  error?: string | null;
 };
 
 export function NewArticleWithAssistant() {
@@ -83,6 +86,8 @@ export function NewArticleWithAssistant() {
   const [prefill, setPrefill] = useState<PrefillData | undefined>(undefined);
   const [sourceFirstResult, setSourceFirstResult] =
     useState<SourceFirstPayload | null>(null);
+  const [sourceFirstJob, setSourceFirstJob] =
+    useState<SourceFirstJobPayload | null>(null);
   const [scrapePreview, setScrapePreview] = useState<InspectResult | null>(null);
   const [recentArticles, setRecentArticles] = useState<RecentArticle[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
@@ -91,6 +96,19 @@ export function NewArticleWithAssistant() {
   const [socialHeadlines, setSocialHeadlines] = useState<string[]>([]);
   const [socialTightHeadline, setSocialTightHeadline] = useState("");
   const [socialCaption, setSocialCaption] = useState("");
+
+  const applyPrefillData = useCallback((data: PrefillData) => {
+    setPrefill({
+      title: String(data.title ?? ""),
+      slug: String(data.slug ?? ""),
+      category: String(data.category ?? "General"),
+      tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+      excerpt: String(data.excerpt ?? ""),
+      draftMarkdown: String(data.draftMarkdown ?? ""),
+      draftHtml: String(data.draftHtml ?? ""),
+      seoDescription: String(data.seoDescription ?? ""),
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +133,60 @@ export function NewArticleWithAssistant() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!sourceFirstJob?.id || started) return;
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const pollJob = async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/ai/source-first/jobs/${sourceFirstJob.id}`,
+          { cache: "no-store" },
+        );
+        const payload = (await res.json().catch(() => ({}))) as {
+          job?: SourceFirstJobPayload;
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "Could not load source-first job");
+        }
+        if (cancelled || !payload.job) return;
+
+        setSourceFirstJob(payload.job);
+
+        if (payload.job.status === "done" && payload.job.result) {
+          applyPrefillData(payload.job.result);
+          setSourceFirstResult(payload.job.result.sourceFirst ?? null);
+          setScrapePreview(null);
+          setStarted(true);
+          toast.success("Source-first draft is ready.");
+          return;
+        }
+
+        if (payload.job.status === "failed") {
+          toast.error(payload.job.error || "Source-first job failed");
+          return;
+        }
+
+        timeoutId = setTimeout(pollJob, 4000);
+      } catch (error) {
+        if (cancelled) return;
+        toast.error(
+          error instanceof Error ? error.message : "Could not poll source-first job",
+        );
+      }
+    };
+
+    pollJob();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [applyPrefillData, sourceFirstJob?.id, started]);
 
   const copyText = async (value: string) => {
     const text = value.trim();
@@ -170,16 +242,7 @@ export function NewArticleWithAssistant() {
       }
 
       const data = await generateWithGemini(source);
-      setPrefill({
-        title: String(data.title ?? ""),
-        slug: String(data.slug ?? ""),
-        category: String(data.category ?? "General"),
-        tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-        excerpt: String(data.excerpt ?? ""),
-        draftMarkdown: String(data.draftMarkdown ?? ""),
-        draftHtml: String(data.draftHtml ?? ""),
-        seoDescription: String(data.seoDescription ?? ""),
-      });
+      applyPrefillData(data);
       setStarted(true);
       toast.success("Draft generated. Continue editing below.");
     } catch (error) {
@@ -196,16 +259,7 @@ export function NewArticleWithAssistant() {
     setLoading(true);
     try {
       const data = await generateWithGemini(source);
-      setPrefill({
-        title: String(data.title ?? ""),
-        slug: String(data.slug ?? ""),
-        category: String(data.category ?? "General"),
-        tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-        excerpt: String(data.excerpt ?? ""),
-        draftMarkdown: String(data.draftMarkdown ?? ""),
-        draftHtml: String(data.draftHtml ?? ""),
-        seoDescription: String(data.seoDescription ?? ""),
-      });
+      applyPrefillData(data);
       setScrapePreview(null);
       setStarted(true);
       toast.success("Draft generated. Continue editing below.");
@@ -218,82 +272,36 @@ export function NewArticleWithAssistant() {
     }
   };
 
-  const runSourceFirstResearch = async () => {
+  const startSourceFirstJob = async () => {
     if (!source.trim()) return;
     setLoading(true);
     setSourceFirstResult(null);
+    setSourceFirstJob(null);
     try {
-      const res = await fetch("/api/admin/ai/article-assist", {
+      const res = await fetch("/api/admin/ai/source-first/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "sourceFirstResearch",
-          title: source,
-          html: source,
+          topic: source,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as SourceFirstAssistPayload;
+      const data = (await res.json().catch(() => ({}))) as {
+        job?: SourceFirstJobPayload;
+        error?: string;
+      };
       if (!res.ok) {
-        throw new Error(data.error || "Source-first research request failed");
+        throw new Error(data.error || "Source-first job request failed");
       }
 
-      const research = data.sourceFirst ?? null;
-      if (!research?.sources?.length) {
-        throw new Error("No verified sources found. Try a more specific topic.");
-      }
-
-      setSourceFirstResult(research);
+      if (!data.job) throw new Error("Source-first job was not created.");
+      setSourceFirstJob(data.job);
       setScrapePreview(null);
-      toast.success("Sources verified. Review them, then generate the draft.");
+      toast.success("Source-first job queued. The worker will write the draft.");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Could not verify source-first research",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateFromSourceFirstResearch = async () => {
-    if (!source.trim() || !sourceFirstResult?.sources?.length) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/ai/article-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "sourceFirstArticle",
-          title: sourceFirstResult.query || source,
-          html: sourceFirstResult.query || source,
-          sources: sourceFirstResult.sources,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as SourceFirstAssistPayload;
-      if (!res.ok) {
-        throw new Error(data.error || "Source-first assistant request failed");
-      }
-
-      setPrefill({
-        title: String(data.title ?? ""),
-        slug: String(data.slug ?? ""),
-        category: String(data.category ?? "General"),
-        tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-        excerpt: String(data.excerpt ?? ""),
-        draftMarkdown: String(data.draftMarkdown ?? ""),
-        draftHtml: String(data.draftHtml ?? ""),
-        seoDescription: String(data.seoDescription ?? ""),
-      });
-      setSourceFirstResult(data.sourceFirst ?? sourceFirstResult);
-      setScrapePreview(null);
-      setStarted(true);
-      toast.success("Source-first draft generated with verified links.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not generate source-first draft",
+          : "Could not start source-first job",
       );
     } finally {
       setLoading(false);
@@ -449,8 +457,12 @@ export function NewArticleWithAssistant() {
           </Button>
           <Button
             type="button"
-            onClick={runSourceFirstResearch}
-            disabled={loading || !source.trim()}
+            onClick={startSourceFirstJob}
+            disabled={
+              loading ||
+              !source.trim() ||
+              (!!sourceFirstJob && sourceFirstJob.status !== "failed")
+            }
             className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             {loading ? (
@@ -458,58 +470,38 @@ export function NewArticleWithAssistant() {
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            {loading ? "Researching..." : "Find verified sources"}
+            {loading ? "Queueing..." : "Start source-first worker job"}
           </Button>
           <Button variant="ghost" onClick={() => setStarted(true)}>
             Skip and open empty form
           </Button>
         </div>
-        {sourceFirstResult ? (
+        {sourceFirstJob ? (
           <div className="space-y-4 rounded-xl border border-emerald-400/40 bg-emerald-950/20 p-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">
-                Source-first research
+                Source-first worker
               </p>
               <h2 className="mt-1 text-lg font-semibold text-background">
-                Verified sources ready
+                {sourceFirstJob.status === "failed"
+                  ? "Job failed"
+                  : "Draft job is running"}
               </h2>
               <p className="mt-1 text-sm text-background/75">
-                Review these links, then generate the article in a separate request.
+                Status: {sourceFirstJob.status}. The page will keep checking until
+                the worker stores the finished article.
               </p>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {sourceFirstResult.sources.map((sourceItem) => (
-                <a
-                  key={sourceItem.id}
-                  href={sourceItem.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-xl border border-emerald-300/30 bg-background/10 p-4 transition-colors hover:border-emerald-300"
-                >
-                  <p className="text-xs font-semibold text-emerald-200">
-                    {sourceItem.id} · {sourceItem.publisher}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-background">
-                    {sourceItem.title}
-                  </p>
-                  <p className="mt-2 line-clamp-2 text-xs text-background/70">
-                    {sourceItem.snippet}
-                  </p>
-                </a>
-              ))}
-            </div>
-            {sourceFirstResult.skipped?.length ? (
+            {sourceFirstJob.status === "failed" ? (
               <p className="text-xs text-background/70">
-                Skipped {sourceFirstResult.skipped.length} source
-                {sourceFirstResult.skipped.length === 1 ? "" : "s"} that could not
-                be validated.
+                {sourceFirstJob.error || "The worker could not finish this draft."}
               </p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                onClick={generateFromSourceFirstResearch}
-                disabled={loading || sourceFirstResult.sources.length < 2}
+                onClick={startSourceFirstJob}
+                disabled={loading || !source.trim() || sourceFirstJob.status !== "failed"}
                 className="bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 {loading ? (
@@ -517,15 +509,15 @@ export function NewArticleWithAssistant() {
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                {loading ? "Writing..." : "Write article from these sources"}
+                Retry source-first job
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setSourceFirstResult(null)}
+                onClick={() => setSourceFirstJob(null)}
                 disabled={loading}
               >
-                Clear sources
+                Clear job
               </Button>
             </div>
           </div>

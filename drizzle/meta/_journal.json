@@ -274,6 +274,13 @@
       "when": 1779023000000,
       "tag": "0038_auth_user_schema_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1779024000000,
+      "tag": "0039_source_first_article_jobs",
+      "breakpoints": true
     }
   ]
 }
