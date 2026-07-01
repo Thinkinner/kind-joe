@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { sourceFirstArticleJobs } from "@/db/schema";
-import { generateSourceFirstArticle } from "@/lib/ai/article-assist-service";
+import { generateEditorialTopicArticle, generateSourceFirstArticle } from "@/lib/ai/article-assist-service";
 import {
   gatherSourceFirstResearch,
   type SourceFirstPacket,
@@ -60,6 +60,8 @@ export type SourceFirstJobResult = {
       title: string;
       reason: string;
     }>;
+    limitedSources: boolean;
+    generationMode: "source-first" | "editorial";
   };
 };
 
@@ -286,12 +288,23 @@ export async function processSourceFirstArticleJob(
   const research = await gatherSourceFirstResearch(job.topic, {
     searchLimit: 4,
     minSources: 2,
+    requireMinSources: false,
   });
-  const generated = await generateSourceFirstArticle({
-    query: research.query,
-    sources: research.sources,
-    model: SOURCE_FIRST_ARTICLE_MODEL,
-  });
+
+  const generationMode =
+    research.sources.length >= 1 ? "source-first" : "editorial";
+  const generated =
+    generationMode === "source-first"
+      ? await generateSourceFirstArticle({
+          query: research.query,
+          sources: research.sources,
+          model: SOURCE_FIRST_ARTICLE_MODEL,
+        })
+      : await generateEditorialTopicArticle({
+          query: research.query,
+          sources: research.sources,
+          model: SOURCE_FIRST_ARTICLE_MODEL,
+        });
   const safeTitle = deriveSafeTitle({
     generatedTitle: generated.title,
     topic: research.query,
@@ -324,6 +337,8 @@ export async function processSourceFirstArticleJob(
         extractedLength: source.extractedText.length,
       })),
       skipped: research.skipped,
+      limitedSources: research.limitedSources,
+      generationMode,
     },
   };
 

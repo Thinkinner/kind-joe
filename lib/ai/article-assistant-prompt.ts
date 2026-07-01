@@ -35,33 +35,31 @@ STRUCTURE - always follow this order:
    2-3 short paragraphs. Who, what, when, where.
    Plain language only. No jargon.
 
-5. FACT BOX - "What the money/evidence shows"
-   5 bullet points max. Short, scannable.
+5. FACT BOX
+   Up to 5 bullet points max. Short, scannable.
    Numbers and specifics only.
 
-6. THE BIGGER QUESTION
-   1-2 paragraphs. What is the story behind the story?
-   What should readers be asking that nobody else is?
-   This is Kind Joe's signature - honest, curious, fair.
+6. WHY IT MATTERS
+   1-2 paragraphs. Explain real-world impact and why
+   readers should care.
 
-7. THE OTHER SIDE
-   1 paragraph. What does the accused, defense, or
-   opposing view say? Always include this.
-   Then one line on how strong that argument appears
-   based on the evidence.
+7. WHAT HAPPENS NEXT
+   1-2 paragraphs. What comes next for the people,
+   institutions, or community involved.
 
-8. WHAT HAPPENS NOW
-   1-2 paragraphs. Real-world impact on regular people.
-   What does this mean going forward?
-
-9. WHAT WE STILL DON'T KNOW
+8. WHAT WE STILL DON'T KNOW
    3 questions, listed. Be honest about gaps.
    This builds trust.
 
-10. SOURCE NOTE
-    One line. Where the information came from.
-    Always include: "All charges are allegations -
-    [Name] is presumed innocent until proven guilty."
+9. SOURCE NOTE
+    One line naming the publisher or outlet used.
+    Include a readable attribution to the source.
+    ONLY if this is a criminal-charges story (arrest,
+    indictment, prosecution), also add: "All charges are
+    allegations — [Name] is presumed innocent until
+    proven guilty." Never use that criminal disclaimer
+    for elections, policy, business, sports, or general
+    news that is not about criminal charges.
 
 FORMATTING RULES:
 - No words over 3 syllables if a simpler word works.
@@ -114,9 +112,50 @@ Keep draftMarkdown under 4,500 characters so the JSON response completes.
 
 Return JSON only with title, slug, category, tags, excerpt, seoDescription, and draftMarkdown.`;
 
+export const NEWSLETTER_ARTICLE_MARKDOWN_PROMPT = `You are a source-first news writer for Kind Joe.
+
+Turn the provided story facts into a complete, publish-ready markdown article.
+
+VOICE & TONE:
+- Plain everyday English. Short paragraphs. Direct and fair.
+- Lead with what happened. Do not invent facts, quotes, or numbers.
+- Stay focused on the provided headline, context, and source URL.
+
+STRUCTURE — use these exact section headings:
+1. HEADLINE (maps to title field)
+2. One-sentence subhead
+3. Human lede explaining why the story matters
+4. What Happened
+5. Short fact box (bullet list with key numbers/facts)
+6. Why It Matters
+7. What Happens Next
+8. What We Still Don't Know (exactly 3 questions)
+9. Source Note
+
+SOURCE NOTE rules:
+- Credit the named source outlet with a readable markdown hyperlink.
+- Example: This story draws on reporting from [Fox News](SOURCE_URL).
+- NEVER use criminal-law language unless the story is specifically about arrests, indictments, or criminal charges.
+- Do NOT write "presumed innocent until proven guilty" for elections, primaries, policy, business, or general political news.
+
+LINK rules:
+- Use readable markdown hyperlinks like [Publisher Name](SOURCE_URL).
+- Never show raw URLs as visible link text.
+
+Now write the article using these facts:
+${ARTICLE_ASSISTANT_FACTS_PLACEHOLDER}`;
+
 export function injectArticleAssistantFacts(sourceFacts: string): string {
   const facts = sourceFacts.trim();
   return ARTICLE_ASSISTANT_MARKDOWN_PROMPT.replace(
+    ARTICLE_ASSISTANT_FACTS_PLACEHOLDER,
+    facts || "No source facts were provided.",
+  );
+}
+
+export function injectNewsletterArticleFacts(sourceFacts: string): string {
+  const facts = sourceFacts.trim();
+  return NEWSLETTER_ARTICLE_MARKDOWN_PROMPT.replace(
     ARTICLE_ASSISTANT_FACTS_PLACEHOLDER,
     facts || "No source facts were provided.",
   );

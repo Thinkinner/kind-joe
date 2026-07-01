@@ -24,6 +24,8 @@ export type SourceFirstResearchResult = {
     title: string;
     reason: string;
   }>;
+  /** True when fewer than the preferred source count were found but research still returned. */
+  limitedSources: boolean;
 };
 
 function publisherFromUrl(url: string): string {
@@ -433,18 +435,47 @@ async function searchGoogleNewsRss(
   };
 }
 
-function normalizeSourcePacket(
+async function normalizeSourcePacket(
   source: NonNullable<GeminiResearchPayload["sources"]>[number],
-): SourceFirstPacket | null {
-  const url = String(source.url ?? "").trim();
+): Promise<SourceFirstPacket | null> {
+  let url = String(source.url ?? "").trim();
   if (!isUsablePublicUrl(url)) return null;
+
+  if (isGoogleNewsRedirectUrl(url)) {
+    const resolved = await resolvePublisherUrl(url);
+    if (!resolved) return null;
+    url = resolved.url;
+    if (resolved.title && !String(source.title ?? "").trim()) {
+      source = { ...source, title: resolved.title };
+    }
+  }
+
   if (publisherFromUrl(url).toLowerCase() === "news.google.com") return null;
 
-  const extractedText = String(source.extractedText ?? source.snippet ?? "")
+  let extractedText = String(source.extractedText ?? source.snippet ?? "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, MAX_SOURCE_CHARS);
-  if (extractedText.length < 100) return null;
+
+  if (extractedText.length < 80) {
+    try {
+      const payload = await sourceFromUrl(url);
+      const fetched = payload.sources?.[0];
+      if (fetched?.extractedText) {
+        extractedText = String(fetched.extractedText).slice(0, MAX_SOURCE_CHARS);
+      }
+      if (!String(source.title ?? "").trim() && fetched?.title) {
+        source = { ...source, title: fetched.title };
+      }
+      if (!String(source.snippet ?? "").trim() && fetched?.snippet) {
+        source = { ...source, snippet: fetched.snippet };
+      }
+    } catch {
+      // Keep whatever context we already have.
+    }
+  }
+
+  if (extractedText.length < 80) return null;
 
   const publisher = String(source.publisher ?? "").trim() || publisherFromUrl(url);
   return {
@@ -511,9 +542,88 @@ async function validateSourceUrl(
   }
 }
 
+function isGoogleNewsRedirectUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.toLowerCase() === "news.google.com";
+  } catch {
+    return false;
+  }
+}
+
+async function resolvePublisherUrl(
+  url: string,
+): Promise<{ url: string; title?: string } | null> {
+  if (!isUsablePublicUrl(url)) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SOURCE_VALIDATION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7",
+        "User-Agent": SOURCE_URL_USER_AGENT,
+      },
+    });
+
+    const finalUrl = response.url || url;
+    if (!isUsablePublicUrl(finalUrl) || isGoogleNewsRedirectUrl(finalUrl)) {
+      return null;
+    }
+
+    if (response.ok) {
+      const html = await response.text();
+      const title = htmlMeta(html, "og:title") || htmlTitle(html);
+      return { url: finalUrl, title: title || undefined };
+    }
+
+    if (response.status === 404 || response.status === 410) return null;
+    return { url: finalUrl };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function enrichSourceFromUrl(source: SourceFirstPacket): Promise<SourceFirstPacket> {
+  if (source.extractedText.length >= 250) return source;
+
+  try {
+    const payload = await sourceFromUrl(source.url);
+    const enriched = normalizeSourcePacket(payload.sources?.[0]);
+    if (!enriched) return source;
+
+    return {
+      ...source,
+      title: enriched.title || source.title,
+      publisher: enriched.publisher || source.publisher,
+      snippet: enriched.snippet || source.snippet,
+      extractedText: enriched.extractedText || source.extractedText,
+      url: enriched.url || source.url,
+    };
+  } catch {
+    return source;
+  }
+}
+
+function payloadHasSources(payload: GeminiResearchPayload | null | undefined): boolean {
+  return Boolean(payload?.sources?.some((item) => Boolean(String(item.url ?? "").trim())));
+}
+
 export async function gatherSourceFirstResearch(
   query: string,
-  options: { searchLimit?: number; minSources?: number } = {},
+  options: {
+    searchLimit?: number;
+    minSources?: number;
+    /** When false, return partial results instead of throwing if sources are scarce. */
+    requireMinSources?: boolean;
+  } = {},
 ): Promise<SourceFirstResearchResult> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) throw new Error("Search topic is required.");
@@ -525,10 +635,12 @@ export async function gatherSourceFirstResearch(
   const seenHosts = new Set<string>();
 
   const addPayloadSources = async (researchPayload: GeminiResearchPayload) => {
-    const normalizedSources = (researchPayload.sources ?? []).map((item) => ({
-      item,
-      source: normalizeSourcePacket(item),
-    }));
+    const normalizedSources = await Promise.all(
+      (researchPayload.sources ?? []).map(async (item) => ({
+        item,
+        source: await normalizeSourcePacket(item),
+      })),
+    );
 
     const validations = await Promise.all(
       normalizedSources.map(async ({ source }) => {
@@ -613,29 +725,41 @@ export async function gatherSourceFirstResearch(
     searchQuery = primaryTitle || withoutUrls(normalizedQuery);
   }
 
-  const customPayload =
-    (await searchGoogleCustom(
-      searchQuery || withoutUrls(normalizedQuery) || normalizedQuery,
+  const resolvedSearchQuery =
+    searchQuery || withoutUrls(normalizedQuery) || normalizedQuery;
+  const customSearchPayload = await searchGoogleCustom(
+    resolvedSearchQuery,
+    candidateLimit,
+  );
+  if (payloadHasSources(customSearchPayload)) {
+    await addPayloadSources(customSearchPayload!);
+  }
+
+  if (sources.length < requestedLimit) {
+    const groundedPayload = await searchGeminiGroundedDirect(
+      resolvedSearchQuery,
       candidateLimit,
-    )) ??
-    (await searchGeminiGroundedDirect(
-      searchQuery || withoutUrls(normalizedQuery) || normalizedQuery,
-      candidateLimit,
-    ));
-  if (customPayload) {
-    await addPayloadSources(customPayload);
+    );
+    if (payloadHasSources(groundedPayload)) {
+      await addPayloadSources(groundedPayload!);
+    }
   }
 
   const relevanceTokens = importantTokens(
     searchQuery || withoutUrls(normalizedQuery) || normalizedQuery,
   );
+  const minSources = options.minSources ?? 2;
+  const requireMinSources = options.requireMinSources ?? true;
   if (sources.length > 1 && relevanceTokens.size >= 2) {
     const primary = sources[0];
     const relevantSources = sources.filter((source, index) => {
       if (index === 0) return true;
       return tokenOverlapScore(relevanceTokens, source) >= 2;
     });
-    if (relevantSources.length !== sources.length) {
+    const canFilter =
+      relevantSources.length >= minSources ||
+      (!requireMinSources && relevantSources.length >= 1);
+    if (canFilter && relevantSources.length !== sources.length) {
       const removed = sources.filter((source) => !relevantSources.includes(source));
       skipped.push(
         ...removed.map((source) => ({
@@ -649,8 +773,7 @@ export async function gatherSourceFirstResearch(
     }
   }
 
-  const minSources = options.minSources ?? 2;
-  if (sources.length < minSources && customPayload) {
+  if (sources.length < minSources) {
     const supplementalPayload = await searchGoogleNewsRss(
       `${searchQuery || normalizedQuery} latest`,
       candidateLimit + 4,
@@ -658,7 +781,14 @@ export async function gatherSourceFirstResearch(
     await addPayloadSources(supplementalPayload);
   }
 
-  if (sources.length < minSources) {
+  if (sources.length > 0) {
+    const enriched = await Promise.all(sources.map((source) => enrichSourceFromUrl(source)));
+    sources.length = 0;
+    sources.push(...enriched.map((source, index) => ({ ...source, id: `S${index + 1}` })));
+  }
+
+  const limitedSources = sources.length < minSources;
+  if (limitedSources && requireMinSources) {
     throw new Error(
       `Only ${sources.length} usable direct source${sources.length === 1 ? "" : "s"} found. At least ${minSources} are required. Configure GOOGLE_CSE_ID/GOOGLE_SEARCH_ENGINE_ID or enable Gemini grounded search with GOOGLE_API_KEY, then try a more specific topic.`,
     );
@@ -668,5 +798,6 @@ export async function gatherSourceFirstResearch(
     query: normalizedQuery,
     sources,
     skipped,
+    limitedSources,
   };
 }

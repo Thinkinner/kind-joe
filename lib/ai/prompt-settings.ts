@@ -56,7 +56,7 @@ export const PROMPT_SETTINGS_DEFAULTS = {
     "Under WHAT WE STILL DON'T KNOW, include exactly 3 unanswered questions as a list.",
     "For FACT BOX, include up to 5 bullets with concrete numbers/specific evidence only.",
     "For THE OTHER SIDE, include the defense/opposing view and one line evaluating how strong it appears based on available evidence.",
-    "Always include this sentence in SOURCE NOTE: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+    "In SOURCE NOTE, credit the reporting outlet. Only add criminal-law language (All charges are allegations — [Name] is presumed innocent until proven guilty) when the story is specifically about arrests, indictments, or criminal charges.",
     "Preserve accuracy and attribution. Do not invent quotes, dates, or facts.",
     "Use semantic HTML with headings (<h2>/<h3>), paragraphs, and list tags where needed.",
     "Return clean HTML in draftHtml only (no markdown).",
@@ -72,7 +72,7 @@ export const PROMPT_SETTINGS_DEFAULTS = {
     "FACT BOX should be short bullet points with concrete evidence and numbers.",
     "WHAT WE STILL DON'T KNOW must list exactly 3 unanswered questions.",
     "THE OTHER SIDE must include the opposing/defense view plus one line assessing strength based on available evidence.",
-    "SOURCE NOTE must include: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+    "SOURCE NOTE must credit the outlet. Only add criminal-law language (All charges are allegations — [Name] is presumed innocent until proven guilty) for arrest/charges stories.",
     "Keep additions editorially useful and readable; do not invent facts or quotes.",
     "Return clean HTML in draftHtml only (no markdown).",
   ].join("\n"),
@@ -106,7 +106,7 @@ export const PROMPT_SETTINGS_DEFAULTS = {
       "6) THE OTHER SIDE: 1 paragraph with defense/opposing view, then one line evaluating strength based on evidence.",
       "7) WHAT HAPPENS NOW: 1-2 paragraphs on real-world impact and what comes next.",
       "8) WHAT WE STILL DON'T KNOW: list 3 unanswered questions.",
-      "9) SOURCE NOTE: one line with source and include: All charges are allegations — [Name] is presumed innocent until proven guilty.",
+      "9) SOURCE NOTE: one line with source attribution. Only add criminal-law language (All charges are allegations — [Name] is presumed innocent until proven guilty) for arrest/charges stories.",
       "",
       "LAYOUT FOR PUBLISH (important):",
       "- Use heading text exactly: BY THE NUMBERS, CHARGES FILED, and KEY DATE for card-style side rail rendering.",
@@ -309,7 +309,7 @@ STRUCTURE — follow this order:
 7) THE OTHER SIDE
 8) WHAT HAPPENS NOW
 9) WHAT WE STILL DON'T KNOW (3 questions)
-10) SOURCE NOTE (include: All charges are allegations — [Name] is presumed innocent until proven guilty.)
+10) SOURCE NOTE (credit the outlet; only add criminal-law disclaimers for arrest/charges stories.)
 
 FACT RULES:
 - Do not invent quotes or facts.

@@ -4,7 +4,7 @@ import {
   PROMPT_SETTINGS_DEFAULTS,
   renderPromptTemplate,
 } from "@/lib/ai/prompt-settings";
-import { injectArticleAssistantFacts } from "@/lib/ai/article-assistant-prompt";
+import { injectNewsletterArticleFacts } from "@/lib/ai/article-assistant-prompt";
 import {
   NewsletterData,
   RawRssItem,
@@ -139,12 +139,74 @@ function countMarkdownLinks(markdown: string): number {
   return Array.from(markdown.matchAll(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g)).length;
 }
 
-function newsletterArticleProblem(markdown: string): string | null {
+function storyInvolvesCriminalCharges(story: NewsletterStory): boolean {
+  const haystack = [
+    story.headline,
+    story.summary,
+    story.category,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /\b(charged|charges|indictment|indicted|arrested|arrest|prosecution|prosecutor|felony|misdemeanor|plea deal|criminal case|criminal charges|accused of)\b/i.test(
+    haystack,
+  );
+}
+
+function stripInappropriateLegalBoilerplate(
+  markdown: string,
+  story: NewsletterStory,
+): string {
+  if (storyInvolvesCriminalCharges(story)) return markdown;
+
+  return markdown
+    .replace(
+      /\s*all charges are allegations[^.\n]*presumed innocent until proven guilty\.?/gi,
+      "",
+    )
+    .replace(/\s*presumed innocent until proven guilty\.?/gi, "")
+    .replace(/\s*all charges are allegations[^.\n]*\.?/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function ensureMinimumNewsletterSourceLink(
+  markdown: string,
+  story: NewsletterStory,
+): string {
+  if (countMarkdownLinks(markdown) >= 1) return markdown;
+
+  const sourceUrl = (story.sourceUrl || "").trim();
+  if (!sourceUrl) return markdown;
+
+  const label = readableLinkLabel(story);
+  const citation = `This story draws on reporting from [${label}](${sourceUrl}).`;
+  if (/source note/i.test(markdown)) {
+    return markdown.replace(/(source note[^\n]*\n)/i, `$1\n${citation}\n`);
+  }
+
+  return `${markdown.trim()}\n\n### Source Note\n\n${citation}\n`;
+}
+
+function finalizeNewsletterArticleMarkdown(
+  markdown: string,
+  story: NewsletterStory,
+): string {
+  const linked = sanitizeNewsletterArticleLinks(markdown, story);
+  const cleaned = stripInappropriateLegalBoilerplate(linked, story);
+  return ensureMinimumNewsletterSourceLink(cleaned, story);
+}
+
+function newsletterArticleProblem(
+  markdown: string,
+  story: NewsletterStory,
+): string | null {
   const trimmed = markdown.trim();
   if (!trimmed) return "empty article body";
 
   const words = countMarkdownWords(trimmed);
-  if (words < 550) return `too short (${words} words)`;
+  if (words < 500) return `too short (${words} words)`;
   if (countMarkdownLinks(trimmed) < 1) return "missing readable source hyperlink";
   if (/public official, a high-profile community event/i.test(trimmed)) {
     return "contains generic filler";
@@ -154,6 +216,29 @@ function newsletterArticleProblem(markdown: string): string | null {
   }
   if (/\[https?:\/\/[^\]]+\]/i.test(trimmed)) {
     return "contains raw URL citation text";
+  }
+  if (
+    !storyInvolvesCriminalCharges(story) &&
+    /presumed innocent until proven guilty|all charges are allegations/i.test(trimmed)
+  ) {
+    return "contains inappropriate criminal disclaimer";
+  }
+  const requiredSections = [
+    "what happened",
+    "why it matters",
+    "what happens next",
+    "what we still don't know",
+    "source note",
+  ];
+  const normalized = trimmed.toLowerCase();
+  const missingSection = requiredSections.find(
+    (section) => !normalized.includes(section),
+  );
+  if (missingSection) {
+    return `missing section: ${missingSection}`;
+  }
+  if (/\bthe bigger question\b/i.test(trimmed) || /\bthe other side\b/i.test(trimmed)) {
+    return "uses outdated section headings";
   }
   return null;
 }
@@ -769,7 +854,7 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
     `Source URL: ${story.sourceUrl || "(none provided)"}`,
     `Source name: ${story.sourceName || "(none provided)"}`,
   ].join("\n");
-  const prompt = injectArticleAssistantFacts(sourceFacts);
+  const prompt = injectNewsletterArticleFacts(sourceFacts);
   const markdownOutputGuard = [
     "",
     "NEWSLETTER OUTPUT OVERRIDE (strict):",
@@ -777,14 +862,16 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
     "- Return valid JSON only with these exact fields:",
     "  slug, title, excerpt, contentMarkdown, seoTitle, seoDescription, seoKeywords, readingMinutes",
     "- contentMarkdown must be markdown text only (no HTML tags).",
-    "- Write a complete 600-850 word article body.",
-    "- Use markdown section headings and bullets.",
+    "- Write a complete 500-750 word article body.",
+    "- Use these section headings exactly: What Happened, Why It Matters, What Happens Next, What We Still Don't Know, Source Note.",
+    "- Do NOT use The Bigger Question or The Other Side headings.",
     "- Include readable markdown hyperlinks, not raw visible URLs.",
     "- Use the publisher or story subject as link text, e.g. [Fox News](SOURCE_URL).",
     "- Never use raw URLs, bracketed URLs, or source IDs as visible link text.",
     "- Do not use markdown tables.",
     "- Do not use generic filler that does not match this story.",
     "- The article must stay focused on the provided story headline, context, and source URL.",
+    "- NEVER add criminal-law disclaimers (presumed innocent, all charges are allegations) unless the story is specifically about arrests or criminal charges.",
     "- Do not return contentHtml.",
     "- Do not return category or tags in this response shape.",
   ].join("\n");
@@ -807,7 +894,7 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
         }
       | undefined;
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       const retryInstructions =
         attempt === 0
           ? ""
@@ -816,8 +903,10 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
               `PREVIOUS ARTICLE REJECTED: ${lastProblem}`,
               "Rewrite from scratch.",
               "Return complete valid JSON only.",
-              "Make contentMarkdown 600-850 words.",
+              "Make contentMarkdown 500-750 words.",
+              "Use section headings: What Happened, Why It Matters, What Happens Next, What We Still Don't Know, Source Note.",
               "Use readable markdown links with publisher/story text as link text.",
+              "Do not use criminal disclaimers unless this is an arrest/charges story.",
             ].join("\n");
 
       response = await ai.models.generateContent({
@@ -854,12 +943,12 @@ export const generateFullArticleContent = async (story: NewsletterStory) => {
         );
       }
 
-      parsed.contentMarkdown = sanitizeNewsletterArticleLinks(
+      parsed.contentMarkdown = finalizeNewsletterArticleMarkdown(
         parsed.contentMarkdown || "",
         story,
       );
 
-      const problem = newsletterArticleProblem(parsed.contentMarkdown);
+      const problem = newsletterArticleProblem(parsed.contentMarkdown, story);
       if (!problem) break;
       lastProblem = problem;
       parsed = undefined;
