@@ -185,6 +185,21 @@ function editorialDraftProblem(markdown: string): string | null {
   return null;
 }
 
+function providedContentDraftProblem(markdown: string): string | null {
+  if (!markdown.trim()) return "empty draft";
+  const words = countWords(markdown);
+  if (words < 450) return `too short (${words} words)`;
+  const missingSections = missingSourceFirstSections(markdown);
+  if (missingSections.length > 0) {
+    return `missing sections: ${missingSections.join(", ")}`;
+  }
+  if (!/source note/i.test(markdown)) return "missing source note";
+  if (/presumed innocent until proven guilty|all charges are allegations/i.test(markdown)) {
+    return "contains inappropriate criminal disclaimer";
+  }
+  return null;
+}
+
 function normalizedUrlKey(url: string): string {
   try {
     const parsed = new URL(url);
@@ -602,6 +617,160 @@ export async function generateArticleAssistAll(input: {
     excerpt: String(data.excerpt ?? ""),
     draftMarkdown: normalizedMarkdown,
     seoDescription: String(data.seoDescription ?? ""),
+  };
+}
+
+export async function generateProvidedContentArticle(input: {
+  query: string;
+  model?: string;
+}): Promise<ArticleAssistAllOutput> {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
+
+  const providedDetails = summarizeForMode(input.query.trim(), SOURCE_FIRST_INPUT_LIMIT);
+  const draftContents = [
+    "You are a Kind Joe news writer.",
+    "Write the article body as markdown only. Do not return JSON.",
+    "",
+    "The user pasted event details or notes below. Turn them into a complete publish-ready article.",
+    "Use ONLY facts present in the provided details. Do not invent quotes, numbers, names, or outcomes.",
+    "If something is unclear in the notes, say so in What We Still Don't Know.",
+    "",
+    "Hard rules:",
+    "- Write a complete article of 500-750 words.",
+    "- Use short paragraphs and plain English.",
+    "- Do not use markdown tables.",
+    "- Do not add external source links or fake citations.",
+    "- Do not use criminal-law disclaimers unless the notes are about criminal charges.",
+    "- End with a Source Note that says the article is based on details provided to Kind Joe.",
+    "",
+    "Structure:",
+    "1. Markdown H1 headline.",
+    "2. One-sentence subhead.",
+    "3. Human lede.",
+    "4. What Happened",
+    "5. Short fact box (bullet list from the provided details).",
+    "6. Why It Matters",
+    "7. What Happens Next",
+    "8. What We Still Don't Know (3 questions)",
+    "9. Source Note",
+    "",
+    "PROVIDED DETAILS:",
+    providedDetails,
+  ].join("\n");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const runDraftModel = async (contents: string) =>
+    ai.models.generateContent({
+      model: input.model || ARTICLE_ASSIST_MODEL,
+      contents,
+      config: articleAssistTextGenerateConfig({
+        maxOutputTokens: 8192,
+      }),
+    });
+
+  let draftResponse = await runDraftModel(draftContents);
+  let rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
+  let normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
+
+  let draftProblem = providedContentDraftProblem(normalizedMarkdown);
+  if (draftProblem) {
+    draftResponse = await runDraftModel(
+      [
+        draftContents,
+        "",
+        `IMPORTANT: The previous draft was rejected because it was ${draftProblem}.`,
+        "Return markdown only.",
+        "Write a complete 500-750 word article from the provided details only.",
+        "Include every required section exactly once.",
+        "Do not return JSON.",
+      ].join("\n"),
+    );
+    rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
+    normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
+    draftProblem = providedContentDraftProblem(normalizedMarkdown);
+  }
+
+  if (draftProblem) {
+    draftResponse = await runDraftModel(
+      [
+        "Expand this draft into a complete article using ONLY the provided details below.",
+        "Target 500-750 words. Add missing sections if needed.",
+        "Return markdown only.",
+        "",
+        "PROVIDED DETAILS:",
+        providedDetails,
+        "",
+        "DRAFT TO EXPAND:",
+        normalizedMarkdown,
+      ].join("\n"),
+    );
+    rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
+    normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
+    draftProblem = providedContentDraftProblem(normalizedMarkdown);
+  }
+
+  if (draftProblem) {
+    throw new Error(
+      `AI returned an incomplete provided-content article draft: ${draftProblem}.`,
+    );
+  }
+
+  const fallbackTitle = titleFromMarkdown(normalizedMarkdown);
+  const metadataContents = [
+    "Return compact JSON metadata for this CMS article.",
+    "Do not include the article body.",
+    "Tags must be lowercase kebab-case, specific, and 12-20 items.",
+    "",
+    "INPUT:",
+    JSON.stringify({
+      topic: summarizeForMode(providedDetails, 1200),
+      fallbackTitle,
+      articleMarkdown: summarizeForMode(normalizedMarkdown, 1800),
+      providedContent: true,
+    }),
+  ].join("\n");
+
+  const runMetadataModel = async (contents: string) =>
+    ai.models.generateContent({
+      model: input.model || ARTICLE_ASSIST_MODEL,
+      contents,
+      config: articleAssistGenerateConfig({
+        responseSchema: SOURCE_FIRST_METADATA_SCHEMA,
+        maxOutputTokens: 900,
+      }),
+    });
+
+  const metadataResponse = await runMetadataModel(metadataContents);
+  let data: Record<string, unknown>;
+  try {
+    data = parseGeneratedJson<Record<string, unknown>>(
+      metadataResponse.text?.trim() || "{}",
+    );
+  } catch {
+    data = {};
+  }
+
+  const title = String(data.title ?? fallbackTitle).trim() || fallbackTitle;
+  const category = String(data.category ?? "News").trim() || "News";
+  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
+  const fallbackExcerpt = excerptFromMarkdown(normalizedMarkdown);
+
+  return {
+    title,
+    slug: String(data.slug ?? "").trim() || slugify(title),
+    category,
+    tags: buildMinimumTags({
+      title,
+      category,
+      sourceText: providedDetails,
+      existing: tags,
+      minCount: 12,
+    }),
+    excerpt: String(data.excerpt ?? fallbackExcerpt).trim() || fallbackExcerpt,
+    draftMarkdown: normalizedMarkdown,
+    seoDescription:
+      String(data.seoDescription ?? fallbackExcerpt).trim() || fallbackExcerpt,
   };
 }
 

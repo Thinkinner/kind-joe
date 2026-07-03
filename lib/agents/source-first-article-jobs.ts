@@ -1,7 +1,11 @@
 import { and, asc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { sourceFirstArticleJobs } from "@/db/schema";
-import { generateEditorialTopicArticle, generateSourceFirstArticle } from "@/lib/ai/article-assist-service";
+import {
+  generateEditorialTopicArticle,
+  generateProvidedContentArticle,
+  generateSourceFirstArticle,
+} from "@/lib/ai/article-assist-service";
 import {
   gatherSourceFirstResearch,
   type SourceFirstPacket,
@@ -61,7 +65,7 @@ export type SourceFirstJobResult = {
       reason: string;
     }>;
     limitedSources: boolean;
-    generationMode: "source-first" | "editorial";
+    generationMode: "source-first" | "editorial" | "provided-content";
   };
 };
 
@@ -80,7 +84,7 @@ export type SourceFirstJobPayload = {
 };
 
 function normalizeTopic(topic: string): string {
-  return topic.trim().slice(0, 500);
+  return topic.trim().slice(0, 16000);
 }
 
 function stripMarkdownAndUrls(value: string): string {
@@ -291,10 +295,18 @@ export async function processSourceFirstArticleJob(
     requireMinSources: false,
   });
 
-  const generationMode =
-    research.sources.length >= 1 ? "source-first" : "editorial";
+  const generationMode = research.providedContent
+    ? "provided-content"
+    : research.sources.length >= 1
+      ? "source-first"
+      : "editorial";
   const generated =
-    generationMode === "source-first"
+    generationMode === "provided-content"
+      ? await generateProvidedContentArticle({
+          query: research.query,
+          model: SOURCE_FIRST_ARTICLE_MODEL,
+        })
+      : generationMode === "source-first"
       ? await generateSourceFirstArticle({
           query: research.query,
           sources: research.sources,

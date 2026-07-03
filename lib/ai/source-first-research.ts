@@ -26,6 +26,8 @@ export type SourceFirstResearchResult = {
   }>;
   /** True when fewer than the preferred source count were found but research still returned. */
   limitedSources: boolean;
+  /** True when the input is pasted event/details text rather than a search topic. */
+  providedContent: boolean;
 };
 
 function publisherFromUrl(url: string): string {
@@ -616,6 +618,23 @@ function payloadHasSources(payload: GeminiResearchPayload | null | undefined): b
   return Boolean(payload?.sources?.some((item) => Boolean(String(item.url ?? "").trim())));
 }
 
+/** Detect when the user pasted event notes or a full write-up instead of a search query. */
+export function isProvidedContentInput(query: string): boolean {
+  const trimmed = query.trim();
+  if (trimmed.length < 200) return false;
+
+  const textWithoutUrls = withoutUrls(trimmed);
+  const wordCount = textWithoutUrls.split(/\s+/).filter(Boolean).length;
+  const lineCount = trimmed.split(/\r?\n/).filter((line) => line.trim()).length;
+  const hasMultipleParagraphs = /\n\s*\n/.test(trimmed) || lineCount >= 4;
+
+  if (wordCount >= 60 && trimmed.length >= 350) return true;
+  if (wordCount >= 40 && hasMultipleParagraphs) return true;
+  if (extractFirstUrl(trimmed) && textWithoutUrls.length >= 180) return true;
+
+  return false;
+}
+
 export async function gatherSourceFirstResearch(
   query: string,
   options: {
@@ -627,6 +646,23 @@ export async function gatherSourceFirstResearch(
 ): Promise<SourceFirstResearchResult> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) throw new Error("Search topic is required.");
+
+  if (isProvidedContentInput(normalizedQuery)) {
+    return {
+      query: normalizedQuery,
+      sources: [],
+      skipped: [
+        {
+          url: "",
+          title: "Provided content",
+          reason:
+            "Input looks like pasted event details. Skipping web search and writing from provided text.",
+        },
+      ],
+      limitedSources: true,
+      providedContent: true,
+    };
+  }
 
   const requestedLimit = Math.min(Math.max(options.searchLimit ?? 4, 2), 4);
   const candidateLimit = Math.max(requestedLimit + 2, 5);
@@ -799,5 +835,6 @@ export async function gatherSourceFirstResearch(
     sources,
     skipped,
     limitedSources,
+    providedContent: false,
   };
 }
