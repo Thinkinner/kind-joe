@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { ExternalHeadlinesSection } from "@/components/rss-news/external-headlines-section";
 import { PublisherTrustBar } from "@/components/home/publisher-trust-bar";
 import { SectionHeader } from "@/components/home/section-header";
 import { TopicPills } from "@/components/home/topic-pills";
@@ -48,10 +46,10 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* ADSENSE_HOLDBACK: RSS external feed demoted here (max 6). Restore: docs/homepage-adsense-holdback.md — magic phrase: "AdSense approved — restore homepage" */}
-      <Suspense fallback={null}>
+      {/* External sources (RSS headlines) — hidden for now. Restore: ExternalHeadlinesSection in Suspense */}
+      {/* <Suspense fallback={null}>
         <ExternalHeadlinesSection />
-      </Suspense>
+      </Suspense> */}
     </div>
   );
 }
