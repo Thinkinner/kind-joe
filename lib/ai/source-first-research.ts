@@ -823,9 +823,11 @@ export async function gatherSourceFirstResearch(
   }
 
   const limitedSources = sources.length > 0 && sources.length < minSources;
-  if (sources.length === 0 && requireMinSources) {
+  if (requireMinSources && sources.length < minSources) {
     throw new Error(
-      "No usable direct sources found. Paste a direct article URL, or try a more specific topic. (Custom Search JSON API is unavailable for new Google accounts; Gemini grounding is used when possible.)",
+      sources.length === 0
+        ? "No usable direct sources found. Paste a direct article URL, or try a more specific topic. (Custom Search JSON API is unavailable for new Google accounts; Gemini grounding is used when possible.)"
+        : `Only ${sources.length} usable direct source${sources.length === 1 ? "" : "s"} found. At least ${minSources} are required for source-backed mode. Switch to Auto or Editorial, or paste more direct article URLs.`,
     );
   }
 

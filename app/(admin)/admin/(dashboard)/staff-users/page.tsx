@@ -227,6 +227,7 @@ export default function StaffUsersPage() {
 
   const [modalUser, setModalUser] = useState<Row | null>(null);
   const [draftRoles, setDraftRoles] = useState<string[]>([]);
+  const [draftEmail, setDraftEmail] = useState("");
   const [draftPageAccess, setDraftPageAccess] = useState<AppPermission[]>([]);
   const [draftAliasFullName, setDraftAliasFullName] = useState("");
   const [suggestedAlias, setSuggestedAlias] = useState("");
@@ -269,6 +270,7 @@ export default function StaffUsersPage() {
     if (!r.canEditRoles || r.staffRoles == null) return;
     setModalUser(r);
     setDraftRoles([...r.staffRoles]);
+    setDraftEmail(r.email.trim());
     setDraftPageAccess(
       (r.adminPageAccess as AppPermission[] | null) ??
         ((r.effectivePageAccess as AppPermission[] | null) ?? []),
@@ -280,6 +282,7 @@ export default function StaffUsersPage() {
   const closeModal = () => {
     if (savingModal) return;
     setModalUser(null);
+    setDraftEmail("");
     setDraftAliasFullName("");
     setSuggestedAlias("");
     setSuggestingAlias(false);
@@ -331,10 +334,16 @@ export default function StaffUsersPage() {
       toast.error("Choose at least one role.");
       return;
     }
+    const normalizedDraftEmail = draftEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedDraftEmail)) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
     setSavingModal(true);
     try {
       const body: {
         userId: string;
+        email?: string;
         staffRoles: string[];
         adminPageAccess?: AppPermission[] | null;
         aliasFullName?: string | null;
@@ -342,6 +351,9 @@ export default function StaffUsersPage() {
         userId: modalUser.id,
         staffRoles: draftRoles,
       };
+      if (normalizedDraftEmail !== modalUser.email.trim().toLowerCase()) {
+        body.email = normalizedDraftEmail;
+      }
       if (modalUser.canEditPageAccess) {
         body.adminPageAccess = draftPageAccess;
       }
@@ -1390,6 +1402,21 @@ export default function StaffUsersPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
+            <div className="space-y-2">
+              <Label htmlFor="staff-member-email">Email</Label>
+              <Input
+                id="staff-member-email"
+                type="email"
+                value={draftEmail}
+                onChange={(e) => setDraftEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="colleague@company.com"
+                disabled={savingModal}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for sign-in and staff notifications. Must be unique.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="staff-member-alias-full-name">Alias full name</Label>
               <Input

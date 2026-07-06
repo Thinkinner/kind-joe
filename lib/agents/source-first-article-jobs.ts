@@ -36,8 +36,13 @@ const GENERIC_FILLER_PATTERNS = [
 export type SourceFirstWritingMode = "auto" | "source-first" | "editorial";
 
 export function normalizeWritingMode(value: unknown): SourceFirstWritingMode {
-  if (value === "source-first" || value === "editorial" || value === "auto") {
-    return value;
+  const normalized = String(value ?? "auto").trim().toLowerCase();
+  if (
+    normalized === "source-first" ||
+    normalized === "editorial" ||
+    normalized === "auto"
+  ) {
+    return normalized;
   }
   return "auto";
 }
@@ -308,18 +313,22 @@ export async function processSourceFirstArticleJob(
   const writingMode = normalizeWritingMode(job.writingMode);
   let research: Awaited<ReturnType<typeof gatherSourceFirstResearch>>;
 
+  console.log(
+    `[source-first-worker] job=${job.id} writingMode=${writingMode} adsenseReady=${job.adsenseReady}`,
+  );
+
   if (writingMode === "editorial") {
     research = {
       query: job.topic,
       sources: [],
       skipped: [],
-      limitedSources: true,
+      limitedSources: false,
     };
   } else {
     research = await gatherSourceFirstResearch(job.topic, {
       searchLimit: 4,
       minSources: job.adsenseReady ? 1 : 2,
-      requireMinSources: false,
+      requireMinSources: writingMode === "source-first",
     });
 
     if (writingMode === "source-first" && research.sources.length < 1) {

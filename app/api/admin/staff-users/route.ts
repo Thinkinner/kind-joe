@@ -41,16 +41,18 @@ const PermissionSlug = z.enum(ALL_ADMIN_PERMISSIONS as [AppPermission, ...AppPer
 const PatchSchema = z
   .object({
     userId: z.string().min(1),
+    email: z.string().trim().email().max(320).optional(),
     staffRoles: z.array(RoleSlug).min(1).max(5).optional(),
     adminPageAccess: z.union([z.array(PermissionSlug), z.null()]).optional(),
     aliasFullName: z.union([z.string().trim().min(1).max(120), z.null()]).optional(),
   })
   .refine(
     (d) =>
+      d.email !== undefined ||
       d.staffRoles !== undefined ||
       d.adminPageAccess !== undefined ||
       d.aliasFullName !== undefined,
-    { message: "Provide staffRoles, adminPageAccess, and/or aliasFullName." },
+    { message: "Provide email, staffRoles, adminPageAccess, and/or aliasFullName." },
   );
 
 const DeleteSchema = z.object({
@@ -116,7 +118,10 @@ export async function GET(req: NextRequest) {
       createdAt: authUser.createdAt,
     })
     .from(authUser)
-    .orderBy(authUser.email)
+    .orderBy(
+      sql`CASE WHEN coalesce(${authUser.accountType}, 'reader') = 'staff' THEN 0 ELSE 1 END`,
+      authUser.email,
+    )
     .limit(limit)
     .offset(offset);
 
@@ -224,7 +229,8 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const { userId, staffRoles: nextRoles, adminPageAccess, aliasFullName } = parsed.data;
+  const { userId, email: nextEmail, staffRoles: nextRoles, adminPageAccess, aliasFullName } =
+    parsed.data;
   if (adminPageAccess !== undefined && !callerSuperAdmin) {
     return NextResponse.json(
       { error: "Only superadmin can set page access." },
@@ -235,6 +241,7 @@ export async function PATCH(req: NextRequest) {
   const [targetRow] = await db
     .select({
       id: authUser.id,
+      email: authUser.email,
       staffRole: authUser.staffRole,
       staffRoles: authUser.staffRoles,
       accountType: authUser.accountType,
@@ -253,6 +260,43 @@ export async function PATCH(req: NextRequest) {
   const targetHasOwner = targetRoles.includes("owner");
 
   const setPayload: Partial<typeof authUser.$inferInsert> = {};
+
+  if (nextEmail !== undefined) {
+    const normalizedEmail = nextEmail.trim().toLowerCase();
+    const currentEmail = targetRow.email.trim().toLowerCase();
+
+    if (!callerSuperAdmin && !callerOwner && !callerAdmin) {
+      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    }
+    if (targetHasSuperAdmin && !callerSuperAdmin) {
+      return NextResponse.json(
+        { error: "Only superadmin can change a superadmin account." },
+        { status: 403 },
+      );
+    }
+    if (!callerSuperAdmin && !callerOwner && callerAdmin && targetHasOwner) {
+      return NextResponse.json(
+        { error: "Only owner can change an owner account." },
+        { status: 403 },
+      );
+    }
+
+    if (normalizedEmail !== currentEmail) {
+      const [existing] = await db
+        .select({ id: authUser.id })
+        .from(authUser)
+        .where(eq(authUser.email, normalizedEmail))
+        .limit(1);
+      if (existing && existing.id !== userId) {
+        return NextResponse.json(
+          { error: "That email is already used by another account." },
+          { status: 409 },
+        );
+      }
+      setPayload.email = normalizedEmail;
+      setPayload.emailVerified = true;
+    }
+  }
 
   if (nextRoles !== undefined) {
     if (userId === caller.id && callerSuperAdmin) {
