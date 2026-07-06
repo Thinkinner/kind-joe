@@ -1,7 +1,12 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
 import { processOneSourceFirstArticleJob } from "@/lib/agents/source-first-article-jobs";
+import { recordSourceFirstWorkerHeartbeat } from "@/lib/agents/source-first-worker-status";
 
-const DEFAULT_INTERVAL_SECONDS = 15;
+dotenv.config({ path: path.join(process.cwd(), ".env.local"), override: true });
+dotenv.config();
+
+const DEFAULT_INTERVAL_SECONDS = 5;
 const RETRY_INTERVAL_ON_ERROR_MS = 30 * 1000;
 
 function parseIntEnv(name: string, fallback: number): number {
@@ -16,15 +21,31 @@ function sleep(ms: number): Promise<void> {
 
 let shuttingDown = false;
 
-async function runOneCycle() {
+async function runOneCycle(): Promise<boolean> {
   const started = new Date();
   console.log(`[source-first-worker] cycle start at ${started.toISOString()}`);
-  const result = await processOneSourceFirstArticleJob();
+  await recordSourceFirstWorkerHeartbeat().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[source-first-worker] heartbeat skipped: ${message}`);
+  });
+
+  let processedAny = false;
+  while (!shuttingDown) {
+    const result = await processOneSourceFirstArticleJob();
+    if (!result.processed) break;
+    processedAny = true;
+    console.log(
+      `[source-first-worker] processed jobId=${result.jobId ?? "unknown"}`,
+    );
+    await recordSourceFirstWorkerHeartbeat().catch(() => undefined);
+  }
+
   const ended = new Date();
   console.log(
     `[source-first-worker] cycle complete at ${ended.toISOString()} ` +
-      `processed=${result.processed} jobId=${result.jobId ?? "none"}`,
+      `processedAny=${processedAny}`,
   );
+  return processedAny;
 }
 
 async function main() {

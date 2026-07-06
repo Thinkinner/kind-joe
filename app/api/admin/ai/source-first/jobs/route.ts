@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
-import { createSourceFirstArticleJob } from "@/lib/agents/source-first-article-jobs";
+import {
+  createSourceFirstArticleJob,
+  normalizeWritingMode,
+} from "@/lib/agents/source-first-article-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLES);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },
@@ -16,7 +19,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json().catch(() => ({}))) as { topic?: unknown };
+    const body = (await request.json().catch(() => ({}))) as {
+      topic?: unknown;
+      adsenseReady?: unknown;
+      writingMode?: unknown;
+    };
     const topic = String(body.topic ?? "").trim();
     if (!topic) {
       return NextResponse.json({ error: "Topic is required." }, { status: 400 });
@@ -25,6 +32,8 @@ export async function POST(request: NextRequest) {
     const job = await createSourceFirstArticleJob({
       topic,
       createdBy: staff.user.id,
+      adsenseReady: body.adsenseReady === true,
+      writingMode: normalizeWritingMode(body.writingMode),
     });
 
     return NextResponse.json({

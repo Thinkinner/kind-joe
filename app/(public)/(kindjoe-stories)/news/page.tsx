@@ -1,5 +1,4 @@
 // app/page.tsx
-import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stories-carousel";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
@@ -10,8 +9,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <FeaturedStoriesCarouselHero />
-
       {/* Main Container */}
       <main className="mx-auto px-5 py-5">
         <div className="flex flex-wrap items-center gap-2 md:gap-3">

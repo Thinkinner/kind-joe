@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
 import { authClient } from "@/lib/auth-client";
 import { getAccountType } from "@/lib/auth/account-type";
-import { TOPIC_LABELS, TOPIC_SLUGS } from "@/lib/content/topics";
+import { PRIMARY_NAV_LINKS } from "@/lib/nav/public-links";
 import {
   clearNavSessionHint,
   peekNavSessionHint,
@@ -97,16 +97,7 @@ export default function Navbar({
     setHintUser(null);
   }, [serverUser?.id, sessionData?.user?.id]);
 
-  const links = [
-    { name: "Home", href: "/" },
-    ...TOPIC_SLUGS.map((topic) => ({
-      name: TOPIC_LABELS[topic],
-      href: `/${topic}`,
-    })),
-    { name: "News", href: "/news", title: "KindJoe News" },
-    { name: "Ventura County", href: "/ventura-county" },
-    { name: "Council Tea", href: "/council-tea" },
-  ] as const;
+  const links = PRIMARY_NAV_LINKS;
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -140,6 +131,7 @@ export default function Navbar({
                 width={120}
                 height={28}
                 alt="Kind Joe"
+                sizes="(max-width: 1024px) 100px, 138px"
                 className="h-auto w-[100px] sm:w-[118px] lg:w-[138px]"
                 priority
               />
@@ -147,7 +139,7 @@ export default function Navbar({
 
             {/* Desktop navigation */}
             <div className="hidden flex-1 justify-center lg:flex">
-              <div className="flex items-center gap-1 rounded-full border border-white/[0.05] bg-black/55 p-1">
+              <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/[0.05] bg-black/55 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {links.map((link) => {
                   const isActive = pathname === link.href;
                   return (

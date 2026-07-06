@@ -919,9 +919,7 @@ export function AdminArticleForm({
       const isVentura =
         lowerCategory.includes("ventura") ||
         tags.some((tag) => tag.toLowerCase().includes("ventura"));
-      const destinationUrl = isVentura
-        ? `${siteBase}/ventura/${targetSlug}`
-        : `${siteBase}/${targetSlug}`;
+      const destinationUrl = `${siteBase}/${targetSlug}`;
       const endpoint = isVentura ? "/api/admin/ventura-posts" : "/api/admin/posts";
 
       const res = await fetch(endpoint, {

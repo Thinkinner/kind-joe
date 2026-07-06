@@ -1,9 +1,63 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion"],
+  },
+  async headers() {
+    return [
+      {
+        source: "/brand/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/featuredvideo.mp4",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/kindjoe-hero.png",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {
+        source: "/topstories",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/ventura/articles",
+        destination: "/ventura-county",
+        permanent: true,
+      },
+      {
+        source: "/terms-of-use",
+        destination: "/terms-of-service",
+        permanent: true,
+      },
+      {
         source: "/articles/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
+        source: "/ventura/:slug",
         destination: "/:slug",
         permanent: true,
       },

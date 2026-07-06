@@ -159,9 +159,7 @@ export async function publishPartnerBundle(
   const now = new Date();
   const articleId = newArticleId();
   const siteBase = siteBaseUrl();
-  const destinationUrl = isVentura
-    ? `${siteBase}/ventura/${normalizedSlug}`
-    : `${siteBase}/${normalizedSlug}`;
+  const destinationUrl = `${siteBase}/${normalizedSlug}`;
   const articleUrl = destinationUrl;
 
   const seoPayload: Record<string, unknown> = {

@@ -173,30 +173,19 @@ function missingEditorialSections(markdown: string): string[] {
   );
 }
 
-function editorialDraftProblem(markdown: string): string | null {
+function editorialDraftProblem(
+  markdown: string,
+  options: { minWords?: number } = {},
+): string | null {
   if (!markdown.trim()) return "empty draft";
+  const minWords = options.minWords ?? 420;
   const words = countWords(markdown);
-  if (words < 420) return `too short (${words} words)`;
+  if (words < minWords) return `too short (${words} words)`;
   const missingSections = missingEditorialSections(markdown);
   if (missingSections.length > 0) {
     return `missing sections: ${missingSections.join(", ")}`;
   }
   if (!/editorial note/i.test(markdown)) return "missing editorial note";
-  return null;
-}
-
-function providedContentDraftProblem(markdown: string): string | null {
-  if (!markdown.trim()) return "empty draft";
-  const words = countWords(markdown);
-  if (words < 450) return `too short (${words} words)`;
-  const missingSections = missingSourceFirstSections(markdown);
-  if (missingSections.length > 0) {
-    return `missing sections: ${missingSections.join(", ")}`;
-  }
-  if (!/source note/i.test(markdown)) return "missing source note";
-  if (/presumed innocent until proven guilty|all charges are allegations/i.test(markdown)) {
-    return "contains inappropriate criminal disclaimer";
-  }
   return null;
 }
 
@@ -620,169 +609,18 @@ export async function generateArticleAssistAll(input: {
   };
 }
 
-export async function generateProvidedContentArticle(input: {
-  query: string;
-  model?: string;
-}): Promise<ArticleAssistAllOutput> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
-
-  const providedDetails = summarizeForMode(input.query.trim(), SOURCE_FIRST_INPUT_LIMIT);
-  const draftContents = [
-    "You are a Kind Joe news writer.",
-    "Write the article body as markdown only. Do not return JSON.",
-    "",
-    "The user pasted event details or notes below. Turn them into a complete publish-ready article.",
-    "Use ONLY facts present in the provided details. Do not invent quotes, numbers, names, or outcomes.",
-    "If something is unclear in the notes, say so in What We Still Don't Know.",
-    "",
-    "Hard rules:",
-    "- Write a complete article of 500-750 words.",
-    "- Use short paragraphs and plain English.",
-    "- Do not use markdown tables.",
-    "- Do not add external source links or fake citations.",
-    "- Do not use criminal-law disclaimers unless the notes are about criminal charges.",
-    "- End with a Source Note that says the article is based on details provided to Kind Joe.",
-    "",
-    "Structure:",
-    "1. Markdown H1 headline.",
-    "2. One-sentence subhead.",
-    "3. Human lede.",
-    "4. What Happened",
-    "5. Short fact box (bullet list from the provided details).",
-    "6. Why It Matters",
-    "7. What Happens Next",
-    "8. What We Still Don't Know (3 questions)",
-    "9. Source Note",
-    "",
-    "PROVIDED DETAILS:",
-    providedDetails,
-  ].join("\n");
-
-  const ai = new GoogleGenAI({ apiKey });
-  const runDraftModel = async (contents: string) =>
-    ai.models.generateContent({
-      model: input.model || ARTICLE_ASSIST_MODEL,
-      contents,
-      config: articleAssistTextGenerateConfig({
-        maxOutputTokens: 8192,
-      }),
-    });
-
-  let draftResponse = await runDraftModel(draftContents);
-  let rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
-  let normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
-
-  let draftProblem = providedContentDraftProblem(normalizedMarkdown);
-  if (draftProblem) {
-    draftResponse = await runDraftModel(
-      [
-        draftContents,
-        "",
-        `IMPORTANT: The previous draft was rejected because it was ${draftProblem}.`,
-        "Return markdown only.",
-        "Write a complete 500-750 word article from the provided details only.",
-        "Include every required section exactly once.",
-        "Do not return JSON.",
-      ].join("\n"),
-    );
-    rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
-    normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
-    draftProblem = providedContentDraftProblem(normalizedMarkdown);
-  }
-
-  if (draftProblem) {
-    draftResponse = await runDraftModel(
-      [
-        "Expand this draft into a complete article using ONLY the provided details below.",
-        "Target 500-750 words. Add missing sections if needed.",
-        "Return markdown only.",
-        "",
-        "PROVIDED DETAILS:",
-        providedDetails,
-        "",
-        "DRAFT TO EXPAND:",
-        normalizedMarkdown,
-      ].join("\n"),
-    );
-    rawDraftMarkdown = cleanGeneratedMarkdown(draftResponse.text?.trim() || "");
-    normalizedMarkdown = normalizeArticleMarkdown(rawDraftMarkdown).trim();
-    draftProblem = providedContentDraftProblem(normalizedMarkdown);
-  }
-
-  if (draftProblem) {
-    throw new Error(
-      `AI returned an incomplete provided-content article draft: ${draftProblem}.`,
-    );
-  }
-
-  const fallbackTitle = titleFromMarkdown(normalizedMarkdown);
-  const metadataContents = [
-    "Return compact JSON metadata for this CMS article.",
-    "Do not include the article body.",
-    "Tags must be lowercase kebab-case, specific, and 12-20 items.",
-    "",
-    "INPUT:",
-    JSON.stringify({
-      topic: summarizeForMode(providedDetails, 1200),
-      fallbackTitle,
-      articleMarkdown: summarizeForMode(normalizedMarkdown, 1800),
-      providedContent: true,
-    }),
-  ].join("\n");
-
-  const runMetadataModel = async (contents: string) =>
-    ai.models.generateContent({
-      model: input.model || ARTICLE_ASSIST_MODEL,
-      contents,
-      config: articleAssistGenerateConfig({
-        responseSchema: SOURCE_FIRST_METADATA_SCHEMA,
-        maxOutputTokens: 900,
-      }),
-    });
-
-  const metadataResponse = await runMetadataModel(metadataContents);
-  let data: Record<string, unknown>;
-  try {
-    data = parseGeneratedJson<Record<string, unknown>>(
-      metadataResponse.text?.trim() || "{}",
-    );
-  } catch {
-    data = {};
-  }
-
-  const title = String(data.title ?? fallbackTitle).trim() || fallbackTitle;
-  const category = String(data.category ?? "News").trim() || "News";
-  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
-  const fallbackExcerpt = excerptFromMarkdown(normalizedMarkdown);
-
-  return {
-    title,
-    slug: String(data.slug ?? "").trim() || slugify(title),
-    category,
-    tags: buildMinimumTags({
-      title,
-      category,
-      sourceText: providedDetails,
-      existing: tags,
-      minCount: 12,
-    }),
-    excerpt: String(data.excerpt ?? fallbackExcerpt).trim() || fallbackExcerpt,
-    draftMarkdown: normalizedMarkdown,
-    seoDescription:
-      String(data.seoDescription ?? fallbackExcerpt).trim() || fallbackExcerpt,
-  };
-}
-
 export async function generateEditorialTopicArticle(input: {
   query: string;
   sources?: SourceFirstPacket[];
   model?: string;
+  adsenseReady?: boolean;
 }): Promise<ArticleAssistAllOutput> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
 
   const sources = input.sources ?? [];
+  const minWords = input.adsenseReady ? 600 : 450;
+  const targetMaxWords = input.adsenseReady ? 900 : 650;
   const sourceContext =
     sources.length > 0
       ? summarizeForMode(
@@ -804,30 +642,38 @@ export async function generateEditorialTopicArticle(input: {
     "You are a senior Kind Joe editorial writer.",
     "Write the article body as markdown only. Do not return JSON.",
     "",
-    "This is an editorial explainer written in our newsroom voice when verified primary reporting is limited.",
-    "Write like a real journalist offering context readers can trust — not generic AI filler.",
+    "This is an editorial explainer — analysis and context written like a real columnist when verified primary reporting is limited or unavailable.",
+    "Write with voice, rhythm, and judgment. Sound human, specific, and honest — never like generic AI filler.",
     "",
     "Hard rules:",
     "- Do NOT invent breaking-news facts, quotes, arrests, vote counts, dates, or official statements.",
     "- Do NOT pretend we have direct reporting we do not have.",
-    "- You MAY explain general background, public context, why the topic matters, and what readers should watch for.",
-    "- Use plain English, short paragraphs, and a confident but honest tone.",
-    "- Write a complete article of 450-650 words.",
+    "- You MAY explain general background, public context, why the topic matters, tradeoffs, and what readers should watch for.",
+    "- Use plain English, short paragraphs, and a confident but fair tone.",
+    `- Write a complete article of ${minWords}-${targetMaxWords} words.`,
     "- Do not use markdown tables.",
     "- Do not stop mid-sentence or mid-section.",
+    ...(input.adsenseReady
+      ? [
+          "- AdSense-ready: substantive original analysis — no thin summaries or keyword stuffing.",
+          "- Include a fair counter-view or limitation paragraph where the topic is contested.",
+          "- End with a concrete what-to-watch-next section.",
+        ]
+      : []),
     sources.length > 0
-      ? "- When a limited source packet is provided, you may cite it with one inline markdown link using its exact URL."
-      : "- Do not add fake citations or placeholder links.",
+      ? "- When a limited source packet is provided, you may cite it with inline markdown links using exact URLs only."
+      : "- Do not add fake citations, placeholder links, or invented outlet names.",
     "",
-    "Structure:",
+    "Structure — use ### markdown headings for each section:",
     "1. Markdown H1 headline.",
     "2. One-sentence subhead.",
     "3. Human lede that frames the topic for everyday readers.",
-    "4. \"What We're Tracking\" section.",
-    "5. \"Why It Matters\" section.",
-    "6. \"Background and Context\" section.",
-    "7. \"What to Watch\" section with 3 concrete watch items.",
-    "8. \"Editorial Note\" explaining this is Kind Joe editorial context/analysis and noting when primary sources were limited.",
+    "4. ### What We're Tracking",
+    "5. ### Why It Matters",
+    "6. ### Background and Context",
+    "7. ### What to Watch (3 concrete watch items as bullets or short paragraphs)",
+    ...(input.adsenseReady ? ["8. ### Opposing Context (fair limitations or alternate view)"] : []),
+    `${input.adsenseReady ? "9" : "8"}. ### Editorial Note — state clearly this is Kind Joe editorial analysis/context, not a wire rewrite, and note when primary sources were limited.`,
     "",
     "INPUT:",
     JSON.stringify({
@@ -854,7 +700,7 @@ export async function generateEditorialTopicArticle(input: {
     normalizedMarkdown = keepOnlyVerifiedSourceLinks(normalizedMarkdown, sources);
   }
 
-  let draftProblem = editorialDraftProblem(normalizedMarkdown);
+  let draftProblem = editorialDraftProblem(normalizedMarkdown, { minWords });
   if (draftProblem) {
     draftResponse = await runDraftModel(
       [
@@ -862,7 +708,7 @@ export async function generateEditorialTopicArticle(input: {
         "",
         `IMPORTANT: The previous draft was rejected because it was ${draftProblem}.`,
         "Return markdown only.",
-        "Write a complete 450-650 word editorial explainer.",
+        `Write a complete ${minWords}-${targetMaxWords} word editorial explainer.`,
         "Include every required section exactly once.",
         "Finish with an Editorial Note section.",
         "Do not return JSON.",
@@ -873,14 +719,14 @@ export async function generateEditorialTopicArticle(input: {
     if (sources.length > 0) {
       normalizedMarkdown = keepOnlyVerifiedSourceLinks(normalizedMarkdown, sources);
     }
-    draftProblem = editorialDraftProblem(normalizedMarkdown);
+    draftProblem = editorialDraftProblem(normalizedMarkdown, { minWords });
   }
 
   if (draftProblem) {
     draftResponse = await runDraftModel(
       [
-        "Expand this editorial draft into a complete 450-650 word article.",
-        "Keep the same topic and facts. Add depth, context, and transitions.",
+        `Expand this editorial draft into a complete ${minWords}-${targetMaxWords} word article.`,
+        "Keep the same topic and honest framing. Add depth, context, and transitions.",
         "Include all required sections if any are missing.",
         "Return markdown only.",
         "",
@@ -892,7 +738,7 @@ export async function generateEditorialTopicArticle(input: {
     if (sources.length > 0) {
       normalizedMarkdown = keepOnlyVerifiedSourceLinks(normalizedMarkdown, sources);
     }
-    draftProblem = editorialDraftProblem(normalizedMarkdown);
+    draftProblem = editorialDraftProblem(normalizedMarkdown, { minWords });
   }
 
   if (draftProblem) {
@@ -906,6 +752,7 @@ export async function generateEditorialTopicArticle(input: {
     "Return compact JSON metadata for this CMS editorial article.",
     "Do not include the article body.",
     "Tags must be lowercase kebab-case, specific, and 12-20 items.",
+    "Prefer category Analysis or Opinion for editorial pieces.",
     "",
     "INPUT:",
     JSON.stringify({
@@ -913,6 +760,7 @@ export async function generateEditorialTopicArticle(input: {
       fallbackTitle,
       articleMarkdown: summarizeForMode(normalizedMarkdown, 1800),
       editorial: true,
+      adsenseReady: input.adsenseReady === true,
     }),
   ].join("\n");
 
@@ -937,7 +785,9 @@ export async function generateEditorialTopicArticle(input: {
   }
 
   const title = String(data.title ?? fallbackTitle).trim() || fallbackTitle;
-  const category = String(data.category ?? "News").trim() || "News";
+  const category =
+    String(data.category ?? (input.adsenseReady ? "Analysis" : "News")).trim() ||
+    (input.adsenseReady ? "Analysis" : "News");
   const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
   const fallbackExcerpt = excerptFromMarkdown(normalizedMarkdown);
 
@@ -963,6 +813,7 @@ export async function generateSourceFirstArticle(input: {
   query: string;
   sources: SourceFirstPacket[];
   model?: string;
+  adsenseReady?: boolean;
 }): Promise<ArticleAssistAllOutput> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
@@ -972,7 +823,12 @@ export async function generateSourceFirstArticle(input: {
   }
 
   const minLinks = input.sources.length >= 2 ? 2 : 1;
-  const minWords = input.sources.length >= 2 ? 500 : 450;
+  const minWords = input.adsenseReady
+    ? 600
+    : input.sources.length >= 2
+      ? 500
+      : 450;
+  const targetMaxWords = input.adsenseReady ? 900 : 750;
 
   const sourceText = input.sources
     .map((source) =>
@@ -1002,8 +858,16 @@ export async function generateSourceFirstArticle(input: {
     "- Never use a raw URL, source ID, or bracketed URL as visible link text.",
     "- Never shorten source URLs to a homepage, section page, tag page, or guessed article URL.",
     "- If unsure which source URL supports a sentence, use attribution text without a link.",
-    "- Write a complete article of 500-750 words.",
+    `- Write a complete article of ${minWords}-${targetMaxWords} words.`,
     "- Use short paragraphs and plain English.",
+    ...(input.adsenseReady
+      ? [
+          "- AdSense-ready: original reporting only — no copied paragraphs, thin summaries, or keyword stuffing.",
+          "- Include at least 2 named direct quotes when the sources support them.",
+          "- Include one fair opposing or defense context paragraph when relevant.",
+          "- Meta-quality writing: concrete facts, clear attribution, and a strong what-happens-next section.",
+        ]
+      : []),
     "- Do not use markdown tables. Write fact boxes as short bullet lists.",
     "- Do not include raw source packet IDs in the public article unless useful.",
     "- Do not stop mid-sentence or mid-section.",
@@ -1013,12 +877,13 @@ export async function generateSourceFirstArticle(input: {
     "1. Markdown H1 headline.",
     "2. One-sentence subhead.",
     "3. Human lede that explains why the story matters.",
-    "4. \"What Happened\" section.",
-    "5. Short fact box with source-backed specifics.",
-    "6. \"Why It Matters\" section.",
-    "7. \"What Happens Next\" section.",
-    "8. \"What We Still Don't Know\" section with 3 questions.",
-    "9. Final source note naming publishers used.",
+    "4. Section headings MUST use markdown H3 format, one per line, e.g. `### What Happened`.",
+    "5. Required sections (each as its own ### heading): What Happened, Fact Box, Why It Matters, What Happens Next, What We Still Don't Know, Source Note.",
+    ...(input.adsenseReady
+      ? ["6. When including opposing views, add a `### Opposing Context` section."]
+      : []),
+    "7. Fact box bullets must use complete bold labels like `**Lakers Receive:** details` — never leave a dangling `:**`.",
+    "8. Do not write section titles as plain paragraphs; always use ### headings.",
     "",
     "INPUT:",
     JSON.stringify({
@@ -1057,7 +922,7 @@ export async function generateSourceFirstArticle(input: {
         "",
         `IMPORTANT: The previous draft was rejected because it was ${draftProblem}.`,
         "Return markdown only.",
-        `Write a complete ${minWords}-750 word article.`,
+        `Write a complete ${minWords}-${targetMaxWords} word article.`,
         "Include every required section exactly once.",
         `Use at least ${minLinks} inline markdown link${minLinks === 1 ? "" : "s"} using exact source URLs from the source packets.`,
         "End with a Source Note section.",
@@ -1080,7 +945,7 @@ export async function generateSourceFirstArticle(input: {
     draftResponse = await runDraftModel(
       [
         "Expand this source-first draft into a complete article.",
-        `Target ${minWords}-750 words.`,
+        `Target ${minWords}-${targetMaxWords} words.`,
         "Use only facts from the source packets below.",
         "Keep verified inline links. Add missing sections if needed.",
         "Return markdown only.",
@@ -1107,7 +972,7 @@ export async function generateSourceFirstArticle(input: {
   if (draftProblem) {
     const simplifiedPrompt = [
       "Write a complete markdown news article for Kind Joe.",
-      `Target ${minWords}-750 words.`,
+      `Target ${minWords}-${targetMaxWords} words.`,
       "Use ONLY facts from the source packets below.",
       "Include sections: What Happened, Why It Matters, What Happens Next, What We Still Don't Know, Source Note.",
       `Include at least ${minLinks} inline markdown link${minLinks === 1 ? "" : "s"} using the exact source URLs provided.`,

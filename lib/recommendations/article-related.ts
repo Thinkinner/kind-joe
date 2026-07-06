@@ -556,7 +556,7 @@ async function getFallbackArticles(
     publishAt: row.publishAt ? row.publishAt.toISOString() : null,
     score: 0,
     semanticSimilarity: 0,
-    href: venturaSet.has(row.id) ? `/ventura/${row.slug}` : `/${row.slug}`,
+    href: `/${row.slug}`,
   }));
 }
 
@@ -635,7 +635,7 @@ function rankSemanticCandidates(
         publishAt: candidate.publishAt ? candidate.publishAt.toISOString() : null,
         score,
         semanticSimilarity: semantic,
-        href: candidate.hasVenturaTag ? `/ventura/${candidate.slug}` : `/${candidate.slug}`,
+        href: `/${candidate.slug}`,
       };
     })
     .filter(

@@ -429,9 +429,8 @@ export function NewArticleWithAssistant() {
           your draft, then opens the same article form with fields prefilled.
         </p>
         <p className="text-xs text-background/70">
-          Source-first worker: paste a topic, URL, or full event notes. Short
-          topics search Google for sources. Long pasted details are written
-          directly from your text — no web search required.
+          Use source-first mode when you want Google-backed sources with inline
+          links embedded where claims are made.
         </p>
         <div className="relative">
           <WandSparkles className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-violet-300" />

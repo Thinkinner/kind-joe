@@ -4,18 +4,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { formatTimeAgo } from "@/lib/format/time-ago";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { articlePublicPath } from "@/lib/brand/article-theme";
 import type { ArticleSummary } from "@/types/article";
 
-function articlePath(slug: string, tags: unknown): string {
-  const tagList = Array.isArray(tags) ? tags : [];
-  const hasVenturaTag = tagList.some(
-    (tag) =>
-      tag &&
-      typeof tag === "object" &&
-      "slug" in tag &&
-      (tag as { slug?: string }).slug === "ventura-county",
-  );
-  return hasVenturaTag ? `/ventura/${slug}` : `/${slug}`;
+function articlePath(slug: string): string {
+  return articlePublicPath(slug);
 }
 
 type EditorsPicksPanelProps = {
@@ -66,7 +59,7 @@ export function EditorsPicksPanel({ articles }: EditorsPicksPanelProps) {
               return (
                 <li key={article.id}>
                   <Link
-                    href={articlePath(article.slug, article.tags)}
+                    href={articlePath(article.slug)}
                     className="group flex min-w-0 items-start gap-3 py-4 sm:gap-3.5"
                   >
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-16 sm:w-16">

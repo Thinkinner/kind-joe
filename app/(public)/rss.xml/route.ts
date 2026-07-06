@@ -61,9 +61,7 @@ export async function GET() {
   // Build RSS items
   const itemsXml = rows
   .map((article) => {
-    const path = article.isVentura
-      ? `/ventura/${article.slug}`
-      : `/${article.slug}`;
+    const path = `/${article.slug}`;
     const url = publicSiteUrl(path, siteUrl);
     const pubDate = article.publishedAt
       ? new Date(article.publishedAt).toUTCString()

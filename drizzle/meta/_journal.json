@@ -281,6 +281,20 @@
       "when": 1779024000000,
       "tag": "0039_source_first_article_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1779025000000,
+      "tag": "0040_source_first_job_adsense_ready",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1779026000000,
+      "tag": "0041_source_first_job_writing_mode",
+      "breakpoints": true
     }
   ]
 }

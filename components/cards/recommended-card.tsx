@@ -2,6 +2,7 @@
 "use client";
 import Link from "next/link";
 import { ArticleSummary } from "@/types/article";
+import { articlePublicPath } from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 
 export function RecommendedCard({ article }: { article: ArticleSummary }) {
@@ -12,7 +13,7 @@ export function RecommendedCard({ article }: { article: ArticleSummary }) {
   const isVentura =
     hasVenturaTag || article.category?.toLowerCase().includes("ventura");
 
-  const path = isVentura ? `/ventura/${article.slug}` : `/${article.slug}`;
+  const path = articlePublicPath(article.slug);
   const theme = isVentura
     ? { badge: "bg-orange-600", text: "group-hover:text-orange-600" }
     : { badge: "bg-red-600", text: "group-hover:text-blue-900" };

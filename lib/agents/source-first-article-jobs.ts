@@ -1,11 +1,7 @@
 import { and, asc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { sourceFirstArticleJobs } from "@/db/schema";
-import {
-  generateEditorialTopicArticle,
-  generateProvidedContentArticle,
-  generateSourceFirstArticle,
-} from "@/lib/ai/article-assist-service";
+import { generateEditorialTopicArticle, generateSourceFirstArticle } from "@/lib/ai/article-assist-service";
 import {
   gatherSourceFirstResearch,
   type SourceFirstPacket,
@@ -37,6 +33,15 @@ const GENERIC_FILLER_PATTERNS = [
   /broader political conflict that continues to divide voters/i,
 ];
 
+export type SourceFirstWritingMode = "auto" | "source-first" | "editorial";
+
+export function normalizeWritingMode(value: unknown): SourceFirstWritingMode {
+  if (value === "source-first" || value === "editorial" || value === "auto") {
+    return value;
+  }
+  return "auto";
+}
+
 export type SourceFirstJobStatus =
   | "queued"
   | "processing"
@@ -65,13 +70,15 @@ export type SourceFirstJobResult = {
       reason: string;
     }>;
     limitedSources: boolean;
-    generationMode: "source-first" | "editorial" | "provided-content";
+    generationMode: "source-first" | "editorial";
   };
 };
 
 export type SourceFirstJobPayload = {
   id: string;
   topic: string;
+  adsenseReady: boolean;
+  writingMode: SourceFirstWritingMode;
   status: string;
   sources: unknown;
   result: unknown;
@@ -84,7 +91,7 @@ export type SourceFirstJobPayload = {
 };
 
 function normalizeTopic(topic: string): string {
-  return topic.trim().slice(0, 16000);
+  return topic.trim().slice(0, 500);
 }
 
 function stripMarkdownAndUrls(value: string): string {
@@ -185,6 +192,8 @@ function assertDraftIsSpecific(markdown: string) {
 function serializeJob(row: {
   id: string;
   topic: string;
+  adsenseReady: boolean;
+  writingMode: string;
   status: string;
   sources: unknown;
   result: unknown;
@@ -195,12 +204,17 @@ function serializeJob(row: {
   startedAt: Date | null;
   finishedAt: Date | null;
 }): SourceFirstJobPayload {
-  return row;
+  return {
+    ...row,
+    writingMode: normalizeWritingMode(row.writingMode),
+  };
 }
 
 export async function createSourceFirstArticleJob(input: {
   topic: string;
   createdBy?: string | null;
+  adsenseReady?: boolean;
+  writingMode?: SourceFirstWritingMode;
 }): Promise<SourceFirstJobPayload> {
   const topic = normalizeTopic(input.topic);
   if (!topic) throw new Error("Topic is required.");
@@ -209,6 +223,8 @@ export async function createSourceFirstArticleJob(input: {
     .insert(sourceFirstArticleJobs)
     .values({
       topic,
+      adsenseReady: input.adsenseReady === true,
+      writingMode: normalizeWritingMode(input.writingMode ?? "auto"),
       createdBy: input.createdBy ?? null,
       status: "queued",
       updatedAt: new Date(),
@@ -289,33 +305,50 @@ export async function claimNextSourceFirstArticleJob(): Promise<SourceFirstJobPa
 export async function processSourceFirstArticleJob(
   job: SourceFirstJobPayload,
 ): Promise<SourceFirstJobResult> {
-  const research = await gatherSourceFirstResearch(job.topic, {
-    searchLimit: 4,
-    minSources: 2,
-    requireMinSources: false,
-  });
+  const writingMode = normalizeWritingMode(job.writingMode);
+  let research: Awaited<ReturnType<typeof gatherSourceFirstResearch>>;
 
-  const generationMode = research.providedContent
-    ? "provided-content"
-    : research.sources.length >= 1
-      ? "source-first"
-      : "editorial";
+  if (writingMode === "editorial") {
+    research = {
+      query: job.topic,
+      sources: [],
+      skipped: [],
+      limitedSources: true,
+    };
+  } else {
+    research = await gatherSourceFirstResearch(job.topic, {
+      searchLimit: 4,
+      minSources: job.adsenseReady ? 1 : 2,
+      requireMinSources: false,
+    });
+
+    if (writingMode === "source-first" && research.sources.length < 1) {
+      throw new Error(
+        "No verified sources found for source-backed mode. Paste a direct article URL, configure Google search env vars, or switch to Auto / Editorial writing mode.",
+      );
+    }
+  }
+
+  const generationMode: SourceFirstJobResult["sourceFirst"]["generationMode"] =
+    writingMode === "editorial"
+      ? "editorial"
+      : research.sources.length >= 1
+        ? "source-first"
+        : "editorial";
+
   const generated =
-    generationMode === "provided-content"
-      ? await generateProvidedContentArticle({
-          query: research.query,
-          model: SOURCE_FIRST_ARTICLE_MODEL,
-        })
-      : generationMode === "source-first"
+    generationMode === "source-first"
       ? await generateSourceFirstArticle({
           query: research.query,
           sources: research.sources,
           model: SOURCE_FIRST_ARTICLE_MODEL,
+          adsenseReady: job.adsenseReady,
         })
       : await generateEditorialTopicArticle({
           query: research.query,
           sources: research.sources,
           model: SOURCE_FIRST_ARTICLE_MODEL,
+          adsenseReady: job.adsenseReady,
         });
   const safeTitle = deriveSafeTitle({
     generatedTitle: generated.title,

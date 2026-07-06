@@ -11,6 +11,11 @@ import {
 } from "react-icons/fa";
 import KindJoeModalForm from "./modals/kindjoe-capture-modal";
 import { PUBLIC_CONTACT_EMAIL } from "@/lib/legal/public-contact";
+import {
+  FOOTER_CONNECT_LINKS,
+  FOOTER_EXPLORE_LINKS,
+  FOOTER_LEGAL_LINKS,
+} from "@/lib/nav/public-links";
 
 export function Footer() {
   const [email, setEmail] = useState("");
@@ -85,62 +90,17 @@ export function Footer() {
                     Home
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    href="/news"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    News
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/tech"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Tech
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/politics"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Politics
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/business"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Business
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/opinion"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Opinion
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/ventura-county"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Ventura County
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/newsletter"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Newsletters
-                  </Link>
-                </li>
+                {FOOTER_EXPLORE_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      title={link.title}
+                      className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -150,30 +110,16 @@ export function Footer() {
                 Connect
               </h3>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li>
-                  <Link
-                    href="/contact"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/advertise"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Advertise
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/about"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    About
-                  </Link>
-                </li>
+                {FOOTER_CONNECT_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -183,38 +129,16 @@ export function Footer() {
                 Legal
               </h3>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li>
-                  <Link
-                    href="/terms-of-service"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Terms of Use
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/privacy-policy"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/disclaimer"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Disclaimer
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/editorial-policy"
-                    className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
-                  >
-                    Editorial Policy
-                  </Link>
-                </li>
+                {FOOTER_LEGAL_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="hover:text-red-500 hover:pl-1 transition-all duration-200 block"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

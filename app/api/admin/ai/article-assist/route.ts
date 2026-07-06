@@ -628,6 +628,7 @@ export async function POST(req: Request) {
       const research = await gatherSourceFirstResearch(topic, {
         searchLimit: 4,
         minSources: 2,
+        requireMinSources: false,
       });
 
       return NextResponse.json({
@@ -650,6 +651,7 @@ export async function POST(req: Request) {
     if (mode === "sourceFirstArticle") {
       const topic = String(title || html || "").trim();
       const providedSources = normalizeSourceFirstSources(body.sources);
+      const adsenseReady = body.adsenseReady === true;
       const research =
         providedSources.length >= 2
           ? {
@@ -659,11 +661,13 @@ export async function POST(req: Request) {
             }
           : await gatherSourceFirstResearch(topic, {
               searchLimit: 4,
-              minSources: 2,
+              minSources: body.adsenseReady === true ? 1 : 2,
+              requireMinSources: false,
             });
       const generated = await generateSourceFirstArticle({
         query: research.query,
         sources: research.sources,
+        adsenseReady,
       });
 
       return NextResponse.json({

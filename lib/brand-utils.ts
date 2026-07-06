@@ -1,6 +1,5 @@
-export function getArticleLink(article: { slug: string; category?: string | null }) {
-  const isVentura = article.category?.toLowerCase().includes("ventura");
-  return isVentura ? `/ventura/${article.slug}` : `/news/${article.slug}`;
+export function getArticleLink(article: { slug: string }) {
+  return `/${article.slug}`;
 }
 
 export function getBrandTheme(category?: string | null) {

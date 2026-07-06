@@ -8,11 +8,46 @@ const SECTION_LABELS = [
   "KEY DATE",
   "THE BIGGER QUESTION",
   "THE OTHER SIDE",
+  "WHY IT MATTERS",
   "WHAT HAPPENS NOW",
+  "WHAT HAPPENS NEXT",
+  "OPPOSING CONTEXT",
   "WHAT WE STILL DON'T KNOW",
   "SOURCE NOTE",
+  "WHAT WE'RE TRACKING",
+  "BACKGROUND AND CONTEXT",
+  "WHAT TO WATCH",
+  "EDITORIAL NOTE",
 ] as const;
+
+/** Title-case variants AI often emits instead of all-caps section labels. */
+const SECTION_TITLE_CASE: Record<string, (typeof SECTION_LABELS)[number]> = {
+  Subhead: "SUBHEAD",
+  Lede: "LEDE",
+  "What Happened": "WHAT HAPPENED",
+  "Fact Box": "FACT BOX",
+  "By the Numbers": "BY THE NUMBERS",
+  "Charges Filed": "CHARGES FILED",
+  "Key Date": "KEY DATE",
+  "The Bigger Question": "THE BIGGER QUESTION",
+  "The Other Side": "THE OTHER SIDE",
+  "Why It Matters": "WHY IT MATTERS",
+  "What Happens Now": "WHAT HAPPENS NOW",
+  "What Happens Next": "WHAT HAPPENS NEXT",
+  "Opposing Context": "OPPOSING CONTEXT",
+  "What We Still Don't Know": "WHAT WE STILL DON'T KNOW",
+  "Source Note": "SOURCE NOTE",
+  "What We're Tracking": "WHAT WE'RE TRACKING",
+  "Background and Context": "BACKGROUND AND CONTEXT",
+  "What to Watch": "WHAT TO WATCH",
+  "Editorial Note": "EDITORIAL NOTE",
+};
+
 const SECTION_HEADING_PREFIX = "###";
+
+function sectionLabelsPattern(): string {
+  return SECTION_LABELS.map((label) => escapeForRegex(label)).join("|");
+}
 
 function escapeForRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -63,6 +98,45 @@ function normalizeHeadingText(value: string): string {
     .replace(/[:\-–—]+$/g, "")
     .trim()
     .toUpperCase();
+}
+
+function toSectionHeading(label: string): string {
+  return `${SECTION_HEADING_PREFIX} ${label.toUpperCase()}`;
+}
+
+/** Repair AI output like "Lakers Receive:** text" (missing opening **). */
+function repairOrphanBoldLabels(input: string): string {
+  return input
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      const orphanBold = trimmed.match(
+        /^(?:[-*+]\s*)?([A-Za-z][A-Za-z0-9\s&'/:,-]{1,48}):\*\*\s*(.+)$/,
+      );
+      if (orphanBold?.[1] && orphanBold[2]) {
+        const prefix = line.match(/^\s*/)?.[0] ?? "";
+        const bullet = trimmed.match(/^([-*+]\s*)/)?.[1] ?? "";
+        return `${prefix}${bullet}**${orphanBold[1]}:** ${orphanBold[2]}`;
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+function promoteTitleCaseSectionHeadings(input: string): string {
+  let normalized = input;
+  for (const [titleCase, upperLabel] of Object.entries(SECTION_TITLE_CASE)) {
+    const safeTitle = escapeForRegex(titleCase);
+    normalized = normalized.replace(
+      new RegExp(`^\\s*\\*\\*\\s*(${safeTitle})\\s*\\*\\*\\s*$`, "gim"),
+      () => toSectionHeading(upperLabel),
+    );
+    normalized = normalized.replace(
+      new RegExp(`^\\s*(${safeTitle})\\s*$`, "gim"),
+      () => toSectionHeading(upperLabel),
+    );
+  }
+  return normalized;
 }
 
 function unwrapAccidentalSectionBlockquotes(input: string): string {
@@ -148,7 +222,10 @@ export function normalizeArticleMarkdown(input: string): string {
   // If known section labels were accidentally emitted as blockquotes,
   // convert them back to regular section text.
   normalized = normalized.replace(
-    /^>\s*\*{0,2}\s*(SUBHEAD|LEDE|WHAT HAPPENED|FACT BOX|BY THE NUMBERS|CHARGES FILED|KEY DATE|THE BIGGER QUESTION|THE OTHER SIDE|WHAT HAPPENS NOW|WHAT WE STILL DON'T KNOW|SOURCE NOTE)\s*\*{0,2}\s*(.*)$/gim,
+    new RegExp(
+      `^>\\s*\\*{0,2}\\s*(${sectionLabelsPattern()})\\s*\\*{0,2}\\s*(.*)$`,
+      "gim",
+    ),
     (_match, label: string, trailing: string) => {
       const cleanLabel = label.toUpperCase().trim();
       const cleanTrailing = String(trailing ?? "").trim();
@@ -162,7 +239,7 @@ export function normalizeArticleMarkdown(input: string): string {
   for (const label of SECTION_LABELS) {
     const safeLabel = escapeForRegex(label);
     const headingOrAsteriskPattern = new RegExp(
-      `(^|[\\s.])(?:##\\s*|\\*\\s*)(${safeLabel})\\*?`,
+      `(^|[\\s.])(?:(?<![\\#])##\\s+|\\*\\s+)(${safeLabel})\\*?`,
       "gi",
     );
     normalized = normalized.replace(
@@ -172,30 +249,29 @@ export function normalizeArticleMarkdown(input: string): string {
     );
   }
 
-  // Convert standalone section labels (plain or bold) into real H2 headings.
+  // Convert standalone section labels (plain or bold) into real headings.
   for (const label of SECTION_LABELS) {
     const safeLabel = escapeForRegex(label);
     normalized = normalized.replace(
       new RegExp(`^\\s*\\*\\*\\s*(${safeLabel})\\s*\\*\\*\\s*$`, "gim"),
-      (_match, captured: string) => `${SECTION_HEADING_PREFIX} ${captured.toUpperCase()}`,
+      (_match, captured: string) => toSectionHeading(captured),
     );
     normalized = normalized.replace(
       new RegExp(`^\\s*(${safeLabel})\\s*$`, "gim"),
-      (_match, captured: string) => `${SECTION_HEADING_PREFIX} ${captured.toUpperCase()}`,
+      (_match, captured: string) => toSectionHeading(captured),
     );
   }
 
-  // Keep handling generic uppercase "## LABEL" mistakes.
+  normalized = promoteTitleCaseSectionHeadings(normalized);
+  normalized = repairOrphanBoldLabels(normalized);
+
+  // Keep handling generic uppercase "## LABEL" mistakes (not ### markdown headings).
   normalized = normalized.replace(
-    /##\s*([A-Z][A-Z0-9 &'/-]{2,}?)(?:\*)?(?=(?:\s{2,}|\s+[A-Z][a-z]|\n|$))/g,
+    /(?<!\#)##\s+([A-Z][A-Z0-9 &'/-]{2,}?)(?:\*)?(?=(?:\s{2,}|\s+[A-Z][a-z]|\n|$))/g,
     (_match, label: string) => `\n\n**${label.trim()}**\n\n`,
   );
 
-  // Ensure labels/headings are separated from immediately following sentence text.
-  normalized = normalized.replace(
-    /(#{2,3}\s*[A-Z][A-Z0-9 &'/-]{2,})([A-Z0-9])/g,
-    "$1\n\n$2",
-  );
+  // Ensure bold labels are separated from immediately following sentence text.
   normalized = normalized.replace(
     /(\*\*[A-Z][A-Z0-9 &'/-]{2,}\*\*)([A-Z0-9])/g,
     "$1\n\n$2",
@@ -203,7 +279,7 @@ export function normalizeArticleMarkdown(input: string): string {
 
   // Remove stray markdown quote markers that can appear before normalized labels.
   normalized = normalized.replace(
-    /^>\s*(\*\*(?:SUBHEAD|LEDE|WHAT HAPPENED|FACT BOX|BY THE NUMBERS|CHARGES FILED|KEY DATE|THE BIGGER QUESTION|THE OTHER SIDE|WHAT HAPPENS NOW|WHAT WE STILL DON'T KNOW|SOURCE NOTE)\*\*)$/gim,
+    new RegExp(`^>\\s*(\\*\\*(?:${sectionLabelsPattern()})\\*\\*)$`, "gim"),
     "$1",
   );
 

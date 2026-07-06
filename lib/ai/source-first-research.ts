@@ -26,8 +26,6 @@ export type SourceFirstResearchResult = {
   }>;
   /** True when fewer than the preferred source count were found but research still returned. */
   limitedSources: boolean;
-  /** True when the input is pasted event/details text rather than a search topic. */
-  providedContent: boolean;
 };
 
 function publisherFromUrl(url: string): string {
@@ -79,6 +77,16 @@ type GoogleCustomSearchResponse = {
     displayLink?: string;
   }>;
 };
+
+let warnedCustomSearchUnavailable = false;
+
+function warnCustomSearchUnavailable(reason: string) {
+  if (warnedCustomSearchUnavailable) return;
+  warnedCustomSearchUnavailable = true;
+  console.warn(
+    `[source-first] Custom Search skipped: ${reason} Falling back to Gemini grounding + Google News RSS.`,
+  );
+}
 
 type GroundingChunk = {
   web?: {
@@ -279,7 +287,10 @@ async function searchGoogleCustom(
     process.env.GOOGLE_API_KEY ??
     ""
   ).trim();
-  if (!apiKey) throw new Error("GOOGLE_API_KEY is not configured.");
+  if (!apiKey) {
+    warnCustomSearchUnavailable("GOOGLE_API_KEY is not configured.");
+    return null;
+  }
 
   const url = new URL("https://www.googleapis.com/customsearch/v1");
   url.searchParams.set("key", apiKey);
@@ -289,7 +300,29 @@ async function searchGoogleCustom(
 
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Google Custom Search failed with status ${response.status}.`);
+    const errorBody = (await response.json().catch(() => null)) as {
+      error?: {
+        message?: string;
+        details?: Array<{ reason?: string }>;
+      };
+    } | null;
+    const blockedReason = errorBody?.error?.details?.find(
+      (detail) => detail.reason === "API_KEY_SERVICE_BLOCKED",
+    );
+    const googleMessage = errorBody?.error?.message?.trim();
+    if (response.status === 403) {
+      warnCustomSearchUnavailable(
+        blockedReason
+          ? "Custom Search API is not enabled for this key (new Google accounts often cannot access it — Google closed the API to new customers)."
+          : googleMessage ||
+              "Custom Search returned 403 (API closed to new customers or key not authorized).",
+      );
+      return null;
+    }
+    warnCustomSearchUnavailable(
+      googleMessage || `Custom Search failed with status ${response.status}.`,
+    );
+    return null;
   }
 
   const payload = (await response.json()) as GoogleCustomSearchResponse;
@@ -618,23 +651,6 @@ function payloadHasSources(payload: GeminiResearchPayload | null | undefined): b
   return Boolean(payload?.sources?.some((item) => Boolean(String(item.url ?? "").trim())));
 }
 
-/** Detect when the user pasted event notes or a full write-up instead of a search query. */
-export function isProvidedContentInput(query: string): boolean {
-  const trimmed = query.trim();
-  if (trimmed.length < 200) return false;
-
-  const textWithoutUrls = withoutUrls(trimmed);
-  const wordCount = textWithoutUrls.split(/\s+/).filter(Boolean).length;
-  const lineCount = trimmed.split(/\r?\n/).filter((line) => line.trim()).length;
-  const hasMultipleParagraphs = /\n\s*\n/.test(trimmed) || lineCount >= 4;
-
-  if (wordCount >= 60 && trimmed.length >= 350) return true;
-  if (wordCount >= 40 && hasMultipleParagraphs) return true;
-  if (extractFirstUrl(trimmed) && textWithoutUrls.length >= 180) return true;
-
-  return false;
-}
-
 export async function gatherSourceFirstResearch(
   query: string,
   options: {
@@ -646,23 +662,6 @@ export async function gatherSourceFirstResearch(
 ): Promise<SourceFirstResearchResult> {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) throw new Error("Search topic is required.");
-
-  if (isProvidedContentInput(normalizedQuery)) {
-    return {
-      query: normalizedQuery,
-      sources: [],
-      skipped: [
-        {
-          url: "",
-          title: "Provided content",
-          reason:
-            "Input looks like pasted event details. Skipping web search and writing from provided text.",
-        },
-      ],
-      limitedSources: true,
-      providedContent: true,
-    };
-  }
 
   const requestedLimit = Math.min(Math.max(options.searchLimit ?? 4, 2), 4);
   const candidateLimit = Math.max(requestedLimit + 2, 5);
@@ -823,10 +822,10 @@ export async function gatherSourceFirstResearch(
     sources.push(...enriched.map((source, index) => ({ ...source, id: `S${index + 1}` })));
   }
 
-  const limitedSources = sources.length < minSources;
-  if (limitedSources && requireMinSources) {
+  const limitedSources = sources.length > 0 && sources.length < minSources;
+  if (sources.length === 0 && requireMinSources) {
     throw new Error(
-      `Only ${sources.length} usable direct source${sources.length === 1 ? "" : "s"} found. At least ${minSources} are required. Configure GOOGLE_CSE_ID/GOOGLE_SEARCH_ENGINE_ID or enable Gemini grounded search with GOOGLE_API_KEY, then try a more specific topic.`,
+      "No usable direct sources found. Paste a direct article URL, or try a more specific topic. (Custom Search JSON API is unavailable for new Google accounts; Gemini grounding is used when possible.)",
     );
   }
 
@@ -835,6 +834,5 @@ export async function gatherSourceFirstResearch(
     sources,
     skipped,
     limitedSources,
-    providedContent: false,
   };
 }

@@ -56,10 +56,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/politics",
     "/business",
     "/opinion",
-    "/topstories",
     "/ventura-county",
     "/council-tea",
-    "/ventura/articles",
     "/newsletter",
     "/privacy-policy",
     "/terms-of-service",
@@ -78,7 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...rows.map((a) => ({
       url: publicSiteUrl(
-        a.isVentura ? `/ventura/${a.slug}` : `/${a.slug}`,
+        `/${a.slug}`,
         baseUrl,
       ),
       lastModified: a.updatedAt ?? a.publishedAt ?? a.createdAt ?? now,

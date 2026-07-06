@@ -23,6 +23,7 @@ import {
   Activity,
   Moon,
   Sun,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -42,6 +43,12 @@ type AdminShellProps = {
 const baseNav = [
   { href: "/admin", label: "Dashboard", icon: Home, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/articles", label: "Articles", icon: FileText, permission: PERMISSIONS.ADMIN_ARTICLES },
+  {
+    href: "/admin/content-research",
+    label: "Content research",
+    icon: Sparkles,
+    permission: PERMISSIONS.ADMIN_ARTICLES,
+  },
   {
     href: "/admin/articles/auto-writer-review",
     label: "RSS approvals",

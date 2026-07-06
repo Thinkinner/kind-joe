@@ -335,6 +335,8 @@ export const sourceFirstArticleJobs = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     topic: text("topic").notNull(),
+    adsenseReady: boolean("adsense_ready").notNull().default(false),
+    writingMode: varchar("writing_mode", { length: 20 }).notNull().default("auto"),
     status: varchar("status", { length: 20 }).notNull().default("queued"),
     sources: jsonb("sources").default([]).notNull(),
     result: jsonb("result"),

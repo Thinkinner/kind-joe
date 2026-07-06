@@ -13,7 +13,7 @@ type RouteParams = {
 };
 
 export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ARTICLES);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },

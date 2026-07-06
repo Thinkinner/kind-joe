@@ -17,14 +17,14 @@ import { Analytics } from "@vercel/analytics/next";
 
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-poppins",
   display: "swap",
 });
 
 const lora = Lora({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600"],
   variable: "--font-lora",
   display: "swap",
 });
@@ -161,11 +161,11 @@ export default async function RootLayout({
         {/* Subscribe with Google core script */}
         <Script
           src="https://news.google.com/swg/js/v1/swg-basic.js"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
 
         {/* Subscribe with Google initialization (updated) */}
-        <Script id="swg-init" strategy="afterInteractive">
+        <Script id="swg-init" strategy="lazyOnload">
           {`
       (self.SWG_BASIC = self.SWG_BASIC || []).push(basicSubscriptions => {
         basicSubscriptions.init({
