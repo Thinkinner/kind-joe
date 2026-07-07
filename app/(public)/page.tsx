@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FeaturedStoriesCarouselHero } from "@/components/rss-news/featured-stories-carousel";
 import { PublisherTrustBar } from "@/components/home/publisher-trust-bar";
 import { SectionHeader } from "@/components/home/section-header";
 import { TopicPills } from "@/components/home/topic-pills";
@@ -9,7 +10,7 @@ import { publicSiteOrigin } from "@/lib/site/public-site-url";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Kind Joe — Original News & Ventura County",
+  title: "Kind Joe — Original News, Top Stories & Ventura County",
   description:
     "Kind Joe publishes original news, analysis, and local Ventura County coverage. Read our latest stories, top picks, and editorial reporting on kindjoe.com.",
   alternates: {
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-100 via-white to-slate-50">
+      <FeaturedStoriesCarouselHero />
       <PublisherTrustBar />
 
       <main className="w-full px-4 pb-12 pt-4 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8 lg:pt-8">
