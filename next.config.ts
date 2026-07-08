@@ -57,7 +57,7 @@ const nextConfig = {
         permanent: true,
       },
       {
-        source: "/ventura/:slug",
+        source: "/ventura/:slug((?!posts$|articles$).*)",
         destination: "/:slug",
         permanent: true,
       },
