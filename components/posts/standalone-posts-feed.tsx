@@ -16,6 +16,7 @@ type StandalonePostsFeedProps = {
   subscribeEndpoint: string;
   subscribeTags: string[];
   subscribeButtonClassName: string;
+  profileImageClassName?: string;
 };
 
 const PAGE_SIZE = 12;
@@ -28,6 +29,7 @@ export function StandalonePostsFeed({
   subscribeEndpoint,
   subscribeTags,
   subscribeButtonClassName,
+  profileImageClassName,
 }: StandalonePostsFeedProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -78,7 +80,7 @@ export function StandalonePostsFeed({
             width={44}
             height={44}
             alt={profileName}
-            className="h-11 w-11 rounded-full object-cover"
+            className={`h-11 w-11 rounded-full object-cover ${profileImageClassName ?? ""}`}
           />
           <p className="text-base font-semibold text-neutral-900">{profileName}</p>
         </div>

@@ -85,6 +85,16 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.kindjoe.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "kindjoe.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "storage.googleapis.com",
         pathname: "/**", // safer pattern
       },

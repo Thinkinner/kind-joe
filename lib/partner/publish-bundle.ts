@@ -253,7 +253,7 @@ export async function publishPartnerBundle(
     console.error("[partner.publish] immediate comment failed", error);
   }
 
-  for (const path of ["/posts", "/ventura/posts", "/joeknowsla/posts"]) {
+  for (const path of ["/posts", "/ventura/posts", "/joeknowsla/posts", "/joefromslo/posts"]) {
     revalidatePath(path);
   }
 

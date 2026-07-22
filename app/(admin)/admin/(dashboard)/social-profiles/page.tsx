@@ -176,6 +176,20 @@ const LINK_PRESETS: LinkPreset[] = [
     }),
   },
   {
+    id: "joefromslo-posts",
+    label: "Kind Joe San Luis Obispo Posts",
+    description: "San Luis Obispo posts feed",
+    build: (_profileHandle, nextOrder) => ({
+      label: "Kind Joe San Luis Obispo Posts",
+      href: "/joefromslo/posts",
+      description: "Read the latest San Luis Obispo stories and updates.",
+      order: String(nextOrder),
+      isActive: true,
+      isFeatured: false,
+      openInNewTab: false,
+    }),
+  },
+  {
     id: "external-site",
     label: "Official Website",
     description: "External website card",

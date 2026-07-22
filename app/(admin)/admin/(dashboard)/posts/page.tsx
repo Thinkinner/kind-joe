@@ -39,7 +39,42 @@ type Post = {
   isActive: boolean | null;
 };
 
-type FeedType = "kindjoe" | "ventura" | "joeknowsla";
+type FeedType = "kindjoe" | "ventura" | "joeknowsla" | "joefromslo";
+
+const FEED_META: Record<
+  FeedType,
+  { apiBase: string; feedLabel: string; addButtonLabel: string; singular: string; loadError: string }
+> = {
+  kindjoe: {
+    apiBase: "/api/admin/posts",
+    feedLabel: "Posts",
+    addButtonLabel: "Add post",
+    singular: "post",
+    loadError: "posts",
+  },
+  ventura: {
+    apiBase: "/api/admin/ventura-posts",
+    feedLabel: "Ventura posts",
+    addButtonLabel: "Add Ventura post",
+    singular: "Ventura post",
+    loadError: "ventura posts",
+  },
+  joeknowsla: {
+    apiBase: "/api/admin/joeknowsla-posts",
+    feedLabel: "JoeKnowsLA posts",
+    addButtonLabel: "Add JoeKnowsLA post",
+    singular: "JoeKnowsLA post",
+    loadError: "JoeKnowsLA posts",
+  },
+  joefromslo: {
+    apiBase: "/api/admin/joefromslo-posts",
+    feedLabel: "Kind Joe San Luis Obispo posts",
+    addButtonLabel: "Add Kind Joe SLO post",
+    singular: "Kind Joe SLO post",
+    loadError: "Kind Joe San Luis Obispo posts",
+  },
+};
+
 const INITIAL_VISIBLE = 8;
 const LOAD_MORE_STEP = 4;
 
@@ -61,34 +96,16 @@ export default function AdminPostsPage() {
   const [search, setSearch] = useState("");
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const apiBase =
-    feedType === "ventura"
-      ? "/api/admin/ventura-posts"
-      : feedType === "joeknowsla"
-        ? "/api/admin/joeknowsla-posts"
-        : "/api/admin/posts";
-  const feedLabel =
-    feedType === "ventura"
-      ? "Ventura posts"
-      : feedType === "joeknowsla"
-        ? "JoeKnowsLA posts"
-        : "Posts";
-  const addButtonLabel =
-    feedType === "ventura"
-      ? "Add Ventura post"
-      : feedType === "joeknowsla"
-        ? "Add JoeKnowsLA post"
-        : "Add post";
-  const singularPostLabel =
-    feedType === "ventura"
-      ? "Ventura post"
-      : feedType === "joeknowsla"
-        ? "JoeKnowsLA post"
-        : "post";
+  const { apiBase, feedLabel, addButtonLabel, singular: singularPostLabel, loadError } =
+    FEED_META[feedType];
 
   useEffect(() => {
     const queryFeed = searchParams.get("feed");
-    if (queryFeed === "ventura" || queryFeed === "joeknowsla") {
+    if (
+      queryFeed === "ventura" ||
+      queryFeed === "joeknowsla" ||
+      queryFeed === "joefromslo"
+    ) {
       setFeedType(queryFeed);
     } else {
       setFeedType("kindjoe");
@@ -105,17 +122,7 @@ export default function AdminPostsPage() {
   useEffect(() => {
     setLoading(true);
     load()
-      .catch(() =>
-        toast.error(
-          `Could not load ${
-            feedType === "ventura"
-              ? "ventura posts"
-              : feedType === "joeknowsla"
-                ? "JoeKnowsLA posts"
-                : "posts"
-          }`,
-        ),
-      )
+      .catch(() => toast.error(`Could not load ${loadError}`))
       .finally(() => setLoading(false));
   }, [feedType]);
 
@@ -210,13 +217,7 @@ export default function AdminPostsPage() {
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading{" "}
-          {feedType === "ventura"
-            ? "ventura posts"
-            : feedType === "joeknowsla"
-              ? "JoeKnowsLA posts"
-              : "posts"}
-          ...
+          Loading {loadError}...
         </div>
       </div>
     );
@@ -274,6 +275,17 @@ export default function AdminPostsPage() {
               >
                 JoeKnowsLA posts
               </TabsTrigger>
+              <TabsTrigger
+                value="joefromslo"
+                className="rounded-full px-4 text-xs"
+                onClick={() => {
+                  const nextFeed: FeedType = "joefromslo";
+                  setFeedType(nextFeed);
+                  router.replace(`${pathname}?feed=${nextFeed}`, { scroll: false });
+                }}
+              >
+                Kind Joe SLO posts
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -303,15 +315,7 @@ export default function AdminPostsPage() {
           <DialogContent className="overflow-hidden p-0 sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="px-8 pt-7">
-                {editingPost
-                  ? `Edit ${
-                      feedType === "ventura"
-                        ? "Ventura post"
-                        : feedType === "joeknowsla"
-                          ? "JoeKnowsLA post"
-                          : "post"
-                    }`
-                  : "Create Post"}
+                {editingPost ? `Edit ${singularPostLabel}` : "Create Post"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 px-8 py-6">

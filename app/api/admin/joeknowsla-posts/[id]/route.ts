@@ -10,7 +10,7 @@ import { resolveStaffApi } from "@/lib/auth/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUBLIC_POST_FEED_PATHS = ["/posts", "/ventura/posts", "/joeknowsla/posts"] as const;
+const PUBLIC_POST_FEED_PATHS = ["/posts", "/ventura/posts", "/joeknowsla/posts", "/joefromslo/posts"] as const;
 
 function revalidatePublicPostFeeds() {
   for (const path of PUBLIC_POST_FEED_PATHS) {
