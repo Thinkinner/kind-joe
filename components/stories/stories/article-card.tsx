@@ -3,8 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
-import { articlePublicPath } from "@/lib/brand/article-theme";
+import {
+  articlePublicPath,
+  hasLaNewsTag,
+  hasSanLuisObispoTag,
+  hasVenturaCountyTag,
+} from "@/lib/brand/article-theme";
 import { formatTimeAgo } from "@/lib/format/time-ago";
+import { formatHeadline } from "@/lib/format/headline";
 
 export function ArticleCard({
   article,
@@ -23,13 +29,26 @@ export function ArticleCard({
   };
   variant?: "default" | "elevated";
 }) {
-  const hasVenturaTag = article.tags?.some((t) => t.slug === "ventura-county");
-  const path = articlePublicPath(article.slug);
-  const brandColor = hasVenturaTag ? "bg-orange-600" : "bg-red-600";
-  const hoverColor = hasVenturaTag
+  const isVentura = hasVenturaCountyTag(article.tags);
+  const isLa = hasLaNewsTag(article.tags);
+  const isSlo = hasSanLuisObispoTag(article.tags);
+  const brandColor = isVentura
+    ? "bg-orange-600"
+    : isLa
+      ? "bg-blue-600"
+      : isSlo
+        ? "bg-teal-700"
+        : "bg-red-600";
+  const hoverColor = isVentura
     ? "group-hover:text-orange-600"
-    : "group-hover:text-red-700";
+    : isLa
+      ? "group-hover:text-blue-700"
+      : isSlo
+        ? "group-hover:text-teal-700"
+        : "group-hover:text-red-700";
+  const path = articlePublicPath(article.slug);
   const timeAgo = formatTimeAgo(article.publishedAt ?? null);
+  const headline = formatHeadline(article.title);
   const imageSrc = optimizeCloudinaryUrl(
     article.coverImageUrl ?? "/placeholder.jpg",
     { width: 900 },
@@ -41,20 +60,20 @@ export function ArticleCard({
         href={path}
         className="group flex h-full min-w-0 flex-col overflow-hidden"
       >
-        <div className="relative aspect-[16/10] overflow-hidden rounded-md bg-slate-100 sm:rounded-lg">
+        <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-slate-100">
           <Image
             src={imageSrc}
-            alt={article.title}
+            alt={headline}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 360px"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1 pt-2 sm:gap-1.5 sm:pt-3">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span
-              className={`${brandColor} w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white sm:px-2 sm:text-[10px]`}
+              className={`${brandColor} w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-semibold text-white`}
             >
               {article.category || "News"}
             </span>
@@ -66,9 +85,9 @@ export function ArticleCard({
           </div>
 
           <h3
-            className={`line-clamp-3 min-w-0 break-words font-[Poppins] text-[13px] font-bold leading-snug text-slate-900 transition-colors sm:text-base ${hoverColor}`}
+            className={`line-clamp-3 min-w-0 break-words text-[13px] font-semibold leading-snug text-slate-900 transition-colors sm:text-[15px] ${hoverColor}`}
           >
-            {article.title}
+            {headline}
           </h3>
         </div>
       </Link>
@@ -80,10 +99,10 @@ export function ArticleCard({
       href={path}
       className="group flex w-full flex-row items-start gap-4 rounded-md md:flex-col md:gap-0"
     >
-      <div className="relative aspect-[4/3] w-1/3 min-w-[100px] shrink-0 overflow-hidden rounded-md md:aspect-[16/9] md:w-full">
+      <div className="relative aspect-[4/3] w-1/3 min-w-[100px] shrink-0 overflow-hidden rounded-xl md:aspect-[16/9] md:w-full">
         <Image
           src={imageSrc}
-          alt={article.title}
+          alt={headline}
           fill
           sizes="(max-width: 768px) 33vw, 900px"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -93,16 +112,16 @@ export function ArticleCard({
       <div className="flex flex-col gap-1 py-1 md:gap-2 md:pb-4 md:pt-3">
         <div className="flex items-center">
           <span
-            className={`${brandColor} rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase text-white`}
+            className={`${brandColor} rounded-sm px-2 py-0.5 text-[10px] font-semibold text-white`}
           >
             {article.category}
           </span>
         </div>
 
         <h3
-          className={`line-clamp-3 font-[Poppins] text-sm font-bold leading-snug text-neutral-900 underline-offset-2 transition-colors group-hover:underline md:text-lg ${hoverColor}`}
+          className={`line-clamp-3 text-sm font-semibold leading-snug text-neutral-900 underline-offset-2 transition-colors group-hover:underline md:text-lg ${hoverColor}`}
         >
-          {article.title}
+          {headline}
         </h3>
       </div>
     </Link>

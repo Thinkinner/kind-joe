@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import KindJoeModalForm from "@/components/modals/kindjoe-capture-modal"; // path as you had it
+import KindJoeModalForm from "@/components/modals/kindjoe-capture-modal";
 
-const getEmail = () => {
+export default function GetEmail() {
   const [email, setEmail] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -14,59 +13,54 @@ const getEmail = () => {
     e.preventDefault();
     const clean = email.trim();
     if (!clean || !clean.includes("@")) return;
-
-    setOpen(true); // show our custom modal
+    setOpen(true);
   };
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-full bg-red-50 p-2 text-red-600">
-          <Mail className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
-            Newsletter
-          </p>
-          <h2 className="mt-1 text-lg font-bold leading-tight text-neutral-900">
-            Get the top stories in your inbox
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-            One concise update with key stories, sharp analysis, and what matters next.
-          </p>
-        </div>
-      </div>
+    <section className="relative overflow-hidden text-white">
+      <div
+        className="absolute inset-0"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 70% at 0% 0%, rgba(207,26,30,0.25), transparent 55%), linear-gradient(165deg, #0b1220 0%, #111827 50%, #0a1628 100%)",
+        }}
+      />
 
-      <div className="mt-4 grid gap-2 text-xs text-neutral-600">
-        <p className="flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-red-500" />
-          Curated by the editorial team
+      <div className="relative p-5 sm:p-6">
+        <p className="text-sm font-semibold text-red-400">Inbox</p>
+        <h2 className="mt-1 text-xl font-bold tracking-tight text-white">
+          Local stories, once a day
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/60">
+          LA, Ventura County &amp; SLO — the essentials, no fluff.
         </p>
-        <p className="flex items-center gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5 text-red-500" />
-          No spam, unsubscribe anytime
-        </p>
-      </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-2.5">
-        <Input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="h-10 rounded-lg border-neutral-300 text-sm"
-        />
-        <Button
-          type="submit"
-          className="h-10 w-full rounded-lg bg-red-600 text-xs font-semibold uppercase tracking-wide text-white hover:bg-red-700"
+        <form
+          onSubmit={handleSubmit}
+          className="mt-5 flex flex-col gap-3"
         >
-          Subscribe Free
-        </Button>
-      </form>
-      <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
-        By subscribing, you agree to receive email updates from Kind Joe.
-      </p>
-      {open && (
+          <Input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-none border-0 border-b border-white/25 bg-transparent px-0 text-sm text-white shadow-none placeholder:text-white/35 focus-visible:border-red-400 focus-visible:ring-0"
+          />
+          <Button
+            type="submit"
+            className="h-11 w-full rounded-none bg-red-600 text-sm font-semibold text-white hover:bg-red-500"
+          >
+            Subscribe
+          </Button>
+        </form>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-white/40">
+          Free · Unsubscribe anytime
+        </p>
+      </div>
+
+      {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-4">
           <div className="w-full max-w-2xl">
             <KindJoeModalForm
@@ -75,9 +69,7 @@ const getEmail = () => {
             />
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
-};
-
-export default getEmail;
+}

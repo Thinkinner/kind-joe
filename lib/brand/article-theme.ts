@@ -1,9 +1,23 @@
 export const VENTURA_COUNTY_TAG = "ventura-county";
+export const LA_NEWS_TAG = "la-news";
+export const SAN_LUIS_OBISPO_TAG = "san-luis-obispo";
 
 export function hasVenturaCountyTag(
   tags: Array<{ slug?: string | null }> | undefined | null,
 ): boolean {
   return Boolean(tags?.some((tag) => tag.slug === VENTURA_COUNTY_TAG));
+}
+
+export function hasLaNewsTag(
+  tags: Array<{ slug?: string | null }> | undefined | null,
+): boolean {
+  return Boolean(tags?.some((tag) => tag.slug === LA_NEWS_TAG));
+}
+
+export function hasSanLuisObispoTag(
+  tags: Array<{ slug?: string | null }> | undefined | null,
+): boolean {
+  return Boolean(tags?.some((tag) => tag.slug === SAN_LUIS_OBISPO_TAG));
 }
 
 /** Canonical public article URL — always /{slug}, never /ventura/{slug}. */

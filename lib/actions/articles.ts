@@ -23,11 +23,16 @@ import {
   ilike,
   exists,
   sql,
+  inArray,
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
 import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { titleAttentionScore } from "@/lib/format/title-attention-score";
+import {
+  LOCAL_NEWS_REGIONS,
+  type LocalNewsTagSlug,
+} from "@/lib/local-news/regions";
 
 const MAX_LIST_PAGE = 50;
 const TOP_STORY_TAG_SLUG = "kindjoetopstories";
@@ -98,6 +103,8 @@ const TOPIC_KEYWORDS: Record<TopicSlug, string[]> = {
   business: ["business", "finance", "econom", "market"],
   opinion: ["opinion", "analysis", "editorial", "commentary"],
 };
+
+const publishDateSort = sql`coalesce(${articles.publishedAt}, ${articles.publishAt})`;
 
 function topicFilter(topic: TopicSlug) {
   const keywords = TOPIC_KEYWORDS[topic];
@@ -204,6 +211,111 @@ export async function getArticlesAction(limit: number, offset: number) {
   }
 }
 
+/** Ensure Ventura / L.A. / SLO tags exist so editors can attach them immediately. */
+export async function ensureLocalNewsTags(): Promise<void> {
+  try {
+    for (const region of LOCAL_NEWS_REGIONS) {
+      await db
+        .insert(tags)
+        .values({ name: region.name, slug: region.slug })
+        .onConflictDoUpdate({
+          target: tags.slug,
+          set: { name: region.name },
+        });
+    }
+  } catch (error) {
+    console.error("ensureLocalNewsTags failed:", error);
+  }
+}
+
+/** Published articles that carry an exact local-news tag slug. */
+export async function getArticlesByTagSlugAction(
+  tagSlug: LocalNewsTagSlug | string,
+  limit: number,
+  offset: number,
+): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const safeOffset = Math.max(offset, 0);
+  const now = new Date();
+
+  try {
+    const results = await db
+      .select(articleSummarySelect)
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
+      .where(
+        and(
+          publishedArticlesFilter(now),
+          exists(
+            db
+              .select()
+              .from(articleTags)
+              .innerJoin(tags, eq(articleTags.tagId, tags.id))
+              .where(
+                and(
+                  eq(articleTags.articleId, articles.id),
+                  eq(tags.slug, tagSlug),
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(desc(publishDateSort))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    return mapArticleSummaryRows(results);
+  } catch (error) {
+    console.error("getArticlesByTagSlugAction error:", error);
+    return [];
+  }
+}
+
+/** Any of the local-news tags (Ventura, L.A., SLO). */
+export async function getLocalNewsArticlesAction(
+  limit: number,
+  offset: number,
+): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const safeOffset = Math.max(offset, 0);
+  const now = new Date();
+  const localSlugs = LOCAL_NEWS_REGIONS.map((region) => region.slug);
+
+  try {
+    const results = await db
+      .select(articleSummarySelect)
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
+      .where(
+        and(
+          publishedArticlesFilter(now),
+          exists(
+            db
+              .select()
+              .from(articleTags)
+              .innerJoin(tags, eq(articleTags.tagId, tags.id))
+              .where(
+                and(
+                  eq(articleTags.articleId, articles.id),
+                  inArray(tags.slug, [...localSlugs]),
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(desc(publishDateSort))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    return mapArticleSummaryRows(results);
+  } catch (error) {
+    console.error("getLocalNewsArticlesAction error:", error);
+    return [];
+  }
+}
+
 function excludingHeroTopStoriesFilter() {
   return sql`NOT EXISTS (
     SELECT 1 FROM ${articleTags} at
@@ -212,8 +324,6 @@ function excludingHeroTopStoriesFilter() {
     AND t.slug = ${TOP_STORY_TAG_SLUG}
   )`;
 }
-
-const publishDateSort = sql`coalesce(${articles.publishedAt}, ${articles.publishAt})`;
 
 async function fetchEditorsPickPool(
   now: Date,

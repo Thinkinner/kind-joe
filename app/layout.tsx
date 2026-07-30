@@ -180,7 +180,7 @@ export default async function RootLayout({
       </head>
 
       <body
-        className={`${poppins.variable} ${lora.variable} antialiased h-full bg-background text-foreground`}
+        className={`${poppins.variable} ${poppins.className} ${lora.variable} antialiased h-full bg-background text-foreground`}
       >
         <GoogleAnalytics />
         <main className="min-h-dvh min-w-0">{children}</main>
