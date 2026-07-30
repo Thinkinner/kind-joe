@@ -6,6 +6,8 @@ type SectionHeaderProps = {
   description?: string;
   actions?: ReactNode;
   as?: "h1" | "h2";
+  accentBarClass?: string;
+  eyebrowClassName?: string;
 };
 
 export function SectionHeader({
@@ -14,20 +16,32 @@ export function SectionHeader({
   description,
   actions,
   as: Heading = "h2",
+  accentBarClass = "bg-red-600",
+  eyebrowClassName = "text-red-600",
 }: SectionHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col gap-4 border-b border-slate-200/70 pb-5 sm:mb-8 sm:gap-5 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
-      <div className="min-w-0 space-y-1.5 sm:space-y-2">
-        {eyebrow ? (
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-red-600">
-            {eyebrow}
-          </p>
-        ) : null}
-        <Heading className="font-[Poppins] text-xl font-bold tracking-tight text-slate-900 sm:text-2xl md:text-[1.75rem] lg:text-3xl">
-          {title}
-        </Heading>
+    <div className="mb-7 flex flex-col gap-4 sm:mb-8 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-3">
+          <span
+            className={`h-8 w-1 shrink-0 rounded-full ${accentBarClass}`}
+            aria-hidden
+          />
+          <div className="min-w-0 space-y-1">
+            {eyebrow ? (
+              <p
+                className={`text-xs font-semibold ${eyebrowClassName}`}
+              >
+                {eyebrow}
+              </p>
+            ) : null}
+            <Heading className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-[2rem]">
+              {title}
+            </Heading>
+          </div>
+        </div>
         {description ? (
-          <p className="max-w-2xl text-[13px] leading-relaxed text-slate-600 sm:text-sm md:text-[15px]">
+          <p className="mt-2.5 max-w-2xl pl-4 text-[13px] leading-relaxed text-slate-500 sm:mt-3 sm:pl-4 sm:text-sm">
             {description}
           </p>
         ) : null}

@@ -71,6 +71,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/business",
     "/opinion",
     "/ventura-county",
+    "/la-news",
+    "/san-luis-obispo",
     "/council-tea",
     "/newsletter",
     "/privacy-policy",

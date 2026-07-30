@@ -5,6 +5,7 @@ import { ArticleSummary } from "@/types/article";
 import { ArticleCard } from "./article-card";
 import {
   getArticlesAction,
+  getArticlesByTagSlugAction,
   getArticlesByTopicAction,
 } from "@/lib/actions/articles";
 import { Loader2, Plus } from "lucide-react";
@@ -14,6 +15,7 @@ const BATCH_SIZE = 9; // 3x3 grid looks nice
 
 type ArticleListProps = {
   topic?: TopicSlug;
+  tagSlug?: string;
   emptyMessage?: string;
   columns?: 2 | 3;
   cardVariant?: "default" | "elevated";
@@ -21,6 +23,7 @@ type ArticleListProps = {
 
 export function ArticleList({
   topic,
+  tagSlug,
   emptyMessage = "No articles found.",
   columns = 3,
   cardVariant = "default",
@@ -32,12 +35,15 @@ export function ArticleList({
 
   const loadBatch = useCallback(
     async (offset: number) => {
+      if (tagSlug) {
+        return getArticlesByTagSlugAction(tagSlug, BATCH_SIZE, offset);
+      }
       if (topic) {
         return getArticlesByTopicAction(BATCH_SIZE, offset, topic);
       }
       return getArticlesAction(BATCH_SIZE, offset);
     },
-    [topic],
+    [tagSlug, topic],
   );
 
   // Initial Load using the Action
