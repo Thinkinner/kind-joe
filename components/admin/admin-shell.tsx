@@ -24,10 +24,12 @@ import {
   Moon,
   Sun,
   Sparkles,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { PERMISSIONS, type AppPermission } from "@/lib/auth/permissions";
+import { AdminNotificationsBell } from "@/components/admin/admin-notifications-bell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +69,12 @@ const baseNav = [
     href: "/admin/kindjoe-clip-submissions",
     label: "Clip submissions",
     icon: ClipboardList,
+    permission: PERMISSIONS.ADMIN_POSTS,
+  },
+  {
+    href: "/admin/ventura-business-inquiries",
+    label: "Ventura business leads",
+    icon: BriefcaseBusiness,
     permission: PERMISSIONS.ADMIN_POSTS,
   },
   {
@@ -255,15 +263,18 @@ export function AdminShell({ children, navPermissions }: AdminShellProps) {
 
         {/* Main column — mobile menu only; no workspace title bar */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:ml-52 xl:ml-56">
-          <div className="flex h-11 shrink-0 items-center border-b border-border bg-card px-3 lg:hidden">
+          <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 lg:h-12 lg:px-6">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted lg:hidden"
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open sidebar"
             >
               <Menu className="h-5 w-5" />
             </button>
+            <div className="ml-auto">
+              <AdminNotificationsBell />
+            </div>
           </div>
 
           <div

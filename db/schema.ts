@@ -482,6 +482,65 @@ export const kindjoeClipSubmissions = pgTable(
   }),
 );
 
+export const venturaBusinessInquiries = pgTable(
+  "ventura_business_inquiries",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    phone: varchar("phone", { length: 60 }).notNull(),
+    businessName: varchar("business_name", { length: 200 }).notNull(),
+    source: varchar("source", { length: 80 }).notNull().default("ventura_posts"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("ventura_business_inquiries_created_at_idx").on(
+      t.createdAt,
+    ),
+    emailIdx: index("ventura_business_inquiries_email_idx").on(t.email),
+  }),
+);
+
+export const adminNotifications = pgTable(
+  "admin_notifications",
+  {
+    id: serial("id").primaryKey(),
+    type: varchar("type", { length: 80 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    href: text("href"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("admin_notifications_created_at_idx").on(t.createdAt),
+    typeIdx: index("admin_notifications_type_idx").on(t.type),
+  }),
+);
+
+export const adminNotificationReads = pgTable(
+  "admin_notification_reads",
+  {
+    notificationId: integer("notification_id")
+      .notNull()
+      .references(() => adminNotifications.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.notificationId, t.userId] }),
+    userIdx: index("admin_notification_reads_user_idx").on(t.userId),
+  }),
+);
+
 export const kindjoeProfileLinks = pgTable(
   "kindjoe_profile_links",
   {

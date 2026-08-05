@@ -3,8 +3,10 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { VenturaBusinessInquiryForm } from "@/components/ventura/ventura-business-inquiry-form";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
@@ -17,6 +19,7 @@ type StandalonePostsFeedProps = {
   subscribeTags: string[];
   subscribeButtonClassName: string;
   profileImageClassName?: string;
+  showBusinessPromo?: boolean;
 };
 
 const PAGE_SIZE = 12;
@@ -30,6 +33,7 @@ export function StandalonePostsFeed({
   subscribeTags,
   subscribeButtonClassName,
   profileImageClassName,
+  showBusinessPromo = false,
 }: StandalonePostsFeedProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -84,7 +88,10 @@ export function StandalonePostsFeed({
           />
           <p className="text-base font-semibold text-neutral-900">{profileName}</p>
         </div>
-        <p className="text-[15px] text-neutral-600">Click on media to learn more</p>
+        {showBusinessPromo ? <BusinessPromoCta /> : null}
+        <p className="mt-3 text-[15px] text-neutral-600">
+          Click on media to learn more
+        </p>
       </header>
 
       <InlineSubscribePanel
@@ -120,6 +127,88 @@ export function StandalonePostsFeed({
       {loadingMore ? (
         <p className="text-center text-sm text-neutral-500">Loading more posts...</p>
       ) : null}
+    </div>
+  );
+}
+
+function BusinessPromoCta() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <p className="mx-auto max-w-md text-[15px] leading-relaxed text-neutral-700">
+        Are you a business owner and want to promote your business?{" "}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="font-semibold text-[#D97706] underline underline-offset-2 transition-colors hover:text-[#B45309]"
+        >
+          Click here
+        </button>
+      </p>
+      {open ? <BusinessInquiryModal onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+function BusinessInquiryModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-0 backdrop-blur-[2px] sm:items-center sm:px-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ventura-business-inquiry-title"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-orange-100 bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold tracking-wide text-[#D97706]">
+              Local business promo
+            </p>
+            <h2
+              id="ventura-business-inquiry-title"
+              className="mt-1 text-2xl font-bold tracking-tight text-neutral-950"
+            >
+              Tell us about your business
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
+              We&apos;ll follow up about getting you in front of Ventura
+              readers.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <VenturaBusinessInquiryForm
+          source="ventura_posts_modal"
+          compact
+          onSuccess={onClose}
+        />
+      </div>
     </div>
   );
 }
