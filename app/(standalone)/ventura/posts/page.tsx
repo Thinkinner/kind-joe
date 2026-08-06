@@ -49,6 +49,7 @@ export default async function VenturaPostsPage() {
         subscribeEndpoint="/api/ventura-post-email-capture"
         subscribeTags={["ventura_posts_feed"]}
         subscribeButtonClassName="bg-[#D97706] hover:bg-[#B45309]"
+        showBusinessPromo
       />
     </main>
   );

@@ -24,6 +24,7 @@ import {
   Moon,
   Sun,
   Sparkles,
+  BriefcaseBusiness,
   ListTodo,
   Hash,
 } from "lucide-react";
@@ -72,6 +73,12 @@ const baseNav = [
     href: "/admin/kindjoe-clip-submissions",
     label: "Clip submissions",
     icon: ClipboardList,
+    permission: PERMISSIONS.ADMIN_POSTS,
+  },
+  {
+    href: "/admin/ventura-business-inquiries",
+    label: "Ventura business leads",
+    icon: BriefcaseBusiness,
     permission: PERMISSIONS.ADMIN_POSTS,
   },
   {

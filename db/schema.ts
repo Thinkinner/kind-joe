@@ -542,6 +542,8 @@ export const adminNotificationReads = pgTable(
   }),
 );
 
+);
+
 /** Daily staff duty check-in (America/Los_Angeles calendar date as YYYY-MM-DD). */
 export const staffDutyCheckins = pgTable(
   "staff_duty_checkins",
