@@ -6,7 +6,11 @@
     },
     {
       "path": "/api/cron/slack-idle-nudge",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/10 15-22 * * *"
+    },
+    {
+      "path": "/api/cron/slack-idle-nudge",
+      "schedule": "5 15 * * *"
     }
   ],
   "redirects": [

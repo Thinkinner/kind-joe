@@ -273,8 +273,10 @@ export function SlackLinkAssignSettingsPanel() {
         <p className="text-xs text-muted-foreground">
           In Slack: open the channel → click the channel name → About → copy
           Channel ID at the bottom. Invite the bot to both channels. Production
-          cron checks about every 15 minutes, so very short times are best for
-          local testing via the cron endpoint.
+          idle-nudge crons run every 10 minutes only during 11:00 PM–7:00 AM
+          PHT (separate from the hourly RSS cron). Mentions include how long
+          it&apos;s been (e.g. &quot;2 hours and 15 minutes&quot;) plus last-seen
+          PHT time. Short gaps are best tested locally via the cron endpoint.
         </p>
         {updatedAt ? (
           <p className="text-xs text-muted-foreground">
