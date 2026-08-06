@@ -78,13 +78,13 @@ const baseNav = [
     href: "/admin/assigned-links",
     label: "Assigned links",
     icon: ListTodo,
-    permission: PERMISSIONS.ADMIN_DASHBOARD,
+    permission: PERMISSIONS.ADMIN_ASSIGNED_LINKS,
   },
   {
     href: "/admin/slack-link-assign",
     label: "Slack channels",
     icon: Hash,
-    permission: PERMISSIONS.ADMIN_DASHBOARD,
+    permission: PERMISSIONS.ADMIN_SLACK_CHANNELS,
   },
   {
     href: "/admin/social-profiles",

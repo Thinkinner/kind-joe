@@ -17,7 +17,7 @@ function canSeeAllAssignments(user: Parameters<typeof userHasPermission>[0]) {
 }
 
 export async function GET(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ASSIGNED_LINKS);
   if (!staff.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -64,7 +64,7 @@ const PatchSchema = z.object({
 });
 
 export async function PATCH(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_ASSIGNED_LINKS);
   if (!staff.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -33,6 +33,8 @@ const PERMISSION_LABELS: Partial<Record<AppPermission, string>> = {
   [PERMISSIONS.ADMIN_INGEST_DATA]: "Ingest data",
   [PERMISSIONS.ADMIN_SECURITY]: "Security",
   [PERMISSIONS.ADMIN_USERS]: "Staff & roles",
+  [PERMISSIONS.ADMIN_ASSIGNED_LINKS]: "Assigned links",
+  [PERMISSIONS.ADMIN_SLACK_CHANNELS]: "Slack channels",
   [PERMISSIONS.ADMIN_SUPERADMIN]: "Super admin",
 };
 

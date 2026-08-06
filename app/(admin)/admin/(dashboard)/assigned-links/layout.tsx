@@ -7,7 +7,7 @@ export default async function AdminAssignedLinksLayout({
   children: React.ReactNode;
 }) {
   await requireStaffPermission(
-    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
     "/admin/login",
     "not_found",
   );

@@ -78,6 +78,14 @@ export default async function AdminLayout({
       effectiveUser,
       PERMISSIONS.ADMIN_USERS,
     ),
+    [PERMISSIONS.ADMIN_ASSIGNED_LINKS]: userHasPermission(
+      effectiveUser,
+      PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+    ),
+    [PERMISSIONS.ADMIN_SLACK_CHANNELS]: userHasPermission(
+      effectiveUser,
+      PERMISSIONS.ADMIN_SLACK_CHANNELS,
+    ),
   } as const;
 
   return (

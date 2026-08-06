@@ -165,7 +165,7 @@ export function SlackLinkAssignSettingsPanel() {
       if (!res.ok) {
         if (res.status === 403) {
           setCanEdit(false);
-          throw new Error("Only staff admins can update this setting.");
+          throw new Error("You do not have permission to update Slack channels.");
         }
         throw new Error(data.error || "Save failed");
       }
@@ -236,15 +236,16 @@ export function SlackLinkAssignSettingsPanel() {
             spellCheck={false}
           />
           <p className="text-xs text-muted-foreground">
-            Staff post carousel/content here. Idle nudges run against this
-            channel.
+            Staff post carousel/content here. The idle bot reads each person&apos;s
+            last message in this channel (via Slack history). If they&apos;ve been
+            quiet longer than the idle setting, it asks what they&apos;re working on.
           </p>
         </div>
 
         <DurationFields
           id="idle-after"
           label="Nudge after idle for"
-          hint="How long with no work-channel post before the bot asks what someone is working on."
+          hint="How long since their last message in the work channel before the bot asks what someone is working on."
           amount={idleAmount}
           unit={idleUnit}
           disabled={loading || saving || !canEdit}

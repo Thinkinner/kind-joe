@@ -7,7 +7,7 @@ export default async function AdminSlackLinkAssignLayout({
   children: React.ReactNode;
 }) {
   await requireStaffPermission(
-    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_SLACK_CHANNELS,
     "/admin/login",
     "not_found",
   );

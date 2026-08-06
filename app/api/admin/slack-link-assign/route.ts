@@ -31,7 +31,7 @@ function validateChannelId(channelId: string) {
 }
 
 export async function GET() {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_DASHBOARD);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_SLACK_CHANNELS);
   if (!staff.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -49,7 +49,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_USERS);
+  const staff = await resolveStaffApi(PERMISSIONS.ADMIN_SLACK_CHANNELS);
   if (!staff.ok) {
     return NextResponse.json(
       { error: staff.reason },

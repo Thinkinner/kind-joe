@@ -16,6 +16,10 @@ export const PERMISSIONS = {
   ADMIN_SETTINGS: "admin.security",
   /** Staff directory & roles — gated via ROLE_PERMISSIONS + route rules. */
   ADMIN_USERS: "admin.users",
+  /** Assigned Slack links inbox. */
+  ADMIN_ASSIGNED_LINKS: "admin.assigned_links",
+  /** Slack channel + idle-nudge settings. */
+  ADMIN_SLACK_CHANNELS: "admin.slack_channels",
 } as const;
 
 export type AppPermission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -41,6 +45,8 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_SECURITY,
     PERMISSIONS.ADMIN_SUPERADMIN,
     PERMISSIONS.ADMIN_USERS,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+    PERMISSIONS.ADMIN_SLACK_CHANNELS,
   ],
   owner: [
     PERMISSIONS.ADMIN_DASHBOARD,
@@ -49,6 +55,8 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_POSTS,
     PERMISSIONS.ADMIN_NEWSLETTER,
     PERMISSIONS.ADMIN_USERS,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+    PERMISSIONS.ADMIN_SLACK_CHANNELS,
   ],
   /** Full admin except superadmin-only role operations (enforced in API). */
   admin: [
@@ -58,6 +66,8 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_POSTS,
     PERMISSIONS.ADMIN_NEWSLETTER,
     PERMISSIONS.ADMIN_USERS,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+    PERMISSIONS.ADMIN_SLACK_CHANNELS,
   ],
   /** Ops role with broad content/admin access but no user management. */
   manager: [
@@ -70,14 +80,21 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.ADMIN_WEBHOOKS,
     PERMISSIONS.ADMIN_INGEST_DATA,
     PERMISSIONS.ADMIN_SECURITY,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+    PERMISSIONS.ADMIN_SLACK_CHANNELS,
   ],
   editor: [
     PERMISSIONS.ADMIN_DASHBOARD,
     PERMISSIONS.ADMIN_ARTICLES,
     PERMISSIONS.ADMIN_ANALYTICS,
     PERMISSIONS.ADMIN_NEWSLETTER,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
   ],
-  writer: [PERMISSIONS.ADMIN_DASHBOARD, PERMISSIONS.ADMIN_ARTICLES],
+  writer: [
+    PERMISSIONS.ADMIN_DASHBOARD,
+    PERMISSIONS.ADMIN_ARTICLES,
+    PERMISSIONS.ADMIN_ASSIGNED_LINKS,
+  ],
 };
 
 export function roleHasPermission(
