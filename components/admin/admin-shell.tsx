@@ -25,6 +25,7 @@ import {
   Sun,
   Sparkles,
   ListTodo,
+  Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -77,6 +78,12 @@ const baseNav = [
     href: "/admin/assigned-links",
     label: "Assigned links",
     icon: ListTodo,
+    permission: PERMISSIONS.ADMIN_DASHBOARD,
+  },
+  {
+    href: "/admin/slack-link-assign",
+    label: "Slack channel",
+    icon: Hash,
     permission: PERMISSIONS.ADMIN_DASHBOARD,
   },
   {

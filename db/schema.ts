@@ -590,6 +590,18 @@ export const staffSlackLinks = pgTable(
   }),
 );
 
+/** Singleton-ish config for which Slack channel auto-assigns links (set in admin). */
+export const slackLinkAssignSettings = pgTable("slack_link_assign_settings", {
+  id: integer("id").primaryKey().default(1),
+  channelId: varchar("channel_id", { length: 64 }).notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedByUserId: text("updated_by_user_id").references(() => authUser.id, {
+    onDelete: "set null",
+  }),
+});
+
 export const linkAssignmentStatusEnum = pgEnum("link_assignment_status", [
   "assigned",
   "done",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { extractXUrlsFromText } from "@/lib/slack/extract-x-urls";
-import { verifySlackRequestSignature } from "@/lib/slack/verify";
+import { extractXUrlsFromSlackEvent } from "@/lib/slack/extract-x-urls";
 import { assignSlackLink } from "@/lib/admin/link-assignments";
+import { getSlackLinkAssignChannelId } from "@/lib/admin/slack-link-assign-settings";
 
 type SlackEventPayload = {
   type?: string;
@@ -15,6 +15,13 @@ type SlackEventPayload = {
     ts?: string;
     text?: string;
     thread_ts?: string;
+    attachments?: Array<{
+      original_url?: string;
+      from_url?: string;
+      title_link?: string;
+      text?: string;
+    }>;
+    blocks?: unknown;
   };
 };
 
@@ -45,28 +52,9 @@ async function postSlackReply(input: {
 }
 
 export async function POST(req: Request) {
-  const signingSecret = process.env.KJ_LINK_SLACK_SIGNING_SECRET;
-  const botToken = process.env.KJ_SUPPORT_SLACK_BOT_TOKEN;
-  const assignChannelId = process.env.KJ_LINK_ASSIGN_SLACK_CHANNEL_ID;
+  const botToken = process.env.KJ_LINK_ASSIGN_SLACK_BOT_TOKEN;
 
   const rawBody = await req.text();
-  const signature = req.headers.get("x-slack-signature");
-  const timestamp = req.headers.get("x-slack-request-timestamp");
-
-  if (!signingSecret) {
-    console.error("KJ_LINK_SLACK_SIGNING_SECRET not configured");
-    return NextResponse.json({ error: "misconfigured" }, { status: 500 });
-  }
-
-  const valid = verifySlackRequestSignature({
-    signingSecret,
-    signature,
-    timestamp,
-    rawBody,
-  });
-  if (!valid) {
-    return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
-  }
 
   let payload: SlackEventPayload;
   try {
@@ -85,7 +73,6 @@ export async function POST(req: Request) {
 
   const event = payload.event;
 
-  // Acknowledge quickly for retries; process link assign inline (usually fast).
   if (event.type !== "message") {
     return NextResponse.json({ ok: true });
   }
@@ -95,20 +82,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (!assignChannelId || event.channel !== assignChannelId) {
+  const assignChannelId = await getSlackLinkAssignChannelId();
+  if (!assignChannelId) {
+    console.warn(
+      "[slack-events] no channel configured in Admin → Slack channel",
+    );
+    return NextResponse.json({ ok: true });
+  }
+
+  if (event.channel !== assignChannelId) {
+    console.info("[slack-events] ignore other channel", {
+      got: event.channel,
+      want: assignChannelId,
+    });
     return NextResponse.json({ ok: true });
   }
 
   if (!botToken) {
-    console.error("KJ_SUPPORT_SLACK_BOT_TOKEN not configured");
+    console.error("[slack-events] KJ_LINK_ASSIGN_SLACK_BOT_TOKEN not configured");
     return NextResponse.json({ ok: true });
   }
 
-  const text = event.text ?? "";
-  const urls = extractXUrlsFromText(text);
+  const urls = extractXUrlsFromSlackEvent(event);
   if (!urls.length || !event.ts || !event.channel) {
+    console.info("[slack-events] no X urls in message", {
+      textPreview: (event.text ?? "").slice(0, 120),
+      hasAttachments: Boolean(event.attachments?.length),
+    });
     return NextResponse.json({ ok: true });
   }
+
+  console.info("[slack-events] assigning", {
+    channel: event.channel,
+    urls,
+  });
 
   for (const url of urls) {
     const result = await assignSlackLink({
@@ -119,6 +126,7 @@ export async function POST(req: Request) {
     });
 
     if (!result.ok) {
+      console.warn("[slack-events] assign failed", result.reason, url);
       if (result.reason === "no_available_staff") {
         await postSlackReply({
           token: botToken,
