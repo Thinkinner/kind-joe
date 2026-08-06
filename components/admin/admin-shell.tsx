@@ -82,7 +82,7 @@ const baseNav = [
   },
   {
     href: "/admin/slack-link-assign",
-    label: "Slack channel",
+    label: "Slack channels",
     icon: Hash,
     permission: PERMISSIONS.ADMIN_DASHBOARD,
   },

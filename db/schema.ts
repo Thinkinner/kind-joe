@@ -556,6 +556,10 @@ export const staffDutyCheckins = pgTable(
     checkedInAt: timestamp("checked_in_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    /** Last time this person posted in the work Slack channel (carousel/content). */
+    lastContentAt: timestamp("last_content_at", { withTimezone: true }),
+    /** Last idle nudge the bot sent them. */
+    lastNudgeAt: timestamp("last_nudge_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -590,10 +594,17 @@ export const staffSlackLinks = pgTable(
   }),
 );
 
-/** Singleton-ish config for which Slack channel auto-assigns links (set in admin). */
+/** Singleton-ish config for Slack channels (set in admin). */
 export const slackLinkAssignSettings = pgTable("slack_link_assign_settings", {
   id: integer("id").primaryKey().default(1),
+  /** Channel where X/Twitter links are auto-assigned. */
   channelId: varchar("channel_id", { length: 64 }).notNull().default(""),
+  /** Channel where staff post carousel/content; used for idle nudges. */
+  workChannelId: varchar("work_channel_id", { length: 64 }).notNull().default(""),
+  /** Seconds of no work-channel posts before idle nudge (default 2h). */
+  idleAfterSeconds: integer("idle_after_seconds").notNull().default(7200),
+  /** Seconds before the same person can be nudged again (default 2h). */
+  idleCooldownSeconds: integer("idle_cooldown_seconds").notNull().default(7200),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

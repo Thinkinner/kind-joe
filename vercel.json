@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/rss-auto-writer",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/slack-idle-nudge",
+      "schedule": "*/15 * * * *"
     }
   ],
   "redirects": [

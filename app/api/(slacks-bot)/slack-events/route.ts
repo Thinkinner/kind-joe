@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { extractXUrlsFromSlackEvent } from "@/lib/slack/extract-x-urls";
 import { assignSlackLink } from "@/lib/admin/link-assignments";
-import { getSlackLinkAssignChannelId } from "@/lib/admin/slack-link-assign-settings";
+import {
+  getSlackLinkAssignChannelId,
+  getSlackWorkChannelId,
+} from "@/lib/admin/slack-link-assign-settings";
+import { recordStaffSlackContentActivity } from "@/lib/admin/idle-nudge";
 
 type SlackEventPayload = {
   type?: string;
@@ -52,9 +56,16 @@ async function postSlackReply(input: {
 }
 
 export async function POST(req: Request) {
-  const botToken = process.env.KJ_LINK_ASSIGN_SLACK_BOT_TOKEN;
+  const botToken =
+    process.env.KJ_LINK_ASSIGN_SLACK_BOT_TOKEN?.trim() ||
+    process.env.KJ_SUPPORT_SLACK_BOT_TOKEN?.trim();
 
   const rawBody = await req.text();
+  console.info("[slack-events] incoming", {
+    bytes: rawBody.length,
+    hasLinkAssignToken: Boolean(process.env.KJ_LINK_ASSIGN_SLACK_BOT_TOKEN?.trim()),
+    hasSupportToken: Boolean(process.env.KJ_SUPPORT_SLACK_BOT_TOKEN?.trim()),
+  });
 
   let payload: SlackEventPayload;
   try {
@@ -82,25 +93,53 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const assignChannelId = await getSlackLinkAssignChannelId();
-  if (!assignChannelId) {
+  const [assignChannelId, workChannelId] = await Promise.all([
+    getSlackLinkAssignChannelId(),
+    getSlackWorkChannelId(),
+  ]);
+
+  if (!assignChannelId && !workChannelId) {
     console.warn(
-      "[slack-events] no channel configured in Admin → Slack channel",
+      "[slack-events] no channels configured in Admin → Slack channels",
     );
     return NextResponse.json({ ok: true });
   }
 
-  if (event.channel !== assignChannelId) {
+  const inAssignChannel = Boolean(
+    assignChannelId && event.channel === assignChannelId,
+  );
+  const inWorkChannel = Boolean(
+    workChannelId && event.channel === workChannelId,
+  );
+
+  if (!inAssignChannel && !inWorkChannel) {
     console.info("[slack-events] ignore other channel", {
       got: event.channel,
-      want: assignChannelId,
+      assign: assignChannelId || null,
+      work: workChannelId || null,
     });
     return NextResponse.json({ ok: true });
   }
 
-  if (!botToken) {
-    console.error("[slack-events] KJ_LINK_ASSIGN_SLACK_BOT_TOKEN not configured");
+  // Work channel: any human message counts as content activity for idle tracking.
+  if (inWorkChannel && event.user) {
+    try {
+      await recordStaffSlackContentActivity(event.user);
+    } catch (error) {
+      console.error("[slack-events] content activity update failed:", error);
+    }
+  }
+
+  // Assign channel: auto-assign X/Twitter links.
+  if (!inAssignChannel) {
     return NextResponse.json({ ok: true });
+  }
+
+  if (!botToken) {
+    console.error(
+      "[slack-events] set KJ_LINK_ASSIGN_SLACK_BOT_TOKEN (or KJ_SUPPORT_SLACK_BOT_TOKEN) on this deploy",
+    );
+    return NextResponse.json({ error: "bot_token_missing" }, { status: 500 });
   }
 
   const urls = extractXUrlsFromSlackEvent(event);
