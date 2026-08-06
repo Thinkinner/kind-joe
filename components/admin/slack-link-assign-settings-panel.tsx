@@ -237,8 +237,13 @@ export function SlackLinkAssignSettingsPanel() {
           />
           <p className="text-xs text-muted-foreground">
             Staff post carousel/content here. The idle bot reads each person&apos;s
-            last message in this channel (via Slack history). If they&apos;ve been
-            quiet longer than the idle setting, it asks what they&apos;re working on.
+            last message in this channel. It only runs{" "}
+            <span className="font-medium text-foreground">
+              11:00 PM–7:00 AM Philippines time (Asia/Manila)
+            </span>
+            ; outside that window it does not check or mention anyone. During
+            active hours, if someone is quiet longer than the idle setting, it
+            asks what they&apos;re working on (one person per check).
           </p>
         </div>
 

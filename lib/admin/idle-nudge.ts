@@ -7,8 +7,36 @@ import {
   getSlackWorkChannelId,
 } from "@/lib/admin/slack-link-assign-settings";
 
+/** Idle nudges only run overnight in Philippines time. */
+export const IDLE_NUDGE_TIMEZONE = "Asia/Manila";
+/** Inclusive start hour (23 = 11:00 PM). */
+export const IDLE_NUDGE_ACTIVE_START_HOUR = 23;
+/** Exclusive end hour (7 = 7:00 AM). Active while hour is 23 or 0–6. */
+export const IDLE_NUDGE_ACTIVE_END_HOUR = 7;
+
 /** Subtypes that still count as someone posting content in the work channel. */
 const CONTENT_SUBTYPES = new Set(["file_share", "thread_broadcast"]);
+
+/** True only between 11:00 PM and 7:00 AM Asia/Manila. */
+export function isIdleNudgeActiveWindow(now = new Date()): {
+  active: boolean;
+  hour: number;
+  timeZone: string;
+} {
+  const hourRaw = new Intl.DateTimeFormat("en-US", {
+    timeZone: IDLE_NUDGE_TIMEZONE,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).format(now);
+  let hour = Number.parseInt(hourRaw, 10);
+  if (!Number.isFinite(hour)) hour = -1;
+  if (hour === 24) hour = 0;
+
+  const active =
+    hour >= IDLE_NUDGE_ACTIVE_START_HOUR || hour < IDLE_NUDGE_ACTIVE_END_HOUR;
+
+  return { active, hour, timeZone: IDLE_NUDGE_TIMEZONE };
+}
 
 export async function recordStaffSlackContentActivity(slackUserId: string) {
   const normalized = slackUserId.trim();
@@ -183,6 +211,17 @@ export async function fetchLastMessageAtByUserInChannel(input: {
  * is older than the configured idle duration.
  */
 export async function runIdleNudgeCheck(now = new Date()) {
+  const window = isIdleNudgeActiveWindow(now);
+  if (!window.active) {
+    return {
+      ok: false as const,
+      reason: "outside_active_hours" as const,
+      activeHours: "23:00–07:00 Asia/Manila",
+      manilaHour: window.hour,
+      nudged: [] as string[],
+    };
+  }
+
   const channelId = await getSlackWorkChannelId();
   const botToken = getBotToken();
   const timing = await getIdleNudgeTiming();
