@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listJoeFromSloPostsPage } from "@/lib/feed/joefromslo-posts";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

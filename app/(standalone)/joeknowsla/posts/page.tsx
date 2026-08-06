@@ -11,6 +11,8 @@ type JoeKnowsLaPostCard = {
 
 const MAX_STANDALONE_POSTS = 50;
 
+export const dynamic = "force-dynamic";
+
 async function getJoeKnowsLaPostsFromDb(): Promise<JoeKnowsLaPostCard[]> {
   if (!process.env.DATABASE_URL) return [];
   try {

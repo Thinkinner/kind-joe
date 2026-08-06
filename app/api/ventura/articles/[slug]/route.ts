@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVenturaArticleDetailBySlug } from "@/lib/feed/ventura-articles";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,

@@ -28,24 +28,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = publicSiteOrigin();
   const now = new Date();
 
-  const rows = await db
-    .select({
-      slug: articles.slug,
-      updatedAt: articles.updatedAt,
-      publishedAt: articles.publishedAt,
-      createdAt: articles.createdAt,
-      isVentura: sql<boolean>`bool_or(${tags.slug} = 'ventura-county')`,
-    })
-    .from(articles)
-    .leftJoin(articleTags, eq(articleTags.articleId, articles.id))
-    .leftJoin(tags, eq(tags.id, articleTags.tagId))
-    .where(publishedWhereForSitemap(now))
-    .groupBy(
-      articles.slug,
-      articles.updatedAt,
-      articles.publishedAt,
-      articles.createdAt,
-    );
+  let rows: {
+    slug: string;
+    updatedAt: Date | null;
+    publishedAt: Date | null;
+    createdAt: Date | null;
+    isVentura: boolean;
+  }[] = [];
+
+  if (process.env.DATABASE_URL) {
+    try {
+      rows = await db
+        .select({
+          slug: articles.slug,
+          updatedAt: articles.updatedAt,
+          publishedAt: articles.publishedAt,
+          createdAt: articles.createdAt,
+          isVentura: sql<boolean>`bool_or(${tags.slug} = 'ventura-county')`,
+        })
+        .from(articles)
+        .leftJoin(articleTags, eq(articleTags.articleId, articles.id))
+        .leftJoin(tags, eq(tags.id, articleTags.tagId))
+        .where(publishedWhereForSitemap(now))
+        .groupBy(
+          articles.slug,
+          articles.updatedAt,
+          articles.publishedAt,
+          articles.createdAt,
+        );
+    } catch (error) {
+      console.error("sitemap_articles_query_failed", error);
+    }
+  }
 
   const staticPaths = [
     "/",

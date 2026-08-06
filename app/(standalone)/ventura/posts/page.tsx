@@ -11,6 +11,8 @@ type VenturaPostCard = {
 
 const MAX_STANDALONE_POSTS = 50;
 
+export const dynamic = "force-dynamic";
+
 async function getVenturaPostsFromDb(): Promise<VenturaPostCard[]> {
   if (!process.env.DATABASE_URL) return [];
   try {

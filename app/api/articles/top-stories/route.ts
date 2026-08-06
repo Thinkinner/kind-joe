@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { articles, users, articleTags, tags } from "@/db/schema";
 import { and, eq, isNull, sql, desc } from "drizzle-orm";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const FEATURED_TAG_SLUG = "kindjoetopstories";
 
@@ -50,5 +50,9 @@ export async function GET() {
     .orderBy(desc(articles.publishedAt))
     .limit(20);
 
-  return NextResponse.json(rows);
+  return NextResponse.json(rows, {
+    headers: {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    },
+  });
 }
