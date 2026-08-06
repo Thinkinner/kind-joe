@@ -4,7 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, staffSlackLinks } from "@/db/schema";
 import { account, user as authUser } from "@/db/auth-schema";
 import { getStaffRoles } from "@/lib/auth/account-type";
 import {
@@ -116,8 +116,10 @@ export async function GET(req: NextRequest) {
       directoryRoleMask: authUser.directoryRoleMask,
       image: authUser.image,
       createdAt: authUser.createdAt,
+      slackUserId: staffSlackLinks.slackUserId,
     })
     .from(authUser)
+    .leftJoin(staffSlackLinks, eq(staffSlackLinks.userId, authUser.id))
     .orderBy(
       sql`CASE WHEN coalesce(${authUser.accountType}, 'reader') = 'staff' THEN 0 ELSE 1 END`,
       authUser.email,
@@ -192,6 +194,7 @@ export async function GET(req: NextRequest) {
       directoryRoleMask: isSelf ? row.directoryRoleMask : undefined,
       isSelf,
       showRealRoles: sendRealRoles,
+      slackUserId: row.slackUserId ?? null,
       canEditRoles:
         canEditRoles &&
         !(isSelf && callerSuperAdmin) &&

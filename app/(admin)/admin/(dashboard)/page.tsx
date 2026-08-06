@@ -9,6 +9,7 @@ import {
   Calendar,
   FileText,
   FilePenLine,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -18,8 +19,8 @@ import {
   type TrendState,
 } from "@/lib/analytics/trends";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
-import { RssAutoWriterCard } from "@/components/admin/rss-auto-writer-card";
-import { VercelAnalyticsCard } from "@/components/admin/vercel-analytics-card";
+import { getServerSession } from "@/lib/auth/server";
+import { AssignedLinksDashboardCard } from "@/components/admin/assigned-links-dashboard-card";
 
 type RangeKey = "today" | "week" | "month" | "all";
 type TopKey = 5 | 10 | 20;
@@ -93,6 +94,9 @@ export default async function AdminDashboardPage({
   const range = parseTrendRange(toSingle(params.range)) as RangeKey;
   const top = parseTop(toSingle(params.top));
 
+  const session = await getServerSession();
+  const userId = session?.user?.id ?? null;
+
   const now = new Date();
   const period = getPeriodWindow(range, now);
 
@@ -114,11 +118,20 @@ export default async function AdminDashboardPage({
         )
       : undefined;
 
+  const myPublishedWhere = userId
+    ? and(publishedWhere, eq(articles.authorId, userId))
+    : publishedWhere;
+
+  const myPublishedInPeriodWhere = userId
+    ? and(currentPublishedWhere, eq(articles.authorId, userId))
+    : currentPublishedWhere;
+
   const [
     publishedInPeriodRows,
     previousPublishedRows,
     draftRows,
-    totalPublishedRows,
+    myPublishedRows,
+    myPublishedInPeriodRows,
     recentArticles,
   ] = await Promise.all([
     db
@@ -132,11 +145,23 @@ export default async function AdminDashboardPage({
     db
       .select({ count: sql<number>`CAST(COUNT(*) AS INT)` })
       .from(articles)
-      .where(and(eq(articles.isDraft, true), isNull(articles.deletedAt))),
+      .where(
+        userId
+          ? and(
+              eq(articles.isDraft, true),
+              isNull(articles.deletedAt),
+              eq(articles.authorId, userId),
+            )
+          : and(eq(articles.isDraft, true), isNull(articles.deletedAt)),
+      ),
     db
       .select({ count: sql<number>`CAST(COUNT(*) AS INT)` })
       .from(articles)
-      .where(publishedWhere),
+      .where(myPublishedWhere),
+    db
+      .select({ count: sql<number>`CAST(COUNT(*) AS INT)` })
+      .from(articles)
+      .where(myPublishedInPeriodWhere),
     db
       .select({
         id: articles.id,
@@ -146,7 +171,7 @@ export default async function AdminDashboardPage({
         category: articles.category,
       })
       .from(articles)
-      .where(currentPublishedWhere)
+      .where(myPublishedInPeriodWhere)
       .orderBy(desc(articles.publishedAt))
       .limit(top),
   ]);
@@ -154,7 +179,8 @@ export default async function AdminDashboardPage({
   const publishedInPeriod = publishedInPeriodRows[0]?.count ?? 0;
   const previousPublished = previousPublishedRows[0]?.count ?? 0;
   const draftCount = draftRows[0]?.count ?? 0;
-  const totalPublished = totalPublishedRows[0]?.count ?? 0;
+  const myPublished = myPublishedRows[0]?.count ?? 0;
+  const myPublishedInPeriod = myPublishedInPeriodRows[0]?.count ?? 0;
 
   const noComparison: TrendState = {
     label: "No comparison",
@@ -198,53 +224,83 @@ export default async function AdminDashboardPage({
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label={range === "all" ? "Published Articles" : "Published in Period"}
+          label={range === "all" ? "Your published" : "You published (period)"}
+          value={range === "all" ? myPublished : myPublishedInPeriod}
+          icon={UserRound}
+        />
+        <MetricCard label="Your total published" value={myPublished} icon={Calendar} />
+        <MetricCard label="Your drafts" value={draftCount} icon={FilePenLine} />
+        <MetricCard
+          label={range === "all" ? "Site published" : "Site published (period)"}
           value={publishedInPeriod}
           icon={FileText}
           trendState={publishedTrend}
-        />
-        <MetricCard label="Total Published" value={totalPublished} icon={Calendar} />
-        <MetricCard label="Drafts" value={draftCount} icon={FilePenLine} />
-        <MetricCard
-          label="Showing in List"
-          value={recentArticles.length}
-          icon={FileText}
         />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
         <section className="space-y-6 lg:col-span-2">
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
-            <div className="flex items-center justify-between border-b border-border p-6">
-              <h2 className="text-lg font-bold text-foreground">Recently Published</h2>
-              <div className="flex gap-1 rounded-lg bg-muted p-1">
-                {[5, 10, 20].map((n) => (
-                  <Link
-                    key={n}
-                    href={`?range=${range}&top=${n}`}
-                    className={`rounded-md px-3 py-1 text-xs font-bold ${
-                      top === n
-                        ? "bg-card text-primary shadow-sm"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {n}
-                  </Link>
-                ))}
+          <AssignedLinksDashboardCard variant="large" />
+        </section>
+
+        <section className="space-y-6">
+          <div className="rounded-xl border border-border bg-card p-6 text-foreground shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
+            <div className="mb-4 w-fit rounded-lg bg-muted p-2 text-muted-foreground">
+              <FileText size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Self focus</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Your latest: {latestTitle}. You&apos;ve published {myPublished}{" "}
+              {myPublished === 1 ? "article" : "articles"} total.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-lg border border-border bg-muted/50 px-2 py-2">
+                <p className="text-lg font-bold tabular-nums text-foreground">
+                  {myPublishedInPeriod}
+                </p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  This period
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/50 px-2 py-2">
+                <p className="text-lg font-bold tabular-nums text-foreground">
+                  {draftCount}
+                </p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Drafts
+                </p>
               </div>
             </div>
+            <Link
+              href="/admin/articles/new"
+              className="mt-6 block w-full rounded-xl bg-primary py-2.5 text-center text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              New article
+            </Link>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-bold text-foreground">
+                Recently published
+              </h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {myPublished} total · showing {recentArticles.length}
+              </p>
+            </div>
             <div className="divide-y divide-border">
-              {recentArticles.map((article, idx) => (
+              {recentArticles.slice(0, 5).map((article) => (
                 <Link
                   key={article.id}
                   href={`/admin/articles/${article.id}/edit`}
-                  className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/60"
+                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/60"
                 >
-                  <span className="w-4 text-sm font-bold text-muted-foreground">{idx + 1}</span>
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
                     {article.coverImageUrl && (
                       <Image
-                        src={optimizeCloudinaryUrl(article.coverImageUrl, { width: 256 })}
+                        src={optimizeCloudinaryUrl(article.coverImageUrl, {
+                          width: 128,
+                        })}
                         alt=""
                         fill
                         className="object-cover"
@@ -252,46 +308,24 @@ export default async function AdminDashboardPage({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-semibold text-foreground">{article.title}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {article.category ?? "General"}
+                    <h3 className="truncate text-sm font-medium text-foreground">
+                      {article.title}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
                       {article.publishedAt
-                        ? ` · ${new Date(article.publishedAt).toLocaleDateString()}`
-                        : ""}
+                        ? new Date(article.publishedAt).toLocaleDateString()
+                        : "—"}
                     </p>
                   </div>
                 </Link>
               ))}
               {recentArticles.length === 0 && (
-                <p className="p-8 text-center text-sm text-muted-foreground">
-                  No published articles in this period.
+                <p className="p-4 text-center text-xs text-muted-foreground">
+                  No articles in this period.
                 </p>
               )}
             </div>
           </div>
-        </section>
-
-        <section className="space-y-6">
-          <RssAutoWriterCard />
-
-          <div className="rounded-xl border border-border bg-gradient-to-br from-foreground/95 via-foreground/95 to-primary/80 p-6 text-white shadow-[0_20px_40px_-26px_rgb(15_23_42/0.55)]">
-            <div className="mb-4 w-fit rounded-full bg-primary-foreground/10 p-2 text-indigo-300">
-              <FileText size={20} />
-            </div>
-            <h2 className="text-xl font-bold">Editorial focus</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/80">
-              Latest in this list: {latestTitle}. Use the articles editor to publish and
-              create post cards for the feed.
-            </p>
-            <Link
-              href="/admin/articles/new"
-              className="mt-6 block w-full rounded-xl bg-card py-2.5 text-center text-sm font-bold text-foreground transition-colors hover:bg-card/90"
-            >
-              New article
-            </Link>
-          </div>
-
-          <VercelAnalyticsCard />
         </section>
       </div>
     </div>

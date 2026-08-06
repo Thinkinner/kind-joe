@@ -84,6 +84,7 @@ type Row = {
   canEditPageAccess?: boolean;
   adminPageAccess?: string[] | null;
   effectivePageAccess?: string[] | null;
+  slackUserId?: string | null;
 };
 
 type PendingInvite = {
@@ -230,6 +231,7 @@ export default function StaffUsersPage() {
   const [draftEmail, setDraftEmail] = useState("");
   const [draftPageAccess, setDraftPageAccess] = useState<AppPermission[]>([]);
   const [draftAliasFullName, setDraftAliasFullName] = useState("");
+  const [draftSlackUserId, setDraftSlackUserId] = useState("");
   const [suggestedAlias, setSuggestedAlias] = useState("");
   const [suggestingAlias, setSuggestingAlias] = useState(false);
   const [savingModal, setSavingModal] = useState(false);
@@ -276,6 +278,7 @@ export default function StaffUsersPage() {
         ((r.effectivePageAccess as AppPermission[] | null) ?? []),
     );
     setDraftAliasFullName((r.aliasFullName ?? "").trim());
+    setDraftSlackUserId((r.slackUserId ?? "").trim());
     setSuggestedAlias("");
   };
 
@@ -284,6 +287,7 @@ export default function StaffUsersPage() {
     setModalUser(null);
     setDraftEmail("");
     setDraftAliasFullName("");
+    setDraftSlackUserId("");
     setSuggestedAlias("");
     setSuggestingAlias(false);
   };
@@ -370,6 +374,28 @@ export default function StaffUsersPage() {
           typeof j.error === "string" ? j.error : "Update failed",
         );
       }
+
+      const normalizedSlack = draftSlackUserId.trim();
+      const previousSlack = (modalUser.slackUserId ?? "").trim();
+      if (normalizedSlack !== previousSlack) {
+        const slackRes = await fetch("/api/admin/staff-slack-links", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: modalUser.id,
+            slackUserId: normalizedSlack.length > 0 ? normalizedSlack : null,
+          }),
+        });
+        if (!slackRes.ok) {
+          const j = await slackRes.json().catch(() => ({}));
+          throw new Error(
+            typeof j.error === "string"
+              ? j.error
+              : "Saved roles, but Slack ID update failed",
+          );
+        }
+      }
+
       toast.success("Saved");
       await load();
       setModalUser(null);
@@ -1365,7 +1391,7 @@ export default function StaffUsersPage() {
         }}
       >
         <DialogContent
-          className="sm:max-w-md"
+          className="flex max-h-[min(90dvh,40rem)] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
           showCloseButton={!savingModal}
           onPointerDownOutside={(e) => {
             if (savingModal) e.preventDefault();
@@ -1374,7 +1400,7 @@ export default function StaffUsersPage() {
             if (savingModal) e.preventDefault();
           }}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pr-12 text-left">
             <DialogTitle>Edit Member Permissions</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-1 text-left">
@@ -1392,7 +1418,7 @@ export default function StaffUsersPage() {
                   ) : null}
                 </p>
                 {(modalUser?.accountType ?? "reader") !== "staff" && (
-                  <p className="text-amber-800">
+                  <p className="text-amber-800 dark:text-amber-300">
                     This account is a User. Saving will promote them to Staff
                     with the roles you select.
                   </p>
@@ -1401,7 +1427,7 @@ export default function StaffUsersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-1">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="staff-member-email">Email</Label>
               <Input
@@ -1473,6 +1499,22 @@ export default function StaffUsersPage() {
                 </p>
               ) : null}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="staff-member-slack-user-id">Slack user ID</Label>
+              <Input
+                id="staff-member-slack-user-id"
+                value={draftSlackUserId}
+                onChange={(e) => setDraftSlackUserId(e.target.value)}
+                maxLength={64}
+                autoComplete="off"
+                placeholder="e.g. U012ABCDEF"
+                disabled={savingModal}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for @mentions when the bot auto-assigns links. In Slack:
+                profile → three dots → Copy member ID.
+              </p>
+            </div>
             <div className="flex flex-col gap-3">
               {assignableRoleOptions.map((role) => (
                 <label
@@ -1543,7 +1585,7 @@ export default function StaffUsersPage() {
             )}
           </div>
 
-          <DialogFooter className="w-full sm:justify-between">
+          <DialogFooter className="w-full shrink-0 border-t border-border px-6 py-4 sm:justify-between">
             <Button
               type="button"
               variant="destructive"

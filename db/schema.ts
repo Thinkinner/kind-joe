@@ -14,6 +14,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  unique,
   primaryKey,
   doublePrecision,
   uuid,
@@ -479,6 +480,151 @@ export const kindjoeClipSubmissions = pgTable(
   (t) => ({
     createdAtIdx: index("kindjoe_clip_submissions_created_at_idx").on(t.createdAt),
     emailIdx: index("kindjoe_clip_submissions_email_idx").on(t.email),
+  }),
+);
+
+export const venturaBusinessInquiries = pgTable(
+  "ventura_business_inquiries",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    phone: varchar("phone", { length: 60 }).notNull(),
+    businessName: varchar("business_name", { length: 200 }).notNull(),
+    source: varchar("source", { length: 80 }).notNull().default("ventura_posts"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("ventura_business_inquiries_created_at_idx").on(
+      t.createdAt,
+    ),
+    emailIdx: index("ventura_business_inquiries_email_idx").on(t.email),
+  }),
+);
+
+export const adminNotifications = pgTable(
+  "admin_notifications",
+  {
+    id: serial("id").primaryKey(),
+    type: varchar("type", { length: 80 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    href: text("href"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("admin_notifications_created_at_idx").on(t.createdAt),
+    typeIdx: index("admin_notifications_type_idx").on(t.type),
+  }),
+);
+
+export const adminNotificationReads = pgTable(
+  "admin_notification_reads",
+  {
+    notificationId: integer("notification_id")
+      .notNull()
+      .references(() => adminNotifications.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.notificationId, t.userId] }),
+    userIdx: index("admin_notification_reads_user_idx").on(t.userId),
+  }),
+);
+
+/** Daily staff duty check-in (America/Los_Angeles calendar date as YYYY-MM-DD). */
+export const staffDutyCheckins = pgTable(
+  "staff_duty_checkins",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    dutyDate: varchar("duty_date", { length: 10 }).notNull(),
+    workingToday: boolean("working_today").notNull().default(false),
+    workingKindJoe: boolean("working_kind_joe").notNull().default(false),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    userDateUq: unique("staff_duty_checkins_user_date_uq").on(
+      t.userId,
+      t.dutyDate,
+    ),
+    dateIdx: index("staff_duty_checkins_date_idx").on(t.dutyDate),
+    kindJoeIdx: index("staff_duty_checkins_kindjoe_idx").on(
+      t.dutyDate,
+      t.workingKindJoe,
+    ),
+  }),
+);
+
+/** Maps Kind Joe staff accounts to Slack user IDs for @mentions. */
+export const staffSlackLinks = pgTable(
+  "staff_slack_links",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    slackUserId: varchar("slack_user_id", { length: 64 }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    slackUserUq: uniqueIndex("staff_slack_links_slack_user_uq").on(t.slackUserId),
+  }),
+);
+
+export const linkAssignmentStatusEnum = pgEnum("link_assignment_status", [
+  "assigned",
+  "done",
+  "skipped",
+]);
+
+/** Auto-assigned Slack links (X/Twitter) for staff working Kind Joe. */
+export const linkAssignments = pgTable(
+  "link_assignments",
+  {
+    id: serial("id").primaryKey(),
+    url: text("url").notNull(),
+    slackChannelId: varchar("slack_channel_id", { length: 64 }).notNull(),
+    slackMessageTs: varchar("slack_message_ts", { length: 64 }).notNull(),
+    postedBySlackUserId: varchar("posted_by_slack_user_id", { length: 64 }),
+    assigneeUserId: text("assignee_user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    status: linkAssignmentStatusEnum("status").notNull().default("assigned"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    msgUrlUq: uniqueIndex("link_assignments_msg_url_uq").on(
+      t.slackChannelId,
+      t.slackMessageTs,
+      t.url,
+    ),
+    assigneeStatusIdx: index("link_assignments_assignee_status_idx").on(
+      t.assigneeUserId,
+      t.status,
+    ),
+    assignedAtIdx: index("link_assignments_assigned_at_idx").on(t.assignedAt),
   }),
 );
 
