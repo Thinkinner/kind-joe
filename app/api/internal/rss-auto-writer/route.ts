@@ -1,21 +1,10 @@
 import { NextResponse } from "next/server";
 import { runRssAutoWriter } from "@/lib/agents/rss-auto-writer";
+import { authorizeCronRequest } from "@/lib/cron/authorize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-function isAuthorized(request: Request): boolean {
-  // Allow Vercel Cron invocations in production.
-  const vercelCronHeader = request.headers.get("x-vercel-cron");
-  if (process.env.NODE_ENV === "production" && vercelCronHeader) return true;
-
-  // Keep bearer-token auth for Railway/manual triggers.
-  const secret = (process.env.CRON_SECRET || "").trim();
-  if (!secret) return process.env.NODE_ENV !== "production";
-  const authHeader = request.headers.get("authorization") || "";
-  return authHeader === `Bearer ${secret}`;
-}
 
 function parseIngestLimit(request: Request): number | undefined {
   const { searchParams } = new URL(request.url);
@@ -27,7 +16,7 @@ function parseIngestLimit(request: Request): number | undefined {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!authorizeCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
