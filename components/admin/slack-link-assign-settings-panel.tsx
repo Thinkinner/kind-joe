@@ -245,7 +245,7 @@ export function SlackLinkAssignSettingsPanel() {
         <DurationFields
           id="idle-after"
           label="Nudge after idle for"
-          hint="How long since their last message in the work channel before the bot asks what someone is working on."
+          hint="How long since THAT person's last message in the work channel before they can be nudged. Each check mentions at most one person (the longest idle)."
           amount={idleAmount}
           unit={idleUnit}
           disabled={loading || saving || !canEdit}

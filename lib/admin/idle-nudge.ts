@@ -263,8 +263,15 @@ export async function runIdleNudgeCheck(now = new Date()) {
     };
   }
 
-  const nudged: string[] = [];
   const skipped: Array<{ userId: string; reason: string }> = [];
+  type Candidate = {
+    row: (typeof rows)[number];
+    slackUserId: string;
+    lastMessageAt: Date | null;
+    lastActive: Date;
+    idleMs: number;
+  };
+  const candidates: Candidate[] = [];
 
   for (const row of rows) {
     if (!row.slackUserId) {
@@ -272,12 +279,10 @@ export async function runIdleNudgeCheck(now = new Date()) {
       continue;
     }
 
-    // Source of truth: last human message in the work channel.
-    // If none found since lookback/check-in, treat check-in as start of idle.
+    // Source of truth: that person's latest human message in THIS work channel.
     const lastMessageAt = history.byUser.get(row.slackUserId) ?? null;
     const lastActive = lastMessageAt ?? new Date(row.checkedInAt);
 
-    // Keep DB cache in sync when Slack is newer.
     if (
       lastMessageAt &&
       (!row.lastContentAt ||
@@ -306,7 +311,26 @@ export async function runIdleNudgeCheck(now = new Date()) {
       }
     }
 
-    const text = `<@${row.slackUserId}> hey — it's been about ${formatIdleDuration(idleMs)} since your last message in this channel. What are you working on?`;
+    candidates.push({
+      row,
+      slackUserId: row.slackUserId,
+      lastMessageAt,
+      lastActive,
+      idleMs,
+    });
+  }
+
+  // One mention per check: only the single longest-idle person.
+  candidates.sort((a, b) => b.idleMs - a.idleMs);
+  const pick = candidates[0] ?? null;
+  for (const extra of candidates.slice(1)) {
+    skipped.push({ userId: extra.row.userId, reason: "waiting_turn" });
+  }
+
+  const nudged: string[] = [];
+
+  if (pick) {
+    const text = `<@${pick.slackUserId}> hey — it's been about ${formatIdleDuration(pick.idleMs)} since your last message in this channel. What are you working on?`;
 
     const posted = await postSlackMessage({
       token: botToken,
@@ -317,21 +341,20 @@ export async function runIdleNudgeCheck(now = new Date()) {
     if (!posted.ok) {
       console.error("[idle-nudge] slack post failed", posted);
       skipped.push({
-        userId: row.userId,
+        userId: pick.row.userId,
         reason: posted.error ?? "slack_error",
       });
-      continue;
+    } else {
+      await db
+        .update(staffDutyCheckins)
+        .set({
+          lastNudgeAt: now,
+          updatedAt: now,
+        })
+        .where(eq(staffDutyCheckins.id, pick.row.id));
+
+      nudged.push(pick.row.userId);
     }
-
-    await db
-      .update(staffDutyCheckins)
-      .set({
-        lastNudgeAt: now,
-        updatedAt: now,
-      })
-      .where(eq(staffDutyCheckins.id, row.id));
-
-    nudged.push(row.userId);
   }
 
   return {
@@ -343,6 +366,7 @@ export async function runIdleNudgeCheck(now = new Date()) {
     historyScanned: history.scanned,
     historyUsersFound: history.byUser.size,
     checked: rows.length,
+    eligible: candidates.length,
     nudged,
     skipped,
   };
