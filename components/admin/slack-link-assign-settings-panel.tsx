@@ -237,21 +237,20 @@ export function SlackLinkAssignSettingsPanel() {
           />
           <p className="text-xs text-muted-foreground">
             Staff post carousel/content here. The idle bot only considers people
-            who have actually messaged in this channel (not every Kind Joe
-            check-in). It only runs{" "}
+            who have actually messaged in this work/content channel (not the link
+            assign channel, and not check-ins who never posted here). It only runs{" "}
             <span className="font-medium text-foreground">
               11:00 PM–7:00 AM Philippines time (Asia/Manila)
             </span>
-            . If someone who posted here goes quiet longer than the idle
-            setting, it asks what they&apos;re working on (one person per
-            check).
+            . Anyone in this channel who goes quiet longer than the idle setting
+            gets mentioned.
           </p>
         </div>
 
         <DurationFields
           id="idle-after"
           label="Nudge after idle for"
-          hint="How long since THAT person's last message in the work channel before they can be nudged. Each check mentions at most one person (the longest idle)."
+          hint="How long since THAT person's last message in the work channel before they can be nudged. Everyone who is past this time (and off cooldown) gets mentioned."
           amount={idleAmount}
           unit={idleUnit}
           disabled={loading || saving || !canEdit}

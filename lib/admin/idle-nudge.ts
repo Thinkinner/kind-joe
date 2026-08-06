@@ -360,16 +360,12 @@ export async function runIdleNudgeCheck(now = new Date()) {
     });
   }
 
-  // One mention per check: only the single longest-idle person.
+  // Mention every work-channel poster who is past the idle threshold.
   candidates.sort((a, b) => b.idleMs - a.idleMs);
-  const pick = candidates[0] ?? null;
-  for (const extra of candidates.slice(1)) {
-    skipped.push({ userId: extra.row.userId, reason: "waiting_turn" });
-  }
 
   const nudged: string[] = [];
 
-  if (pick) {
+  for (const pick of candidates) {
     const text = `<@${pick.slackUserId}> hey — it's been about ${formatIdleDuration(pick.idleMs)} since your last message in this channel. What are you working on?`;
 
     const posted = await postSlackMessage({
@@ -384,17 +380,18 @@ export async function runIdleNudgeCheck(now = new Date()) {
         userId: pick.row.userId,
         reason: posted.error ?? "slack_error",
       });
-    } else {
-      await db
-        .update(staffDutyCheckins)
-        .set({
-          lastNudgeAt: now,
-          updatedAt: now,
-        })
-        .where(eq(staffDutyCheckins.id, pick.row.id));
-
-      nudged.push(pick.row.userId);
+      continue;
     }
+
+    await db
+      .update(staffDutyCheckins)
+      .set({
+        lastNudgeAt: now,
+        updatedAt: now,
+      })
+      .where(eq(staffDutyCheckins.id, pick.row.id));
+
+    nudged.push(pick.row.userId);
   }
 
   return {
