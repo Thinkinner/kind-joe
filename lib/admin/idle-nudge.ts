@@ -207,8 +207,9 @@ export async function fetchLastMessageAtByUserInChannel(input: {
 }
 
 /**
- * Nudge Kind Joe staff whose last message in the work channel
- * is older than the configured idle duration.
+ * For each person who posted in the work/content channel: if their latest
+ * message there is older than the configured duration (e.g. last msg 2:00,
+ * now 4:00 with a 2h setting), @mention them.
  */
 export async function runIdleNudgeCheck(now = new Date()) {
   const window = isIdleNudgeActiveWindow(now);
@@ -338,9 +339,9 @@ export async function runIdleNudgeCheck(now = new Date()) {
         .where(eq(staffDutyCheckins.id, row.id));
     }
 
-    const idleMs = now.getTime() - lastMessageAt.getTime();
-    if (idleMs < idleAfterMs) {
-      skipped.push({ userId: row.userId, reason: "not_idle_yet" });
+    const msSinceLastMessage = now.getTime() - lastMessageAt.getTime();
+    if (msSinceLastMessage < idleAfterMs) {
+      skipped.push({ userId: row.userId, reason: "recent_message" });
       continue;
     }
 
@@ -356,11 +357,11 @@ export async function runIdleNudgeCheck(now = new Date()) {
       row,
       slackUserId: row.slackUserId,
       lastMessageAt,
-      idleMs,
+      idleMs: msSinceLastMessage,
     });
   }
 
-  // Mention every work-channel poster who is past the idle threshold.
+  // Mention everyone in this work channel whose last message is too old.
   candidates.sort((a, b) => b.idleMs - a.idleMs);
 
   const nudged: string[] = [];

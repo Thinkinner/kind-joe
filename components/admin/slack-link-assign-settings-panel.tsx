@@ -236,21 +236,22 @@ export function SlackLinkAssignSettingsPanel() {
             spellCheck={false}
           />
           <p className="text-xs text-muted-foreground">
-            Staff post carousel/content here. The idle bot only considers people
-            who have actually messaged in this work/content channel (not the link
-            assign channel, and not check-ins who never posted here). It only runs{" "}
+            Work/content channel only (not the link-assign channel). For each
+            person who has posted here, the bot looks at their{" "}
+            <span className="font-medium text-foreground">latest message</span>
+            . Example: last message at 2:00 AM, it&apos;s 4:00 AM, setting is 2
+            hours → they get mentioned. Runs only{" "}
             <span className="font-medium text-foreground">
-              11:00 PM–7:00 AM Philippines time (Asia/Manila)
+              11:00 PM–7:00 AM Philippines time
             </span>
-            . Anyone in this channel who goes quiet longer than the idle setting
-            gets mentioned.
+            . Everyone past the gap gets mentioned.
           </p>
         </div>
 
         <DurationFields
           id="idle-after"
-          label="Nudge after idle for"
-          hint="How long since THAT person's last message in the work channel before they can be nudged. Everyone who is past this time (and off cooldown) gets mentioned."
+          label="Mention if no new message for"
+          hint="Time since that person's latest message in this work channel. If they haven't sent anything for this long, mention them."
           amount={idleAmount}
           unit={idleUnit}
           disabled={loading || saving || !canEdit}
@@ -260,8 +261,8 @@ export function SlackLinkAssignSettingsPanel() {
 
         <DurationFields
           id="idle-cooldown"
-          label="Nudge cooldown"
-          hint="Minimum time before the same person can be nudged again."
+          label="Don't re-mention for"
+          hint="After mentioning someone, wait at least this long before mentioning them again."
           amount={cooldownAmount}
           unit={cooldownUnit}
           disabled={loading || saving || !canEdit}
