@@ -272,8 +272,7 @@ export async function runIdleNudgeCheck(now = new Date()) {
       .filter((id): id is string => Boolean(id)),
   );
 
-  // Look back at least to earliest check-in (or idle window), so "no message"
-  // really means they haven't posted since they checked in.
+  // Look far enough back that we can see earlier posts from people in this channel.
   const earliestCheckInMs = rows.reduce((min, row) => {
     const t = new Date(row.checkedInAt).getTime();
     return Number.isFinite(t) ? Math.min(min, t) : min;
@@ -281,7 +280,7 @@ export async function runIdleNudgeCheck(now = new Date()) {
   const lookbackMs = Math.max(
     now.getTime() - earliestCheckInMs,
     idleAfterMs,
-    60 * 60 * 1000,
+    12 * 60 * 60 * 1000,
   );
   const oldestUnix = Math.floor((now.getTime() - lookbackMs) / 1000);
 
@@ -306,8 +305,7 @@ export async function runIdleNudgeCheck(now = new Date()) {
   type Candidate = {
     row: (typeof rows)[number];
     slackUserId: string;
-    lastMessageAt: Date | null;
-    lastActive: Date;
+    lastMessageAt: Date;
     idleMs: number;
   };
   const candidates: Candidate[] = [];
@@ -318,14 +316,18 @@ export async function runIdleNudgeCheck(now = new Date()) {
       continue;
     }
 
-    // Source of truth: that person's latest human message in THIS work channel.
+    // Only people who actually posted in THIS work channel can be nudged.
+    // (Checked-in staff with no channel messages are skipped — avoids pinging
+    // people who aren't part of the channel conversation.)
     const lastMessageAt = history.byUser.get(row.slackUserId) ?? null;
-    const lastActive = lastMessageAt ?? new Date(row.checkedInAt);
+    if (!lastMessageAt) {
+      skipped.push({ userId: row.userId, reason: "no_message_in_channel" });
+      continue;
+    }
 
     if (
-      lastMessageAt &&
-      (!row.lastContentAt ||
-        lastMessageAt.getTime() > new Date(row.lastContentAt).getTime())
+      !row.lastContentAt ||
+      lastMessageAt.getTime() > new Date(row.lastContentAt).getTime()
     ) {
       await db
         .update(staffDutyCheckins)
@@ -336,7 +338,7 @@ export async function runIdleNudgeCheck(now = new Date()) {
         .where(eq(staffDutyCheckins.id, row.id));
     }
 
-    const idleMs = now.getTime() - lastActive.getTime();
+    const idleMs = now.getTime() - lastMessageAt.getTime();
     if (idleMs < idleAfterMs) {
       skipped.push({ userId: row.userId, reason: "not_idle_yet" });
       continue;
@@ -354,7 +356,6 @@ export async function runIdleNudgeCheck(now = new Date()) {
       row,
       slackUserId: row.slackUserId,
       lastMessageAt,
-      lastActive,
       idleMs,
     });
   }
