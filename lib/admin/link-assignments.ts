@@ -7,10 +7,7 @@ import {
   staffSlackLinks,
 } from "@/db/schema";
 import { dutyDateInLA } from "@/lib/admin/duty-date";
-import {
-  getAssigneeWorkload,
-  listActiveKindJoeDutyStaff,
-} from "@/lib/admin/kindjoe-duty-staff";
+import { pickAssigneeUserIdWeighted } from "@/lib/admin/kindjoe-assign-schedule";
 import { createTargetedAdminNotification } from "@/lib/admin/notifications";
 
 export type LinkAssignmentStatus = "assigned" | "done" | "skipped";
@@ -64,21 +61,7 @@ export async function upsertDutyCheckin(input: {
 }
 
 async function pickAssigneeUserId(): Promise<string | null> {
-  const pool = await listActiveKindJoeDutyStaff();
-  if (!pool.length) return null;
-
-  const userIds = pool.map((p) => p.userId);
-  const { openMap, lastMap } = await getAssigneeWorkload(userIds);
-
-  const ranked = [...userIds].sort((a, b) => {
-    const openDiff = (openMap.get(a) ?? 0) - (openMap.get(b) ?? 0);
-    if (openDiff !== 0) return openDiff;
-    const lastDiff = (lastMap.get(a) ?? 0) - (lastMap.get(b) ?? 0);
-    if (lastDiff !== 0) return lastDiff;
-    return a.localeCompare(b);
-  });
-
-  return ranked[0] ?? null;
+  return pickAssigneeUserIdWeighted();
 }
 
 export async function assignSlackLink(input: {

@@ -594,6 +594,31 @@ export const staffSlackLinks = pgTable(
   }),
 );
 
+/**
+ * Weekly Kind Joe link-assign schedule (America/Los_Angeles weekdays).
+ * Weight 0 = off that day; 100 = full share; 20 ≈ 20% of links.
+ */
+export const kindjoeAssignSchedules = pgTable("kindjoe_assign_schedules", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => authUser.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(true),
+  monWeight: integer("mon_weight").notNull().default(0),
+  tueWeight: integer("tue_weight").notNull().default(0),
+  wedWeight: integer("wed_weight").notNull().default(0),
+  thuWeight: integer("thu_weight").notNull().default(0),
+  friWeight: integer("fri_weight").notNull().default(0),
+  satWeight: integer("sat_weight").notNull().default(0),
+  sunWeight: integer("sun_weight").notNull().default(0),
+  notes: text("notes"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedByUserId: text("updated_by_user_id").references(() => authUser.id, {
+    onDelete: "set null",
+  }),
+});
+
 /** Singleton-ish config for Slack channels (set in admin). */
 export const slackLinkAssignSettings = pgTable("slack_link_assign_settings", {
   id: integer("id").primaryKey().default(1),

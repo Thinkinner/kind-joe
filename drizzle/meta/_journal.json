@@ -344,6 +344,13 @@
       "when": 1785984000000,
       "tag": "0048_slack_idle_timing",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1786010000000,
+      "tag": "0049_kindjoe_assign_schedules",
+      "breakpoints": true
     }
   ]
 }

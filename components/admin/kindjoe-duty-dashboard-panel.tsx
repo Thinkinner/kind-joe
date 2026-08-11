@@ -4,7 +4,12 @@ import {
   listKindJoeDutyRoster,
   type DutyRosterPerson,
 } from "@/lib/admin/kindjoe-duty-staff";
+import {
+  ensureDefaultAssignSchedules,
+  listWeightedAssignCandidates,
+} from "@/lib/admin/kindjoe-assign-schedule";
 import { getIdleMentionCountdownsForStaff } from "@/lib/admin/idle-nudge";
+import { laWeekdayKey } from "@/lib/admin/duty-date";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<DutyRosterPerson["status"], string> = {
@@ -40,19 +45,28 @@ function formatMinutesLeft(minutes: number | null): string {
 }
 
 export async function KindJoeDutyDashboardPanel() {
+  await ensureDefaultAssignSchedules();
   const roster = await listKindJoeDutyRoster();
-  const countdowns = await getIdleMentionCountdownsForStaff(roster.people);
+  const [countdowns, assignPool] = await Promise.all([
+    getIdleMentionCountdownsForStaff(roster.people),
+    listWeightedAssignCandidates(),
+  ]);
+  const weekday = laWeekdayKey();
   const onKindJoe = roster.people.filter((p) => p.status === "kindjoe");
-  const workingOther = roster.people.filter((p) => p.status === "working_other");
+  const workingOther = roster.people.filter(
+    (p) => p.status === "working_other",
+  );
   const notWorking = roster.people.filter((p) => p.status === "not_working");
   const missing = roster.people.filter((p) => p.status === "not_checked_in");
+  const poolTotal = assignPool.reduce((sum, p) => sum + p.weight, 0);
+  const poolByUser = new Map(assignPool.map((p) => [p.userId, p]));
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)] sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Admin ops
+            Admin ops · LA time
           </p>
           <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
             Who&apos;s working on Kind Joe
@@ -60,7 +74,12 @@ export async function KindJoeDutyDashboardPanel() {
           <p className="mt-1.5 text-sm text-muted-foreground">
             Duty date{" "}
             <span className="font-medium text-foreground">{roster.dutyDate}</span>{" "}
-            ({roster.timezone}). Link assign + idle nudge only use On Kind Joe.
+            · weekday{" "}
+            <span className="font-medium uppercase text-foreground">
+              {weekday}
+            </span>
+            . Link assign uses LA weekly weights. Idle mentions stay 9PM–7AM
+            PHT.
           </p>
         </div>
         <Link
@@ -68,8 +87,22 @@ export async function KindJoeDutyDashboardPanel() {
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
         >
           <RefreshCw className="size-3.5" />
-          Full roster
+          Manage schedules
         </Link>
+      </div>
+
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
+        <span className="font-semibold">Today&apos;s weighted assign pool: </span>
+        {assignPool.length === 0
+          ? "nobody eligible"
+          : assignPool
+              .map((p) => {
+                const person = roster.people.find((x) => x.userId === p.userId);
+                const share =
+                  poolTotal > 0 ? Math.round((p.weight / poolTotal) * 100) : 0;
+                return `${person?.alias || person?.name || "Staff"} ${p.weight}% (~${share}%)`;
+              })
+              .join(" · ")}
       </div>
 
       <div
@@ -82,18 +115,17 @@ export async function KindJoeDutyDashboardPanel() {
       >
         {countdowns.windowActive ? (
           <>
-            <span className="font-semibold">Idle mentions active</span>
+            <span className="font-semibold">Idle mentions active (PHT)</span>
             {" · "}
             {countdowns.minutesUntilNextCron == null
               ? "waiting for next cron window"
               : `next cron in ~${countdowns.minutesUntilNextCron}m`}
             {" · "}
-            mention after {countdowns.idleAfterMinutes}m idle (cooldown{" "}
-            {countdowns.idleCooldownMinutes}m)
+            mention after {countdowns.idleAfterMinutes}m idle
           </>
         ) : (
           <>
-            <span className="font-semibold">Idle mentions paused</span>
+            <span className="font-semibold">Idle mentions paused (PHT)</span>
             {" · "}
             window opens in ~{countdowns.minutesUntilWindowOpens}m (9PM–7AM
             PHT)
@@ -144,16 +176,18 @@ export async function KindJoeDutyDashboardPanel() {
             <tr>
               <th className="px-4 py-3 font-medium">Staff</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Today weight</th>
               <th className="px-4 py-3 font-medium">Mention in</th>
               <th className="hidden px-4 py-3 font-medium md:table-cell">
                 Checked in
               </th>
-              <th className="px-4 py-3 font-medium">Open links</th>
+              <th className="px-4 py-3 font-medium">Open</th>
             </tr>
           </thead>
           <tbody>
             {roster.people.map((person) => {
               const countdown = countdowns.byUserId[person.userId];
+              const pool = poolByUser.get(person.userId);
               return (
                 <tr
                   key={person.userId}
@@ -165,7 +199,6 @@ export async function KindJoeDutyDashboardPanel() {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {person.alias ? person.name : person.email || "—"}
-                      {!person.slackUserId ? " · No Slack" : null}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -184,6 +217,9 @@ export async function KindJoeDutyDashboardPanel() {
                     >
                       {STATUS_LABEL[person.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {pool ? `${pool.weight}%` : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {person.status === "kindjoe" && countdown ? (
@@ -208,31 +244,9 @@ export async function KindJoeDutyDashboardPanel() {
                 </tr>
               );
             })}
-            {roster.people.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-8 text-center text-muted-foreground"
-                >
-                  No staff accounts found.
-                </td>
-              </tr>
-            ) : null}
           </tbody>
         </table>
       </div>
-
-      {onKindJoe.length > 0 ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
-          <span className="font-semibold">On duty now: </span>
-          {onKindJoe.map((p) => p.alias || p.name).join(", ")}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-          Nobody is checked in for Kind Joe on this duty date. New Slack links
-          will not auto-assign.
-        </div>
-      )}
     </section>
   );
 }

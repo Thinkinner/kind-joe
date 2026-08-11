@@ -7,6 +7,11 @@ export const LOCAL_NEWS_REGIONS = [
     slug: "ventura-county",
     /** Tag slugs that count as this region (first is canonical). */
     tagSlugs: ["ventura-county"] as const,
+    /**
+     * Loose match against category / category rows / tag names & slugs.
+     * Prefer multi-char tokens — avoid bare "la" / "slo" (too many false hits).
+     */
+    matchKeywords: ["ventura"] as const,
     href: "/ventura-county",
     eyebrow: "Local",
     description: "Local stories from Ventura County communities.",
@@ -22,6 +27,13 @@ export const LOCAL_NEWS_REGIONS = [
     name: "L.A. News",
     slug: "la-news",
     tagSlugs: ["la-news"] as const,
+    matchKeywords: [
+      "los angeles",
+      "l.a.",
+      "la-news",
+      "la news",
+      "la county",
+    ] as const,
     href: "/la-news",
     eyebrow: "City & county",
     description: "Los Angeles city and county stories that matter locally.",
@@ -37,6 +49,12 @@ export const LOCAL_NEWS_REGIONS = [
     name: "San Luis Obispo",
     slug: "san-luis-obispo",
     tagSlugs: ["san-luis-obispo", "slo", "sanluisobispo"] as const,
+    matchKeywords: [
+      "san luis",
+      "obispo",
+      "san-luis-obispo",
+      "sanluisobispo",
+    ] as const,
     href: "/san-luis-obispo",
     eyebrow: "County",
     description: "San Luis Obispo County news and community updates.",
@@ -71,6 +89,10 @@ export function getRegionTagSlugs(region: LocalNewsRegion): string[] {
   return [...region.tagSlugs];
 }
 
+export function getRegionMatchKeywords(region: LocalNewsRegion): string[] {
+  return [...region.matchKeywords];
+}
+
 export function getPrimaryLocalTagSlug(
   tags: Array<{ slug?: string | null }> | undefined | null,
 ): LocalNewsTagSlug | null {
@@ -85,4 +107,48 @@ export function getPrimaryLocalTagSlug(
     }
   }
   return null;
+}
+
+/** True when haystack contains any of the region's keywords or exact tag slugs. */
+export function textMatchesLocalNewsRegion(
+  haystack: string | null | undefined,
+  region: LocalNewsRegion,
+): boolean {
+  const text = (haystack ?? "").trim().toLowerCase();
+  if (!text) return false;
+  if (
+    (region.tagSlugs as readonly string[]).some(
+      (slug) => text === slug || text.includes(slug),
+    )
+  ) {
+    return true;
+  }
+  return (region.matchKeywords as readonly string[]).some((kw) =>
+    text.includes(kw.toLowerCase()),
+  );
+}
+
+/**
+ * Canonical region tag slug(s) to attach when category/tags imply a region
+ * (e.g. category "Ventura County" → "ventura-county").
+ */
+export function inferCanonicalRegionTagSlugs(input: {
+  category?: string | null;
+  tags?: string[] | null;
+}): LocalNewsTagSlug[] {
+  const found = new Set<LocalNewsTagSlug>();
+  const category = input.category ?? "";
+  const tagList = input.tags ?? [];
+
+  for (const region of LOCAL_NEWS_REGIONS) {
+    if (textMatchesLocalNewsRegion(category, region)) {
+      found.add(region.slug);
+      continue;
+    }
+    if (tagList.some((tag) => textMatchesLocalNewsRegion(tag, region))) {
+      found.add(region.slug);
+    }
+  }
+
+  return [...found];
 }

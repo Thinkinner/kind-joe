@@ -88,6 +88,12 @@ const baseNav = [
     permission: PERMISSIONS.ADMIN_ASSIGNED_LINKS,
   },
   {
+    href: "/admin/kindjoe-duty",
+    label: "Kind Joe duty",
+    icon: Users,
+    permission: PERMISSIONS.ADMIN_USERS,
+  },
+  {
     href: "/admin/slack-link-assign",
     label: "Slack channels",
     icon: Hash,

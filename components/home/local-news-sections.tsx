@@ -10,13 +10,16 @@ import { articlePublicPath } from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { formatTimeAgo } from "@/lib/format/time-ago";
 import { formatHeadline } from "@/lib/format/headline";
-import { LOCAL_NEWS_REGIONS } from "@/lib/local-news/regions";
+import { LOCAL_NEWS_REGIONS, textMatchesLocalNewsRegion } from "@/lib/local-news/regions";
 import type { ArticleSummary } from "@/types/article";
 
 const REGION_LIMIT = 5;
 
-function regionLabelFromTags(tags: ArticleSummary["tags"]): string | null {
-  const list = Array.isArray(tags) ? tags : [];
+function regionLabelForArticle(
+  article: ArticleSummary,
+  regionFallback?: string | null,
+): string | null {
+  const list = Array.isArray(article.tags) ? article.tags : [];
   for (const region of LOCAL_NEWS_REGIONS) {
     if (
       list.some((t: { slug?: string }) =>
@@ -26,7 +29,12 @@ function regionLabelFromTags(tags: ArticleSummary["tags"]): string | null {
       return region.name;
     }
   }
-  return null;
+  for (const region of LOCAL_NEWS_REGIONS) {
+    if (textMatchesLocalNewsRegion(article.category, region)) {
+      return region.name;
+    }
+  }
+  return regionFallback ?? null;
 }
 
 function LeadFeature({
@@ -46,7 +54,7 @@ function LeadFeature({
     { width: 1000 },
   );
   const timeAgo = formatTimeAgo(article.publishedAt ?? null);
-  const region = regionLabelFromTags(article.tags) ?? regionFallback ?? null;
+  const region = regionLabelForArticle(article, regionFallback);
   const headline = formatHeadline(article.title);
 
   return (
@@ -124,8 +132,7 @@ function SideStoryList({
       {articles.map((article) => {
         const path = articlePublicPath(article.slug);
         const timeAgo = formatTimeAgo(article.publishedAt ?? null);
-        const region =
-          regionLabelFromTags(article.tags) ?? regionFallback ?? null;
+        const region = regionLabelForArticle(article, regionFallback);
         const thumb = optimizeCloudinaryUrl(
           article.coverImageUrl ?? "/placeholder.jpg",
           { width: 280 },
@@ -341,15 +348,22 @@ function RegionSection({
 }
 
 export async function LocalNewsSections() {
+  // Keep DB calls sequential: Neon pool is small and Promise.all of
+  // ensureLocalNewsTags + 4 article queries was timing out connections.
   await ensureLocalNewsTags();
 
-  const [topStories, ...regionBundles] = await Promise.all([
-    getLocalNewsArticlesAction(5, 0),
-    ...LOCAL_NEWS_REGIONS.map(async (region) => ({
+  const topStories = await getLocalNewsArticlesAction(5, 0);
+  const regionBundles: Array<{
+    region: (typeof LOCAL_NEWS_REGIONS)[number];
+    articles: Awaited<ReturnType<typeof getArticlesByTagSlugAction>>;
+  }> = [];
+
+  for (const region of LOCAL_NEWS_REGIONS) {
+    regionBundles.push({
       region,
       articles: await getArticlesByTagSlugAction(region.slug, REGION_LIMIT, 0),
-    })),
-  ]);
+    });
+  }
 
   return (
     <>

@@ -19,7 +19,7 @@ const REQUIRED_PATHS = [
 
 const EXPECTED_MARKERS: Record<(typeof REQUIRED_PATHS)[number], string[]> = {
   "/": ["Kind Joe"],
-  "/news": ["Latest Kindjoe Articles"],
+  "/news": ["Kindjoe News"],
   "/tech": ["Tech"],
   "/politics": ["Politics"],
   "/business": ["Business"],

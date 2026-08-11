@@ -1,52 +1,41 @@
-// app/page.tsx
+import type { Metadata } from "next";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
-import { RssStocksTicker } from "@/components/rss-news/rss-stock-ticker";
-import { getStocksFromFinnhub } from "@/lib/stocks";
+import { publicSiteUrl } from "@/lib/site/public-site-url";
 
-export default async function HomePage() {
-  const stocks = await getStocksFromFinnhub();
+export const revalidate = 300;
 
+export const metadata: Metadata = {
+  title: "Kindjoe News • Kind Joe",
+  description:
+    "Latest Kindjoe News — original reporting and analysis from Kind Joe.",
+  alternates: { canonical: publicSiteUrl("/news") },
+};
+
+export default function KindjoeNewsPage() {
   return (
-    <>
-      {/* Main Container */}
-      <main className="mx-auto px-5 py-5">
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <div className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
-            Live Stocks Chart
-          </div>
-          <div className="text-blue-700 text-xs md:text-base font-bold font-[Poppins]">
-            AS OF TODAY
-          </div>
-        </div>
-        <RssStocksTicker stocks={stocks} />
-        <hr className="my-6 border-slate-200" />
-
-        {/* Title above both columns */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <h1 className="text-black text-xl md:text-3xl font-bold font-[Poppins]">
-            Latest Kindjoe Articles
+    <main className="mx-auto px-5 py-5">
+      <div className="mb-6 flex flex-col gap-3 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold font-[Poppins] text-black md:text-3xl">
+            Kindjoe News
           </h1>
+          <p className="mt-2 text-sm text-slate-600 md:text-base">
+            Latest stories from Kind Joe.
+          </p>
         </div>
+      </div>
 
-        {/* Flex Row Wrapper */}
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          {" "}
-          {/* 👈 Added items-start */}
-          {/* Left Column (Articles) */}
-          <div className="flex-1 min-w-0">
-            <ArticleList />
-          </div>
-          {/* Right Column (Sidebar) */}
-          <aside className="w-full lg:w-[35%] xl:w-[30%] lg:max-w-[420px] shrink-0 lg:sticky lg:top-24">
-            {/* 👆 Added lg:sticky and lg:top-24 */}
-            <div className="flex flex-col gap-8">
-              <SocialWidget />
-              {/* If you add more widgets here, they will all stick together */}
-            </div>
-          </aside>
+      <div className="flex flex-col items-start gap-8 lg:flex-row">
+        <div className="min-w-0 flex-1">
+          <ArticleList emptyMessage="No Kindjoe stories yet. Check back soon." />
         </div>
-      </main>
-    </>
+        <aside className="w-full shrink-0 lg:sticky lg:top-24 lg:w-[35%] lg:max-w-[420px] xl:w-[30%]">
+          <div className="flex flex-col gap-8">
+            <SocialWidget />
+          </div>
+        </aside>
+      </div>
+    </main>
   );
 }

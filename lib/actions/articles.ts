@@ -31,9 +31,10 @@ import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-con
 import { titleAttentionScore } from "@/lib/format/title-attention-score";
 import {
   getLocalNewsRegionBySlug,
+  getRegionMatchKeywords,
   getRegionTagSlugs,
   LOCAL_NEWS_REGIONS,
-  LOCAL_NEWS_TAG_SLUGS,
+  type LocalNewsRegion,
   type LocalNewsTagSlug,
 } from "@/lib/local-news/regions";
 
@@ -239,7 +240,67 @@ export async function ensureLocalNewsTags(): Promise<void> {
   }
 }
 
-/** Published articles that carry a local-news region tag (supports aliases e.g. slo). */
+/**
+ * Match region content the way /ventura-county already did: category column,
+ * linked categories, and tags — not only the canonical region tag slug.
+ * Newer stories often land as category "Ventura County" without the tag.
+ */
+function regionContentFilter(region: LocalNewsRegion) {
+  const keywords = getRegionMatchKeywords(region);
+  const matchSlugs = getRegionTagSlugs(region);
+  const keywordMatchers = keywords.flatMap((kw) => [
+    ilike(articles.category, `%${kw}%`),
+    exists(
+      db
+        .select()
+        .from(articleCategories)
+        .innerJoin(categories, eq(articleCategories.categoryId, categories.id))
+        .where(
+          and(
+            eq(articleCategories.articleId, articles.id),
+            or(
+              ilike(categories.name, `%${kw}%`),
+              ilike(categories.slug, `%${kw}%`),
+            ),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select()
+        .from(articleTags)
+        .innerJoin(tags, eq(articleTags.tagId, tags.id))
+        .where(
+          and(
+            eq(articleTags.articleId, articles.id),
+            or(ilike(tags.name, `%${kw}%`), ilike(tags.slug, `%${kw}%`)),
+          ),
+        ),
+    ),
+  ]);
+
+  return or(
+    ...keywordMatchers,
+    exists(
+      db
+        .select()
+        .from(articleTags)
+        .innerJoin(tags, eq(articleTags.tagId, tags.id))
+        .where(
+          and(
+            eq(articleTags.articleId, articles.id),
+            inArray(tags.slug, matchSlugs),
+          ),
+        ),
+    ),
+  );
+}
+
+function anyLocalNewsContentFilter() {
+  return or(...LOCAL_NEWS_REGIONS.map((region) => regionContentFilter(region)));
+}
+
+/** Published articles for a local-news region (tag, category, or aliases). */
 export async function getArticlesByTagSlugAction(
   tagSlug: LocalNewsTagSlug | string,
   limit: number,
@@ -249,7 +310,20 @@ export async function getArticlesByTagSlugAction(
   const safeOffset = Math.max(offset, 0);
   const now = new Date();
   const region = getLocalNewsRegionBySlug(tagSlug);
-  const matchSlugs = region ? getRegionTagSlugs(region) : [tagSlug];
+  const contentFilter = region
+    ? regionContentFilter(region)
+    : exists(
+        db
+          .select()
+          .from(articleTags)
+          .innerJoin(tags, eq(articleTags.tagId, tags.id))
+          .where(
+            and(
+              eq(articleTags.articleId, articles.id),
+              eq(tags.slug, tagSlug),
+            ),
+          ),
+      );
 
   try {
     const results = await db
@@ -257,23 +331,7 @@ export async function getArticlesByTagSlugAction(
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
       .leftJoin(authUser, eq(articles.authorId, authUser.id))
-      .where(
-        and(
-          publishedArticlesFilter(now),
-          exists(
-            db
-              .select()
-              .from(articleTags)
-              .innerJoin(tags, eq(articleTags.tagId, tags.id))
-              .where(
-                and(
-                  eq(articleTags.articleId, articles.id),
-                  inArray(tags.slug, matchSlugs),
-                ),
-              ),
-          ),
-        ),
-      )
+      .where(and(publishedArticlesFilter(now), contentFilter))
       .orderBy(desc(publishDateSort))
       .limit(safeLimit)
       .offset(safeOffset);
@@ -285,7 +343,7 @@ export async function getArticlesByTagSlugAction(
   }
 }
 
-/** Any of the local-news tags (Ventura, L.A., SLO / san-luis-obispo). */
+/** Any local-news region (Ventura, L.A., SLO) via tag or category. */
 export async function getLocalNewsArticlesAction(
   limit: number,
   offset: number,
@@ -300,23 +358,7 @@ export async function getLocalNewsArticlesAction(
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
       .leftJoin(authUser, eq(articles.authorId, authUser.id))
-      .where(
-        and(
-          publishedArticlesFilter(now),
-          exists(
-            db
-              .select()
-              .from(articleTags)
-              .innerJoin(tags, eq(articleTags.tagId, tags.id))
-              .where(
-                and(
-                  eq(articleTags.articleId, articles.id),
-                  inArray(tags.slug, [...LOCAL_NEWS_TAG_SLUGS]),
-                ),
-              ),
-          ),
-        ),
-      )
+      .where(and(publishedArticlesFilter(now), anyLocalNewsContentFilter()))
       .orderBy(desc(publishDateSort))
       .limit(safeLimit)
       .offset(safeOffset);
@@ -704,6 +746,10 @@ export async function getVenturaArticlesAction(
 ): Promise<ArticleSummary[]> {
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
   const safeOffset = Math.max(offset, 0);
+  const now = new Date();
+  const ventura = getLocalNewsRegionBySlug("ventura-county");
+  if (!ventura) return [];
+
   try {
     const results = await db
       .select({
@@ -726,55 +772,8 @@ export async function getVenturaArticlesAction(
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
       .leftJoin(authUser, eq(articles.authorId, authUser.id))
-      .where(
-        and(
-          eq(articles.isDraft, false),
-          isNull(articles.deletedAt),
-          // 🧠 THE SMART FILTER: Look everywhere for "Ventura"
-          or(
-            // 1. Check the main category column
-            ilike(articles.category, "%Ventura%"),
-
-            // 2. Check if any linked Category has "Ventura" in name or slug
-            exists(
-              db
-                .select()
-                .from(articleCategories)
-                .innerJoin(
-                  categories,
-                  eq(articleCategories.categoryId, categories.id),
-                )
-                .where(
-                  and(
-                    eq(articleCategories.articleId, articles.id),
-                    or(
-                      ilike(categories.name, "%Ventura%"),
-                      ilike(categories.slug, "%ventura%"),
-                    ),
-                  ),
-                ),
-            ),
-
-            // 3. Check if any linked Tag has "Ventura" in name or slug
-            exists(
-              db
-                .select()
-                .from(articleTags)
-                .innerJoin(tags, eq(articleTags.tagId, tags.id))
-                .where(
-                  and(
-                    eq(articleTags.articleId, articles.id),
-                    or(
-                      ilike(tags.name, "%Ventura%"),
-                      ilike(tags.slug, "%ventura%"),
-                    ),
-                  ),
-                ),
-            ),
-          ),
-        ),
-      )
-      .orderBy(desc(articles.publishedAt))
+      .where(and(publishedArticlesFilter(now), regionContentFilter(ventura)))
+      .orderBy(desc(publishDateSort))
       .limit(safeLimit)
       .offset(safeOffset);
 

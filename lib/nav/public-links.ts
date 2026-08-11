@@ -11,9 +11,10 @@ const topicLinks: PublicNavLink[] = TOPIC_SLUGS.map((topic) => ({
   href: `/${topic}`,
 }));
 
-/** Primary header — local coverage first. */
+/** Primary header — Kindjoe News first, then local coverage. */
 export const PRIMARY_NAV_LINKS: PublicNavLink[] = [
   { name: "Home", href: "/" },
+  { name: "Kindjoe News", href: "/news", title: "Kindjoe News" },
   { name: "L.A. News", href: "/la-news", title: "Los Angeles News" },
   { name: "Ventura County", href: "/ventura-county" },
   { name: "San Luis Obispo", href: "/san-luis-obispo" },
@@ -21,10 +22,7 @@ export const PRIMARY_NAV_LINKS: PublicNavLink[] = [
 ];
 
 /** Topic pages — footer / secondary explore only. */
-export const SECONDARY_TOPIC_LINKS: PublicNavLink[] = [
-  ...topicLinks,
-  { name: "News", href: "/news", title: "Kind Joe News" },
-];
+export const SECONDARY_TOPIC_LINKS: PublicNavLink[] = [...topicLinks];
 
 export const FOOTER_EXPLORE_LINKS: PublicNavLink[] = [
   ...PRIMARY_NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/newsletter"),

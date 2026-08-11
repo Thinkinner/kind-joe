@@ -13,20 +13,17 @@ import {
 } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  articleCategories,
-  articleTags,
   articles,
-  categories,
   newsRssArticles,
   newsRssSource,
   rssAutoWriterQueue,
-  tags,
   users,
 } from "@/db/schema";
 import { slugify } from "@/lib/helpers/articles";
 import { uploadImage } from "@/lib/(newsletter-automations)/cloudinary-service";
 import { ARTICLE_ASSISTANT_MARKDOWN_PROMPT } from "@/lib/ai/article-assistant-prompt";
 import { generateArticleAssistAll } from "@/lib/ai/article-assist-service";
+import { saveArticleTaxonomy } from "@/lib/partner/save-taxonomy";
 
 const DEFAULT_INGEST_LIMIT = 30;
 const DEFAULT_WRITER_MAX_PER_RUN = 1;
@@ -155,50 +152,7 @@ async function ensureUniqueSlug(baseSlug: string): Promise<string> {
 }
 
 async function saveTaxonomy(articleId: string, category: string, rawTags: string[]) {
-  const categoryName = (category || "General").trim();
-  if (categoryName) {
-    const catSlug = toKebab(categoryName);
-    if (catSlug) {
-      await db
-        .insert(categories)
-        .values({ name: categoryName, slug: catSlug })
-        .onConflictDoNothing({ target: categories.slug });
-      const [cat] = await db
-        .select({ id: categories.id })
-        .from(categories)
-        .where(eq(categories.slug, catSlug))
-        .limit(1);
-      if (cat) {
-        await db
-          .insert(articleCategories)
-          .values({ articleId, categoryId: cat.id })
-          .onConflictDoNothing({
-            target: [articleCategories.articleId, articleCategories.categoryId],
-          });
-      }
-    }
-  }
-
-  const normalizedTags = rawTags
-    .map((tag) => ({ name: tag.trim(), slug: toKebab(tag) }))
-    .filter((tag) => tag.name && tag.slug)
-    .slice(0, 20);
-
-  for (const tagEntry of normalizedTags) {
-    await db
-      .insert(tags)
-      .values({ name: tagEntry.name, slug: tagEntry.slug })
-      .onConflictDoNothing({ target: tags.slug });
-    const [tagRow] = await db
-      .select({ id: tags.id })
-      .from(tags)
-      .where(eq(tags.slug, tagEntry.slug))
-      .limit(1);
-    if (!tagRow) continue;
-    await db.insert(articleTags).values({ articleId, tagId: tagRow.id }).onConflictDoNothing({
-      target: [articleTags.articleId, articleTags.tagId],
-    });
-  }
+  await saveArticleTaxonomy(articleId, category, rawTags);
 }
 
 export async function runRssAutoWriter(opts?: {

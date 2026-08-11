@@ -8,6 +8,10 @@ import {
   tags,
 } from "@/db/schema";
 import { slugify } from "@/lib/helpers/articles";
+import {
+  getLocalNewsRegionBySlug,
+  inferCanonicalRegionTagSlugs,
+} from "@/lib/local-news/regions";
 
 export async function saveArticleTaxonomy(
   articleId: string,
@@ -38,8 +42,26 @@ export async function saveArticleTaxonomy(
     }
   }
 
-  const normalizedTags = rawTags
-    .map((tag) => ({ name: tag.trim(), slug: slugify(tag) }))
+  const withRegionTags = [...rawTags];
+  for (const slug of inferCanonicalRegionTagSlugs({
+    category: categoryName,
+    tags: rawTags,
+  })) {
+    if (!withRegionTags.some((tag) => slugify(tag) === slug)) {
+      withRegionTags.push(slug);
+    }
+  }
+
+  const normalizedTags = withRegionTags
+    .map((tag) => {
+      const trimmed = tag.trim();
+      const slug = slugify(trimmed);
+      const region = getLocalNewsRegionBySlug(slug);
+      return {
+        name: region?.name ?? trimmed,
+        slug: region?.slug ?? slug,
+      };
+    })
     .filter((tag) => tag.name && tag.slug)
     .slice(0, 20);
 

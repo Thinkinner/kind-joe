@@ -19,6 +19,7 @@ import {
   countWordsFromHtml,
   slugify,
 } from "@/lib/helpers/articles";
+import { inferCanonicalRegionTagSlugs } from "@/lib/local-news/regions";
 import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
 import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
 
@@ -95,6 +96,14 @@ function normalizeTags(input: PartnerPublishInput, isVentura: boolean): string[]
   const tags = [...(input.tags ?? [])];
   if (isVentura && !tags.some((t) => slugify(t) === "ventura-county")) {
     tags.push("ventura-county");
+  }
+  for (const slug of inferCanonicalRegionTagSlugs({
+    category: input.category,
+    tags,
+  })) {
+    if (!tags.some((t) => slugify(t) === slug)) {
+      tags.push(slug);
+    }
   }
   return tags;
 }

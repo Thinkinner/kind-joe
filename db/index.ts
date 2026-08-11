@@ -2,16 +2,16 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 function parsePoolMax(): number {
-  const parsed = Number.parseInt(process.env.DB_POOL_MAX ?? "2", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2;
+  const parsed = Number.parseInt(process.env.DB_POOL_MAX ?? "4", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
 }
 
 function parseConnectTimeoutMs(): number {
   const parsed = Number.parseInt(
-    process.env.DB_CONNECTION_TIMEOUT_MS ?? "5000",
+    process.env.DB_CONNECTION_TIMEOUT_MS ?? "15000",
     10,
   );
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15000;
 }
 
 const pool = new Pool({

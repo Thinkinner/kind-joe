@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import type { SourceFirstPacket } from "@/lib/ai/source-first-research";
+import { inferCanonicalRegionTagSlugs } from "@/lib/local-news/regions";
 
 const ARTICLE_ALL_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -448,6 +449,13 @@ function buildMinimumTags(input: {
   };
 
   for (const tag of input.existing) push(tag);
+
+  for (const slug of inferCanonicalRegionTagSlugs({
+    category: input.category,
+    tags: input.existing,
+  })) {
+    push(slug);
+  }
 
   const titleTokens = String(input.title)
     .split(/[^a-zA-Z0-9]+/)
