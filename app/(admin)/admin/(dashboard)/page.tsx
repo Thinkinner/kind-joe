@@ -3,6 +3,7 @@ import Image from "next/image";
 import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
+import { user as authUser } from "@/db/auth-schema";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -20,7 +21,9 @@ import {
 } from "@/lib/analytics/trends";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { getServerSession } from "@/lib/auth/server";
+import { PERMISSIONS, userHasPermission } from "@/lib/auth/permissions";
 import { AssignedLinksDashboardCard } from "@/components/admin/assigned-links-dashboard-card";
+import { KindJoeDutyDashboardPanel } from "@/components/admin/kindjoe-duty-dashboard-panel";
 
 type RangeKey = "today" | "week" | "month" | "all";
 type TopKey = 5 | 10 | 20;
@@ -32,7 +35,8 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: "all", label: "All Time" },
 ];
 
-const toSingle = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+const toSingle = (v: string | string[] | undefined) =>
+  Array.isArray(v) ? v[0] : v;
 const parseTop = (r?: string): TopKey =>
   [5, 10, 20].includes(Number(r)) ? (Number(r) as TopKey) : 10;
 
@@ -68,7 +72,9 @@ function MetricCard({
             }`}
           >
             {trendState.direction === "up" ? <ArrowUpRight size={14} /> : null}
-            {trendState.direction === "down" ? <ArrowDownRight size={14} /> : null}
+            {trendState.direction === "down" ? (
+              <ArrowDownRight size={14} />
+            ) : null}
             {trendState.label}
           </div>
         )}
@@ -96,6 +102,26 @@ export default async function AdminDashboardPage({
 
   const session = await getServerSession();
   const userId = session?.user?.id ?? null;
+
+  const [dbUser] = userId
+    ? await db
+        .select({
+          accountType: authUser.accountType,
+          staffRole: authUser.staffRole,
+          staffRoles: authUser.staffRoles,
+          adminPageAccess: authUser.adminPageAccess,
+        })
+        .from(authUser)
+        .where(eq(authUser.id, userId))
+        .limit(1)
+    : [];
+
+  const effectiveUser =
+    session?.user && dbUser ? { ...session.user, ...dbUser } : session?.user;
+  const isAdminViewer = userHasPermission(
+    effectiveUser,
+    PERMISSIONS.ADMIN_USERS,
+  );
 
   const now = new Date();
   const period = getPeriodWindow(range, now);
@@ -195,13 +221,124 @@ export default async function AdminDashboardPage({
 
   const latestTitle = recentArticles[0]?.title ?? "your latest story";
 
+  if (isAdminViewer) {
+    return (
+      <div className="mx-auto w-full max-w-7xl space-y-10">
+        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Admin dashboard
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+              Ops overview
+            </h1>
+            <p className="text-muted-foreground">
+              See who is on Kind Joe duty and site publishing at a glance.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-[0_8px_22px_-16px_rgb(15_23_42/0.2)]">
+            {RANGE_OPTIONS.map((opt) => (
+              <Link
+                key={opt.key}
+                href={`?range=${opt.key}&top=${top}`}
+                className={`px-4 py-1.5 text-sm font-medium transition-all ${
+                  range === opt.key
+                    ? "rounded-lg bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </Link>
+            ))}
+          </div>
+        </header>
+
+        <KindJoeDutyDashboardPanel />
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label={range === "all" ? "Site published" : "Site published (period)"}
+            value={publishedInPeriod}
+            icon={FileText}
+            trendState={publishedTrend}
+          />
+          <MetricCard
+            label={range === "all" ? "Your published" : "You published (period)"}
+            value={range === "all" ? myPublished : myPublishedInPeriod}
+            icon={UserRound}
+          />
+          <MetricCard
+            label="Your total published"
+            value={myPublished}
+            icon={Calendar}
+          />
+          <MetricCard label="Your drafts" value={draftCount} icon={FilePenLine} />
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          <AssignedLinksDashboardCard variant="large" />
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_30px_-20px_rgb(15_23_42/0.22)]">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-bold text-foreground">
+                Your recently published
+              </h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {myPublished} total · showing {recentArticles.length}
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {recentArticles.slice(0, 5).map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/admin/articles/${article.id}/edit`}
+                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/60"
+                >
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {article.coverImageUrl && (
+                      <Image
+                        src={optimizeCloudinaryUrl(article.coverImageUrl, {
+                          width: 128,
+                        })}
+                        alt=""
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-medium text-foreground">
+                      {article.title}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {article.publishedAt
+                        ? new Date(article.publishedAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+              {recentArticles.length === 0 && (
+                <p className="p-4 text-center text-xs text-muted-foreground">
+                  No articles in this period.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-10">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Dashboard
+          </h1>
           <p className="text-muted-foreground">
-            Content overview. Traffic uses Vercel Web Analytics (not the database).
+            Your assigned links and publishing overview.
           </p>
         </div>
 
@@ -228,7 +365,11 @@ export default async function AdminDashboardPage({
           value={range === "all" ? myPublished : myPublishedInPeriod}
           icon={UserRound}
         />
-        <MetricCard label="Your total published" value={myPublished} icon={Calendar} />
+        <MetricCard
+          label="Your total published"
+          value={myPublished}
+          icon={Calendar}
+        />
         <MetricCard label="Your drafts" value={draftCount} icon={FilePenLine} />
         <MetricCard
           label={range === "all" ? "Site published" : "Site published (period)"}

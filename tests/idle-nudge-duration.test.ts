@@ -37,10 +37,10 @@ describe("formatIdleDuration", () => {
 });
 
 describe("isIdleNudgeActiveWindow", () => {
-  it("is active at 11pm and 6am Manila, inactive at 7am and noon", () => {
-    // 2026-08-06 15:00 UTC = 11:00 PM Manila
+  it("is active at 9pm and 6am Manila, inactive at 7am and noon", () => {
+    // 2026-08-06 13:00 UTC = 9:00 PM Manila
     assert.equal(
-      isIdleNudgeActiveWindow(new Date("2026-08-06T15:00:00.000Z")).active,
+      isIdleNudgeActiveWindow(new Date("2026-08-06T13:00:00.000Z")).active,
       true,
     );
     // 2026-08-06 22:30 UTC = 6:30 AM Manila

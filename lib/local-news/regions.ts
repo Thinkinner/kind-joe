@@ -5,6 +5,8 @@ export const LOCAL_NEWS_REGIONS = [
     id: "ventura",
     name: "Ventura County",
     slug: "ventura-county",
+    /** Tag slugs that count as this region (first is canonical). */
+    tagSlugs: ["ventura-county"] as const,
     href: "/ventura-county",
     eyebrow: "Local",
     description: "Local stories from Ventura County communities.",
@@ -19,6 +21,7 @@ export const LOCAL_NEWS_REGIONS = [
     id: "la",
     name: "L.A. News",
     slug: "la-news",
+    tagSlugs: ["la-news"] as const,
     href: "/la-news",
     eyebrow: "City & county",
     description: "Los Angeles city and county stories that matter locally.",
@@ -33,6 +36,7 @@ export const LOCAL_NEWS_REGIONS = [
     id: "slo",
     name: "San Luis Obispo",
     slug: "san-luis-obispo",
+    tagSlugs: ["san-luis-obispo", "slo", "sanluisobispo"] as const,
     href: "/san-luis-obispo",
     eyebrow: "County",
     description: "San Luis Obispo County news and community updates.",
@@ -48,12 +52,23 @@ export const LOCAL_NEWS_REGIONS = [
 export type LocalNewsRegion = (typeof LOCAL_NEWS_REGIONS)[number];
 export type LocalNewsTagSlug = LocalNewsRegion["slug"];
 
-export const LOCAL_NEWS_TAG_SLUGS = LOCAL_NEWS_REGIONS.map((r) => r.slug);
+export const LOCAL_NEWS_TAG_SLUGS = LOCAL_NEWS_REGIONS.flatMap((r) => [
+  ...r.tagSlugs,
+]);
 
 export function getLocalNewsRegionBySlug(
   slug: string | null | undefined,
 ): LocalNewsRegion | undefined {
-  return LOCAL_NEWS_REGIONS.find((region) => region.slug === slug);
+  if (!slug) return undefined;
+  return LOCAL_NEWS_REGIONS.find(
+    (region) =>
+      region.slug === slug ||
+      (region.tagSlugs as readonly string[]).includes(slug),
+  );
+}
+
+export function getRegionTagSlugs(region: LocalNewsRegion): string[] {
+  return [...region.tagSlugs];
 }
 
 export function getPrimaryLocalTagSlug(
@@ -61,7 +76,13 @@ export function getPrimaryLocalTagSlug(
 ): LocalNewsTagSlug | null {
   if (!tags?.length) return null;
   for (const region of LOCAL_NEWS_REGIONS) {
-    if (tags.some((tag) => tag.slug === region.slug)) return region.slug;
+    if (
+      tags.some((tag) =>
+        (region.tagSlugs as readonly string[]).includes(tag.slug ?? ""),
+      )
+    ) {
+      return region.slug;
+    }
   }
   return null;
 }

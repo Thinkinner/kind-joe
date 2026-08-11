@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { user as authUser } from "@/db/auth-schema";
 import {
@@ -7,6 +7,10 @@ import {
   staffSlackLinks,
 } from "@/db/schema";
 import { dutyDateInLA } from "@/lib/admin/duty-date";
+import {
+  getAssigneeWorkload,
+  listActiveKindJoeDutyStaff,
+} from "@/lib/admin/kindjoe-duty-staff";
 import { createTargetedAdminNotification } from "@/lib/admin/notifications";
 
 export type LinkAssignmentStatus = "assigned" | "done" | "skipped";
@@ -59,51 +63,12 @@ export async function upsertDutyCheckin(input: {
   return row;
 }
 
-async function pickAssigneeUserId(dutyDate = dutyDateInLA()): Promise<string | null> {
-  const pool = await db
-    .select({
-      userId: staffDutyCheckins.userId,
-    })
-    .from(staffDutyCheckins)
-    .where(
-      and(
-        eq(staffDutyCheckins.dutyDate, dutyDate),
-        eq(staffDutyCheckins.workingToday, true),
-        eq(staffDutyCheckins.workingKindJoe, true),
-      ),
-    );
-
+async function pickAssigneeUserId(): Promise<string | null> {
+  const pool = await listActiveKindJoeDutyStaff();
   if (!pool.length) return null;
 
   const userIds = pool.map((p) => p.userId);
-
-  const openCounts = await db
-    .select({
-      userId: linkAssignments.assigneeUserId,
-      openCount: count(linkAssignments.id),
-    })
-    .from(linkAssignments)
-    .where(
-      and(
-        inArray(linkAssignments.assigneeUserId, userIds),
-        eq(linkAssignments.status, "assigned"),
-      ),
-    )
-    .groupBy(linkAssignments.assigneeUserId);
-
-  const lastAssigned = await db
-    .select({
-      userId: linkAssignments.assigneeUserId,
-      lastAt: sql<Date>`max(${linkAssignments.assignedAt})`.as("last_at"),
-    })
-    .from(linkAssignments)
-    .where(inArray(linkAssignments.assigneeUserId, userIds))
-    .groupBy(linkAssignments.assigneeUserId);
-
-  const openMap = new Map(openCounts.map((r) => [r.userId, Number(r.openCount)]));
-  const lastMap = new Map(
-    lastAssigned.map((r) => [r.userId, r.lastAt ? new Date(r.lastAt).getTime() : 0]),
-  );
+  const { openMap, lastMap } = await getAssigneeWorkload(userIds);
 
   const ranked = [...userIds].sort((a, b) => {
     const openDiff = (openMap.get(a) ?? 0) - (openMap.get(b) ?? 0);

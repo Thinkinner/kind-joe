@@ -242,7 +242,7 @@ export function SlackLinkAssignSettingsPanel() {
             . Example: last message at 2:00 AM, it&apos;s 4:00 AM, setting is 2
             hours → they get mentioned. Runs only{" "}
             <span className="font-medium text-foreground">
-              11:00 PM–7:00 AM Philippines time
+              9:00 PM–7:00 AM Philippines time
             </span>
             . Everyone past the gap gets mentioned.
           </p>
@@ -273,7 +273,7 @@ export function SlackLinkAssignSettingsPanel() {
         <p className="text-xs text-muted-foreground">
           In Slack: open the channel → click the channel name → About → copy
           Channel ID at the bottom. Invite the bot to both channels. Production
-          idle-nudge cron runs every 5 minutes only during 11:00 PM–7:00 AM
+          idle-nudge cron runs every 5 minutes only during 9:00 PM–7:00 AM
           PHT (separate from the hourly RSS cron). Mentions include how long
           it&apos;s been (e.g. &quot;2 hours and 15 minutes&quot;) plus last-seen
           PHT time. Short gaps are best tested locally via the cron endpoint.

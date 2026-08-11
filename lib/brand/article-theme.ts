@@ -1,6 +1,14 @@
 export const VENTURA_COUNTY_TAG = "ventura-county";
 export const LA_NEWS_TAG = "la-news";
 export const SAN_LUIS_OBISPO_TAG = "san-luis-obispo";
+export const SLO_TAG = "slo";
+export const SANLUISOBISPO_TAG = "sanluisobispo";
+
+const SAN_LUIS_OBISPO_TAG_SLUGS = [
+  SAN_LUIS_OBISPO_TAG,
+  SLO_TAG,
+  SANLUISOBISPO_TAG,
+] as const;
 
 export function hasVenturaCountyTag(
   tags: Array<{ slug?: string | null }> | undefined | null,
@@ -17,7 +25,13 @@ export function hasLaNewsTag(
 export function hasSanLuisObispoTag(
   tags: Array<{ slug?: string | null }> | undefined | null,
 ): boolean {
-  return Boolean(tags?.some((tag) => tag.slug === SAN_LUIS_OBISPO_TAG));
+  return Boolean(
+    tags?.some((tag) =>
+      SAN_LUIS_OBISPO_TAG_SLUGS.includes(
+        tag.slug as (typeof SAN_LUIS_OBISPO_TAG_SLUGS)[number],
+      ),
+    ),
+  );
 }
 
 /** Canonical public article URL — always /{slug}, never /ventura/{slug}. */

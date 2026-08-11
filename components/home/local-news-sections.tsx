@@ -18,7 +18,11 @@ const REGION_LIMIT = 5;
 function regionLabelFromTags(tags: ArticleSummary["tags"]): string | null {
   const list = Array.isArray(tags) ? tags : [];
   for (const region of LOCAL_NEWS_REGIONS) {
-    if (list.some((t: { slug?: string }) => t?.slug === region.slug)) {
+    if (
+      list.some((t: { slug?: string }) =>
+        (region.tagSlugs as readonly string[]).includes(t?.slug ?? ""),
+      )
+    ) {
       return region.name;
     }
   }
@@ -269,6 +273,7 @@ function TopStories({ articles }: { articles: ArticleSummary[] }) {
           </div>
           <p className="hidden text-sm text-white/45 sm:block">
             {new Intl.DateTimeFormat("en-US", {
+              timeZone: "America/Los_Angeles",
               weekday: "long",
               month: "short",
               day: "numeric",

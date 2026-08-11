@@ -1,7 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { staffDutyCheckins, staffSlackLinks } from "@/db/schema";
-import { dutyDateInLA } from "@/lib/admin/duty-date";
+import {
+  dutyDatesForOpsWindow,
+  listActiveKindJoeDutyStaff,
+} from "@/lib/admin/kindjoe-duty-staff";
 import {
   getIdleNudgeTiming,
   getSlackWorkChannelId,
@@ -9,15 +12,21 @@ import {
 
 /** Idle nudges only run overnight in Philippines time. */
 export const IDLE_NUDGE_TIMEZONE = "Asia/Manila";
-/** Inclusive start hour (23 = 11:00 PM). */
-export const IDLE_NUDGE_ACTIVE_START_HOUR = 23;
-/** Exclusive end hour (7 = 7:00 AM). Active while hour is 23 or 0–6. */
+/** Inclusive start hour (21 = 9:00 PM). */
+export const IDLE_NUDGE_ACTIVE_START_HOUR = 21;
+/** Exclusive end hour (7 = 7:00 AM). Active while hour is 21–23 or 0–6. */
 export const IDLE_NUDGE_ACTIVE_END_HOUR = 7;
+/**
+ * Vercel cron for idle nudge: every 5 minutes, UTC hours 13-22
+ * (= 9:00 PM–6:59 AM Asia/Manila).
+ */
+export const IDLE_NUDGE_CRON_UTC_START_HOUR = 13;
+export const IDLE_NUDGE_CRON_UTC_END_HOUR = 22;
 
 /** Subtypes that still count as someone posting content in the work channel. */
 const CONTENT_SUBTYPES = new Set(["file_share", "thread_broadcast"]);
 
-/** True only between 11:00 PM and 7:00 AM Asia/Manila. */
+/** True only between 9:00 PM and 7:00 AM Asia/Manila. */
 export function isIdleNudgeActiveWindow(now = new Date()): {
   active: boolean;
   hour: number;
@@ -43,9 +52,202 @@ export function isIdleNudgeActiveWindow(now = new Date()): {
  * "today" can lag, so include yesterday too so overnight staff still match.
  */
 export function dutyDatesForIdleNudge(now = new Date()): string[] {
-  const today = dutyDateInLA(now);
-  const yesterday = dutyDateInLA(new Date(now.getTime() - 24 * 60 * 60 * 1000));
-  return yesterday === today ? [today] : [today, yesterday];
+  return dutyDatesForOpsWindow(now).dates;
+}
+
+/** Minutes until the next Vercel idle-nudge cron tick (null if outside cron hours). */
+export function minutesUntilNextIdleCron(now = new Date()): number | null {
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  const s = now.getUTCSeconds();
+  if (h < IDLE_NUDGE_CRON_UTC_START_HOUR || h > IDLE_NUDGE_CRON_UTC_END_HOUR) {
+    return null;
+  }
+  if (h === IDLE_NUDGE_CRON_UTC_END_HOUR && m >= 55) {
+    if (m > 55 || (m === 55 && s > 0)) return null;
+  }
+  const nextFive = (Math.floor(m / 5) + 1) * 5;
+  if (nextFive < 60) return Math.max(0, nextFive - m);
+  if (h < IDLE_NUDGE_CRON_UTC_END_HOUR) return Math.max(1, 60 - m);
+  return null;
+}
+
+/** Next moment the 9PM–7AM Manila window is active (now if already active). */
+export function nextIdleWindowStart(now = new Date()): Date {
+  if (isIdleNudgeActiveWindow(now).active) return now;
+  for (let minute = 1; minute <= 24 * 60; minute++) {
+    const t = new Date(now.getTime() + minute * 60_000);
+    if (isIdleNudgeActiveWindow(t).active) return t;
+  }
+  return now;
+}
+
+export function minutesUntilIdleWindowOpens(now = new Date()): number {
+  if (isIdleNudgeActiveWindow(now).active) return 0;
+  const start = nextIdleWindowStart(now);
+  return Math.max(0, Math.ceil((start.getTime() - now.getTime()) / 60_000));
+}
+
+export type IdleMentionCountdown = {
+  minutesUntilMention: number | null;
+  label: string;
+  reason:
+    | "outside_window"
+    | "no_slack"
+    | "no_message"
+    | "waiting_idle"
+    | "waiting_cooldown"
+    | "eligible_soon";
+};
+
+/** Estimate when this person would be @mentioned next (DB lastContentAt based). */
+export function computeIdleMentionCountdown(input: {
+  now?: Date;
+  lastContentAt: Date | string | null;
+  lastNudgeAt: Date | string | null;
+  slackUserId: string | null;
+  idleAfterSeconds: number;
+  idleCooldownSeconds: number;
+}): IdleMentionCountdown {
+  const now = input.now ?? new Date();
+  const window = isIdleNudgeActiveWindow(now);
+  const idleAfterMs = input.idleAfterSeconds * 1000;
+  const cooldownMs = input.idleCooldownSeconds * 1000;
+
+  if (!input.slackUserId?.trim()) {
+    return {
+      minutesUntilMention: null,
+      label: "No Slack link",
+      reason: "no_slack",
+    };
+  }
+
+  const lastContentAt = input.lastContentAt
+    ? new Date(input.lastContentAt)
+    : null;
+  if (!lastContentAt || Number.isNaN(lastContentAt.getTime())) {
+    return {
+      minutesUntilMention: null,
+      label: "Needs a work-channel message first",
+      reason: "no_message",
+    };
+  }
+
+  const idleMs = now.getTime() - lastContentAt.getTime();
+  const minutesUntilIdle = Math.max(
+    0,
+    Math.ceil((idleAfterMs - idleMs) / 60_000),
+  );
+
+  let minutesUntilCooldown = 0;
+  if (input.lastNudgeAt) {
+    const lastNudgeAt = new Date(input.lastNudgeAt);
+    if (!Number.isNaN(lastNudgeAt.getTime())) {
+      const sinceNudge = now.getTime() - lastNudgeAt.getTime();
+      minutesUntilCooldown = Math.max(
+        0,
+        Math.ceil((cooldownMs - sinceNudge) / 60_000),
+      );
+    }
+  }
+
+  const minutesUntilEligible = Math.max(minutesUntilIdle, minutesUntilCooldown);
+  const reason: IdleMentionCountdown["reason"] =
+    minutesUntilCooldown > minutesUntilIdle && minutesUntilCooldown > 0
+      ? "waiting_cooldown"
+      : minutesUntilIdle > 0
+        ? "waiting_idle"
+        : "eligible_soon";
+
+  if (!window.active) {
+    const untilWindow = minutesUntilIdleWindowOpens(now);
+    const afterOpen = Math.max(minutesUntilEligible, 0);
+    // After window opens, wait for eligibility then next cron (~0–5m).
+    const total = untilWindow + afterOpen;
+    return {
+      minutesUntilMention: total,
+      label:
+        afterOpen > 0
+          ? `Window in ${untilWindow}m · then ~${afterOpen}m`
+          : `Window opens in ${untilWindow}m`,
+      reason: "outside_window",
+    };
+  }
+
+  const cronAfterEligible =
+    minutesUntilEligible > 0
+      ? minutesUntilNextIdleCron(
+          new Date(now.getTime() + minutesUntilEligible * 60_000),
+        )
+      : minutesUntilNextIdleCron(now);
+
+  const minutesUntilMention =
+    minutesUntilEligible + (cronAfterEligible ?? 0);
+
+  if (minutesUntilEligible <= 0) {
+    return {
+      minutesUntilMention: cronAfterEligible ?? 0,
+      label:
+        cronAfterEligible == null
+          ? "Eligible (waiting for cron window)"
+          : `~${cronAfterEligible}m until mention`,
+      reason: "eligible_soon",
+    };
+  }
+
+  return {
+    minutesUntilMention,
+    label:
+      reason === "waiting_cooldown"
+        ? `${minutesUntilCooldown}m cooldown left`
+        : `${minutesUntilIdle}m until idle threshold`,
+    reason,
+  };
+}
+
+export async function getIdleMentionCountdownsForStaff(
+  people: Array<{
+    userId: string;
+    slackUserId: string | null;
+    lastContentAt: string | Date | null;
+    lastNudgeAt: string | Date | null;
+    status: string;
+  }>,
+  now = new Date(),
+): Promise<{
+  windowActive: boolean;
+  manilaHour: number;
+  minutesUntilWindowOpens: number;
+  minutesUntilNextCron: number | null;
+  idleAfterMinutes: number;
+  idleCooldownMinutes: number;
+  byUserId: Record<string, IdleMentionCountdown>;
+}> {
+  const timing = await getIdleNudgeTiming();
+  const window = isIdleNudgeActiveWindow(now);
+  const byUserId: Record<string, IdleMentionCountdown> = {};
+
+  for (const person of people) {
+    if (person.status !== "kindjoe") continue;
+    byUserId[person.userId] = computeIdleMentionCountdown({
+      now,
+      lastContentAt: person.lastContentAt,
+      lastNudgeAt: person.lastNudgeAt,
+      slackUserId: person.slackUserId,
+      idleAfterSeconds: timing.idleAfterSeconds,
+      idleCooldownSeconds: timing.idleCooldownSeconds,
+    });
+  }
+
+  return {
+    windowActive: window.active,
+    manilaHour: window.hour,
+    minutesUntilWindowOpens: minutesUntilIdleWindowOpens(now),
+    minutesUntilNextCron: minutesUntilNextIdleCron(now),
+    idleAfterMinutes: Math.round(timing.idleAfterSeconds / 60),
+    idleCooldownMinutes: Math.round(timing.idleCooldownSeconds / 60),
+    byUserId,
+  };
 }
 
 export async function recordStaffSlackContentActivity(slackUserId: string) {
@@ -284,7 +486,7 @@ export async function runIdleNudgeCheck(
       ok: false as const,
       dryRun,
       reason: "outside_active_hours" as const,
-      activeHours: "23:00–07:00 Asia/Manila",
+      activeHours: "21:00–07:00 Asia/Manila",
       manilaHour: window.hour,
       nudged: [] as string[],
       wouldNudge: [] as Array<{
@@ -324,41 +526,7 @@ export async function runIdleNudgeCheck(
     };
   }
 
-  const rowsRaw = await db
-    .select({
-      id: staffDutyCheckins.id,
-      userId: staffDutyCheckins.userId,
-      dutyDate: staffDutyCheckins.dutyDate,
-      checkedInAt: staffDutyCheckins.checkedInAt,
-      lastContentAt: staffDutyCheckins.lastContentAt,
-      lastNudgeAt: staffDutyCheckins.lastNudgeAt,
-      slackUserId: staffSlackLinks.slackUserId,
-    })
-    .from(staffDutyCheckins)
-    .leftJoin(
-      staffSlackLinks,
-      eq(staffSlackLinks.userId, staffDutyCheckins.userId),
-    )
-    .where(
-      and(
-        inArray(staffDutyCheckins.dutyDate, dutyDates),
-        eq(staffDutyCheckins.workingToday, true),
-        eq(staffDutyCheckins.workingKindJoe, true),
-      ),
-    );
-
-  // Prefer the newest check-in row per user when both LA today + yesterday match.
-  const rowsByUser = new Map<string, (typeof rowsRaw)[number]>();
-  for (const row of rowsRaw) {
-    const prev = rowsByUser.get(row.userId);
-    if (
-      !prev ||
-      new Date(row.checkedInAt).getTime() > new Date(prev.checkedInAt).getTime()
-    ) {
-      rowsByUser.set(row.userId, row);
-    }
-  }
-  const rows = [...rowsByUser.values()];
+  const rows = await listActiveKindJoeDutyStaff(now);
 
   const relevantUserIds = new Set(
     rows

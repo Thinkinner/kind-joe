@@ -30,7 +30,10 @@ import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { titleAttentionScore } from "@/lib/format/title-attention-score";
 import {
+  getLocalNewsRegionBySlug,
+  getRegionTagSlugs,
   LOCAL_NEWS_REGIONS,
+  LOCAL_NEWS_TAG_SLUGS,
   type LocalNewsTagSlug,
 } from "@/lib/local-news/regions";
 
@@ -215,20 +218,28 @@ export async function getArticlesAction(limit: number, offset: number) {
 export async function ensureLocalNewsTags(): Promise<void> {
   try {
     for (const region of LOCAL_NEWS_REGIONS) {
-      await db
-        .insert(tags)
-        .values({ name: region.name, slug: region.slug })
-        .onConflictDoUpdate({
-          target: tags.slug,
-          set: { name: region.name },
-        });
+      for (const tagSlug of region.tagSlugs) {
+        const name =
+          tagSlug === "slo"
+            ? "SLO"
+            : tagSlug === "sanluisobispo"
+              ? "SanLuisObispo"
+              : region.name;
+        await db
+          .insert(tags)
+          .values({ name, slug: tagSlug })
+          .onConflictDoUpdate({
+            target: tags.slug,
+            set: { name },
+          });
+      }
     }
   } catch (error) {
     console.error("ensureLocalNewsTags failed:", error);
   }
 }
 
-/** Published articles that carry an exact local-news tag slug. */
+/** Published articles that carry a local-news region tag (supports aliases e.g. slo). */
 export async function getArticlesByTagSlugAction(
   tagSlug: LocalNewsTagSlug | string,
   limit: number,
@@ -237,6 +248,8 @@ export async function getArticlesByTagSlugAction(
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
   const safeOffset = Math.max(offset, 0);
   const now = new Date();
+  const region = getLocalNewsRegionBySlug(tagSlug);
+  const matchSlugs = region ? getRegionTagSlugs(region) : [tagSlug];
 
   try {
     const results = await db
@@ -255,7 +268,7 @@ export async function getArticlesByTagSlugAction(
               .where(
                 and(
                   eq(articleTags.articleId, articles.id),
-                  eq(tags.slug, tagSlug),
+                  inArray(tags.slug, matchSlugs),
                 ),
               ),
           ),
@@ -272,7 +285,7 @@ export async function getArticlesByTagSlugAction(
   }
 }
 
-/** Any of the local-news tags (Ventura, L.A., SLO). */
+/** Any of the local-news tags (Ventura, L.A., SLO / san-luis-obispo). */
 export async function getLocalNewsArticlesAction(
   limit: number,
   offset: number,
@@ -280,7 +293,6 @@ export async function getLocalNewsArticlesAction(
   const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
   const safeOffset = Math.max(offset, 0);
   const now = new Date();
-  const localSlugs = LOCAL_NEWS_REGIONS.map((region) => region.slug);
 
   try {
     const results = await db
@@ -299,7 +311,7 @@ export async function getLocalNewsArticlesAction(
               .where(
                 and(
                   eq(articleTags.articleId, articles.id),
-                  inArray(tags.slug, [...localSlugs]),
+                  inArray(tags.slug, [...LOCAL_NEWS_TAG_SLUGS]),
                 ),
               ),
           ),
