@@ -18,7 +18,7 @@ const SYMBOLS: SymbolRow[] = [
   { label: "MICROSOFT", yahoo: "MSFT" },
 ];
 
-const CACHE_TTL_SECONDS = 15 * 60; // 15 minutes — free source, be polite
+const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes — free source, be polite
 const YAHOO_UA =
   "Mozilla/5.0 (compatible; KindJoeBot/1.0; +https://kindjoe.com)";
 
@@ -52,7 +52,7 @@ async function fetchYahooSparkQuotes(
 ): Promise<Map<string, number>> {
   const quotes = new Map<string, number>();
   const symbols = [...new Set(yahooSymbols)].join(",");
-  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(symbols)}&range=5d&interval=1d&indicators=close&includeTimestamps=false`;
+  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(symbols)}&range=1d&interval=1d&indicators=close&includeTimestamps=false`;
 
   const res = await fetch(url, {
     headers: {
@@ -96,6 +96,7 @@ async function fetchYahooSparkQuotes(
       ) ?? [];
 
     let current = meta?.regularMarketPrice;
+    // range=1d spark uses chartPreviousClose as prior session close (5d range does not).
     let previous =
       meta?.chartPreviousClose ?? meta?.previousClose ?? undefined;
 
@@ -180,7 +181,7 @@ async function fetchAllStocks(): Promise<StockItem[]> {
   }));
 }
 
-const getCachedStocks = unstable_cache(fetchAllStocks, ["market-stocks-free-v1"], {
+const getCachedStocks = unstable_cache(fetchAllStocks, ["market-stocks-free-v2"], {
   revalidate: CACHE_TTL_SECONDS,
 });
 
