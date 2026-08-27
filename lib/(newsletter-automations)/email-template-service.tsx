@@ -4,6 +4,11 @@ import {
   buildNewsletterStoryHref,
   normalizeSiteBase,
 } from "@/lib/(newsletter-automations)/newsletter-links";
+import {
+  formatNewsletterInlineHtml,
+  splitNewsletterStorySummary,
+} from "@/lib/(newsletter-automations)/newsletter-summary";
+import { KINDJOE_NEWSLETTER_END_PROMO } from "@/lib/(newsletter-automations)/newsletter-end-promo";
 
 const siteBase =
   normalizeSiteBase(
@@ -86,13 +91,13 @@ export const generateEmailHtml = (data: NewsletterData): string => {
       });
       const imageUrl = story.imageUrl ? safeUrl(story.imageUrl) : "";
 
-      const parts = (story.summary || "")
-        .split(/[\u2022\u2023\u25E6\u2043\u2219\*]|\r?\n/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-
-      const introParagraph = escapeHtml(parts[0] || "");
-      const listItems = parts.slice(1).map(escapeHtml);
+      const { intro, bullets: summaryBullets } = splitNewsletterStorySummary(
+        story.summary || "",
+      );
+      const introParagraph = formatNewsletterInlineHtml(intro, escapeHtml);
+      const listItems = summaryBullets.map((item) =>
+        formatNewsletterInlineHtml(item, escapeHtml),
+      );
 
       const bullets =
         listItems.length > 0
@@ -150,6 +155,40 @@ export const generateEmailHtml = (data: NewsletterData): string => {
     })
     .join("");
 
+  const endPromo = KINDJOE_NEWSLETTER_END_PROMO;
+  const endPromoHtml = `
+<tr>
+  <td style="padding:16px 30px 8px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+      style="width:100%;border-collapse:separate;background-color:#102A80;border-radius:16px;">
+      <tr>
+        <td align="center" style="padding:36px 28px 34px;text-align:center;">
+          <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;opacity:0.85;">
+            ${escapeHtml(endPromo.kicker)}
+          </div>
+          <div style="font-size:24px;font-weight:800;color:#ffffff;line-height:1.25;margin:0 0 12px;">
+            ${escapeHtml(endPromo.headline)}
+          </div>
+          <div style="font-size:14px;line-height:1.6;color:#dbeafe;margin:0 auto 22px;max-width:420px;">
+            ${escapeHtml(endPromo.body)}
+          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="border-collapse:collapse;margin:0 auto;">
+            <tr>
+              <td align="center" bgcolor="#DC2626" style="border-radius:999px;background-color:#DC2626;">
+                <a href="${safeUrl(endPromo.href)}" target="_blank"
+                  style="display:inline-block;background-color:#DC2626;color:#ffffff;font-weight:700;text-decoration:none;
+                         padding:12px 22px;border-radius:999px;font-size:13px;font-family:Arial,sans-serif;">
+                  &#9749; ${escapeHtml(endPromo.buttonLabel)}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>`;
+
   /**
    * OVERFLOW FIX:
    * - Use a 100% wrapper table (fits inside GHL's editor column)
@@ -206,6 +245,9 @@ export const generateEmailHtml = (data: NewsletterData): string => {
 
               <!-- STORIES -->
               ${storyHtml}
+
+              <!-- ALWAYS-ON END PROMO -->
+              ${endPromoHtml}
 
               <!-- FOOTER -->
               <tr>

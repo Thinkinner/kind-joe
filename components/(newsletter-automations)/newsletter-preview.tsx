@@ -6,7 +6,8 @@ import {
   Instagram, 
   Twitter, 
   ExternalLink, 
-  FileText 
+  FileText,
+  Coffee,
 } from "lucide-react";
 
 // Types
@@ -16,11 +17,30 @@ import {
   buildNewsletterStoryHref,
   normalizeSiteBase,
 } from "@/lib/(newsletter-automations)/newsletter-links";
+import {
+  splitNewsletterStorySummary,
+  tokenizeNewsletterInlineMarkdown,
+} from "@/lib/(newsletter-automations)/newsletter-summary";
+import { KINDJOE_NEWSLETTER_END_PROMO } from "@/lib/(newsletter-automations)/newsletter-end-promo";
 import { cn } from "@/lib/utils";
 
 interface NewsletterPreviewProps {
   data: NewsletterData;
 }
+
+const NewsletterInlineText: React.FC<{ text: string }> = ({ text }) => (
+  <>
+    {tokenizeNewsletterInlineMarkdown(text).map((token, index) => {
+      if (token.type === "strong") {
+        return <strong key={index}>{token.value}</strong>;
+      }
+      if (token.type === "em") {
+        return <em key={index}>{token.value}</em>;
+      }
+      return <React.Fragment key={index}>{token.value}</React.Fragment>;
+    })}
+  </>
+);
 
 const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ story, isLast }) => {
   const publicSite = normalizeSiteBase(
@@ -28,11 +48,9 @@ const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ sto
   );
   const storyHref = buildNewsletterStoryHref(story, publicSite);
   const displayCategory = story.category || story.slotName.replace(/^Slot\s+\d+\s*[-—:]\s*/i, "");
-
-  const cleanSummary = (story.summary || "").replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "•");
-  const parts = cleanSummary.split("•");
-  const introText = parts[0].trim();
-  const bulletPoints = parts.slice(1).map((b) => b.trim()).filter((b) => b.length > 0);
+  const { intro: introText, bullets: bulletPoints } = splitNewsletterStorySummary(
+    story.summary || "",
+  );
 
   return (
     <div className={cn(
@@ -75,14 +93,20 @@ const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ sto
 
       {/* Content Body */}
       <div className="text-muted-foreground text-base leading-relaxed mb-5 font-serif">
-        {introText && <p className="mb-3 whitespace-pre-wrap">{introText}</p>}
+        {introText && (
+          <p className="mb-3 whitespace-pre-wrap">
+            <NewsletterInlineText text={introText} />
+          </p>
+        )}
 
         {bulletPoints.length > 0 && (
           <ul className="list-none pl-0 space-y-2">
             {bulletPoints.map((point, i) => (
               <li key={i} className="flex items-start">
                 <span className="mr-2 text-blue-500 font-bold">•</span>
-                <span>{point}</span>
+                <span>
+                  <NewsletterInlineText text={point} />
+                </span>
               </li>
             ))}
           </ul>
@@ -158,6 +182,27 @@ const NewsletterPreview: React.FC<NewsletterPreviewProps> = ({ data }) => {
                 isLast={index === data.stories.length - 1}
               />
             ))}
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-[#102A80] px-6 py-8 text-center sm:px-8 sm:py-9">
+            <p className="mb-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">
+              {KINDJOE_NEWSLETTER_END_PROMO.kicker}
+            </p>
+            <h3 className="mb-3 font-sans text-[22px] font-extrabold leading-tight text-white sm:text-[26px]">
+              {KINDJOE_NEWSLETTER_END_PROMO.headline}
+            </h3>
+            <p className="mx-auto mb-6 max-w-md font-sans text-[14px] leading-relaxed text-white/90">
+              {KINDJOE_NEWSLETTER_END_PROMO.body}
+            </p>
+            <a
+              href={KINDJOE_NEWSLETTER_END_PROMO.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-[#DC2626] px-5 py-2.5 font-sans text-[13px] font-bold text-white no-underline transition-opacity hover:opacity-90"
+            >
+              <Coffee className="h-4 w-4" />
+              {KINDJOE_NEWSLETTER_END_PROMO.buttonLabel}
+            </a>
           </div>
 
           {/* Footer Section */}

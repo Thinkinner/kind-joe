@@ -1,15 +1,11 @@
 import type { NewsletterStory } from "@/lib/(newsletter-automations)/types";
+import { splitNewsletterStorySummary } from "@/lib/(newsletter-automations)/newsletter-summary";
 
 /**
  * Prose before the first bullet (same split as story preview / email body).
  */
 function summaryProseBeforeBullets(summary: string): string {
-  const clean = (summary || "")
-    .trim()
-    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "•");
-  const rawParts = clean.split("•").map((p) => p.trim());
-  const parts = rawParts.filter(Boolean);
-  return parts[0] || "";
+  return splitNewsletterStorySummary(summary).intro;
 }
 
 function firstSentence(text: string): string {
