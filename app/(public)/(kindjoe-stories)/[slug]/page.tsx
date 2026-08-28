@@ -26,6 +26,7 @@ import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
+import { isAdsenseEligibleInventory } from "@/lib/ads/adsense-inventory-policy";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 import { getAuthorProfileByName } from "@/lib/authors/profiles";
@@ -130,6 +131,11 @@ export default async function ArticleBySlug(props: {
   };
   const { contentMarkdown, contentDoc, preferLegacyDoc } =
     resolveArticleDisplayContent(contentSources);
+  const allowAds = isAdsenseEligibleInventory({
+    title: a.title,
+    excerpt: a.excerpt,
+    bodyMarkdown: contentMarkdown,
+  });
   const chainEnabled = true;
 
   return (
@@ -277,19 +283,6 @@ export default async function ArticleBySlug(props: {
               ) : null}
             </div>
 
-            <section
-              className={`mt-6 px-4 sm:px-6 lg:px-8 ${isVentura ? "lg:px-6" : ""}`}
-            >
-              <AdsenseUnit
-                slot={inlineAdSlot}
-                label="In-article ad"
-                minHeightClassName="min-h-[140px]"
-                adFormat="fluid"
-                adLayout="in-article"
-                centered
-              />
-            </section>
-
             <div
               id="article-content"
               className="mt-7 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10"
@@ -299,6 +292,18 @@ export default async function ArticleBySlug(props: {
                 value={contentDoc}
                 preferLegacyDoc={preferLegacyDoc}
               />
+              {allowAds ? (
+                <section className="mt-8">
+                  <AdsenseUnit
+                    slot={inlineAdSlot}
+                    label="In-article ad"
+                    minHeightClassName="min-h-[140px]"
+                    adFormat="fluid"
+                    adLayout="in-article"
+                    centered
+                  />
+                </section>
+              ) : null}
               <ArticleTransparencyPanel
                 publishedAt={a.publishedAt}
                 publishAt={a.publishAt}
@@ -354,19 +359,21 @@ export default async function ArticleBySlug(props: {
 
               {isVentura ? <VenturaGetEmail /> : <GetEmail />}
 
-              <section
-                className={
-                  isVentura
-                    ? "px-4 lg:px-0"
-                    : "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
-                }
-              >
-                <AdsenseUnit
-                  slot={sidebarAdSlot}
-                  label="Sidebar ad"
-                  minHeightClassName="min-h-[280px]"
-                />
-              </section>
+              {allowAds ? (
+                <section
+                  className={
+                    isVentura
+                      ? "px-4 lg:px-0"
+                      : "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+                  }
+                >
+                  <AdsenseUnit
+                    slot={sidebarAdSlot}
+                    label="Sidebar ad"
+                    minHeightClassName="min-h-[280px]"
+                  />
+                </section>
+              ) : null}
 
               {isVentura ? (
                 <section>

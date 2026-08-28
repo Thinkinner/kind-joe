@@ -11,24 +11,31 @@ const topicLinks: PublicNavLink[] = TOPIC_SLUGS.map((topic) => ({
   href: `/${topic}`,
 }));
 
-/** Primary header — Kindjoe News first, then local coverage. */
-export const PRIMARY_NAV_LINKS: PublicNavLink[] = [
-  { name: "Home", href: "/" },
-  { name: "Kindjoe News", href: "/news", title: "Kindjoe News" },
+export const NAV_LOCAL_LINKS: PublicNavLink[] = [
   { name: "L.A. News", href: "/la-news", title: "Los Angeles News" },
   { name: "Ventura County", href: "/ventura-county" },
   { name: "San Luis Obispo", href: "/san-luis-obispo" },
+];
+
+export const NAV_TOPIC_LINKS: PublicNavLink[] = [
+  { name: "News", href: "/news", title: "Kindjoe News" },
+  ...topicLinks,
+];
+
+/** Full public nav: home, local desks, topics, newsletter. */
+export const PRIMARY_NAV_LINKS: PublicNavLink[] = [
+  { name: "Home", href: "/" },
+  ...NAV_LOCAL_LINKS,
+  ...NAV_TOPIC_LINKS,
   { name: "Newsletter", href: "/newsletter" },
 ];
 
-/** Topic pages — footer / secondary explore only. */
+/** Topic pages — kept for callers that only want Politics/Tech/Business/Opinion. */
 export const SECONDARY_TOPIC_LINKS: PublicNavLink[] = [...topicLinks];
 
 export const FOOTER_EXPLORE_LINKS: PublicNavLink[] = [
-  ...PRIMARY_NAV_LINKS.filter((link) => link.href !== "/" && link.href !== "/newsletter"),
-  ...SECONDARY_TOPIC_LINKS,
+  ...PRIMARY_NAV_LINKS.filter((link) => link.href !== "/"),
   { name: "Council Tea", href: "/council-tea" },
-  { name: "Newsletter", href: "/newsletter" },
 ];
 
 export const FOOTER_CONNECT_LINKS: PublicNavLink[] = [

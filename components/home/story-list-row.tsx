@@ -1,0 +1,64 @@
+import Image from "next/image";
+import Link from "next/link";
+import { articlePublicPath } from "@/lib/brand/article-theme";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { formatHeadline } from "@/lib/format/headline";
+import { formatTimeAgo } from "@/lib/format/time-ago";
+import type { ArticleSummary } from "@/types/article";
+
+export function StoryListRow({
+  article,
+  tone = "light",
+}: {
+  article: ArticleSummary;
+  tone?: "light" | "dark";
+}) {
+  const headline = formatHeadline(article.title);
+  const timeAgo = formatTimeAgo(article.publishedAt ?? null);
+  const thumb = optimizeCloudinaryUrl(
+    article.coverImageUrl ?? "/placeholder.jpg",
+    { width: 280 },
+  );
+  const dark = tone === "dark";
+
+  return (
+    <Link
+      href={articlePublicPath(article.slug)}
+      className="group grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 py-3.5 sm:grid-cols-[100px_minmax(0,1fr)] sm:gap-4"
+    >
+      <div
+        className={`relative aspect-[4/3] overflow-hidden ${
+          dark ? "rounded-md bg-neutral-800" : "bg-neutral-200"
+        }`}
+      >
+        <Image
+          src={thumb}
+          alt=""
+          fill
+          sizes="100px"
+          className="object-cover"
+        />
+      </div>
+      <span className="min-w-0">
+        <span
+          className={`block text-[15px] font-bold leading-snug transition-colors ${
+            dark
+              ? "text-white group-hover:text-red-300"
+              : "text-neutral-950 group-hover:text-[#CF1A1E]"
+          }`}
+        >
+          {headline}
+        </span>
+        {timeAgo ? (
+          <span
+            className={`mt-1.5 block text-[12px] ${
+              dark ? "text-white/45" : "text-neutral-400"
+            }`}
+          >
+            {timeAgo}
+          </span>
+        ) : null}
+      </span>
+    </Link>
+  );
+}

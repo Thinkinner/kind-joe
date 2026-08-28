@@ -3,9 +3,11 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import {
   ensureLocalNewsTags,
+  getArticlesAction,
   getArticlesByTagSlugAction,
   getLocalNewsArticlesAction,
 } from "@/lib/actions/articles";
+import { pickAdsenseSafeArticles } from "@/lib/ads/adsense-inventory-policy";
 import { articlePublicPath } from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { formatTimeAgo } from "@/lib/format/time-ago";
@@ -14,6 +16,9 @@ import { LOCAL_NEWS_REGIONS, textMatchesLocalNewsRegion } from "@/lib/local-news
 import type { ArticleSummary } from "@/types/article";
 
 const REGION_LIMIT = 5;
+const REGION_FETCH = 12;
+const TOP_STORY_FETCH = 24;
+const KINDJOE_NEWS_LIMIT = 4;
 
 function regionLabelForArticle(
   article: ArticleSummary,
@@ -347,28 +352,68 @@ function RegionSection({
   );
 }
 
+function KindJoeNewsBoard({ articles }: { articles: ArticleSummary[] }) {
+  if (articles.length === 0) return null;
+
+  return (
+    <section aria-labelledby="kindjoe-news-home" className="scroll-mt-24">
+      <div className="mb-6 flex items-end justify-between gap-4 border-b border-neutral-900 pb-4">
+        <div>
+          <p className="text-sm font-semibold text-[#CF1A1E]">Kindjoe News</p>
+          <h2
+            id="kindjoe-news-home"
+            className="mt-1 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl"
+          >
+            From the newsroom
+          </h2>
+        </div>
+        <Link
+          href="/news"
+          className="group inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-neutral-600 transition-colors hover:text-[#CF1A1E]"
+        >
+          View all
+          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
+      </div>
+      <FeatureBoard articles={articles} />
+    </section>
+  );
+}
+
 export async function LocalNewsSections() {
   // Keep DB calls sequential: Neon pool is small and Promise.all of
   // ensureLocalNewsTags + 4 article queries was timing out connections.
   await ensureLocalNewsTags();
 
-  const topStories = await getLocalNewsArticlesAction(5, 0);
+  const topStories = pickAdsenseSafeArticles(
+    await getLocalNewsArticlesAction(TOP_STORY_FETCH, 0),
+    REGION_LIMIT,
+  );
+  const shownIds = new Set(topStories.map((article) => article.id));
   const regionBundles: Array<{
     region: (typeof LOCAL_NEWS_REGIONS)[number];
     articles: Awaited<ReturnType<typeof getArticlesByTagSlugAction>>;
   }> = [];
 
   for (const region of LOCAL_NEWS_REGIONS) {
-    regionBundles.push({
-      region,
-      articles: await getArticlesByTagSlugAction(region.slug, REGION_LIMIT, 0),
-    });
+    const articles = pickAdsenseSafeArticles(
+      await getArticlesByTagSlugAction(region.slug, REGION_FETCH, 0),
+      REGION_LIMIT,
+    );
+    regionBundles.push({ region, articles });
+    for (const article of articles) shownIds.add(article.id);
   }
+
+  const kindjoeNews = pickAdsenseSafeArticles(
+    await getArticlesAction(16, 0),
+    KINDJOE_NEWS_LIMIT + shownIds.size,
+  ).filter((article) => !shownIds.has(article.id)).slice(0, KINDJOE_NEWS_LIMIT);
 
   return (
     <>
       <TopStories articles={topStories} />
       <div className="mx-auto max-w-[1100px] space-y-14 px-4 py-10 sm:space-y-16 sm:px-6 sm:py-12 lg:px-8">
+        <KindJoeNewsBoard articles={kindjoeNews} />
         {regionBundles.map(({ region, articles }, index) => (
           <RegionSection
             key={region.slug}

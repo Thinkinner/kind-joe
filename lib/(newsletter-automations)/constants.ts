@@ -69,7 +69,7 @@ From the provided list of RSS articles, produce ONE newsletter containing exactl
 ## EMAIL SUBJECT LINE (\`title\` field in JSON)
 The string field \`title\` is the **inbox email subject** (what subscribers see before opening).
 
-- **Anchor to Story 1** — the first object in your \`stories\` array (Slot 1 / Lead Power Story). The subject must reflect **that** story’s sharpest angle, conflict, or stake—not a generic digest name.
+- **Anchor to Story 1** — the first object in your \`stories\` array (Slot 1 / Lead Story). The subject must reflect **that** story’s sharpest angle, conflict, or stake—not a generic digest name.
 - **Length:** Aim for **≤6 words**; never exceed **10 words**.
 - **Voice:** Hook readers hard: curiosity gap, tension, shock, money, power, hypocrisy, safety, or urgency—**make opening the email feel mandatory.** Punchy like a tabloid kicker with news-wire credibility; do not fabricate facts.
 - **Banned in \`title\`:** generic phrases like "Daily Brief", "Newsletter", "Recap", "Top stories", calendar dates, or ALL-CAPS slogans. No emoji unless absolutely necessary (prefer none).
@@ -81,38 +81,49 @@ The string field \`title\` is the **inbox email subject** (what subscribers see 
 **Headlines:** Punchy, descriptive, and specific.
 
 ## CONTENT STRATEGY (HOW TO CHOOSE)
-**“Real Life” over “Talking Points.”** Prioritize stories that impact daily reality: public safety, corruption, infrastructure failures (traffic/construction), and tech that changes streets (e.g., self-driving cars).
+**“Real Life” over “Talking Points.”** Prioritize stories that impact daily reality: public safety, crime, infrastructure failures (traffic/construction), health, science, money/jobs, entertainment, and tech that changes streets (e.g., self-driving cars).
+
+**LESS POLITICS (MANDATORY):**
+- Prefer non-political stories whenever a strong alternative exists.
+- At most **1** story may be primarily about politics, elections, Congress, the White House, parties, or partisan policy fights.
+- Skip Beltway horse-race, campaign spin, and punditry. Do not fill multiple slots with politics just because politics dominates the RSS list.
+- If the hottest item is political, use it only in Slot 1 (or skip it if a stronger non-political lead exists).
 
 **Priority Order When Selecting Stories:**
-1) Breaking or escalating events TODAY
+1) Breaking or escalating events TODAY that affect daily life (safety, crime, money, health, transport, tech)
 2) Fresh follow-ups with new facts
 3) Ongoing stories with clear real-world consequences
+4) Pure politics / policy / geopolitics — only as a last resort, and never more than one
 
 **The Mix (overall across selections):**
-- ~60% hyper-local / regional grit (crime busts, corruption, roadwork, municipal dysfunction)
-- ~30% national/global high-stakes (geopolitics, courts, major policy clashes, market shocks)
-- ~10% community-driven submissions (ONLY if present in the input data)
+- ~50% hyper-local / regional grit (crime busts, roadwork, municipal dysfunction, local safety)
+- ~25% society / health / science / money / infrastructure / tech
+- ~15% entertainment / culture (plus Slot 6 movies)
+- ~10% politics or national/global high-stakes (at most one story)
+- Community-driven submissions count toward the best-fit bucket (ONLY if present in the input data)
 
 **The Filter:**
 - If the source is sugarcoating it, rewrite the summary in plain language.
 - If it’s “too small” for national news but affects safety or daily life, it qualifies.
 - Avoid opinion columns and pure punditry unless there is a concrete, verifiable event.
+- Deprioritize: elections, party fights, congressional theater, and geopolitics explainers without a fresh concrete event.
 
 ## THE 6-STORY NEWSLETTER FRAMEWORK (EXACTLY 6 STORIES)
 Each newsletter MUST contain exactly one story in each slot, in this order:
 
-Slot 1 — Lead Power Story  
-Politics, executive power, national security, congressional investigations.
-→ This slot should reflect **the hottest and most urgent story of the day whenever possible**.
+Slot 1 — Lead Story  
+The hottest, most urgent story of the day — prefer safety, crime, money, health, tech, or major breaking events that affect real life.
+→ Prefer a **non-political** lead. Use politics here only if nothing stronger exists.
 
 Slot 2 — Escalation Story  
-Geopolitics, courts, immigration, military, policy clashes.
+A developing story gaining force: courts with concrete rulings, major accidents/disasters, market shocks, military conflict with new facts, or a fast-moving local crisis.
+→ Prefer non-political escalation. Avoid filling this with policy clashes or immigration politics by default.
 
 Slot 3 — Shock or Crime Story  
-Crime, scandal, abuse of power, emotional impact. Avoid graphic detail.
+Crime, scandal, abuse of power, emotional impact. Avoid graphic detail. Prefer street-level crime/scandal over political scandal.
 
 Slot 4 — Justice / Rights / System Check  
-Courts, watchdogs, rulings that restrain government.
+Courts, watchdogs, consumer protection, workplace rights, or rulings with clear personal impact — not partisan score-settling.
 
 Slot 5 — Public Health / Science / Society  
 Health, science, environment, education, workforce, infrastructure, transport.
@@ -130,6 +141,7 @@ Avoid industry business/merger news. Focus on entertainment value.
 * Prefer stories with a clear real-world “event” (who did what, where, when).
 * Prefer fresh developments over background explainers.
 * Avoid duplicates: one story per underlying event.
+* Cap politics at **one** story max across the whole newsletter.
 
 ## OUTPUT FORMAT (REPEAT THIS STRUCTURE FOR EACH STORY)
 For each slot, output:

@@ -9,7 +9,11 @@ import { usePathname } from "next/navigation";
 import SearchModal from "@/components/modals/search-modal";
 import { authClient } from "@/lib/auth-client";
 import { getAccountType } from "@/lib/auth/account-type";
-import { PRIMARY_NAV_LINKS } from "@/lib/nav/public-links";
+import {
+  NAV_LOCAL_LINKS,
+  NAV_TOPIC_LINKS,
+} from "@/lib/nav/public-links";
+import { SectionNav } from "@/components/nav/section-nav";
 import {
   clearNavSessionHint,
   peekNavSessionHint,
@@ -97,8 +101,6 @@ export default function Navbar({
     setHintUser(null);
   }, [serverUser?.id, sessionData?.user?.id]);
 
-  const links = PRIMARY_NAV_LINKS;
-
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -136,29 +138,6 @@ export default function Navbar({
                 priority
               />
             </Link>
-
-            {/* Desktop navigation */}
-            <div className="hidden flex-1 justify-center lg:flex">
-              <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/[0.05] bg-black/55 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {links.map((link) => {
-                  const isActive = pathname === link.href;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      title={"title" in link ? link.title : undefined}
-                      className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors sm:px-4 ${
-                        isActive
-                          ? "bg-white/[0.08] text-white shadow-inner shadow-black/40"
-                          : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
-                      }`}
-                    >
-                      {link.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
 
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <div className="hidden shrink-0 items-center gap-1 sm:gap-1.5 lg:flex">
@@ -275,6 +254,7 @@ export default function Navbar({
             </div>
           </div>
         </nav>
+        <SectionNav />
       </header>
 
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -392,15 +372,30 @@ export default function Navbar({
                 )}
               </div>
 
-              <nav className="flex-1 space-y-1 overflow-y-auto">
-                {links.map((item) => {
+              <nav className="flex-1 space-y-1 overflow-y-auto pb-4">
+                <Link
+                  href="/"
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
+                    pathname === "/"
+                      ? "bg-white/[0.06] text-red-400"
+                      : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                  }`}
+                >
+                  Home
+                </Link>
+
+                <p className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Local
+                </p>
+                {NAV_LOCAL_LINKS.map((item) => {
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className={`flex items-center rounded-xl px-3 py-3.5 text-base font-semibold transition-colors ${
+                      className={`flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
                         isActive
                           ? "bg-white/[0.06] text-red-400"
                           : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
@@ -410,6 +405,39 @@ export default function Navbar({
                     </Link>
                   );
                 })}
+
+                <p className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Sections
+                </p>
+                {NAV_TOPIC_LINKS.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
+                        isActive
+                          ? "bg-white/[0.06] text-red-400"
+                          : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
+
+                <Link
+                  href="/newsletter"
+                  onClick={() => setOpen(false)}
+                  className={`mt-2 flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
+                    pathname === "/newsletter"
+                      ? "bg-white/[0.06] text-red-400"
+                      : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                  }`}
+                >
+                  Newsletter
+                </Link>
               </nav>
             </motion.aside>
           </>

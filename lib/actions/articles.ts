@@ -370,6 +370,46 @@ export async function getLocalNewsArticlesAction(
   }
 }
 
+/** Editor-tagged Top Stories (`kindjoetopstories`), newest first. */
+export async function getTopStoriesAction(
+  limit = 8,
+): Promise<ArticleSummary[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_PAGE);
+  const now = new Date();
+
+  try {
+    const results = await db
+      .select(articleSummarySelect)
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .leftJoin(authUser, eq(articles.authorId, authUser.id))
+      .where(
+        and(
+          publishedArticlesFilter(now),
+          exists(
+            db
+              .select()
+              .from(articleTags)
+              .innerJoin(tags, eq(articleTags.tagId, tags.id))
+              .where(
+                and(
+                  eq(articleTags.articleId, articles.id),
+                  eq(tags.slug, TOP_STORY_TAG_SLUG),
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(desc(publishDateSort))
+      .limit(safeLimit);
+
+    return mapArticleSummaryRows(results);
+  } catch (error) {
+    console.error("getTopStoriesAction error:", error);
+    return [];
+  }
+}
+
 function excludingHeroTopStoriesFilter() {
   return sql`NOT EXISTS (
     SELECT 1 FROM ${articleTags} at

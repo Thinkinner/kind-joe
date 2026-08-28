@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { PRIMARY_NAV_LINKS } from "@/lib/nav/public-links";
+import { NAV_LOCAL_LINKS, NAV_TOPIC_LINKS } from "@/lib/nav/public-links";
 
-const TOPICS = PRIMARY_NAV_LINKS.filter((link) => link.href !== "/").slice(0, 5);
+const TOPICS = [...NAV_LOCAL_LINKS, ...NAV_TOPIC_LINKS].slice(0, 6);
 
 export function TopicPills() {
   return (
