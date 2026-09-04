@@ -6,6 +6,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { VenturaBusinessInquiryForm } from "@/components/ventura/ventura-business-inquiry-form";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
@@ -100,6 +101,8 @@ export function StandalonePostsFeed({
         tags={subscribeTags}
         buttonClassName={subscribeButtonClassName}
       />
+
+      <JoesFriendsPromo variant="compact" />
 
       <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
         {gridPosts.map((post) => (

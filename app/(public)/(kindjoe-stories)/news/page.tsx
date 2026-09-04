@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { publicSiteUrl } from "@/lib/site/public-site-url";
@@ -32,6 +33,7 @@ export default function KindjoeNewsPage() {
         </div>
         <aside className="w-full shrink-0 lg:sticky lg:top-24 lg:w-[35%] lg:max-w-[420px] xl:w-[30%]">
           <div className="flex flex-col gap-8">
+            <JoesFriendsPromo />
             <SocialWidget />
           </div>
         </aside>

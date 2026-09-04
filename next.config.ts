@@ -111,6 +111,16 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "www.cnet.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cnet.com",
+        pathname: "/**",
+      },
     ],
   },
 };

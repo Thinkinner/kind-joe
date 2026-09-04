@@ -1,5 +1,6 @@
 "use client";
 
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import type { TopicSlug } from "@/lib/content/topics";
@@ -32,6 +33,7 @@ export function TopicPageShell({ topic, title, description }: TopicPageShellProp
 
         <aside className="w-full lg:w-[35%] xl:w-[30%] lg:max-w-[420px] shrink-0 lg:sticky lg:top-24">
           <div className="flex flex-col gap-8">
+            <JoesFriendsPromo />
             <SocialWidget />
           </div>
         </aside>

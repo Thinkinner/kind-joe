@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { and, desc, eq, ilike, isNull, sql } from 'drizzle-orm';
 import { articles, categories, tags, articleCategories, articleTags } from '@/db/schema';
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 
 export const revalidate = 60;
 
@@ -113,6 +114,8 @@ export default async function ArticlesPage({
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="text-2xl font-semibold mb-4">Articles</h1>
+
+      <JoesFriendsPromo variant="banner" className="mb-6" />
 
       <form action="/articles" className="flex gap-2 mb-6">
         <input

@@ -26,6 +26,7 @@ import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import { ArticlePredictionCta } from "@/components/stories/article-prediction-cta";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import AdsenseUnit from "@/components/ads/adsense-unit";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { isAdsenseEligibleInventory } from "@/lib/ads/adsense-inventory-policy";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
@@ -399,7 +400,9 @@ export default async function ArticleBySlug(props: {
                     </div>
                   </div>
                 </section>
-              ) : null}
+              ) : (
+                <JoesFriendsPromo />
+              )}
             </div>
           </aside>
         </div>

@@ -6,6 +6,7 @@ import { VenturaArticleCard } from "@/components/cards/ventura-article-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
 import { CouncilTeaEmbed } from "@/components/ventura-county/council-tea-embed";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { getVenturaArticlesAction } from "@/lib/actions/articles";
 import { ArticleSummary } from "@/types/article";
 import { Loader2, ChevronDown } from "lucide-react";
@@ -139,17 +140,7 @@ export default function VenturaCountyPage() {
             <div className="flex flex-col gap-8">
               <CouncilTeaEmbed />
               <SocialWidget />
-
-              {/* Optional: Add a Ventura specific promo here */}
-              <div className="bg-slate-950 p-6 rounded-2xl text-white">
-                <h4 className="font-bold text-lg mb-2">Advertise with Us</h4>
-                <p className="text-sm text-slate-400 mb-4">
-                  Reach thousands of locals in Ventura County every day.
-                </p>
-                <button className="w-full py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-xs font-bold transition-colors">
-                  Get in Touch
-                </button>
-              </div>
+              <JoesFriendsPromo />
             </div>
           </aside>
         </div>
