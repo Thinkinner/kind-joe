@@ -8,6 +8,7 @@ const REQUIRED_PATHS = [
   "/search?q=kind",
   "/ventura-county",
   "/newsletter",
+  "/joes-friends",
   "/contact",
   "/advertise",
   "/about",
@@ -27,6 +28,8 @@ const EXPECTED_MARKERS: Record<(typeof REQUIRED_PATHS)[number], string[]> = {
   "/search?q=kind": ["Search"],
   "/ventura-county": ["Ventura County"],
   "/newsletter": ["Newsletter"],
+  // Apostrophes are HTML-escaped in the markup, so match on the headline instead.
+  "/joes-friends": ["Stop Running Your Own Content Department"],
   "/contact": ["Contact"],
   "/advertise": ["Advertise"],
   "/about": ["Kind Joe"],

@@ -10,6 +10,7 @@ import SearchModal from "@/components/modals/search-modal";
 import { authClient } from "@/lib/auth-client";
 import { getAccountType } from "@/lib/auth/account-type";
 import {
+  NAV_EXTRA_LINKS,
   NAV_LOCAL_LINKS,
   NAV_TOPIC_LINKS,
 } from "@/lib/nav/public-links";
@@ -427,17 +428,25 @@ export default function Navbar({
                   );
                 })}
 
-                <Link
-                  href="/newsletter"
-                  onClick={() => setOpen(false)}
-                  className={`mt-2 flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
-                    pathname === "/newsletter"
-                      ? "bg-white/[0.06] text-red-400"
-                      : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
-                  }`}
-                >
-                  Newsletter
-                </Link>
+                {NAV_EXTRA_LINKS.map((item, index) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center rounded-xl px-3 py-3 text-base font-semibold transition-colors ${
+                        index === 0 ? "mt-2" : ""
+                      } ${
+                        isActive
+                          ? "bg-white/[0.06] text-red-400"
+                          : "text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
               </nav>
             </motion.aside>
           </>

@@ -21,6 +21,8 @@ type AdsenseUnitProps = {
   adLayout?: string;
   adLayoutKey?: string;
   centered?: boolean;
+  /** Fires when the unit collapses, so surrounding chrome can hide with it. */
+  onCollapsedChange?: (collapsed: boolean) => void;
 };
 
 export default function AdsenseUnit({
@@ -32,6 +34,7 @@ export default function AdsenseUnit({
   adLayout,
   adLayoutKey,
   centered = false,
+  onCollapsedChange,
 }: AdsenseUnitProps) {
   const isDev = process.env.NODE_ENV !== "production";
   const adClient = resolveAdsenseClient(!isDev);
@@ -41,6 +44,10 @@ export default function AdsenseUnit({
   const adRef = useRef<HTMLModElement | null>(null);
   const pushedRef = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    onCollapsedChange?.(isCollapsed);
+  }, [isCollapsed, onCollapsedChange]);
 
   useEffect(() => {
     if (shouldRenderPreview) return;

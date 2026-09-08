@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  NAV_EXTRA_LINKS,
   NAV_LOCAL_LINKS,
   NAV_TOPIC_LINKS,
   type PublicNavLink,
@@ -55,10 +56,9 @@ export function SectionNav() {
           <SectionLink key={link.href} link={link} pathname={pathname} />
         ))}
         <span className="hidden h-3 w-px shrink-0 bg-white/10 sm:block" aria-hidden />
-        <SectionLink
-          link={{ name: "Newsletter", href: "/newsletter" }}
-          pathname={pathname}
-        />
+        {NAV_EXTRA_LINKS.map((link) => (
+          <SectionLink key={link.href} link={link} pathname={pathname} />
+        ))}
       </div>
     </div>
   );

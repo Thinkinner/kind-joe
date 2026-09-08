@@ -294,7 +294,7 @@ export default async function ArticleBySlug(props: {
                 preferLegacyDoc={preferLegacyDoc}
               />
               {allowAds ? (
-                <section className="mt-8">
+                <section className="mt-8 empty:hidden">
                   <AdsenseUnit
                     slot={inlineAdSlot}
                     label="In-article ad"
@@ -364,8 +364,8 @@ export default async function ArticleBySlug(props: {
                 <section
                   className={
                     isVentura
-                      ? "px-4 lg:px-0"
-                      : "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+                      ? "px-4 empty:hidden lg:px-0"
+                      : "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm empty:hidden"
                   }
                 >
                   <AdsenseUnit

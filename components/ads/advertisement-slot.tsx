@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import AdsenseUnit from "@/components/ads/adsense-unit";
 
 type AdvertisementSlotProps = {
@@ -13,6 +15,12 @@ export function AdvertisementSlot({
   minHeightClassName = "min-h-[280px]",
   className,
 }: AdvertisementSlotProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Without this the framing and "Advertisement" label linger as an empty card
+  // whenever AdSense returns nothing.
+  if (collapsed) return null;
+
   return (
     <section
       className={`rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-sm ${className ?? ""}`}
@@ -26,6 +34,7 @@ export function AdvertisementSlot({
         label="Advertisement"
         minHeightClassName={minHeightClassName}
         centered
+        onCollapsedChange={setCollapsed}
       />
     </section>
   );

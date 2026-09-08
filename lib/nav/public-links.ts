@@ -22,12 +22,22 @@ export const NAV_TOPIC_LINKS: PublicNavLink[] = [
   ...topicLinks,
 ];
 
-/** Full public nav: home, local desks, topics, newsletter. */
+/** Trailing nav group: everything that isn't a local desk or a topic. */
+export const NAV_EXTRA_LINKS: PublicNavLink[] = [
+  { name: "Newsletter", href: "/newsletter" },
+  {
+    name: "Joe's Friends",
+    href: "/joes-friends",
+    title: "Joe's Friends — social media management by Kind Joe",
+  },
+];
+
+/** Full public nav: home, local desks, topics, newsletter, Joe's Friends. */
 export const PRIMARY_NAV_LINKS: PublicNavLink[] = [
   { name: "Home", href: "/" },
   ...NAV_LOCAL_LINKS,
   ...NAV_TOPIC_LINKS,
-  { name: "Newsletter", href: "/newsletter" },
+  ...NAV_EXTRA_LINKS,
 ];
 
 /** Topic pages — kept for callers that only want Politics/Tech/Business/Opinion. */
