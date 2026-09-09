@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -102,27 +102,29 @@ export function StandalonePostsFeed({
         buttonClassName={subscribeButtonClassName}
       />
 
-      <JoesFriendsPromo variant="compact" />
+      <JoesFriendsPromo variant="mini" />
 
       <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
-        {gridPosts.map((post) => (
-          <Link
-            key={post.id}
-            href={post.destinationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative aspect-[4/5] overflow-hidden bg-gray-50"
-          >
-            <Image
-              src={optimizeCloudinaryUrl(post.imageUrl, {
-                transforms: ["ar_4:5", "c_fill", "g_auto", "w_800"],
-              })}
-              fill
-              alt=""
-              className="object-cover transition duration-500 ease-in-out group-hover:scale-105"
-              sizes="(max-width: 768px) 33vw, 360px"
-            />
-          </Link>
+        {gridPosts.map((post, index) => (
+          <Fragment key={post.id}>
+            <Link
+              href={post.destinationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative aspect-[4/5] overflow-hidden bg-gray-50"
+            >
+              <Image
+                src={optimizeCloudinaryUrl(post.imageUrl, {
+                  transforms: ["ar_4:5", "c_fill", "g_auto", "w_800"],
+                })}
+                fill
+                alt=""
+                className="object-cover transition duration-500 ease-in-out group-hover:scale-105"
+                sizes="(max-width: 768px) 33vw, 360px"
+              />
+            </Link>
+            {index === 5 ? <JoesFriendsPromo variant="tile" /> : null}
+          </Fragment>
         ))}
       </div>
 

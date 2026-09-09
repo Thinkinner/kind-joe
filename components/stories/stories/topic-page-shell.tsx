@@ -23,6 +23,8 @@ export function TopicPageShell({ topic, title, description }: TopicPageShellProp
         </div>
       </div>
 
+      <JoesFriendsPromo variant="compact" className="mb-6 lg:hidden" />
+
       <div className="flex flex-col lg:flex-row gap-8 items-start">
         <div className="flex-1 min-w-0">
           <ArticleList
@@ -31,7 +33,7 @@ export function TopicPageShell({ topic, title, description }: TopicPageShellProp
           />
         </div>
 
-        <aside className="w-full lg:w-[35%] xl:w-[30%] lg:max-w-[420px] shrink-0 lg:sticky lg:top-24">
+        <aside className="hidden w-full shrink-0 lg:sticky lg:top-24 lg:block lg:w-[35%] lg:max-w-[420px] xl:w-[30%]">
           <div className="flex flex-col gap-8">
             <JoesFriendsPromo />
             <SocialWidget />

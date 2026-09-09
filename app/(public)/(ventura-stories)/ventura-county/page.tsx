@@ -98,6 +98,8 @@ export default function VenturaCountyPage() {
           </div>
         </div>
 
+        <JoesFriendsPromo variant="compact" className="mb-8 lg:hidden" />
+
         {/* Main Content Layout */}
         <div className="flex flex-col lg:flex-row gap-10 items-start">
           {/* Left: Article Feed */}
@@ -136,11 +138,11 @@ export default function VenturaCountyPage() {
           </div>
 
           {/* Right: Sticky Sidebar */}
-          <aside className="w-full lg:w-[350px] xl:w-[400px] shrink-0 lg:sticky lg:top-24 self-start">
+          <aside className="hidden w-full shrink-0 self-start lg:sticky lg:top-24 lg:block lg:w-[350px] xl:w-[400px]">
             <div className="flex flex-col gap-8">
+              <JoesFriendsPromo />
               <CouncilTeaEmbed />
               <SocialWidget />
-              <JoesFriendsPromo />
             </div>
           </aside>
         </div>

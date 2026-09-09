@@ -358,6 +358,8 @@ export default async function ArticleBySlug(props: {
                 <CouncilTeaEmbed />
               )}
 
+              {!isVentura ? <JoesFriendsPromo /> : null}
+
               {isVentura ? <VenturaGetEmail /> : <GetEmail />}
 
               {allowAds ? (
@@ -400,9 +402,7 @@ export default async function ArticleBySlug(props: {
                     </div>
                   </div>
                 </section>
-              ) : (
-                <JoesFriendsPromo />
-              )}
+              ) : null}
             </div>
           </aside>
         </div>

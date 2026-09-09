@@ -1,10 +1,14 @@
-export function JoesFriendsMascot() {
+export function JoesFriendsMascot({
+  className = "mx-auto h-auto w-full max-w-[260px]",
+}: {
+  className?: string;
+}) {
   return (
     <svg
       viewBox="0 0 280 320"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="mx-auto h-auto w-full max-w-[260px]"
+      className={className}
       aria-hidden="true"
     >
       <ellipse cx="140" cy="298" rx="72" ry="12" fill="#121212" opacity="0.12" />

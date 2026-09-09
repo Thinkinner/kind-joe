@@ -27,11 +27,13 @@ export default function KindjoeNewsPage() {
         </div>
       </div>
 
+      <JoesFriendsPromo variant="compact" className="mb-6 lg:hidden" />
+
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="min-w-0 flex-1">
           <ArticleList emptyMessage="No Kindjoe stories yet. Check back soon." />
         </div>
-        <aside className="w-full shrink-0 lg:sticky lg:top-24 lg:w-[35%] lg:max-w-[420px] xl:w-[30%]">
+        <aside className="hidden w-full shrink-0 lg:sticky lg:top-24 lg:block lg:w-[35%] lg:max-w-[420px] xl:w-[30%]">
           <div className="flex flex-col gap-8">
             <JoesFriendsPromo />
             <SocialWidget />

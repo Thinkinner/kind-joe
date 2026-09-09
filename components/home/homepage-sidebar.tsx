@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import GetEmail from "@/components/stories/kindjoe-get-email";
-import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { EditorsPicks, EditorsPicksSkeleton } from "@/components/home/editors-picks";
 
 export function HomepageSidebar() {
@@ -11,7 +10,6 @@ export function HomepageSidebar() {
       </Suspense>
       <div className="flex flex-col gap-8">
         <GetEmail />
-        <JoesFriendsPromo />
       </div>
       {/* ADSENSE_HOLDBACK: sidebar ad hidden until approval. Restore: docs/homepage-adsense-holdback.md */}
     </div>

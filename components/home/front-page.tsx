@@ -5,6 +5,7 @@ import {
   getTopStoriesAction,
 } from "@/lib/actions/articles";
 import { pickAdsenseSafeArticles } from "@/lib/ads/adsense-inventory-policy";
+import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { LatestStoriesRow } from "@/components/home/latest-stories-row";
 import { LocalDesks } from "@/components/home/local-desks";
 import { TopStoriesPack } from "@/components/home/top-stories-pack";
@@ -45,6 +46,9 @@ export async function FrontPage() {
   return (
     <>
       <TopStoriesPack articles={topStories} />
+      <div className="mx-auto max-w-[1180px] px-4 pt-6 sm:px-6 lg:px-8">
+        <JoesFriendsPromo variant="banner" />
+      </div>
       <div className="mx-auto max-w-[1180px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
         <LatestStoriesRow articles={latest} />
       </div>
