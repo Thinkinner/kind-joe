@@ -2,7 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StoryListRow } from "@/components/home/story-list-row";
-import { articlePublicPath } from "@/lib/brand/article-theme";
+import {
+  articlePublicPath,
+  articleShowsMainImage,
+} from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { formatHeadline } from "@/lib/format/headline";
 import { formatTimeAgo } from "@/lib/format/time-ago";
@@ -27,7 +30,11 @@ function StoryMeta({
       }`}
     >
       {kicker ? (
-        <span className={onDark ? "font-semibold text-red-400" : "font-semibold text-[#CF1A1E]"}>
+        <span
+          className={
+            onDark ? "font-semibold text-red-400" : "font-semibold text-[#CF1A1E]"
+          }
+        >
           {kicker}
         </span>
       ) : null}
@@ -55,10 +62,12 @@ export function TopStoriesPack({ articles }: { articles: ArticleSummary[] }) {
   const side = rest.slice(0, 4);
   const headline = formatHeadline(lead.title);
   const path = articlePublicPath(lead.slug);
-  const image = optimizeCloudinaryUrl(
-    lead.coverImageUrl ?? "/placeholder.jpg",
-    { width: 1600 },
-  );
+  const leadShowsImage = articleShowsMainImage(lead);
+  const image = leadShowsImage
+    ? optimizeCloudinaryUrl(lead.coverImageUrl ?? "/placeholder.jpg", {
+        width: 1600,
+      })
+    : null;
 
   return (
     <section
@@ -108,19 +117,34 @@ export function TopStoriesPack({ articles }: { articles: ArticleSummary[] }) {
             href={path}
             className="group relative min-w-0 overflow-hidden rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10 lg:col-span-7"
           >
-            <div className="relative min-h-[380px] overflow-hidden bg-neutral-900 sm:min-h-[460px] lg:h-full lg:min-h-[560px]">
-              <Image
-                src={image}
-                alt={headline}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 700px"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-              />
-              <div
-                className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/5"
-                aria-hidden
-              />
+            <div
+              className={`relative overflow-hidden bg-neutral-900 ${
+                leadShowsImage
+                  ? "min-h-[380px] sm:min-h-[460px] lg:h-full lg:min-h-[560px]"
+                  : "flex min-h-[280px] flex-col justify-end sm:min-h-[320px] lg:h-full lg:min-h-[420px]"
+              }`}
+            >
+              {leadShowsImage && image ? (
+                <>
+                  <Image
+                    src={image}
+                    alt={headline}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 700px"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                  />
+                  <div
+                    className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/5"
+                    aria-hidden
+                  />
+                </>
+              ) : (
+                <div
+                  className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-[#0b1220] to-black"
+                  aria-hidden
+                />
+              )}
               <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 lg:p-8">
                 <StoryMeta article={lead} onDark />
                 <h2 className="mt-2 line-clamp-4 max-w-2xl text-[1.65rem] font-semibold leading-[1.12] tracking-tight text-white [font-family:var(--font-lora),ui-serif,Georgia,serif] sm:line-clamp-3 sm:text-[2.35rem]">
@@ -151,28 +175,39 @@ export function TopStoriesPack({ articles }: { articles: ArticleSummary[] }) {
               <div className="hidden lg:col-span-5 lg:grid lg:grid-cols-2 lg:grid-rows-2 lg:gap-3">
                 {side.map((article, index) => {
                   const itemHeadline = formatHeadline(article.title);
-                  const thumb = optimizeCloudinaryUrl(
-                    article.coverImageUrl ?? "/placeholder.jpg",
-                    { width: 640 },
-                  );
+                  const showImage = articleShowsMainImage(article);
+                  const thumb = showImage
+                    ? optimizeCloudinaryUrl(
+                        article.coverImageUrl ?? "/placeholder.jpg",
+                        { width: 640 },
+                      )
+                    : null;
                   return (
                     <Link
                       key={article.id}
                       href={articlePublicPath(article.slug)}
                       className="group flex min-h-0 flex-col overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/10 backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/[0.1] hover:ring-white/25"
                     >
-                      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-800">
-                        <Image
-                          src={thumb}
-                          alt=""
-                          fill
-                          sizes="240px"
-                          className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                        />
-                        <span className="absolute left-2.5 top-2.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-white/90 backdrop-blur-sm">
-                          {String(index + 2).padStart(2, "0")}
-                        </span>
-                      </div>
+                      {showImage && thumb ? (
+                        <div className="relative aspect-[16/10] overflow-hidden bg-neutral-800">
+                          <Image
+                            src={thumb}
+                            alt=""
+                            fill
+                            sizes="240px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                          />
+                          <span className="absolute left-2.5 top-2.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-white/90 backdrop-blur-sm">
+                            {String(index + 2).padStart(2, "0")}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 border-b border-white/10 px-3.5 pb-2 pt-3.5">
+                          <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-white/80">
+                            {String(index + 2).padStart(2, "0")}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex flex-1 flex-col p-3.5">
                         <StoryMeta article={article} onDark />
                         <h3 className="mt-1.5 line-clamp-3 text-[14px] font-semibold leading-snug text-white transition-colors group-hover:text-red-200">

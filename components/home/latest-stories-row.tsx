@@ -2,7 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StoryListRow } from "@/components/home/story-list-row";
-import { articlePublicPath } from "@/lib/brand/article-theme";
+import {
+  articlePublicPath,
+  articleShowsMainImage,
+} from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { formatHeadline } from "@/lib/format/headline";
 import { formatTimeAgo } from "@/lib/format/time-ago";
@@ -44,33 +47,44 @@ export function LatestStoriesRow({ articles }: { articles: ArticleSummary[] }) {
           const headline = formatHeadline(article.title);
           const kicker = regionLabelForArticle(article);
           const timeAgo = formatTimeAgo(article.publishedAt ?? null);
-          const image = optimizeCloudinaryUrl(
-            article.coverImageUrl ?? "/placeholder.jpg",
-            { width: 640 },
-          );
+          const showImage = articleShowsMainImage(article);
+          const image = showImage
+            ? optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
+                width: 640,
+              })
+            : null;
 
           return (
             <Link key={article.id} href={path} className="group min-w-0">
-              <div className="relative aspect-[16/10] overflow-hidden bg-neutral-200">
-                <Image
-                  src={image}
-                  alt={headline}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                />
-              </div>
-              <div className="mt-3">
+              {showImage && image ? (
+                <div className="relative aspect-[16/10] overflow-hidden bg-neutral-200">
+                  <Image
+                    src={image}
+                    alt={headline}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                </div>
+              ) : null}
+              <div className={showImage ? "mt-3" : ""}>
                 <p className="mb-1 flex flex-wrap items-center gap-x-2 text-[11px] font-medium text-neutral-500">
                   {kicker ? (
                     <span className="font-semibold text-[#CF1A1E]">{kicker}</span>
                   ) : null}
-                  {kicker && timeAgo ? <span className="text-neutral-300">·</span> : null}
+                  {kicker && timeAgo ? (
+                    <span className="text-neutral-300">·</span>
+                  ) : null}
                   {timeAgo ? <span>{timeAgo}</span> : null}
                 </p>
                 <h3 className="text-[15px] font-semibold leading-snug text-neutral-950 transition-colors group-hover:text-[#CF1A1E]">
                   {headline}
                 </h3>
+                {!showImage && article.excerpt ? (
+                  <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-neutral-500">
+                    {article.excerpt}
+                  </p>
+                ) : null}
               </div>
             </Link>
           );

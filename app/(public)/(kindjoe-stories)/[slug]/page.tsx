@@ -13,6 +13,7 @@ import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import {
   articlePublicPath,
   getArticleBrandTheme,
+  articleShowsMainImage,
   hasVenturaCountyTag,
 } from "@/lib/brand/article-theme";
 import ArticleContent from "@/components/stories/article-single-page-content";
@@ -97,6 +98,7 @@ export default async function ArticleBySlug(props: {
 
   const { article: a, tags, seo: rawSeo } = data;
   const isVentura = hasVenturaCountyTag(tags);
+  const showMainImage = articleShowsMainImage({ tags, category: a.category });
   const theme = getArticleBrandTheme(isVentura);
   const session = await getServerSession();
   const user = session?.user as AuthAppUser | undefined;
@@ -260,29 +262,35 @@ export default async function ArticleBySlug(props: {
               </div>
             </header>
 
-            <div className={isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"}>
+            {showMainImage ? (
               <div
                 className={
-                  isVentura
-                    ? "overflow-hidden rounded-xl"
-                    : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
+                  isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"
                 }
               >
-                <FocusableImage
-                  src={a.coverImageUrl ?? "/placeholder.jpg"}
-                  alt={a.title}
-                  caption={
-                    isVentura ? "Image source: Joe Knows Ventura" : undefined
+                <div
+                  className={
+                    isVentura
+                      ? "overflow-hidden rounded-xl"
+                      : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
                   }
-                  className="aspect-[16/9] cursor-zoom-in"
-                />
-              </div>
-              {isVentura ? (
-                <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
-                  Image source: Joe Knows Ventura
+                >
+                  <FocusableImage
+                    src={a.coverImageUrl ?? "/placeholder.jpg"}
+                    alt={a.title}
+                    caption={
+                      isVentura ? "Image source: Joe Knows Ventura" : undefined
+                    }
+                    className="aspect-[16/9] cursor-zoom-in"
+                  />
                 </div>
-              ) : null}
-            </div>
+                {isVentura ? (
+                  <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
+                    Image source: Joe Knows Ventura
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div
               id="article-content"

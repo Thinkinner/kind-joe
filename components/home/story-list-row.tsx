@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { articlePublicPath } from "@/lib/brand/article-theme";
+import {
+  articlePublicPath,
+  articleShowsMainImage,
+} from "@/lib/brand/article-theme";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { formatHeadline } from "@/lib/format/headline";
 import { formatTimeAgo } from "@/lib/format/time-ago";
@@ -9,37 +12,42 @@ import type { ArticleSummary } from "@/types/article";
 export function StoryListRow({
   article,
   tone = "light",
+  /** Force images on (e.g. Local Desks columns are always local). */
+  forceShowImage = false,
 }: {
   article: ArticleSummary;
   tone?: "light" | "dark";
+  forceShowImage?: boolean;
 }) {
   const headline = formatHeadline(article.title);
   const timeAgo = formatTimeAgo(article.publishedAt ?? null);
-  const thumb = optimizeCloudinaryUrl(
-    article.coverImageUrl ?? "/placeholder.jpg",
-    { width: 280 },
-  );
+  const showImage = forceShowImage || articleShowsMainImage(article);
+  const thumb = showImage
+    ? optimizeCloudinaryUrl(article.coverImageUrl ?? "/placeholder.jpg", {
+        width: 280,
+      })
+    : null;
   const dark = tone === "dark";
 
   return (
     <Link
       href={articlePublicPath(article.slug)}
-      className="group grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 py-3.5 sm:grid-cols-[100px_minmax(0,1fr)] sm:gap-4"
+      className={`group items-start gap-3 py-3.5 sm:gap-4 ${
+        showImage
+          ? "grid grid-cols-[88px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)]"
+          : "flex"
+      }`}
     >
-      <div
-        className={`relative aspect-[4/3] overflow-hidden ${
-          dark ? "rounded-md bg-neutral-800" : "bg-neutral-200"
-        }`}
-      >
-        <Image
-          src={thumb}
-          alt=""
-          fill
-          sizes="100px"
-          className="object-cover"
-        />
-      </div>
-      <span className="min-w-0">
+      {showImage && thumb ? (
+        <div
+          className={`relative aspect-[4/3] overflow-hidden ${
+            dark ? "rounded-md bg-neutral-800" : "bg-neutral-200"
+          }`}
+        >
+          <Image src={thumb} alt="" fill sizes="100px" className="object-cover" />
+        </div>
+      ) : null}
+      <span className="min-w-0 flex-1">
         <span
           className={`block text-[15px] font-bold leading-snug transition-colors ${
             dark

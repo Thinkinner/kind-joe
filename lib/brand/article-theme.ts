@@ -1,3 +1,8 @@
+import {
+  LOCAL_NEWS_REGIONS,
+  textMatchesLocalNewsRegion,
+} from "@/lib/local-news/regions";
+
 export const VENTURA_COUNTY_TAG = "ventura-county";
 export const LA_NEWS_TAG = "la-news";
 export const SAN_LUIS_OBISPO_TAG = "san-luis-obispo";
@@ -32,6 +37,37 @@ export function hasSanLuisObispoTag(
       ),
     ),
   );
+}
+
+/** Local desks (LA / Ventura / SLO) show a main image; Kind Joe articles stay text-first. */
+export function hasLocalDeskCoverTag(
+  tags: Array<{ slug?: string | null }> | undefined | null,
+): boolean {
+  return (
+    hasVenturaCountyTag(tags) ||
+    hasLaNewsTag(tags) ||
+    hasSanLuisObispoTag(tags)
+  );
+}
+
+/** Prefer this for homepage/cards — also catches local stories matched by category. */
+export function articleShowsMainImage(article: {
+  tags?: Array<{ slug?: string | null }> | null;
+  category?: string | null;
+}): boolean {
+  if (hasLocalDeskCoverTag(article.tags)) return true;
+  for (const region of LOCAL_NEWS_REGIONS) {
+    if (textMatchesLocalNewsRegion(article.category, region)) return true;
+    const list = Array.isArray(article.tags) ? article.tags : [];
+    if (
+      list.some((tag) =>
+        (region.tagSlugs as readonly string[]).includes(tag?.slug ?? ""),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Canonical public article URL — always /{slug}, never /ventura/{slug}. */

@@ -37,7 +37,7 @@ function DeskColumn({ articles }: { articles: ArticleSummary[] }) {
       <ul className="divide-y divide-white/10 md:hidden">
         {articles.map((article) => (
           <li key={article.id}>
-            <StoryListRow article={article} tone="dark" />
+            <StoryListRow article={article} tone="dark" forceShowImage />
           </li>
         ))}
       </ul>
@@ -76,7 +76,7 @@ function DeskColumn({ articles }: { articles: ArticleSummary[] }) {
           <ul className="divide-y divide-white/10">
             {rest.map((article) => (
               <li key={article.id}>
-                <StoryListRow article={article} tone="dark" />
+                <StoryListRow article={article} tone="dark" forceShowImage />
               </li>
             ))}
           </ul>

@@ -4,7 +4,10 @@ import Link from "next/link";
 import { formatTimeAgo } from "@/lib/format/time-ago";
 import { formatHeadline } from "@/lib/format/headline";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
-import { articlePublicPath } from "@/lib/brand/article-theme";
+import {
+  articlePublicPath,
+  articleShowsMainImage,
+} from "@/lib/brand/article-theme";
 import type { ArticleSummary } from "@/types/article";
 
 type EditorsPicksPanelProps = {
@@ -32,6 +35,7 @@ export function EditorsPicksPanel({ articles }: EditorsPicksPanelProps) {
         <ol className="divide-y divide-neutral-200">
           {articles.map((article, index) => {
             const timeAgo = formatTimeAgo(article.publishedAt ?? null);
+            const showImage = articleShowsMainImage(article);
             return (
               <li key={article.id}>
                 <Link
@@ -41,16 +45,19 @@ export function EditorsPicksPanel({ articles }: EditorsPicksPanelProps) {
                   <span className="w-5 shrink-0 pt-0.5 text-lg font-semibold tabular-nums text-neutral-300">
                     {index + 1}
                   </span>
-                  <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-neutral-200">
-                    <img
-                      src={optimizeCloudinaryUrl(
-                        article.coverImageUrl ?? "/placeholder.jpg",
-                        { width: 280 },
-                      )}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  {showImage ? (
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-neutral-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- small thumb; varied CDN hosts */}
+                      <img
+                        src={optimizeCloudinaryUrl(
+                          article.coverImageUrl ?? "/placeholder.jpg",
+                          { width: 280 },
+                        )}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : null}
                   <div className="min-w-0 flex-1">
                     {timeAgo ? (
                       <p className="text-[11px] font-medium text-neutral-400">
