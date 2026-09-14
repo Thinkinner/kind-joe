@@ -89,7 +89,6 @@ export const generateEmailHtml = (data: NewsletterData): string => {
       const href = buildNewsletterStoryHref(story, siteBase, {
         fallbackToHome: true,
       });
-      const imageUrl = story.imageUrl ? safeUrl(story.imageUrl) : "";
 
       const { intro, bullets: summaryBullets } = splitNewsletterStorySummary(
         story.summary || "",
@@ -117,23 +116,12 @@ export const generateEmailHtml = (data: NewsletterData): string => {
 </table>`
           : "";
 
-      const hero =
-        imageUrl
-          ? `
-<a href="${href}" target="_blank" style="text-decoration:none;">
-  <img src="${imageUrl}" alt="${headline}" width="540"
-    style="display:block;width:100%;max-width:540px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;margin:0 0 24px;" />
-</a>`
-          : "";
-
       return `
 <tr>
   <td style="padding:45px 30px;border-bottom:1px solid #f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="font-size:11px;font-weight:800;color:#0ea5e9;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;">
       ${category}
     </div>
-
-    ${hero}
 
     <div style="font-size:26px;font-weight:800;line-height:1.25;margin:0 0 18px;color:#0f172a;">
       <a href="${href}" target="_blank" style="color:#0f172a;text-decoration:none;">

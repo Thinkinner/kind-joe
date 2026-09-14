@@ -475,10 +475,6 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
     }
   };
 
-  const hasMissingImages = data.stories.some(
-    (story) => !story.imageUrl || story.imageUrl.trim() === "",
-  );
-
   // 2. Check if draft is fully ready to publish
   const isDraftComplete =
     articles.length === data.stories.length &&
@@ -706,12 +702,6 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
 
   // Batch Generation (Skips already generated ones)
   const handleGenerateArticles = async () => {
-    if (hasMissingImages) {
-      clearGenerationError();
-      setErrorMsg("Each story needs an image URL before generating articles.");
-      return;
-    }
-
     setIsProcessing(true);
     setLoadingText("Initializing writer...");
     clearGenerationError();
@@ -1198,12 +1188,8 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
             <button
               type="button"
               onClick={handleGenerateArticles}
-              disabled={isProcessing || hasMissingImages}
-              title={
-                hasMissingImages
-                  ? "Add an image URL to every story before generating articles"
-                  : "Generate full articles for all stories"
-              }
+              disabled={isProcessing}
+              title="Generate full articles for all stories"
               className="inline-flex min-h-11 flex-1 basis-full items-center justify-center gap-2 border border-orange-700 bg-orange-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:basis-auto sm:flex-initial"
             >
               {isProcessing ? (
@@ -1663,13 +1649,6 @@ const ReviewEditor: React.FC<ReviewEditorProps> = ({
               <div className="prose prose-lg prose-invert mx-auto max-w-2xl">
                 {activeArticlePreviewHtml ? (
                   <>
-                    {activeArticle?.coverImageUrl && (
-                      <img
-                        src={activeArticle.coverImageUrl}
-                        alt="Cover"
-                        className="mb-8 h-64 w-full object-cover"
-                      />
-                    )}
                     <h1 className="mb-4 text-2xl font-black leading-tight sm:mb-6 sm:text-4xl">
                       {activeArticle?.title}
                     </h1>

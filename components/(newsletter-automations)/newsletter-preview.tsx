@@ -64,17 +64,6 @@ const StoryBlock: React.FC<{ story: NewsletterStory; isLast: boolean }> = ({ sto
         </span>
       </div>
 
-      {/* Image */}
-      {story.imageUrl && (
-        <div className="mb-4 overflow-hidden border border-border/40">
-          <img
-            src={story.imageUrl}
-            alt={story.headline}
-            className="w-full h-auto object-cover max-h-[300px]"
-          />
-        </div>
-      )}
-
       {/* Headline */}
       <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3 leading-tight font-serif">
         {storyHref ? (
