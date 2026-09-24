@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { VenturaBusinessInquiryForm } from "@/components/ventura/ventura-business-inquiry-form";
+import { VenturaBookingCalendar } from "@/components/ventura/ventura-booking-calendar";
 import { publicSiteUrl } from "@/lib/site/public-site-url";
 
 export const metadata: Metadata = {
   title: "Promote Your Business • Joe Knows Ventura",
   description:
-    "Are you a Ventura County business owner? Tell Joe Knows Ventura about your business and get in front of local readers.",
+    "Are you a Ventura County business owner? Book a time with Joe Knows Ventura and get in front of local readers.",
   alternates: { canonical: publicSiteUrl("/ventura-promote") },
 };
 
 export default function VenturaPromotePage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-[#fffaf3] text-neutral-900">
+    <main className="relative min-h-dvh bg-[#fffaf3] text-neutral-900">
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden
@@ -23,7 +23,7 @@ export default function VenturaPromotePage() {
         }}
       />
 
-      <div className="relative mx-auto flex min-h-dvh max-w-lg flex-col px-4 py-8 sm:px-6 sm:py-12">
+      <div className="relative mx-auto flex min-h-dvh max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 text-center">
           <Link
             href="/ventura/posts"
@@ -49,12 +49,13 @@ export default function VenturaPromotePage() {
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-neutral-600 sm:text-base">
             Are you a business owner and want to get in front of Ventura County
-            readers? Share your details and we&apos;ll follow up.
+            readers? Pick a time below and we&apos;ll talk through the next
+            steps.
           </p>
         </div>
 
-        <section className="rounded-3xl border border-orange-100 bg-white p-5 shadow-[0_20px_50px_-28px_rgba(120,53,15,0.35)] sm:p-7">
-          <VenturaBusinessInquiryForm source="ventura_promote_page" />
+        <section className="rounded-3xl border border-orange-100 bg-white shadow-[0_20px_50px_-28px_rgba(120,53,15,0.35)]">
+          <VenturaBookingCalendar minHeight={1100} />
         </section>
 
         <p className="mt-6 text-center text-sm text-neutral-500">
