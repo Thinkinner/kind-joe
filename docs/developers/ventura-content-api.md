@@ -26,17 +26,41 @@ If you publish docs on `developers.kindjoe.com`, keep this page as your canonica
 
 Returns the same Ventura post cards shown on `/ventura/posts`.
 
+### Partner linking (keep traffic on your domain)
+
+Post cards store a Kind Joe `destinationUrl` by default. **Partner sites should not send readers to kindjoe.com.**
+
+Use one of these:
+
+1. **Recommended:** pass your site origin so `destinationUrl` is rewritten for you:
+
+```bash
+curl "https://kindjoe.com/api/ventura/posts?limit=20&offset=0&linkBase=https://your-ventura-site.com"
+```
+
+Then each item’s `destinationUrl` becomes `https://your-ventura-site.com/{slug}`.
+
+2. **Or** build the link yourself from `slug` / `path`:
+
+```js
+const href = `https://your-ventura-site.com/${post.slug}`;
+// or: const href = post.path; // "/some-article-slug"
+```
+
+`canonicalUrl` always keeps the original Kind Joe URL (for reference only).
+
 ### Pagination (recommended)
 
 Use query params for incremental loading:
 
 - `limit` (1-100)
 - `offset` (0+)
+- `linkBase` (optional partner origin, also accepts `origin` / `baseUrl`)
 
 Example:
 
 ```bash
-curl "https://kindjoe.com/api/ventura/posts?limit=20&offset=0"
+curl "https://kindjoe.com/api/ventura/posts?limit=20&offset=0&linkBase=https://your-ventura-site.com"
 ```
 
 Paginated response shape:
@@ -66,7 +90,10 @@ curl "https://kindjoe.com/api/ventura/posts"
   {
     "id": 101,
     "imageUrl": "https://cdn.example.com/ventura-post-1.jpg",
-    "destinationUrl": "https://kindjoe.com/ventura/some-story",
+    "destinationUrl": "https://your-ventura-site.com/gun-recovered-after-elderly-married-couple-found-deceased-in-newbury-park",
+    "canonicalUrl": "https://www.kindjoe.com/gun-recovered-after-elderly-married-couple-found-deceased-in-newbury-park",
+    "slug": "gun-recovered-after-elderly-married-couple-found-deceased-in-newbury-park",
+    "path": "/gun-recovered-after-elderly-married-couple-found-deceased-in-newbury-park",
     "caption": "Optional caption text",
     "isPinned": true,
     "order": 0,
@@ -80,7 +107,10 @@ curl "https://kindjoe.com/api/ventura/posts"
 
 - `id`: stable Ventura post identifier
 - `imageUrl`: card image URL
-- `destinationUrl`: URL opened when card is clicked
+- `destinationUrl`: URL to open on click (rewritten when `linkBase` is set)
+- `canonicalUrl`: original Kind Joe / source URL (do not use for partner navigation)
+- `slug`: article slug for partner routing (null if destination is not a story URL)
+- `path`: `/{slug}` helper (null when no slug)
 - `caption`: optional caption text
 - `isPinned`: pin flag used for feed ordering
 - `order`: manual ordering value

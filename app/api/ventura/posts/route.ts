@@ -7,6 +7,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const hasPagination =
     searchParams.has("limit") || searchParams.has("offset");
+  // Partner sites: rewrite destinationUrl onto their domain so clicks stay there.
+  const linkBase =
+    searchParams.get("linkBase") ||
+    searchParams.get("origin") ||
+    searchParams.get("baseUrl");
 
   if (hasPagination) {
     const rawLimit = Number(searchParams.get("limit") ?? "20");
@@ -14,10 +19,15 @@ export async function GET(request: Request) {
     const page = await listVenturaPostsPage({
       limit: Number.isFinite(rawLimit) ? rawLimit : 20,
       offset: Number.isFinite(rawOffset) ? rawOffset : 0,
+      linkBase,
     });
     return NextResponse.json(page);
   }
 
-  const page = await listVenturaPostsPage({ limit: 50, offset: 0 });
+  const page = await listVenturaPostsPage({
+    limit: 50,
+    offset: 0,
+    linkBase,
+  });
   return NextResponse.json(page.items);
 }
