@@ -116,7 +116,12 @@ export default function VenturaContentApiDocsPage() {
       <h2>Availability and filtering</h2>
       <ul>
         <li>Only non-draft, non-deleted, published articles are returned.</li>
-        <li>Ventura list endpoint filters to posts tagged with `ventura-county`.</li>
+        <li>
+          Same story selection as{" "}
+          <a href="https://www.kindjoe.com/ventura-county">/ventura-county</a>:
+          tags `ventura-county` / `venturacountynews`, or category/tag text with
+          `ventura`. Not L.A. or SLO.
+        </li>
         <li>`GET /api/articles/ventura-county` remains available as a compatibility alias.</li>
         <li>Author fields come from the current writer profile (`authorName` + `authorAlias`).</li>
         <li>Related endpoint returns HTTP 404 if the source slug is not published.</li>

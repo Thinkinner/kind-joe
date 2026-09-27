@@ -23,7 +23,6 @@ import {
   ilike,
   exists,
   sql,
-  inArray,
 } from "drizzle-orm";
 import { ArticleSummary } from "@/types/article";
 import { TOPIC_SLUGS, type TopicSlug } from "@/lib/content/topics";
@@ -31,12 +30,10 @@ import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-con
 import { titleAttentionScore } from "@/lib/format/title-attention-score";
 import {
   getLocalNewsRegionBySlug,
-  getRegionMatchKeywords,
-  getRegionTagSlugs,
   LOCAL_NEWS_REGIONS,
-  type LocalNewsRegion,
   type LocalNewsTagSlug,
 } from "@/lib/local-news/regions";
+import { regionContentFilter } from "@/lib/local-news/region-content-filter";
 
 const MAX_LIST_PAGE = 50;
 const TOP_STORY_TAG_SLUG = "kindjoetopstories";
@@ -238,62 +235,6 @@ export async function ensureLocalNewsTags(): Promise<void> {
   } catch (error) {
     console.error("ensureLocalNewsTags failed:", error);
   }
-}
-
-/**
- * Match region content the way /ventura-county already did: category column,
- * linked categories, and tags — not only the canonical region tag slug.
- * Newer stories often land as category "Ventura County" without the tag.
- */
-function regionContentFilter(region: LocalNewsRegion) {
-  const keywords = getRegionMatchKeywords(region);
-  const matchSlugs = getRegionTagSlugs(region);
-  const keywordMatchers = keywords.flatMap((kw) => [
-    ilike(articles.category, `%${kw}%`),
-    exists(
-      db
-        .select()
-        .from(articleCategories)
-        .innerJoin(categories, eq(articleCategories.categoryId, categories.id))
-        .where(
-          and(
-            eq(articleCategories.articleId, articles.id),
-            or(
-              ilike(categories.name, `%${kw}%`),
-              ilike(categories.slug, `%${kw}%`),
-            ),
-          ),
-        ),
-    ),
-    exists(
-      db
-        .select()
-        .from(articleTags)
-        .innerJoin(tags, eq(articleTags.tagId, tags.id))
-        .where(
-          and(
-            eq(articleTags.articleId, articles.id),
-            or(ilike(tags.name, `%${kw}%`), ilike(tags.slug, `%${kw}%`)),
-          ),
-        ),
-    ),
-  ]);
-
-  return or(
-    ...keywordMatchers,
-    exists(
-      db
-        .select()
-        .from(articleTags)
-        .innerJoin(tags, eq(articleTags.tagId, tags.id))
-        .where(
-          and(
-            eq(articleTags.articleId, articles.id),
-            inArray(tags.slug, matchSlugs),
-          ),
-        ),
-    ),
-  );
 }
 
 function anyLocalNewsContentFilter() {

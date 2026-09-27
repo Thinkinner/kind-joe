@@ -233,7 +233,10 @@ Only articles that meet all of the following are returned:
 - Not draft (`isDraft = false`)
 - Not deleted (`deletedAt = null`)
 - Published now or in the past
-- Tagged with `ventura-county`
+- Matches the same Ventura selection as [kindjoe.com/ventura-county](https://www.kindjoe.com/ventura-county):
+  - tags `ventura-county` or `venturacountynews`, **or**
+  - category / tag text containing `ventura`
+  - Does **not** include L.A. (`la-news`) or SLO desk feeds
 
 ### Sort order
 

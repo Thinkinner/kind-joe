@@ -5,8 +5,12 @@ export const LOCAL_NEWS_REGIONS = [
     id: "ventura",
     name: "Ventura County",
     slug: "ventura-county",
-    /** Tag slugs that count as this region (first is canonical). */
-    tagSlugs: ["ventura-county"] as const,
+    /**
+     * Tag slugs that count as this region (first is canonical).
+     * Writers often use `venturacountynews` on newer desk stories; the partner
+     * Ventura articles API accepts both.
+     */
+    tagSlugs: ["ventura-county", "venturacountynews"] as const,
     /**
      * Loose match against category / category rows / tag names & slugs.
      * Prefer multi-char tokens — avoid bare "la" / "slo" (too many false hits).

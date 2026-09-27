@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { user as authUser } from "@/db/auth-schema";
 import {
   articleCategories,
   articleTags,
@@ -9,11 +10,14 @@ import {
   users,
 } from "@/db/schema";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
+import { regionContentFilter } from "@/lib/local-news/region-content-filter";
+import { getLocalNewsRegionBySlug } from "@/lib/local-news/regions";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
 
-const FEATURED_TAG_SLUG = "ventura-county";
+const VENTURA_REGION = getLocalNewsRegionBySlug("ventura-county")!;
 const MAX_LEGACY_LIST = 50;
 
+/** Same publish rules as /ventura-county. */
 function publishedFilter(now = new Date()) {
   return and(
     eq(articles.isDraft, false),
@@ -31,6 +35,8 @@ function publishedFilter(now = new Date()) {
     )`,
   );
 }
+
+const publishDateSort = sql`coalesce(${articles.publishedAt}, ${articles.publishAt})`;
 
 export type VenturaArticleSummary = {
   id: string;
@@ -56,34 +62,49 @@ export type VenturaPage<T> = {
   offset: number;
 };
 
+const summarySelect = {
+  id: articles.id,
+  slug: articles.slug,
+  title: articles.title,
+  excerpt: articles.excerpt,
+  category: articles.category,
+  coverImageUrl: articles.coverImageUrl,
+  publishedAt: articles.publishedAt,
+  publishAt: articles.publishAt,
+  createdAt: articles.createdAt,
+  readingMinutes: articles.readingMinutes,
+  authorAlias: sql<string | null>`coalesce(
+    nullif(${articles.seo}->>'authorName', ''),
+    nullif(${authUser.aliasFullName}, ''),
+    nullif(${users.aliasFullName}, '')
+  )`,
+  /** Prefer byline/alias — same display name as /ventura-county. */
+  authorName: sql<string>`coalesce(
+    nullif(${articles.seo}->>'authorName', ''),
+    nullif(${authUser.aliasFullName}, ''),
+    nullif(${authUser.name}, ''),
+    nullif(${users.aliasFullName}, ''),
+    nullif(${users.name}, ''),
+    'Joe Knows Staff'
+  )`,
+  authorAvatarUrl: users.avatarUrl,
+};
+
+/**
+ * Partner Ventura articles list — same selection as
+ * https://www.kindjoe.com/ventura-county (Ventura desk only, not LA / SLO).
+ */
 export async function listVenturaArticleSummaries(): Promise<VenturaArticleSummary[]> {
   const now = new Date();
 
-  const rows = await db
-    .select({
-      id: articles.id,
-      slug: articles.slug,
-      title: articles.title,
-      excerpt: articles.excerpt,
-      category: articles.category,
-      coverImageUrl: articles.coverImageUrl,
-      publishedAt: articles.publishedAt,
-      publishAt: articles.publishAt,
-      createdAt: articles.createdAt,
-      readingMinutes: articles.readingMinutes,
-      authorAlias: sql<string | null>`nullif(${users.aliasFullName}, '')`,
-      authorName: users.name,
-      authorAvatarUrl: users.avatarUrl,
-    })
+  return db
+    .select(summarySelect)
     .from(articles)
-    .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
-    .innerJoin(tags, eq(tags.id, articleTags.tagId))
     .leftJoin(users, eq(users.id, articles.authorId))
-    .where(and(eq(tags.slug, FEATURED_TAG_SLUG), publishedFilter(now)))
-    .orderBy(desc(articles.publishedAt))
+    .leftJoin(authUser, eq(authUser.id, articles.authorId))
+    .where(and(regionContentFilter(VENTURA_REGION), publishedFilter(now)))
+    .orderBy(desc(publishDateSort))
     .limit(MAX_LEGACY_LIST);
-
-  return rows;
 }
 
 export async function listVenturaArticleSummariesPage(params?: {
@@ -95,27 +116,12 @@ export async function listVenturaArticleSummariesPage(params?: {
   const offset = Math.max(0, params?.offset ?? 0);
 
   const rows = await db
-    .select({
-      id: articles.id,
-      slug: articles.slug,
-      title: articles.title,
-      excerpt: articles.excerpt,
-      category: articles.category,
-      coverImageUrl: articles.coverImageUrl,
-      publishedAt: articles.publishedAt,
-      publishAt: articles.publishAt,
-      createdAt: articles.createdAt,
-      readingMinutes: articles.readingMinutes,
-      authorAlias: sql<string | null>`nullif(${users.aliasFullName}, '')`,
-      authorName: users.name,
-      authorAvatarUrl: users.avatarUrl,
-    })
+    .select(summarySelect)
     .from(articles)
-    .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
-    .innerJoin(tags, eq(tags.id, articleTags.tagId))
     .leftJoin(users, eq(users.id, articles.authorId))
-    .where(and(eq(tags.slug, FEATURED_TAG_SLUG), publishedFilter(now)))
-    .orderBy(desc(articles.publishedAt))
+    .leftJoin(authUser, eq(authUser.id, articles.authorId))
+    .where(and(regionContentFilter(VENTURA_REGION), publishedFilter(now)))
+    .orderBy(desc(publishDateSort))
     .limit(limit + 1)
     .offset(offset);
 
@@ -169,8 +175,19 @@ export async function getVenturaArticleDetailBySlug(
       coverImageUrl: articles.coverImageUrl,
       category: articles.category,
       authorId: articles.authorId,
-      authorAlias: sql<string | null>`nullif(${users.aliasFullName}, '')`,
-      authorName: users.name,
+      authorAlias: sql<string | null>`coalesce(
+        nullif(${articles.seo}->>'authorName', ''),
+        nullif(${authUser.aliasFullName}, ''),
+        nullif(${users.aliasFullName}, '')
+      )`,
+      authorName: sql<string>`coalesce(
+        nullif(${articles.seo}->>'authorName', ''),
+        nullif(${authUser.aliasFullName}, ''),
+        nullif(${authUser.name}, ''),
+        nullif(${users.aliasFullName}, ''),
+        nullif(${users.name}, ''),
+        'Joe Knows Staff'
+      )`,
       authorAvatar: users.avatarUrl,
       contentMarkdown: articles.contentMarkdown,
       contentHtml: articles.contentHtml,
@@ -183,13 +200,12 @@ export async function getVenturaArticleDetailBySlug(
       predictionId: articles.predictionId,
     })
     .from(articles)
-    .innerJoin(articleTags, eq(articleTags.articleId, articles.id))
-    .innerJoin(tags, eq(tags.id, articleTags.tagId))
     .leftJoin(users, eq(users.id, articles.authorId))
+    .leftJoin(authUser, eq(authUser.id, articles.authorId))
     .where(
       and(
         eq(articles.slug, slug),
-        eq(tags.slug, FEATURED_TAG_SLUG),
+        regionContentFilter(VENTURA_REGION),
         publishedFilter(now),
       ),
     )
