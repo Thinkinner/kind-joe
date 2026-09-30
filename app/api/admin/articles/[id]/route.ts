@@ -18,9 +18,8 @@ import { universalParser } from "@/lib/content/parser";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import {
   removeArticleEmbedding,
-  syncArticleEmbeddingByArticleId,
 } from "@/lib/recommendations/article-related";
-import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
+import { scheduleArticlePostPublishWork } from "@/lib/articles/schedule-post-publish-work";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -393,17 +392,10 @@ export async function PUT(
     await db.delete(articleTags).where(eq(articleTags.articleId, id));
   }
 
-  try {
-    await syncArticleEmbeddingByArticleId(id);
-  } catch (error) {
-    console.error("[articles.update] embedding sync failed", error);
-  }
-
-  try {
-    await postImmediateArticleComment({ articleId: id, now: new Date() });
-  } catch (error) {
-    console.error("[articles.update] immediate comment failed", error);
-  }
+  scheduleArticlePostPublishWork({
+    articleId: id,
+    logLabel: "articles.update",
+  });
 
   return NextResponse.json(updated);
 }

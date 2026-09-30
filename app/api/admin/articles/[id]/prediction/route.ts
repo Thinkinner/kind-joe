@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { articles, predictionMarkets } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveStaffApi } from "@/lib/auth/server";
-import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
+import { scheduleArticlePostPublishWork } from "@/lib/articles/schedule-post-publish-work";
 
 function parsePredictionId(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
@@ -72,11 +72,10 @@ export async function PATCH(
     return NextResponse.json({ error: "article not found" }, { status: 404 });
   }
 
-  try {
-    await postImmediateArticleComment({ articleId: updated.id, now: new Date() });
-  } catch (error) {
-    console.error("[articles.prediction.patch] immediate comment failed", error);
-  }
+  scheduleArticlePostPublishWork({
+    articleId: updated.id,
+    logLabel: "articles.prediction.patch",
+  });
 
   return NextResponse.json({ ok: true, article: updated });
 }

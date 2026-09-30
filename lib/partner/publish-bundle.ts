@@ -20,8 +20,7 @@ import {
   slugify,
 } from "@/lib/helpers/articles";
 import { inferCanonicalRegionTagSlugs } from "@/lib/local-news/regions";
-import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
-import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
+import { scheduleArticlePostPublishWork } from "@/lib/articles/schedule-post-publish-work";
 
 const MIN_SUMMARY_WORDS_FOR_PUBLISH = 12;
 const MIN_META_DESCRIPTION_CHARS = 70;
@@ -250,17 +249,11 @@ export async function publishPartnerBundle(
     throw new Error("Failed to create post card.");
   }
 
-  try {
-    await syncArticleEmbeddingByArticleId(articleId);
-  } catch (error) {
-    console.error("[partner.publish] embedding sync failed", error);
-  }
-
-  try {
-    await postImmediateArticleComment({ articleId, now });
-  } catch (error) {
-    console.error("[partner.publish] immediate comment failed", error);
-  }
+  scheduleArticlePostPublishWork({
+    articleId,
+    now,
+    logLabel: "partner.publish",
+  });
 
   for (const path of ["/posts", "/ventura/posts", "/joeknowsla/posts", "/joefromslo/posts"]) {
     revalidatePath(path);

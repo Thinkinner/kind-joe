@@ -22,8 +22,7 @@ import {
 } from "@/lib/helpers/articles";
 import { universalParser } from "@/lib/content/parser";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
-import { syncArticleEmbeddingByArticleId } from "@/lib/recommendations/article-related";
-import { postImmediateArticleComment } from "@/lib/automation/article-immediate-comment";
+import { scheduleArticlePostPublishWork } from "@/lib/articles/schedule-post-publish-work";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -355,17 +354,10 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    try {
-      await syncArticleEmbeddingByArticleId(id);
-    } catch (error) {
-      console.error("[articles.create] embedding sync failed", error);
-    }
-
-    try {
-      await postImmediateArticleComment({ articleId: id, now: new Date() });
-    } catch (error) {
-      console.error("[articles.create] immediate comment failed", error);
-    }
+    scheduleArticlePostPublishWork({
+      articleId: id,
+      logLabel: "articles.create",
+    });
 
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (err) {
