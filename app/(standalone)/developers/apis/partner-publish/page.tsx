@@ -17,10 +17,15 @@ export default function PartnerPublishApiDocsPage() {
         </p>
       </div>
 
-      <h2>Endpoint</h2>
-      <pre>
-        <code>POST /api/partner/publish</code>
-      </pre>
+      <h2>Endpoints</h2>
+      <ul>
+        <li>
+          <code>POST /api/partner/upload-image</code> — store the photo and get the hero and square links
+        </li>
+        <li>
+          <code>POST /api/partner/publish</code> — create the live article
+        </li>
+      </ul>
 
       <h2>Authentication</h2>
       <p>
@@ -34,6 +39,27 @@ export default function PartnerPublishApiDocsPage() {
           <code>x-api-key: &lt;HOPE_PUBLISH_API_KEY&gt;</code>
         </li>
       </ul>
+
+      <h2>Upload an image first</h2>
+      <p>
+        Same API key. Send a public <code>https</code> image URL, a <code>data:image/...;base64,...</code> URI,
+        or a multipart field named <code>file</code> (max 8MB). Kind Joe uploads it to Cloudinary and returns
+        both crops. Paste those two URLs into the publish body. You do not need your own Cloudinary keys.
+      </p>
+      <pre>
+        <code>{`curl -X POST "$KINDJOE_API_BASE_URL/api/partner/upload-image" \\
+  -H "Authorization: Bearer $HOPE_PUBLISH_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "imageUrl": "https://example.com/storm-photo.jpg" }'`}</code>
+      </pre>
+      <pre>
+        <code>{`{
+  "success": true,
+  "originalUrl": "https://res.cloudinary.com/…/kindjoe/articles/storm.jpg",
+  "coverImageUrl": "https://res.cloudinary.com/…/c_fill,g_auto,w_1600,h_900,…",
+  "postCard": { "imageUrl": "https://res.cloudinary.com/…/c_fill,g_auto,w_800,h_800,…" }
+}`}</code>
+      </pre>
 
       <h2>Request body</h2>
       <pre>
@@ -66,8 +92,8 @@ export default function PartnerPublishApiDocsPage() {
   "success": true,
   "articleId": "…",
   "slug": "my-article-slug",
-  "articleUrl": "https://www.kindjoe.com/ventura/my-article-slug",
-  "destinationUrl": "https://www.kindjoe.com/ventura/my-article-slug",
+  "articleUrl": "https://www.kindjoe.com/my-article-slug",
+  "destinationUrl": "https://www.kindjoe.com/my-article-slug",
   "postId": 42,
   "feed": "ventura",
   "authorId": "cms-writer-id"
@@ -94,8 +120,8 @@ export default function PartnerPublishApiDocsPage() {
           <tr>
             <td>Ventura</td>
             <td>
-              <code>/ventura/{"{slug}"}</code>, tag <code>ventura-county</code>, row in{" "}
-              <code>ventura_posts</code>
+              tag <code>ventura-county</code>, post card in <code>ventura_posts</code>. Public URL stays{" "}
+              <code>/{"{slug}"}</code>
             </td>
           </tr>
           <tr>
@@ -114,12 +140,12 @@ export default function PartnerPublishApiDocsPage() {
       </table>
 
       <h2>Hope env (your app)</h2>
+      <p>
+        Image upload uses Kind Joe&apos;s Cloudinary. Hope only needs the shared publish key.
+      </p>
       <pre>
         <code>{`KINDJOE_API_BASE_URL=https://www.kindjoe.com
-HOPE_PUBLISH_API_KEY=<same secret as Kind Joe>
-CLOUDINARY_CLOUD_NAME=…
-CLOUDINARY_API_KEY=…
-CLOUDINARY_API_SECRET=…`}</code>
+HOPE_PUBLISH_API_KEY=<same secret as Kind Joe>`}</code>
       </pre>
 
       <h2>Quick test</h2>

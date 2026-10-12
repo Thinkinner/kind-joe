@@ -4,9 +4,12 @@ Server-to-server publish endpoint for partner apps (e.g. **Hope**) to create a *
 
 Hope does **not** need Kind Joe staff cookies or admin login — only a shared API key.
 
-## Endpoint
+## Endpoints
 
-- `POST /api/partner/publish`
+- `POST /api/partner/upload-image` — put the photo on Kind Joe Cloudinary and get the hero + square links
+- `POST /api/partner/publish` — create the live article
+
+Upload first, then paste `coverImageUrl` and `postCard.imageUrl` into the publish body. The other app does not need its own Cloudinary keys.
 
 ## Auth
 
@@ -72,8 +75,8 @@ In **local dev**, if `HOPE_PUBLISH_API_KEY` is unset, the route accepts requests
   "success": true,
   "articleId": "abc123…",
   "slug": "my-article-slug",
-  "articleUrl": "https://www.kindjoe.com/ventura/my-article-slug",
-  "destinationUrl": "https://www.kindjoe.com/ventura/my-article-slug",
+  "articleUrl": "https://www.kindjoe.com/my-article-slug",
+  "destinationUrl": "https://www.kindjoe.com/my-article-slug",
   "postId": 42,
   "feed": "ventura",
   "authorId": "cms-user-id"
@@ -94,7 +97,7 @@ In **local dev**, if `HOPE_PUBLISH_API_KEY` is unset, the route accepts requests
 | Live publish | `isDraft: false`, `publishedAt` = now |
 | Author | Random CMS `users` row with role **Writer** or **Editor** (excludes `system-ai`, `rss-auto-writer`) |
 | Validation | Excerpt ≥ 12 words, `seo.description` ≥ 70 chars, unique slug |
-| Ventura | `isVentura: true` or Ventura category/tags → tag `ventura-county`, URL `/ventura/{slug}`, row in `ventura_posts` |
+| Ventura | `isVentura: true` or Ventura category/tags → tag `ventura-county`, post card in `ventura_posts`. Public URL is still `/{slug}` |
 | Non-Ventura | URL `/{slug}`, row in `posts` |
 | Post card | `destinationUrl` matches article URL (same as CMS post modal) |
 
@@ -106,17 +109,58 @@ In **local dev**, if `HOPE_PUBLISH_API_KEY` is unset, the route accepts requests
 | `400` | Validation failed (body, excerpt, SEO, etc.) |
 | `409` | Slug already exists |
 
+## Upload an image
+
+`POST /api/partner/upload-image`
+
+Same API key as publish. Send one of:
+
+1. JSON with a public image link (the usual case for a generated photo):
+
+```bash
+curl -X POST "https://www.kindjoe.com/api/partner/upload-image" \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "imageUrl": "https://example.com/storm-photo.jpg" }'
+```
+
+2. JSON with a data URI: `{ "imageBase64": "data:image/jpeg;base64,..." }`
+3. Multipart form field `file` (jpeg, png, webp, or gif, max 8MB)
+
+Kind Joe stores the file in Cloudinary folder `kindjoe/articles` and returns both crops from that one upload:
+
+```json
+{
+  "success": true,
+  "originalUrl": "https://res.cloudinary.com/…/kindjoe/articles/storm.jpg",
+  "coverImageUrl": "https://res.cloudinary.com/…/c_fill,g_auto,w_1600,h_900,f_auto,q_auto/…",
+  "postCard": {
+    "imageUrl": "https://res.cloudinary.com/…/c_fill,g_auto,w_800,h_800,f_auto,q_auto/…"
+  }
+}
+```
+
+Use `coverImageUrl` as the article hero and `postCard.imageUrl` as the square tile. If `imageUrl` is already on this Cloudinary account, the route skips a second upload and only builds the two crops.
+
+| Status | Meaning |
+|--------|---------|
+| `401` | Missing/invalid API key |
+| `400` | No image, or `imageUrl` is not https |
+| `413` | Over 8MB |
+| `415` | Not an image |
+| `429` | Too many uploads |
+| `503` | Cloudinary is not configured on Kind Joe |
+
 ## Hope environment variables
 
 ```bash
 KINDJOE_API_BASE_URL=https://www.kindjoe.com
 HOPE_PUBLISH_API_KEY=<same secret as Kind Joe>
-CLOUDINARY_CLOUD_NAME=…
-CLOUDINARY_API_KEY=…
-CLOUDINARY_API_SECRET=…
 ```
 
-`HOPE_PUBLISH_API_KEY` must match **exactly** on both apps.
+`HOPE_PUBLISH_API_KEY` must match **exactly** on both apps. Image upload uses Kind Joe's Cloudinary, so Hope does not need its own Cloudinary keys.
+
+Kind Joe still needs `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` on the server that hosts this API.
 
 ## RSS read (separate)
 
@@ -152,5 +196,7 @@ Expect `201` with `success: true`.
 ## Implementation files
 
 - `app/api/partner/publish/route.ts`
+- `app/api/partner/upload-image/route.ts`
+- `lib/partner/auth.ts`
 - `lib/partner/publish-bundle.ts`
 - `lib/partner/save-taxonomy.ts`

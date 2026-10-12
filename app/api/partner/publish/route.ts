@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isPartnerAuthorized } from "@/lib/partner/auth";
 import { publishPartnerBundle } from "@/lib/partner/publish-bundle";
 
 export const runtime = "nodejs";
@@ -34,19 +35,8 @@ const bodySchema = z.object({
   isVentura: z.boolean().optional(),
 });
 
-function isAuthorized(request: Request): boolean {
-  const secret = (process.env.HOPE_PUBLISH_API_KEY || "").trim();
-  if (!secret) return process.env.NODE_ENV !== "production";
-
-  const authHeader = request.headers.get("authorization") || "";
-  if (authHeader === `Bearer ${secret}`) return true;
-
-  const apiKeyHeader = (request.headers.get("x-api-key") || "").trim();
-  return apiKeyHeader === secret;
-}
-
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isPartnerAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
