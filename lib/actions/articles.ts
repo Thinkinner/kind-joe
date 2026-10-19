@@ -222,7 +222,9 @@ export async function ensureLocalNewsTags(): Promise<void> {
             ? "SLO"
             : tagSlug === "sanluisobispo"
               ? "SanLuisObispo"
-              : region.name;
+              : tagSlug === "venturacountynews"
+                ? "Ventura County News"
+                : region.name;
         await db
           .insert(tags)
           .values({ name, slug: tagSlug })

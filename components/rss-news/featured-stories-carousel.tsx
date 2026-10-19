@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import type { ApiStory, StoryCard } from "@/types/article";
 
 function storyGridColsClass(chunkSize: number) {
@@ -54,9 +55,11 @@ export function FeaturedStoriesCarouselHero() {
         const mapped: StoryCard[] = data.map((story) => ({
           id: story.id,
           title: story.title,
-          imageSrc:
+          imageSrc: optimizeCloudinaryUrl(
             story.coverImageUrl ||
-            "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a",
+              "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a",
+            { width: 1200 },
+          ),
           href: `/${story.slug}`,
         }));
 

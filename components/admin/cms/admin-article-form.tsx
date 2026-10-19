@@ -33,6 +33,7 @@ import {
   type PredictionCategory,
 } from "@/lib/predictions/categories";
 import { toast } from "sonner";
+import { getYouTubeId, youtubeEmbedUrl } from "@/lib/media/youtube";
 
 type Props = {
   articleId?: string;
@@ -241,6 +242,7 @@ export function AdminArticleForm({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
+  const coverVideoId = getYouTubeId(coverImageUrl);
   const [isDraft, setIsDraft] = useState(true);
   const [publishAt, setPublishAt] = useState("");
   const [contentHtml, setContentHtml] = useState("");
@@ -1206,9 +1208,19 @@ export function AdminArticleForm({
           <div className="border-t border-border pt-5">
             <div className="space-y-3">
               <Label className="text-xs tracking-tight text-muted-foreground">
-                Cover image
+                Cover image or YouTube
               </Label>
-              {coverImageUrl ? (
+              {coverVideoId ? (
+                <div className="aspect-video overflow-hidden rounded-lg border border-border">
+                  <iframe
+                    src={youtubeEmbedUrl(coverVideoId)}
+                    title="Cover video preview"
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              ) : coverImageUrl ? (
                 <img
                   src={coverImageUrl}
                   alt="Cover preview"
@@ -1218,7 +1230,7 @@ export function AdminArticleForm({
               <Input
                 value={coverImageUrl}
                 onChange={(e) => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder="Image URL or YouTube link"
               />
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-foreground">
                 <input

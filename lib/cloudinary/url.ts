@@ -1,3 +1,5 @@
+import { getYouTubeId, youtubeThumbnailUrl } from "@/lib/media/youtube";
+
 type OptimizeCloudinaryUrlOptions = {
   width?: number;
   transforms?: string[];
@@ -36,6 +38,8 @@ export function optimizeCloudinaryUrl(
   options: OptimizeCloudinaryUrlOptions = {},
 ): string {
   const url = (rawUrl || "").trim();
+  const youtubeId = getYouTubeId(url);
+  if (youtubeId) return youtubeThumbnailUrl(youtubeId);
   if (!url || !url.includes(CLOUDINARY_UPLOAD_SEGMENT)) return rawUrl;
 
   const [prefix, afterUpload = ""] = url.split(CLOUDINARY_UPLOAD_SEGMENT);

@@ -5,6 +5,11 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { marked } from "marked";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
+import {
+  embedYouTubeLinksInHtml,
+  getYouTubeId,
+  youtubeEmbedUrl,
+} from "@/lib/media/youtube";
 
 type Mark = { type: string; attrs?: Record<string, unknown> };
 type JSONText = { type: "text"; text: string; marks?: Mark[] };
@@ -252,6 +257,29 @@ function renderTable(node: JSONNode, key: React.Key) {
 function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   switch (node.type) {
     case "paragraph": {
+      const paragraphText = (node.content ?? [])
+        .filter((child) => (child as JSONText).type === "text")
+        .map((child) => (child as JSONText).text ?? "")
+        .join("")
+        .trim();
+      const paragraphVideoId =
+        /^https?:\/\/\S+$/i.test(paragraphText) || /<iframe\b/i.test(paragraphText)
+          ? getYouTubeId(paragraphText)
+          : null;
+      if (paragraphVideoId) {
+        return (
+          <div key={key} className="my-4 aspect-video not-prose">
+            <iframe
+              src={youtubeEmbedUrl(paragraphVideoId)}
+              title="YouTube video"
+              className="h-full w-full rounded-xl border"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        );
+      }
+
       if (isEmptyParagraph(node)) {
         return <div key={key} className="h-2" />;
       }
@@ -304,8 +332,22 @@ function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
 
     case "image": {
       const { src, alt } = node.attrs ?? {};
-      if (!src) return null;
-      return <img key={key} src={src} alt={alt ?? ""} className="rounded-xl my-6 max-w-full mx-auto" />;
+      if (!src || typeof src !== "string") return null;
+      const imageVideoId = getYouTubeId(src);
+      if (imageVideoId) {
+        return (
+          <div key={key} className="my-6 aspect-video not-prose">
+            <iframe
+              src={youtubeEmbedUrl(imageVideoId)}
+              title={typeof alt === "string" && alt ? alt : "YouTube video"}
+              className="h-full w-full rounded-xl border"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        );
+      }
+      return <img key={key} src={src} alt={typeof alt === "string" ? alt : ""} className="rounded-xl my-6 max-w-full mx-auto" />;
     }
 
     case "list": {
@@ -425,7 +467,7 @@ export default function ArticleContent({
 
   const htmlContent = useMemo(() => {
     if (!trimmedMarkdown) return null;
-    return marked(normalizeArticleMarkdown(trimmedMarkdown));
+    return embedYouTubeLinksInHtml(marked(normalizeArticleMarkdown(trimmedMarkdown)) as string);
   }, [trimmedMarkdown]);
 
   const useLegacyDoc =

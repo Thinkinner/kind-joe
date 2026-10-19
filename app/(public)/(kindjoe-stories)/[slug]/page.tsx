@@ -32,6 +32,7 @@ import { isAdsenseEligibleInventory } from "@/lib/ads/adsense-inventory-policy";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 import { getAuthorProfileByName } from "@/lib/authors/profiles";
+import { getYouTubeId, youtubeEmbedUrl, youtubeThumbnailUrl } from "@/lib/media/youtube";
 
 export const revalidate = 60;
 
@@ -63,6 +64,10 @@ export async function generateMetadata(props: {
   const description = seo?.description || a.excerpt || undefined;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.kindjoe.com";
   const canonicalUrl = seo?.canonical || `${siteUrl}${articlePublicPath(slug)}`;
+  const coverVideoId = getYouTubeId(a.coverImageUrl);
+  const shareImage = coverVideoId
+    ? youtubeThumbnailUrl(coverVideoId)
+    : a.coverImageUrl;
 
   return {
     title,
@@ -72,14 +77,14 @@ export async function generateMetadata(props: {
       title,
       description,
       url: canonicalUrl,
-      images: a.coverImageUrl ? [a.coverImageUrl] : [],
+      images: shareImage ? [shareImage] : [],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: a.coverImageUrl ? [a.coverImageUrl] : [],
+      images: shareImage ? [shareImage] : [],
     },
   };
 }
@@ -98,7 +103,9 @@ export default async function ArticleBySlug(props: {
 
   const { article: a, tags, seo: rawSeo } = data;
   const isVentura = hasVenturaCountyTag(tags);
-  const showMainImage = articleShowsMainImage({ tags, category: a.category });
+  const coverVideoId = getYouTubeId(a.coverImageUrl);
+  const showMainImage =
+    Boolean(coverVideoId) || articleShowsMainImage({ tags, category: a.category });
   const theme = getArticleBrandTheme(isVentura);
   const session = await getServerSession();
   const user = session?.user as AuthAppUser | undefined;
@@ -275,16 +282,28 @@ export default async function ArticleBySlug(props: {
                       : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
                   }
                 >
-                  <FocusableImage
-                    src={a.coverImageUrl ?? "/placeholder.jpg"}
-                    alt={a.title}
-                    caption={
-                      isVentura ? "Image source: Joe Knows Ventura" : undefined
-                    }
-                    className="aspect-[16/9] cursor-zoom-in"
-                  />
+                  {coverVideoId ? (
+                    <div className="aspect-video">
+                      <iframe
+                        src={youtubeEmbedUrl(coverVideoId)}
+                        title={a.title}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <FocusableImage
+                      src={a.coverImageUrl ?? "/placeholder.jpg"}
+                      alt={a.title}
+                      caption={
+                        isVentura ? "Image source: Joe Knows Ventura" : undefined
+                      }
+                      className="aspect-[16/9] cursor-zoom-in"
+                    />
+                  )}
                 </div>
-                {isVentura ? (
+                {isVentura && !coverVideoId ? (
                   <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
                     Image source: Joe Knows Ventura
                   </div>
