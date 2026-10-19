@@ -7,18 +7,49 @@ export function hasBackTaxesCta(value: string | null | undefined): boolean {
   return (value ?? "").includes(MARKER) || (value ?? "").includes("(805) 719-7630");
 }
 
-/** Append the sponsor card HTML once. */
-export function appendBackTaxesCtaHtml(html: string | null | undefined): string {
-  const body = html?.trim() ?? "";
-  if (hasBackTaxesCta(body)) return body;
-  return body ? `${body}\n${BACK_TAXES_CTA_HTML}` : BACK_TAXES_CTA_HTML;
+function middleSplitIndex(count: number): number {
+  if (count <= 1) return count;
+  return Math.ceil(count / 2);
 }
 
-/** Keep the card inside markdown so renderers that pass HTML through show it. */
+function insertAtMiddle(parts: string[], card: string, joiner: string): string {
+  const blocks = parts.map((part) => part.trim()).filter(Boolean);
+  if (blocks.length === 0) return card;
+  const at = middleSplitIndex(blocks.length);
+  return [...blocks.slice(0, at), card, ...blocks.slice(at)].join(joiner);
+}
+
+/** Place the sponsor card halfway through the article HTML. */
+export function appendBackTaxesCtaHtml(html: string | null | undefined): string {
+  const body = html?.trim() ?? "";
+  if (!body) return BACK_TAXES_CTA_HTML;
+  if (hasBackTaxesCta(body)) return body;
+
+  const pieces = body.split(/(<\/p>)/i);
+  const paragraphCount = pieces.filter((piece) => /^<\/p>$/i.test(piece)).length;
+  if (paragraphCount >= 2) {
+    const at = middleSplitIndex(paragraphCount);
+    let seen = 0;
+    const out: string[] = [];
+    for (const piece of pieces) {
+      out.push(piece);
+      if (/^<\/p>$/i.test(piece)) {
+        seen += 1;
+        if (seen === at) out.push(`\n${BACK_TAXES_CTA_HTML}\n`);
+      }
+    }
+    return out.join("");
+  }
+
+  return insertAtMiddle(body.split(/\n{2,}/), BACK_TAXES_CTA_HTML, "\n\n");
+}
+
+/** Place the sponsor card halfway through the article markdown. */
 export function appendBackTaxesCtaMarkdown(
   markdown: string | null | undefined,
 ): string {
   const body = markdown?.trim() ?? "";
+  if (!body) return BACK_TAXES_CTA_HTML;
   if (hasBackTaxesCta(body)) return body;
-  return body ? `${body}\n\n${BACK_TAXES_CTA_HTML}` : BACK_TAXES_CTA_HTML;
+  return insertAtMiddle(body.split(/\n{2,}/), BACK_TAXES_CTA_HTML, "\n\n");
 }
