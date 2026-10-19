@@ -14,7 +14,7 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
-import { embedYouTubeLinksInHtml } from "@/lib/media/youtube";
+import { embedYouTubeLinksInHtml, prependArticleBannerVideo } from "@/lib/media/youtube";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { regionContentFilter } from "@/lib/local-news/region-content-filter";
@@ -260,7 +260,9 @@ export async function getVenturaArticleDetailBySlug(
         }) as string,
       )
     : "";
-  const contentHtml = appendBackTaxesCtaHtml(storedHtml || renderedMarkdown);
+  const contentHtml = prependArticleBannerVideo(
+    appendBackTaxesCtaHtml(storedHtml || renderedMarkdown),
+  );
 
   return {
     id: article.id,

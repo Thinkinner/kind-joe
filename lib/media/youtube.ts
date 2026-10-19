@@ -43,6 +43,26 @@ export function youtubeEmbedUrl(videoId: string): string {
   return `https://www.youtube.com/embed/${videoId}`;
 }
 
+/** Plays at the top of Ventura article banners and in the partner API body. */
+export const ARTICLE_BANNER_VIDEO_ID = "dWnKpsjNLdU";
+export const ARTICLE_BANNER_VIDEO_URL =
+  "https://www.youtube.com/watch?v=dWnKpsjNLdU";
+
+const BANNER_VIDEO_MARKER = 'data-kindjoe-banner-video="1"';
+
+export function articleBannerVideoHtml(): string {
+  return `<div ${BANNER_VIDEO_MARKER} style="margin:0 0 1.25rem;position:relative;width:100%;aspect-ratio:16/9;"><iframe src="${youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}" title="Video" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+}
+
+export function prependArticleBannerVideo(html: string | null | undefined): string {
+  const body = html?.trim() ?? "";
+  if (body.includes(BANNER_VIDEO_MARKER) || body.includes(ARTICLE_BANNER_VIDEO_ID)) {
+    return body;
+  }
+  const video = articleBannerVideoHtml();
+  return body ? `${video}\n${body}` : video;
+}
+
 export function youtubeThumbnailUrl(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }

@@ -32,7 +32,12 @@ import { isAdsenseEligibleInventory } from "@/lib/ads/adsense-inventory-policy";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 import { getAuthorProfileByName } from "@/lib/authors/profiles";
-import { getYouTubeId, youtubeEmbedUrl, youtubeThumbnailUrl } from "@/lib/media/youtube";
+import {
+  ARTICLE_BANNER_VIDEO_ID,
+  getYouTubeId,
+  youtubeEmbedUrl,
+  youtubeThumbnailUrl,
+} from "@/lib/media/youtube";
 import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
@@ -286,7 +291,7 @@ export default async function ArticleBySlug(props: {
               </div>
             </header>
 
-            {showMainImage ? (
+            {showMainImage || showBackTaxesCta ? (
               <div
                 className={
                   isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"
@@ -299,6 +304,17 @@ export default async function ArticleBySlug(props: {
                       : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
                   }
                 >
+                  {showBackTaxesCta ? (
+                    <div className="aspect-video bg-black">
+                      <iframe
+                        src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
+                        title="Video"
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : null}
                   {coverVideoId ? (
                     <div className="aspect-video">
                       <iframe

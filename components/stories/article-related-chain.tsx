@@ -8,6 +8,7 @@ import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import ShareButtons from "@/components/stories/share-buttons";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import { ARTICLE_BANNER_VIDEO_ID, youtubeEmbedUrl } from "@/lib/media/youtube";
 import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
@@ -412,6 +413,17 @@ export default function ArticleRelatedChain({
                   </div>
                 </div>
 
+                {showBackTaxesCta ? (
+                  <div className="mt-5 aspect-video overflow-hidden rounded-xl bg-black">
+                    <iframe
+                      src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
+                      title="Video"
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : null}
                 {item.coverImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
