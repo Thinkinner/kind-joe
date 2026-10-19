@@ -26,5 +26,16 @@ describe("back taxes sponsor card", () => {
     assert.ok(htmlCardAt > htmlVideoAt);
     assert.ok(htmlCardAt < html.indexOf("Three."));
     assert.equal(appendBackTaxesCtaHtml(html), html);
+
+    const custom = appendBackTaxesCtaMarkdown("One.\n\nTwo.\n\nThree.", {
+      videoUrl: "https://res.cloudinary.com/demo/video/upload/promo.mp4",
+      bannerImageUrl: "https://cdn.example/banner.jpg",
+    });
+    const customVideo = custom.indexOf("promo.mp4");
+    const customBanner = custom.indexOf("banner.jpg");
+    assert.ok(customVideo > custom.indexOf("One."));
+    assert.ok(customBanner > customVideo);
+    assert.ok(customBanner < custom.indexOf("Three."));
+    assert.equal(custom.includes("Behind on back taxes"), false);
   });
 });

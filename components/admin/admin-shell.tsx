@@ -27,6 +27,7 @@ import {
   BriefcaseBusiness,
   ListTodo,
   Hash,
+  Clapperboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -68,6 +69,7 @@ const baseNav = [
     permission: PERMISSIONS.ADMIN_DASHBOARD,
   },
   { href: "/admin/prompt-settings", label: "Prompt settings", icon: Settings, permission: PERMISSIONS.ADMIN_DASHBOARD },
+  { href: "/admin/article-promo", label: "Article promo", icon: Clapperboard, permission: PERMISSIONS.ADMIN_DASHBOARD },
   { href: "/admin/posts", label: "Posts", icon: ImageIcon, permission: PERMISSIONS.ADMIN_POSTS },
   {
     href: "/admin/kindjoe-clip-submissions",

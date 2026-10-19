@@ -14,6 +14,7 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
+import { getArticlePromoSettings } from "@/lib/content/article-promo-settings";
 import { embedYouTubeLinksInHtml } from "@/lib/media/youtube";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
@@ -251,7 +252,8 @@ export async function getVenturaArticleDetailBySlug(
     contentHtml: article.contentHtml,
   };
   const resolvedMarkdown = resolveArticleContentMarkdown(contentSources);
-  const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "");
+  const promo = await getArticlePromoSettings();
+  const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "", promo);
   const storedHtml = article.contentHtml?.trim() ?? "";
   const renderedMarkdown = resolvedMarkdown
     ? embedYouTubeLinksInHtml(
@@ -260,7 +262,7 @@ export async function getVenturaArticleDetailBySlug(
         }) as string,
       )
     : "";
-  const contentHtml = appendBackTaxesCtaHtml(storedHtml || renderedMarkdown);
+  const contentHtml = appendBackTaxesCtaHtml(storedHtml || renderedMarkdown, promo);
 
   return {
     id: article.id,

@@ -11,6 +11,7 @@ import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
+  type ArticlePromoMedia,
 } from "@/lib/content/back-taxes-cta";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
 
@@ -100,6 +101,7 @@ type Props = {
   title?: string;
   canCreatePredictions?: boolean;
   primaryArticleElementId?: string;
+  promo?: ArticlePromoMedia;
 };
 
 export default function ArticleRelatedChain({
@@ -109,6 +111,7 @@ export default function ArticleRelatedChain({
   title: _title = "Continue Reading",
   canCreatePredictions = false,
   primaryArticleElementId = "article-content",
+  promo,
 }: Props) {
   const [items, setItems] = useState<RelatedChainItem[]>([]);
   const [cursor, setCursor] = useState<number>(0);
@@ -280,7 +283,7 @@ export default function ArticleRelatedChain({
             });
           const hasBody = Boolean(contentMarkdown?.trim() || contentDoc?.content?.length);
           const displayMarkdown = contentMarkdown?.trim()
-            ? appendBackTaxesCtaMarkdown(contentMarkdown)
+            ? appendBackTaxesCtaMarkdown(contentMarkdown, promo)
             : contentMarkdown;
           const seo = parseSeo(item.seo);
           const bylineAlias =
@@ -425,7 +428,7 @@ export default function ArticleRelatedChain({
                   {!contentMarkdown?.trim() ? (
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: appendBackTaxesCtaHtml(""),
+                        __html: appendBackTaxesCtaHtml("", promo),
                       }}
                     />
                   ) : null}

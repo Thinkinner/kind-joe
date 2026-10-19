@@ -36,6 +36,7 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
+import { getArticlePromoSettings } from "@/lib/content/article-promo-settings";
 
 export const revalidate = 60;
 
@@ -142,8 +143,9 @@ export default async function ArticleBySlug(props: {
   };
   const { contentMarkdown, contentDoc, preferLegacyDoc } =
     resolveArticleDisplayContent(contentSources);
+  const promo = await getArticlePromoSettings();
   const displayMarkdown = contentMarkdown?.trim()
-    ? appendBackTaxesCtaMarkdown(contentMarkdown)
+    ? appendBackTaxesCtaMarkdown(contentMarkdown, promo)
     : contentMarkdown;
   const allowAds = isAdsenseEligibleInventory({
     title: a.title,
@@ -323,7 +325,7 @@ export default async function ArticleBySlug(props: {
               {!contentMarkdown?.trim() ? (
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: appendBackTaxesCtaHtml(""),
+                    __html: appendBackTaxesCtaHtml("", promo),
                   }}
                 />
               ) : null}
@@ -363,6 +365,7 @@ export default async function ArticleBySlug(props: {
                   canCreatePredictions={Boolean(viewerId)}
                   className="mt-8"
                   title={theme.relatedTitle}
+                  promo={promo}
                 />
               )}
             </div>

@@ -16,6 +16,7 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
+import { getArticlePromoSettings } from "@/lib/content/article-promo-settings";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { embedYouTubeLinksInHtml } from "@/lib/media/youtube";
@@ -125,10 +126,12 @@ export async function GET(
           }) as string,
         )
       : "";
+    const promo = await getArticlePromoSettings();
     const contentHtml = appendBackTaxesCtaHtml(
       article.contentHtml?.trim() || renderedMarkdown,
+      promo,
     );
-    const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "");
+    const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "", promo);
 
     return NextResponse.json({
       ...article,

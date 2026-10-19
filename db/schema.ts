@@ -620,6 +620,21 @@ export const kindjoeAssignSchedules = pgTable("kindjoe_assign_schedules", {
 });
 
 /** Singleton-ish config for Slack channels (set in admin). */
+/** In-article promo: video (link or Cloudinary upload) and optional banner image. */
+export const articlePromoSettings = pgTable("article_promo_settings", {
+  id: integer("id").primaryKey().default(1),
+  videoUrl: text("video_url")
+    .notNull()
+    .default("https://www.youtube.com/watch?v=dWnKpsjNLdU"),
+  bannerImageUrl: text("banner_image_url"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedByUserId: text("updated_by_user_id").references(() => authUser.id, {
+    onDelete: "set null",
+  }),
+});
+
 export const slackLinkAssignSettings = pgTable("slack_link_assign_settings", {
   id: integer("id").primaryKey().default(1),
   /** Channel where X/Twitter links are auto-assigned. */

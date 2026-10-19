@@ -50,8 +50,25 @@ export const ARTICLE_BANNER_VIDEO_URL =
 
 const BANNER_VIDEO_MARKER = 'data-kindjoe-banner-video="1"';
 
-export function articleBannerVideoHtml(): string {
-  return `<div ${BANNER_VIDEO_MARKER} style="margin:0 0 1.25rem;position:relative;width:100%;aspect-ratio:16/9;"><iframe src="${youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}" title="Video" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** YouTube links become an embed. Uploaded or direct video files play in a video tag. */
+export function articleBannerVideoHtml(
+  videoUrl: string = ARTICLE_BANNER_VIDEO_URL,
+): string {
+  const raw = videoUrl.trim() || ARTICLE_BANNER_VIDEO_URL;
+  const youtubeId = getYouTubeId(raw);
+  const frame = "margin:0 0 1.25rem;position:relative;width:100%;aspect-ratio:16/9;";
+  if (youtubeId) {
+    return `<div ${BANNER_VIDEO_MARKER} style="${frame}"><iframe src="${youtubeEmbedUrl(youtubeId)}" title="Video" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+  }
+  return `<div ${BANNER_VIDEO_MARKER} style="${frame}"><video src="${escapeAttr(raw)}" controls playsinline style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;background:#000;"></video></div>`;
 }
 
 export function prependArticleBannerVideo(html: string | null | undefined): string {
