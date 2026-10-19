@@ -105,7 +105,109 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
   });
 }
 
+/* ------------------------- CTA cards ------------------------- */
+
+// Reusable in-article sponsor CTA cards. Authors drop [cta:<id>] on its own
+// line in the admin's markdown editor; it renders as a styled card here.
+// Add new entries as needed — keep the id short and URL-safe.
+const CTAS: Record<string, { label: string; title: string; body: React.ReactNode }> = {
+  "back-taxes": {
+    label: "Sponsored",
+    title: "Behind on back taxes?",
+    body: (
+      <>
+        Get help from someone local. Text <strong>HELP</strong> to{" "}
+        <strong>(805) 719-7630</strong> and we&rsquo;ll set up a time to talk
+        that works for you.
+      </>
+    ),
+  },
+};
+
+function renderCta(id: string, key: React.Key) {
+  const cta = CTAS[id];
+  if (!cta) return null;
+  return (
+    <div key={key} className="not-prose my-6 rounded-xl bg-slate-900 p-6 text-white">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-300">
+        {cta.label}
+      </div>
+      <div className="mt-2 text-2xl font-bold">{cta.title}</div>
+      <p className="mt-2 leading-relaxed text-slate-200">{cta.body}</p>
+    </div>
+  );
+}
+
+// Detect a paragraph that is only a [cta:<id>] shortcode.
+function paragraphCtaId(node: JSONNode): string | null {
+  const text = (node.content ?? [])
+    .filter((c) => (c as JSONText).type === "text")
+    .map((r) => (r as JSONText).text ?? "")
+    .join("")
+    .trim();
+  const m = text.match(/^\[cta:([\w-]+)\]$/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
 /* ------------------------- Utilities ------------------------- */
+
+// Extract a YouTube video ID from common URL shapes. Returns null when the
+// URL isn't a recognizable YouTube video link. Only the ID is trusted — the
+// embed URL is always rebuilt from it, never taken from pasted HTML.
+function getYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url.trim());
+    const host = u.hostname.replace(/^www\./, "").replace(/^m\./, "");
+    const idPattern = /^[\w-]{11}$/;
+    if (host === "youtu.be") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      return id && idPattern.test(id) ? id : null;
+    }
+    if (host === "youtube.com" || host === "youtube-nocookie.com") {
+      if (u.pathname === "/watch") {
+        const id = u.searchParams.get("v");
+        return id && idPattern.test(id) ? id : null;
+      }
+      const m = u.pathname.match(/^\/(embed|shorts|live)\/([\w-]{11})/);
+      if (m) return m[2];
+    }
+  } catch {
+    // not a URL
+  }
+  return null;
+}
+
+function renderYouTubeEmbed(videoId: string, key: React.Key) {
+  return (
+    <div key={key} className="my-4 aspect-video not-prose">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video"
+        className="w-full h-full rounded-xl border"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
+// If a paragraph contains nothing but a YouTube URL (plain text or a link),
+// or a raw pasted <iframe> snippet, return the video ID so it renders as a
+// player instead of a dead link/text blob.
+function paragraphYouTubeId(node: JSONNode): string | null {
+  const runs = ((node.content ?? []).filter(
+    (c) => (c as JSONText).type === "text"
+  ) as JSONText[]).filter((r) => r.text && r.text.trim().length > 0);
+  if (runs.length === 0) return null;
+  const text = runs.map((r) => r.text ?? "").join("").trim();
+  if (!text) return null;
+  // raw pasted iframe snippet → pull the src out, then the video id
+  const iframeSrc = text.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i)?.[1];
+  if (iframeSrc) return getYouTubeId(iframeSrc);
+  // bare URL paragraph (TipTap may store it with a link mark — the text still matches)
+  if (/^https?:\/\/\S+$/i.test(text)) return getYouTubeId(text);
+  return null;
+}
 
 // Detect if a paragraph is effectively "empty"
 function isEmptyParagraph(node: JSONNode) {
@@ -228,6 +330,16 @@ function renderTable(node: JSONNode, key: React.Key) {
 function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   switch (node.type) {
     case "paragraph": {
+      // [cta:<id>] shortcode → sponsor card
+      const ctaId = paragraphCtaId(node);
+      if (ctaId) return renderCta(ctaId, key);
+
+      // A paragraph that is just a YouTube link (or pasted iframe snippet)
+      // becomes an embedded player — this is how videos get into articles
+      // from the admin's markdown editor.
+      const ytId = paragraphYouTubeId(node);
+      if (ytId) return renderYouTubeEmbed(ytId, key);
+
       if (isEmptyParagraph(node)) {
         // collapse empty paragraphs so your content doesn’t get weird big gaps
         return <div key={key} className="h-2" />;
