@@ -10,15 +10,20 @@ describe("back taxes sponsor card", () => {
   it("places the card in the middle of the article, once", () => {
     const markdown = appendBackTaxesCtaMarkdown("One.\n\nTwo.\n\nThree.\n\nFour.");
     const cardAt = markdown.indexOf("Behind on back taxes");
-    assert.ok(cardAt > markdown.indexOf("Two."));
+    const videoAt = markdown.indexOf("dWnKpsjNLdU");
+    assert.ok(videoAt > markdown.indexOf("Two."));
+    assert.ok(cardAt > videoAt);
     assert.ok(cardAt < markdown.indexOf("Three."));
+    assert.equal(markdown.includes("banner.jpg"), false);
     assert.equal(appendBackTaxesCtaMarkdown(markdown), markdown);
 
     const html = appendBackTaxesCtaHtml(
       "<p>One.</p><p>Two.</p><p>Three.</p><p>Four.</p>",
     );
     const htmlCardAt = html.indexOf("Behind on back taxes");
-    assert.ok(htmlCardAt > html.indexOf("Two."));
+    const htmlVideoAt = html.indexOf("dWnKpsjNLdU");
+    assert.ok(htmlVideoAt > html.indexOf("Two."));
+    assert.ok(htmlCardAt > htmlVideoAt);
     assert.ok(htmlCardAt < html.indexOf("Three."));
     assert.equal(appendBackTaxesCtaHtml(html), html);
   });

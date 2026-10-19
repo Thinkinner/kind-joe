@@ -8,7 +8,6 @@ import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import ShareButtons from "@/components/stories/share-buttons";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
-import { ARTICLE_BANNER_VIDEO_ID, youtubeEmbedUrl } from "@/lib/media/youtube";
 import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
@@ -310,27 +309,15 @@ export default function ArticleRelatedChain({
               }}
               className="border-t border-neutral-200 pt-8"
             >
-              <div className="overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
-                <div className="aspect-video bg-black">
-                  <iframe
-                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
-                    title="Video"
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-                {item.coverImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={optimizeCloudinaryUrl(item.coverImageUrl, { width: 1400 })}
-                    alt={item.title}
-                    className="aspect-[16/9] w-full object-cover"
-                  />
-                ) : null}
-              </div>
-
-              <header className="mt-5">
+              {item.coverImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={optimizeCloudinaryUrl(item.coverImageUrl, { width: 1400 })}
+                  alt={item.title}
+                  className="mb-5 aspect-[16/9] w-full rounded-xl object-cover"
+                />
+              ) : null}
+              <header>
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
                   {item.title}
                 </h2>
@@ -437,7 +424,9 @@ export default function ArticleRelatedChain({
                   ) : null}
                   {!contentMarkdown?.trim() ? (
                     <div
-                      dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
+                      dangerouslySetInnerHTML={{
+                        __html: appendBackTaxesCtaHtml(""),
+                      }}
                     />
                   ) : null}
                 </div>

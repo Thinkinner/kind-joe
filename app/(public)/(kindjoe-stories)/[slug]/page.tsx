@@ -31,12 +31,7 @@ import { isAdsenseEligibleInventory } from "@/lib/ads/adsense-inventory-policy";
 import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 import { getAuthorProfileByName } from "@/lib/authors/profiles";
-import {
-  ARTICLE_BANNER_VIDEO_ID,
-  getYouTubeId,
-  youtubeEmbedUrl,
-  youtubeThumbnailUrl,
-} from "@/lib/media/youtube";
+import { getYouTubeId, youtubeEmbedUrl, youtubeThumbnailUrl } from "@/lib/media/youtube";
 import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
@@ -166,52 +161,45 @@ export default async function ArticleBySlug(props: {
           }`}
         >
           <article className={theme.articleClassName}>
-            <div className="px-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
-              <div
-                className={
-                  isVentura
-                    ? "overflow-hidden rounded-xl"
-                    : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
-                }
-              >
-                <div className="aspect-video bg-black">
-                  <iframe
-                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
-                    title="Video"
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-                {coverVideoId ? (
-                  <div className="aspect-video">
-                    <iframe
-                      src={youtubeEmbedUrl(coverVideoId)}
-                      title={a.title}
-                      className="h-full w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
+            {coverVideoId || a.coverImageUrl ? (
+              <div className="px-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+                <div
+                  className={
+                    isVentura
+                      ? "overflow-hidden rounded-xl"
+                      : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
+                  }
+                >
+                  {coverVideoId ? (
+                    <div className="aspect-video bg-black">
+                      <iframe
+                        src={youtubeEmbedUrl(coverVideoId)}
+                        title={a.title}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <FocusableImage
+                      src={a.coverImageUrl ?? "/placeholder.jpg"}
+                      alt={a.title}
+                      caption={
+                        isVentura ? "Image source: Joe Knows Ventura" : undefined
+                      }
+                      className="aspect-[16/9] cursor-zoom-in"
                     />
+                  )}
+                </div>
+                {isVentura && !coverVideoId ? (
+                  <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
+                    Image source: Joe Knows Ventura
                   </div>
-                ) : a.coverImageUrl ? (
-                  <FocusableImage
-                    src={a.coverImageUrl}
-                    alt={a.title}
-                    caption={
-                      isVentura ? "Image source: Joe Knows Ventura" : undefined
-                    }
-                    className="aspect-[16/9] cursor-zoom-in"
-                  />
                 ) : null}
               </div>
-              {isVentura && !coverVideoId && a.coverImageUrl ? (
-                <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
-                  Image source: Joe Knows Ventura
-                </div>
-              ) : null}
-            </div>
+            ) : null}
 
-            <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8">
+            <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
               <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-500">
                 {cats.length > 0 && (
                   <span
@@ -334,7 +322,9 @@ export default async function ArticleBySlug(props: {
               />
               {!contentMarkdown?.trim() ? (
                 <div
-                  dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
+                  dangerouslySetInnerHTML={{
+                    __html: appendBackTaxesCtaHtml(""),
+                  }}
                 />
               ) : null}
               {allowAds ? (

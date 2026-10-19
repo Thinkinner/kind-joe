@@ -12,10 +12,13 @@ import {
 } from "@/db/schema";
 import { marked } from "marked";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
-import { appendBackTaxesCtaHtml } from "@/lib/content/back-taxes-cta";
+import {
+  appendBackTaxesCtaHtml,
+  appendBackTaxesCtaMarkdown,
+} from "@/lib/content/back-taxes-cta";
 import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
-import { embedYouTubeLinksInHtml, prependArticleBannerVideo } from "@/lib/media/youtube";
+import { embedYouTubeLinksInHtml } from "@/lib/media/youtube";
 
 function publishedWhere(now = new Date()) {
   return and(
@@ -122,14 +125,15 @@ export async function GET(
           }) as string,
         )
       : "";
-    const contentHtml = prependArticleBannerVideo(
-      appendBackTaxesCtaHtml(article.contentHtml?.trim() || renderedMarkdown),
+    const contentHtml = appendBackTaxesCtaHtml(
+      article.contentHtml?.trim() || renderedMarkdown,
     );
+    const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "");
 
     return NextResponse.json({
       ...article,
       contentHtml,
-      contentMarkdown: resolvedMarkdown,
+      contentMarkdown,
       categories: cats,
       tags: tgs,
       linkedPrediction,
