@@ -13,10 +13,6 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
-import {
-  getLocalNewsRegionBySlug,
-  textMatchesLocalNewsRegion,
-} from "@/lib/local-news/regions";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
 
 type RelatedChainItem = {
@@ -284,16 +280,9 @@ export default function ArticleRelatedChain({
               contentHtml: item.contentHtml,
             });
           const hasBody = Boolean(contentMarkdown?.trim() || contentDoc?.content?.length);
-          const showBackTaxesCta =
-            item.hasVenturaTag ||
-            textMatchesLocalNewsRegion(
-              item.category,
-              getLocalNewsRegionBySlug("ventura-county")!,
-            );
-          const displayMarkdown =
-            showBackTaxesCta && contentMarkdown?.trim()
-              ? appendBackTaxesCtaMarkdown(contentMarkdown)
-              : contentMarkdown;
+          const displayMarkdown = contentMarkdown?.trim()
+            ? appendBackTaxesCtaMarkdown(contentMarkdown)
+            : contentMarkdown;
           const seo = parseSeo(item.seo);
           const bylineAlias =
             seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
@@ -413,17 +402,15 @@ export default function ArticleRelatedChain({
                   </div>
                 </div>
 
-                {showBackTaxesCta ? (
-                  <div className="mt-5 aspect-video overflow-hidden rounded-xl bg-black">
+                <div className="mt-5 aspect-video overflow-hidden rounded-xl bg-black">
                     <iframe
                       src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
                       title="Video"
                       className="h-full w-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
-                    />
-                  </div>
-                ) : null}
+                  />
+                </div>
                 {item.coverImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -438,8 +425,7 @@ export default function ArticleRelatedChain({
                 <p className="mt-4 text-sm leading-relaxed text-neutral-700">{item.excerpt}</p>
               )}
 
-              {hasBody || showBackTaxesCta ? (
-                <div className="mt-8 tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
+              <div className="mt-8 tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
                   {hasBody ? (
                     <ArticleContent
                       markdown={displayMarkdown}
@@ -447,13 +433,12 @@ export default function ArticleRelatedChain({
                       preferLegacyDoc={preferLegacyDoc}
                     />
                   ) : null}
-                  {showBackTaxesCta && !contentMarkdown?.trim() ? (
+                  {!contentMarkdown?.trim() ? (
                     <div
                       dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
                     />
                   ) : null}
                 </div>
-              ) : null}
 
               <div id={predictionSectionId}>
                 <ArticlePredictionCta

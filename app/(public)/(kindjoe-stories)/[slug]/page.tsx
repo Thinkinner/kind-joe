@@ -42,10 +42,6 @@ import {
   appendBackTaxesCtaHtml,
   appendBackTaxesCtaMarkdown,
 } from "@/lib/content/back-taxes-cta";
-import {
-  getLocalNewsRegionBySlug,
-  textMatchesLocalNewsRegion,
-} from "@/lib/local-news/regions";
 
 export const revalidate = 60;
 
@@ -154,15 +150,9 @@ export default async function ArticleBySlug(props: {
   };
   const { contentMarkdown, contentDoc, preferLegacyDoc } =
     resolveArticleDisplayContent(contentSources);
-  const venturaRegion = getLocalNewsRegionBySlug("ventura-county");
-  const showBackTaxesCta =
-    isVentura ||
-    tags.some((tag) => tag.slug === "venturacountynews") ||
-    textMatchesLocalNewsRegion(a.category, venturaRegion!);
-  const displayMarkdown =
-    showBackTaxesCta && contentMarkdown?.trim()
-      ? appendBackTaxesCtaMarkdown(contentMarkdown)
-      : contentMarkdown;
+  const displayMarkdown = contentMarkdown?.trim()
+    ? appendBackTaxesCtaMarkdown(contentMarkdown)
+    : contentMarkdown;
   const allowAds = isAdsenseEligibleInventory({
     title: a.title,
     excerpt: a.excerpt,
@@ -291,31 +281,28 @@ export default async function ArticleBySlug(props: {
               </div>
             </header>
 
-            {showMainImage || showBackTaxesCta ? (
+            <div
+              className={
+                isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"
+              }
+            >
               <div
                 className={
-                  isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"
+                  isVentura
+                    ? "overflow-hidden rounded-xl"
+                    : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
                 }
               >
-                <div
-                  className={
-                    isVentura
-                      ? "overflow-hidden rounded-xl"
-                      : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
-                  }
-                >
-                  {showBackTaxesCta ? (
-                    <div className="aspect-video bg-black">
-                      <iframe
-                        src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
-                        title="Video"
-                        className="h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : null}
-                  {coverVideoId ? (
+                <div className="aspect-video bg-black">
+                  <iframe
+                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
+                    title="Video"
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+                {coverVideoId ? (
                     <div className="aspect-video">
                       <iframe
                         src={youtubeEmbedUrl(coverVideoId)}
@@ -325,7 +312,7 @@ export default async function ArticleBySlug(props: {
                         allowFullScreen
                       />
                     </div>
-                  ) : (
+                  ) : showMainImage ? (
                     <FocusableImage
                       src={a.coverImageUrl ?? "/placeholder.jpg"}
                       alt={a.title}
@@ -334,7 +321,7 @@ export default async function ArticleBySlug(props: {
                       }
                       className="aspect-[16/9] cursor-zoom-in"
                     />
-                  )}
+                  ) : null}
                 </div>
                 {isVentura && !coverVideoId ? (
                   <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
@@ -342,7 +329,6 @@ export default async function ArticleBySlug(props: {
                   </div>
                 ) : null}
               </div>
-            ) : null}
 
             <div
               id="article-content"
@@ -353,7 +339,7 @@ export default async function ArticleBySlug(props: {
                 value={contentDoc}
                 preferLegacyDoc={preferLegacyDoc}
               />
-              {showBackTaxesCta && !contentMarkdown?.trim() ? (
+              {!contentMarkdown?.trim() ? (
                 <div
                   dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
                 />

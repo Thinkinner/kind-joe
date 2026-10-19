@@ -10,7 +10,12 @@ import {
   tags,
   users,
 } from "@/db/schema";
+import { marked } from "marked";
 import { getPredictionMarketById } from "@/lib/predictions/queries";
+import { appendBackTaxesCtaHtml } from "@/lib/content/back-taxes-cta";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
+import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
+import { embedYouTubeLinksInHtml, prependArticleBannerVideo } from "@/lib/media/youtube";
 
 function publishedWhere(now = new Date()) {
   return and(
@@ -49,6 +54,7 @@ export async function GET(
         authorName: sql<string | null>`coalesce(nullif(${articles.seo}->>'authorName', ''), ${users.name})`,
         authorAvatar: users.avatarUrl,
         contentHtml: articles.contentHtml,
+        contentMarkdown: articles.contentMarkdown,
         content: articles.content,
         publishedAt: articles.publishedAt,
         publishAt: articles.publishAt,
@@ -104,8 +110,26 @@ export async function GET(
         ? await getPredictionMarketById(article.predictionId)
         : null;
 
+    const resolvedMarkdown = resolveArticleContentMarkdown({
+      contentMarkdown: article.contentMarkdown,
+      content: article.content,
+      contentHtml: article.contentHtml,
+    });
+    const renderedMarkdown = resolvedMarkdown
+      ? embedYouTubeLinksInHtml(
+          marked.parse(normalizeArticleMarkdown(resolvedMarkdown), {
+            async: false,
+          }) as string,
+        )
+      : "";
+    const contentHtml = prependArticleBannerVideo(
+      appendBackTaxesCtaHtml(article.contentHtml?.trim() || renderedMarkdown),
+    );
+
     return NextResponse.json({
       ...article,
+      contentHtml,
+      contentMarkdown: resolvedMarkdown,
       categories: cats,
       tags: tgs,
       linkedPrediction,
