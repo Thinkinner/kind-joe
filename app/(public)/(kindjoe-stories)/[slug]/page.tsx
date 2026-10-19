@@ -13,7 +13,6 @@ import { getServerSession, type AuthAppUser } from "@/lib/auth/server";
 import {
   articlePublicPath,
   getArticleBrandTheme,
-  articleShowsMainImage,
   hasVenturaCountyTag,
 } from "@/lib/brand/article-theme";
 import ArticleContent from "@/components/stories/article-single-page-content";
@@ -113,8 +112,6 @@ export default async function ArticleBySlug(props: {
   const { article: a, tags, seo: rawSeo } = data;
   const isVentura = hasVenturaCountyTag(tags);
   const coverVideoId = getYouTubeId(a.coverImageUrl);
-  const showMainImage =
-    Boolean(coverVideoId) || articleShowsMainImage({ tags, category: a.category });
   const theme = getArticleBrandTheme(isVentura);
   const session = await getServerSession();
   const user = session?.user as AuthAppUser | undefined;
@@ -169,7 +166,52 @@ export default async function ArticleBySlug(props: {
           }`}
         >
           <article className={theme.articleClassName}>
-            <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+            <div className="px-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
+              <div
+                className={
+                  isVentura
+                    ? "overflow-hidden rounded-xl"
+                    : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
+                }
+              >
+                <div className="aspect-video bg-black">
+                  <iframe
+                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
+                    title="Video"
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+                {coverVideoId ? (
+                  <div className="aspect-video">
+                    <iframe
+                      src={youtubeEmbedUrl(coverVideoId)}
+                      title={a.title}
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : a.coverImageUrl ? (
+                  <FocusableImage
+                    src={a.coverImageUrl}
+                    alt={a.title}
+                    caption={
+                      isVentura ? "Image source: Joe Knows Ventura" : undefined
+                    }
+                    className="aspect-[16/9] cursor-zoom-in"
+                  />
+                ) : null}
+              </div>
+              {isVentura && !coverVideoId && a.coverImageUrl ? (
+                <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
+                  Image source: Joe Knows Ventura
+                </div>
+              ) : null}
+            </div>
+
+            <header className="px-4 pb-4 pt-5 sm:px-6 lg:px-8">
               <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-500">
                 {cats.length > 0 && (
                   <span
@@ -280,55 +322,6 @@ export default async function ArticleBySlug(props: {
                 </div>
               </div>
             </header>
-
-            <div
-              className={
-                isVentura ? "px-4 sm:px-6 lg:px-8" : "mt-4 px-4 sm:px-6 lg:px-8"
-              }
-            >
-              <div
-                className={
-                  isVentura
-                    ? "overflow-hidden rounded-xl"
-                    : "overflow-hidden rounded-xl border border-neutral-200 shadow-sm"
-                }
-              >
-                <div className="aspect-video bg-black">
-                  <iframe
-                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
-                    title="Video"
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-                {coverVideoId ? (
-                    <div className="aspect-video">
-                      <iframe
-                        src={youtubeEmbedUrl(coverVideoId)}
-                        title={a.title}
-                        className="h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : showMainImage ? (
-                    <FocusableImage
-                      src={a.coverImageUrl ?? "/placeholder.jpg"}
-                      alt={a.title}
-                      caption={
-                        isVentura ? "Image source: Joe Knows Ventura" : undefined
-                      }
-                      className="aspect-[16/9] cursor-zoom-in"
-                    />
-                  ) : null}
-                </div>
-                {isVentura && !coverVideoId ? (
-                  <div className="mt-2 text-right text-[10px] uppercase tracking-wider text-neutral-400">
-                    Image source: Joe Knows Ventura
-                  </div>
-                ) : null}
-              </div>
 
             <div
               id="article-content"

@@ -310,7 +310,27 @@ export default function ArticleRelatedChain({
               }}
               className="border-t border-neutral-200 pt-8"
             >
-              <header>
+              <div className="overflow-hidden rounded-xl border border-neutral-200 shadow-sm">
+                <div className="aspect-video bg-black">
+                  <iframe
+                    src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
+                    title="Video"
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+                {item.coverImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={optimizeCloudinaryUrl(item.coverImageUrl, { width: 1400 })}
+                    alt={item.title}
+                    className="aspect-[16/9] w-full object-cover"
+                  />
+                ) : null}
+              </div>
+
+              <header className="mt-5">
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 sm:text-4xl">
                   {item.title}
                 </h2>
@@ -401,24 +421,6 @@ export default function ArticleRelatedChain({
                     </div>
                   </div>
                 </div>
-
-                <div className="mt-5 aspect-video overflow-hidden rounded-xl bg-black">
-                    <iframe
-                      src={youtubeEmbedUrl(ARTICLE_BANNER_VIDEO_ID)}
-                      title="Video"
-                      className="h-full w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                  />
-                </div>
-                {item.coverImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={optimizeCloudinaryUrl(item.coverImageUrl, { width: 1400 })}
-                    alt={item.title}
-                    className="mt-5 w-full rounded-xl object-cover"
-                  />
-                )}
               </header>
 
               {item.excerpt && (
