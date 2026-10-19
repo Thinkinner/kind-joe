@@ -107,6 +107,64 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
 
 /* ------------------------- Utilities ------------------------- */
 
+// Extract a YouTube video ID from common URL shapes. Returns null when the
+// URL isn't a recognizable YouTube video link. Only the ID is trusted — the
+// embed URL is always rebuilt from it, never taken from pasted HTML.
+function getYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url.trim());
+    const host = u.hostname.replace(/^www\./, "").replace(/^m\./, "");
+    const idPattern = /^[\w-]{11}$/;
+    if (host === "youtu.be") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      return id && idPattern.test(id) ? id : null;
+    }
+    if (host === "youtube.com" || host === "youtube-nocookie.com") {
+      if (u.pathname === "/watch") {
+        const id = u.searchParams.get("v");
+        return id && idPattern.test(id) ? id : null;
+      }
+      const m = u.pathname.match(/^\/(embed|shorts|live)\/([\w-]{11})/);
+      if (m) return m[2];
+    }
+  } catch {
+    // not a URL
+  }
+  return null;
+}
+
+function renderYouTubeEmbed(videoId: string, key: React.Key) {
+  return (
+    <div key={key} className="my-4 aspect-video not-prose">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video"
+        className="w-full h-full rounded-xl border"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
+// If a paragraph contains nothing but a YouTube URL (plain text or a link),
+// or a raw pasted <iframe> snippet, return the video ID so it renders as a
+// player instead of a dead link/text blob.
+function paragraphYouTubeId(node: JSONNode): string | null {
+  const runs = ((node.content ?? []).filter(
+    (c) => (c as JSONText).type === "text"
+  ) as JSONText[]).filter((r) => r.text && r.text.trim().length > 0);
+  if (runs.length === 0) return null;
+  const text = runs.map((r) => r.text ?? "").join("").trim();
+  if (!text) return null;
+  // raw pasted iframe snippet → pull the src out, then the video id
+  const iframeSrc = text.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i)?.[1];
+  if (iframeSrc) return getYouTubeId(iframeSrc);
+  // bare URL paragraph (TipTap may store it with a link mark — the text still matches)
+  if (/^https?:\/\/\S+$/i.test(text)) return getYouTubeId(text);
+  return null;
+}
+
 // Detect if a paragraph is effectively "empty"
 function isEmptyParagraph(node: JSONNode) {
   if (!node.content || node.content.length === 0) return true;
@@ -228,6 +286,12 @@ function renderTable(node: JSONNode, key: React.Key) {
 function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   switch (node.type) {
     case "paragraph": {
+      // A paragraph that is just a YouTube link (or pasted iframe snippet)
+      // becomes an embedded player — this is how videos get into articles
+      // from the admin's markdown editor.
+      const ytId = paragraphYouTubeId(node);
+      if (ytId) return renderYouTubeEmbed(ytId, key);
+
       if (isEmptyParagraph(node)) {
         // collapse empty paragraphs so your content doesn’t get weird big gaps
         return <div key={key} className="h-2" />;
