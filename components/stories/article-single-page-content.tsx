@@ -105,6 +105,50 @@ function renderInline(nodes?: (JSONNode | JSONText)[]): React.ReactNode {
   });
 }
 
+/* ------------------------- CTA cards ------------------------- */
+
+// Reusable in-article sponsor CTA cards. Authors drop [cta:<id>] on its own
+// line in the admin's markdown editor; it renders as a styled card here.
+// Add new entries as needed — keep the id short and URL-safe.
+const CTAS: Record<string, { label: string; title: string; body: React.ReactNode }> = {
+  "back-taxes": {
+    label: "Sponsored",
+    title: "Behind on back taxes?",
+    body: (
+      <>
+        Get help from someone local. Text <strong>HELP</strong> to{" "}
+        <strong>(805) 719-7630</strong> and we&rsquo;ll set up a time to talk
+        that works for you.
+      </>
+    ),
+  },
+};
+
+function renderCta(id: string, key: React.Key) {
+  const cta = CTAS[id];
+  if (!cta) return null;
+  return (
+    <div key={key} className="not-prose my-6 rounded-xl bg-slate-900 p-6 text-white">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-300">
+        {cta.label}
+      </div>
+      <div className="mt-2 text-2xl font-bold">{cta.title}</div>
+      <p className="mt-2 leading-relaxed text-slate-200">{cta.body}</p>
+    </div>
+  );
+}
+
+// Detect a paragraph that is only a [cta:<id>] shortcode.
+function paragraphCtaId(node: JSONNode): string | null {
+  const text = (node.content ?? [])
+    .filter((c) => (c as JSONText).type === "text")
+    .map((r) => (r as JSONText).text ?? "")
+    .join("")
+    .trim();
+  const m = text.match(/^\[cta:([\w-]+)\]$/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
 /* ------------------------- Utilities ------------------------- */
 
 // Extract a YouTube video ID from common URL shapes. Returns null when the
@@ -286,6 +330,10 @@ function renderTable(node: JSONNode, key: React.Key) {
 function renderBlock(node: JSONNode, key: React.Key): React.ReactNode {
   switch (node.type) {
     case "paragraph": {
+      // [cta:<id>] shortcode → sponsor card
+      const ctaId = paragraphCtaId(node);
+      if (ctaId) return renderCta(ctaId, key);
+
       // A paragraph that is just a YouTube link (or pasted iframe snippet)
       // becomes an embedded player — this is how videos get into articles
       // from the admin's markdown editor.
