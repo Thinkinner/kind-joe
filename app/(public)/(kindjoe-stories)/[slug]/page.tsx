@@ -33,6 +33,14 @@ import ArticleRelatedChain from "@/components/stories/article-related-chain";
 import ArticleTransparencyPanel from "@/components/stories/article-transparency-panel";
 import { getAuthorProfileByName } from "@/lib/authors/profiles";
 import { getYouTubeId, youtubeEmbedUrl, youtubeThumbnailUrl } from "@/lib/media/youtube";
+import {
+  appendBackTaxesCtaHtml,
+  appendBackTaxesCtaMarkdown,
+} from "@/lib/content/back-taxes-cta";
+import {
+  getLocalNewsRegionBySlug,
+  textMatchesLocalNewsRegion,
+} from "@/lib/local-news/regions";
 
 export const revalidate = 60;
 
@@ -141,6 +149,15 @@ export default async function ArticleBySlug(props: {
   };
   const { contentMarkdown, contentDoc, preferLegacyDoc } =
     resolveArticleDisplayContent(contentSources);
+  const venturaRegion = getLocalNewsRegionBySlug("ventura-county");
+  const showBackTaxesCta =
+    isVentura ||
+    tags.some((tag) => tag.slug === "venturacountynews") ||
+    textMatchesLocalNewsRegion(a.category, venturaRegion!);
+  const displayMarkdown =
+    showBackTaxesCta && contentMarkdown?.trim()
+      ? appendBackTaxesCtaMarkdown(contentMarkdown)
+      : contentMarkdown;
   const allowAds = isAdsenseEligibleInventory({
     title: a.title,
     excerpt: a.excerpt,
@@ -316,10 +333,15 @@ export default async function ArticleBySlug(props: {
               className="mt-7 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8 lg:pb-10"
             >
               <ArticleContent
-                markdown={contentMarkdown}
+                markdown={displayMarkdown}
                 value={contentDoc}
                 preferLegacyDoc={preferLegacyDoc}
               />
+              {showBackTaxesCta && !contentMarkdown?.trim() ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
+                />
+              ) : null}
               {allowAds ? (
                 <section className="mt-8 empty:hidden">
                   <AdsenseUnit

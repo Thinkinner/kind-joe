@@ -9,6 +9,13 @@ import {
   tags,
   users,
 } from "@/db/schema";
+import { marked } from "marked";
+import {
+  appendBackTaxesCtaHtml,
+  appendBackTaxesCtaMarkdown,
+} from "@/lib/content/back-taxes-cta";
+import { embedYouTubeLinksInHtml } from "@/lib/media/youtube";
+import { normalizeArticleMarkdown } from "@/lib/content/normalize-article-markdown";
 import { resolveArticleContentMarkdown } from "@/lib/content/resolve-article-content-markdown";
 import { regionContentFilter } from "@/lib/local-news/region-content-filter";
 import { getLocalNewsRegionBySlug } from "@/lib/local-news/regions";
@@ -243,7 +250,17 @@ export async function getVenturaArticleDetailBySlug(
     content: article.content,
     contentHtml: article.contentHtml,
   };
-  const contentMarkdown = resolveArticleContentMarkdown(contentSources);
+  const resolvedMarkdown = resolveArticleContentMarkdown(contentSources);
+  const contentMarkdown = appendBackTaxesCtaMarkdown(resolvedMarkdown ?? "");
+  const storedHtml = article.contentHtml?.trim() ?? "";
+  const renderedMarkdown = resolvedMarkdown
+    ? embedYouTubeLinksInHtml(
+        marked.parse(normalizeArticleMarkdown(resolvedMarkdown), {
+          async: false,
+        }) as string,
+      )
+    : "";
+  const contentHtml = appendBackTaxesCtaHtml(storedHtml || renderedMarkdown);
 
   return {
     id: article.id,
@@ -257,7 +274,7 @@ export async function getVenturaArticleDetailBySlug(
     authorName: article.authorName,
     authorAvatar: article.authorAvatar,
     contentMarkdown,
-    contentHtml: article.contentHtml,
+    contentHtml,
     content: article.content,
     publishedAt: article.publishedAt,
     publishAt: article.publishAt,

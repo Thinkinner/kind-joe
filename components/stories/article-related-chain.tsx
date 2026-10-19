@@ -8,6 +8,14 @@ import LocalizedPublishTime from "@/components/stories/localized-publish-time";
 import ShareButtons from "@/components/stories/share-buttons";
 import { ScrollToArticleCta } from "@/components/stories/scroll-to-article-cta";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
+import {
+  appendBackTaxesCtaHtml,
+  appendBackTaxesCtaMarkdown,
+} from "@/lib/content/back-taxes-cta";
+import {
+  getLocalNewsRegionBySlug,
+  textMatchesLocalNewsRegion,
+} from "@/lib/local-news/regions";
 import type { PredictionMarketView } from "@/lib/predictions/queries";
 
 type RelatedChainItem = {
@@ -275,6 +283,16 @@ export default function ArticleRelatedChain({
               contentHtml: item.contentHtml,
             });
           const hasBody = Boolean(contentMarkdown?.trim() || contentDoc?.content?.length);
+          const showBackTaxesCta =
+            item.hasVenturaTag ||
+            textMatchesLocalNewsRegion(
+              item.category,
+              getLocalNewsRegionBySlug("ventura-county")!,
+            );
+          const displayMarkdown =
+            showBackTaxesCta && contentMarkdown?.trim()
+              ? appendBackTaxesCtaMarkdown(contentMarkdown)
+              : contentMarkdown;
           const seo = parseSeo(item.seo);
           const bylineAlias =
             seo.bylineSource === "alias" ? (seo.authorName?.trim() ?? "") : "";
@@ -408,13 +426,20 @@ export default function ArticleRelatedChain({
                 <p className="mt-4 text-sm leading-relaxed text-neutral-700">{item.excerpt}</p>
               )}
 
-              {hasBody ? (
+              {hasBody || showBackTaxesCta ? (
                 <div className="mt-8 tiptap prose prose-lg prose-neutral max-w-none prose-headings:font-bold prose-a:text-red-600">
-                  <ArticleContent
-                    markdown={contentMarkdown}
-                    value={contentDoc}
-                    preferLegacyDoc={preferLegacyDoc}
-                  />
+                  {hasBody ? (
+                    <ArticleContent
+                      markdown={displayMarkdown}
+                      value={contentDoc}
+                      preferLegacyDoc={preferLegacyDoc}
+                    />
+                  ) : null}
+                  {showBackTaxesCta && !contentMarkdown?.trim() ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: appendBackTaxesCtaHtml("") }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
