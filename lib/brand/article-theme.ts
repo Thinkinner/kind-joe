@@ -4,6 +4,7 @@ import {
 } from "@/lib/local-news/regions";
 
 export const VENTURA_COUNTY_TAG = "ventura-county";
+export const OXNARD_NEWS_TAG = "oxnard-news";
 export const LA_NEWS_TAG = "la-news";
 export const SAN_LUIS_OBISPO_TAG = "san-luis-obispo";
 export const SLO_TAG = "slo";
@@ -19,6 +20,12 @@ export function hasVenturaCountyTag(
   tags: Array<{ slug?: string | null }> | undefined | null,
 ): boolean {
   return Boolean(tags?.some((tag) => tag.slug === VENTURA_COUNTY_TAG));
+}
+
+export function hasOxnardNewsTag(
+  tags: Array<{ slug?: string | null }> | undefined | null,
+): boolean {
+  return Boolean(tags?.some((tag) => tag.slug === OXNARD_NEWS_TAG));
 }
 
 export function hasLaNewsTag(
@@ -45,6 +52,7 @@ export function hasLocalDeskCoverTag(
 ): boolean {
   return (
     hasVenturaCountyTag(tags) ||
+    hasOxnardNewsTag(tags) ||
     hasLaNewsTag(tags) ||
     hasSanLuisObispoTag(tags)
   );

@@ -255,7 +255,7 @@ export async function publishPartnerBundle(
     logLabel: "partner.publish",
   });
 
-  for (const path of ["/posts", "/ventura/posts", "/joeknowsla/posts", "/joefromslo/posts"]) {
+  for (const path of ["/posts", "/ventura/posts", "/joeknowsla/posts", "/joefromslo/posts", "/oxnard/posts"]) {
     revalidatePath(path);
   }
 

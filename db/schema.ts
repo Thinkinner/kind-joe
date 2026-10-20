@@ -433,6 +433,28 @@ export const joeknowslaPosts = pgTable(
   }),
 );
 
+export const oxnardPosts = pgTable(
+  "oxnard_posts",
+  {
+    id: serial("id").primaryKey(),
+    imageUrl: text("image_url").notNull(),
+    destinationUrl: text("destination_url").notNull(),
+    caption: text("caption"),
+    isPinned: boolean("is_pinned").default(false),
+    order: integer("order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    feedIdx: index("oxnard_posts_feed_idx").on(
+      t.isActive,
+      t.isPinned,
+      t.order,
+      t.id,
+    ),
+  }),
+);
+
 export const joefromsloPosts = pgTable(
   "joefromslo_posts",
   {

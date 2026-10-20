@@ -4,4 +4,5 @@ export const PUBLIC_POST_FEED_PATHS = [
   "/ventura/posts",
   "/joeknowsla/posts",
   "/joefromslo/posts",
+  "/oxnard/posts",
 ] as const;

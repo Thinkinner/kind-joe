@@ -39,7 +39,7 @@ type Post = {
   isActive: boolean | null;
 };
 
-type FeedType = "kindjoe" | "ventura" | "joeknowsla" | "joefromslo";
+type FeedType = "kindjoe" | "ventura" | "oxnard" | "joeknowsla" | "joefromslo";
 
 const FEED_META: Record<
   FeedType,
@@ -58,6 +58,13 @@ const FEED_META: Record<
     addButtonLabel: "Add Ventura post",
     singular: "Ventura post",
     loadError: "ventura posts",
+  },
+  oxnard: {
+    apiBase: "/api/admin/oxnard-posts",
+    feedLabel: "Oxnard posts",
+    addButtonLabel: "Add Oxnard post",
+    singular: "Oxnard post",
+    loadError: "oxnard posts",
   },
   joeknowsla: {
     apiBase: "/api/admin/joeknowsla-posts",
@@ -103,6 +110,7 @@ export default function AdminPostsPage() {
     const queryFeed = searchParams.get("feed");
     if (
       queryFeed === "ventura" ||
+      queryFeed === "oxnard" ||
       queryFeed === "joeknowsla" ||
       queryFeed === "joefromslo"
     ) {
@@ -241,7 +249,7 @@ export default function AdminPostsPage() {
             Link-in-bio tiles for social landing pages.
           </p>
           <Tabs value={feedType} className="mt-3">
-            <TabsList className="h-10 rounded-full border border-border bg-muted/70 p-1">
+            <TabsList className="h-auto min-h-10 w-full max-w-full flex-wrap justify-start gap-1 rounded-2xl border border-border bg-muted/70 p-1">
               <TabsTrigger
                 value="kindjoe"
                 className="rounded-full px-4 text-xs"
@@ -263,6 +271,17 @@ export default function AdminPostsPage() {
                 }}
               >
                 Ventura posts
+              </TabsTrigger>
+              <TabsTrigger
+                value="oxnard"
+                className="rounded-full px-4 text-xs"
+                onClick={() => {
+                  const nextFeed: FeedType = "oxnard";
+                  setFeedType(nextFeed);
+                  router.replace(`${pathname}?feed=${nextFeed}`, { scroll: false });
+                }}
+              >
+                Oxnard posts
               </TabsTrigger>
               <TabsTrigger
                 value="joeknowsla"

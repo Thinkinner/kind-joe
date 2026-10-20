@@ -14,6 +14,7 @@ const topicLinks: PublicNavLink[] = TOPIC_SLUGS.map((topic) => ({
 export const NAV_LOCAL_LINKS: PublicNavLink[] = [
   { name: "L.A. News", href: "/la-news", title: "Los Angeles News" },
   { name: "Ventura County", href: "/ventura-county" },
+  { name: "Oxnard News", href: "/oxnard-news" },
   { name: "San Luis Obispo", href: "/san-luis-obispo" },
 ];
 

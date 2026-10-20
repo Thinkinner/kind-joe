@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
 import { ArticleList } from "@/components/stories/stories/article-list";
 import { SocialWidget } from "@/components/ventura-county/social-widget";
+import { NAV_LOCAL_LINKS } from "@/lib/nav/public-links";
 import { publicSiteUrl } from "@/lib/site/public-site-url";
 
 export const revalidate = 300;
@@ -24,6 +26,17 @@ export default function KindjoeNewsPage() {
           <p className="mt-2 text-sm text-slate-600 md:text-base">
             Latest stories from Kind Joe.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {NAV_LOCAL_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-red-200 hover:text-red-700"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

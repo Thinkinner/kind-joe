@@ -19,6 +19,7 @@ const DESK_GLOW: Record<
   string
 > = {
   ventura: "from-orange-500/25 via-orange-500/5 to-transparent",
+  oxnard: "from-rose-500/25 via-rose-500/5 to-transparent",
   la: "from-blue-500/25 via-blue-500/5 to-transparent",
   slo: "from-teal-400/25 via-teal-500/5 to-transparent",
 };
@@ -130,11 +131,11 @@ export function LocalDesks({ desks }: { desks: LocalDesk[] }) {
             <span className="mt-3 block h-[3px] w-12 rounded-full bg-[#CF1A1E]" />
           </div>
           <p className="max-w-xs text-sm text-white/45">
-            Ventura County · Los Angeles · San Luis Obispo
+            Ventura County · Oxnard · Los Angeles · San Luis Obispo
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {desks.map(({ region, articles }) => (
             <article
               key={region.slug}

@@ -176,6 +176,20 @@ const LINK_PRESETS: LinkPreset[] = [
     }),
   },
   {
+    id: "oxnard-posts",
+    label: "Oxnard News Posts",
+    description: "Oxnard posts feed",
+    build: (_profileHandle, nextOrder) => ({
+      label: "Oxnard News Posts",
+      href: "/oxnard/posts",
+      description: "Read the latest Oxnard stories and updates.",
+      order: String(nextOrder),
+      isActive: true,
+      isFeatured: false,
+      openInNewTab: false,
+    }),
+  },
+  {
     id: "joefromslo-posts",
     label: "Kind Joe San Luis Obispo Posts",
     description: "San Luis Obispo posts feed",

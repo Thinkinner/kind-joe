@@ -6,9 +6,9 @@ import { publicSiteOrigin } from "@/lib/site/public-site-url";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Kind Joe — News for LA, Ventura County & San Luis Obispo",
+  title: "Kind Joe — News for LA, Ventura County, Oxnard & San Luis Obispo",
   description:
-    "Top stories, latest reporting, and local coverage from Los Angeles, Ventura County, and San Luis Obispo — plus politics, tech, business, and opinion.",
+    "Top stories, latest reporting, and local coverage from Los Angeles, Oxnard, Ventura County, and San Luis Obispo — plus politics, tech, business, and opinion.",
   alternates: {
     canonical: publicSiteOrigin(),
   },

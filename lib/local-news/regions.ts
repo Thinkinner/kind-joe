@@ -27,6 +27,22 @@ export const LOCAL_NEWS_REGIONS = [
     softBgClass: "from-orange-50/90",
   },
   {
+    id: "oxnard",
+    name: "Oxnard News",
+    slug: "oxnard-news",
+    tagSlugs: ["oxnard-news"] as const,
+    matchKeywords: ["oxnard"] as const,
+    href: "/oxnard-news",
+    eyebrow: "City",
+    description: "Oxnard stories and community updates.",
+    accentClass: "text-rose-700",
+    pillClass:
+      "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-300 hover:bg-rose-100",
+    badgeClass: "bg-rose-700",
+    accentBarClass: "bg-rose-600",
+    softBgClass: "from-rose-50/90",
+  },
+  {
     id: "la",
     name: "L.A. News",
     slug: "la-news",
