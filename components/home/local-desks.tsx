@@ -38,7 +38,12 @@ function DeskColumn({ articles }: { articles: ArticleSummary[] }) {
       <ul className="divide-y divide-white/10 md:hidden">
         {articles.map((article) => (
           <li key={article.id}>
-            <StoryListRow article={article} tone="dark" forceShowImage />
+            <StoryListRow
+              article={article}
+              tone="dark"
+              forceShowImage
+              compact
+            />
           </li>
         ))}
       </ul>
@@ -66,7 +71,7 @@ function DeskColumn({ articles }: { articles: ArticleSummary[] }) {
                   {leadTime}
                 </p>
               ) : null}
-              <h4 className="line-clamp-3 text-[16px] font-semibold leading-snug text-white [font-family:var(--font-lora),ui-serif,Georgia,serif] transition-colors group-hover:text-red-200">
+              <h4 className="line-clamp-3 text-[15px] font-semibold leading-snug text-white [font-family:var(--font-lora),ui-serif,Georgia,serif] transition-colors group-hover:text-red-200">
                 {leadHeadline}
               </h4>
             </div>
@@ -77,7 +82,12 @@ function DeskColumn({ articles }: { articles: ArticleSummary[] }) {
           <ul className="divide-y divide-white/10">
             {rest.map((article) => (
               <li key={article.id}>
-                <StoryListRow article={article} tone="dark" forceShowImage />
+                <StoryListRow
+                  article={article}
+                  tone="dark"
+                  forceShowImage
+                  compact
+                />
               </li>
             ))}
           </ul>
@@ -117,7 +127,7 @@ export function LocalDesks({ desks }: { desks: LocalDesk[] }) {
         }}
       />
 
-      <div className="relative mx-auto max-w-[1180px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+      <div className="relative mx-auto max-w-[1440px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-red-400">
@@ -131,7 +141,7 @@ export function LocalDesks({ desks }: { desks: LocalDesk[] }) {
             </h2>
             <span className="mt-3 block h-[3px] w-12 rounded-full bg-[#CF1A1E]" />
           </div>
-          <p className="max-w-xs text-sm text-white/45">
+          <p className="text-sm text-white/45">
             Ventura County · Oxnard · Los Angeles · San Luis Obispo
           </p>
         </div>
@@ -154,7 +164,7 @@ export function LocalDesks({ desks }: { desks: LocalDesk[] }) {
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
                       {region.eyebrow}
                     </p>
-                    <h3 className="truncate text-lg font-bold tracking-tight text-white">
+                    <h3 className="text-[17px] font-bold leading-tight tracking-tight text-white">
                       {region.name}
                     </h3>
                   </div>

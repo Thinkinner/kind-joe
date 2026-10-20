@@ -14,10 +14,12 @@ export function StoryListRow({
   tone = "light",
   /** Force images on (e.g. Local Desks columns are always local). */
   forceShowImage = false,
+  compact = false,
 }: {
   article: ArticleSummary;
   tone?: "light" | "dark";
   forceShowImage?: boolean;
+  compact?: boolean;
 }) {
   const headline = formatHeadline(article.title);
   const timeAgo = formatTimeAgo(article.publishedAt ?? null);
@@ -32,9 +34,13 @@ export function StoryListRow({
   return (
     <Link
       href={articlePublicPath(article.slug)}
-      className={`group items-start gap-3 py-3.5 sm:gap-4 ${
+      className={`group items-start ${
+        compact ? "gap-3 py-3" : "gap-3 py-3.5 sm:gap-4"
+      } ${
         showImage
-          ? "grid grid-cols-[88px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)]"
+          ? compact
+            ? "grid grid-cols-[80px_minmax(0,1fr)]"
+            : "grid grid-cols-[88px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)]"
           : "flex"
       }`}
     >
@@ -49,7 +55,9 @@ export function StoryListRow({
       ) : null}
       <span className="min-w-0 flex-1">
         <span
-          className={`block text-[15px] font-bold leading-snug transition-colors ${
+          className={`block font-bold leading-snug transition-colors ${
+            compact ? "line-clamp-3 text-[13.5px]" : "text-[15px]"
+          } ${
             dark
               ? "text-white group-hover:text-red-300"
               : "text-neutral-950 group-hover:text-[#CF1A1E]"
