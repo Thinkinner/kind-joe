@@ -31,7 +31,8 @@ export const LOCAL_NEWS_REGIONS = [
     name: "Oxnard News",
     slug: "oxnard-news",
     tagSlugs: ["oxnard-news"] as const,
-    matchKeywords: ["oxnard"] as const,
+    /** Exact tag only. A category or other tag that merely says "oxnard" does not count. */
+    matchKeywords: [] as const,
     href: "/oxnard-news",
     eyebrow: "City",
     description: "Oxnard stories and community updates.",

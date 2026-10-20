@@ -30,6 +30,13 @@ describe("local news region matching", () => {
         category: "Oxnard",
         tags: [],
       }),
+      [],
+    );
+    assert.deepEqual(
+      inferCanonicalRegionTagSlugs({
+        category: "General",
+        tags: ["oxnard-news"],
+      }),
       ["oxnard-news"],
     );
     assert.deepEqual(
