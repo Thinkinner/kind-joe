@@ -43,13 +43,13 @@ export default async function OxnardPostsPage() {
     <main className="mx-auto max-w-5xl pt-2 sm:pt-4">
       <StandalonePostsFeed
         allPosts={allPosts}
-        profileImageSrc="/brand/logo.svg"
-        profileName="Oxnard News"
-        profileImageClassName="border border-neutral-300"
+        profileImageSrc="/brand/cityofox.jpg"
+        profileName="@cityofox"
+        profileImageClassName="rounded-md border border-neutral-200 object-cover"
         subscribeTitle="Get the biggest Oxnard stories delivered straight to your inbox. Don't miss out!"
         subscribeEndpoint="/api/post-email-capture"
         subscribeTags={["oxnard_posts_feed"]}
-        subscribeButtonClassName="bg-[#BE123C] hover:bg-[#E11D48]"
+        subscribeButtonClassName="bg-green-700 hover:bg-green-600"
       />
     </main>
   );

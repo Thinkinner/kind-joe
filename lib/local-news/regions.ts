@@ -36,12 +36,12 @@ export const LOCAL_NEWS_REGIONS = [
     href: "/oxnard-news",
     eyebrow: "City",
     description: "Oxnard stories and community updates.",
-    accentClass: "text-rose-700",
+    accentClass: "text-green-700",
     pillClass:
-      "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-300 hover:bg-rose-100",
-    badgeClass: "bg-rose-700",
-    accentBarClass: "bg-rose-600",
-    softBgClass: "from-rose-50/90",
+      "border-green-200 bg-green-50 text-green-800 hover:border-green-300 hover:bg-green-100",
+    badgeClass: "bg-green-700",
+    accentBarClass: "bg-green-600",
+    softBgClass: "from-green-50/90",
   },
   {
     id: "la",

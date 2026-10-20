@@ -19,7 +19,7 @@ const DESK_GLOW: Record<
   string
 > = {
   ventura: "from-orange-500/25 via-orange-500/5 to-transparent",
-  oxnard: "from-rose-500/25 via-rose-500/5 to-transparent",
+  oxnard: "from-green-500/25 via-green-500/5 to-transparent",
   la: "from-blue-500/25 via-blue-500/5 to-transparent",
   slo: "from-teal-400/25 via-teal-500/5 to-transparent",
 };
@@ -101,7 +101,8 @@ export function LocalDesks({ desks }: { desks: LocalDesk[] }) {
         style={{
           background: [
             "radial-gradient(ellipse 42% 55% at 8% 18%, rgba(249,115,22,0.22), transparent 58%)",
-            "radial-gradient(ellipse 38% 45% at 50% -8%, rgba(37,99,235,0.28), transparent 52%)",
+            "radial-gradient(ellipse 36% 48% at 36% 12%, rgba(22,163,74,0.22), transparent 55%)",
+            "radial-gradient(ellipse 38% 45% at 62% -8%, rgba(37,99,235,0.28), transparent 52%)",
             "radial-gradient(ellipse 42% 50% at 94% 88%, rgba(13,148,136,0.22), transparent 55%)",
             "linear-gradient(180deg, #08101c 0%, #0a1628 48%, #07111f 100%)",
           ].join(", "),

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { optimizeCloudinaryUrl } from "@/lib/cloudinary/url";
 import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
+import { cn } from "@/lib/utils";
 
 type PostCard = { id: number; imageUrl: string; destinationUrl: string };
 
@@ -83,7 +84,10 @@ export function StandalonePostsFeed({
             width={44}
             height={44}
             alt={profileName}
-            className={`h-11 w-11 rounded-full object-cover ${profileImageClassName ?? ""}`}
+            className={cn(
+              "h-11 w-11 rounded-full object-cover",
+              profileImageClassName,
+            )}
           />
           <p className="text-base font-semibold text-neutral-900">{profileName}</p>
         </div>
