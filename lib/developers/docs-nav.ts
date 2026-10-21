@@ -43,6 +43,11 @@ export const developerDocsNav: DeveloperDocsNavSection[] = [
         href: "/developers/apis/partner-publish",
         description: "Publish live articles + post cards from Hope.",
       },
+      {
+        title: "Partner Posts API",
+        href: "/developers/apis/partner-posts",
+        description: "Upload a post tile to Ventura, L.A., Oxnard, SLO, or Kind Joe.",
+      },
     ],
   },
   {
