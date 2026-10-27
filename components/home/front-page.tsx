@@ -2,7 +2,6 @@ import {
   ensureLocalNewsTags,
   getArticlesAction,
   getArticlesByTagSlugAction,
-  getTopStoriesAction,
 } from "@/lib/actions/articles";
 import { pickAdsenseSafeArticles } from "@/lib/ads/adsense-inventory-policy";
 import { JoesFriendsPromo } from "@/components/ads/joes-friends-promo";
@@ -19,15 +18,12 @@ const LOCAL_FETCH = 12;
 export async function FrontPage() {
   await ensureLocalNewsTags();
 
-  const taggedTop = pickAdsenseSafeArticles(
-    await getTopStoriesAction(16),
-    TOP_STORY_LIMIT,
+  // Top Stories always follows newest publishes so the hero rotates with the feed.
+  const latestPool = pickAdsenseSafeArticles(
+    await getArticlesAction(TOP_STORY_LIMIT + LATEST_LIMIT + 8, 0),
+    TOP_STORY_LIMIT + LATEST_LIMIT + 8,
   );
-  const latestPool = pickAdsenseSafeArticles(await getArticlesAction(24, 0), 24);
-  const topStories =
-    taggedTop.length > 0
-      ? taggedTop
-      : latestPool.slice(0, TOP_STORY_LIMIT);
+  const topStories = latestPool.slice(0, TOP_STORY_LIMIT);
 
   const usedIds = new Set(topStories.map((article) => article.id));
   const latest = latestPool
