@@ -7,10 +7,21 @@ export const LOCAL_NEWS_REGIONS = [
     slug: "ventura-county",
     /**
      * Tag slugs that count as this region (first is canonical).
-     * Writers often use `venturacountynews` on newer desk stories; the partner
-     * Ventura articles API accepts both.
+     * Writers mix `ventura-county`, `venturacountynews`, bare `ventura`, and
+     * spaced/joined county-news variants.
      */
-    tagSlugs: ["ventura-county", "venturacountynews"] as const,
+    tagSlugs: [
+      "ventura-county",
+      "venturacountynews",
+      "ventura",
+      "venturacounty",
+      "ventura-county-news",
+      "ventura-countynews",
+      "venturacountynewstoday",
+      "venturanews",
+      "ventura-news",
+      "venturanewstoday",
+    ] as const,
     /**
      * Loose match against category / category rows / tag names & slugs.
      * Prefer multi-char tokens — avoid bare "la" / "slo" (too many false hits).
@@ -30,8 +41,21 @@ export const LOCAL_NEWS_REGIONS = [
     id: "oxnard",
     name: "Oxnard News",
     slug: "oxnard-news",
-    tagSlugs: ["oxnard-news"] as const,
-    /** Exact tag only. A category or other tag that merely says "oxnard" does not count. */
+    /**
+     * Writers mix desk tags: `oxnard` (most common), `oxnard-news` (canonical
+     * page slug), `oxnardnews`, and partner alias `cityofox`.
+     * Exact tag slugs only — do not keyword-match "oxnard" (too many SEO tags).
+     */
+    tagSlugs: [
+      "oxnard-news",
+      "oxnard",
+      "oxnardnews",
+      "cityofox",
+      "oxnardcrime",
+      "oxnard-crime",
+      "oxnardnewstoday",
+      "oxnardcrimenewstoday",
+    ] as const,
     matchKeywords: [] as const,
     href: "/oxnard-news",
     eyebrow: "City",
@@ -47,7 +71,16 @@ export const LOCAL_NEWS_REGIONS = [
     id: "la",
     name: "L.A. News",
     slug: "la-news",
-    tagSlugs: ["la-news"] as const,
+    tagSlugs: [
+      "la-news",
+      "los-angeles",
+      "losangeles",
+      "joeknowsla",
+      "la-county",
+      "los-angeles-county",
+      "los-angeles-news",
+      "los-angeles-county-news",
+    ] as const,
     matchKeywords: [
       "los angeles",
       "l.a.",
@@ -69,7 +102,23 @@ export const LOCAL_NEWS_REGIONS = [
     id: "slo",
     name: "San Luis Obispo",
     slug: "san-luis-obispo",
-    tagSlugs: ["san-luis-obispo", "slo", "sanluisobispo"] as const,
+    /**
+     * Desk tags vary: `slo`, `san-luis-obispo`, `sanluisobispo`, county forms,
+     * and partner brand `joefromslo`.
+     */
+    tagSlugs: [
+      "san-luis-obispo",
+      "slo",
+      "sanluisobispo",
+      "san-luis-obispo-county",
+      "sanluisobispocounty",
+      "slo-county",
+      "slocounty",
+      "joefromslo",
+      "sanluisobisponews",
+      "san-luis-obispo-news",
+      "slo-city-news",
+    ] as const,
     matchKeywords: [
       "san luis",
       "obispo",

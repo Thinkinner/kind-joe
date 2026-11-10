@@ -1,7 +1,6 @@
 import { Footer } from "@/components/footer";
 import { NavbarWithSession } from "@/components/navbar-with-session";
 import { MarketsStrip } from "@/components/home/markets-strip";
-import { VideoModalAd } from "@/components/ads/video-modal-ad";
 
 export default function PublicLayout({
   children,
@@ -16,7 +15,6 @@ export default function PublicLayout({
       </div>
       {children}
       <Footer />
-      <VideoModalAd />
     </>
   );
 }

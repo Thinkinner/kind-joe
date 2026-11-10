@@ -222,9 +222,25 @@ export async function ensureLocalNewsTags(): Promise<void> {
             ? "SLO"
             : tagSlug === "sanluisobispo"
               ? "SanLuisObispo"
-              : tagSlug === "venturacountynews"
-                ? "Ventura County News"
-                : region.name;
+              : tagSlug === "san-luis-obispo-county" ||
+                  tagSlug === "slo-county" ||
+                  tagSlug === "slocounty"
+                ? "San Luis Obispo County"
+                : tagSlug === "joefromslo"
+                  ? "Joe From SLO"
+                  : tagSlug === "oxnard"
+                    ? "Oxnard"
+                    : tagSlug === "oxnardnews"
+                      ? "OxnardNews"
+                      : tagSlug === "cityofox"
+                        ? "City of Oxnard"
+                        : tagSlug === "los-angeles"
+                          ? "Los Angeles"
+                          : tagSlug === "joeknowsla"
+                            ? "Joe Knows LA"
+                            : tagSlug === "venturacountynews"
+                              ? "Ventura County News"
+                              : region.name;
         await db
           .insert(tags)
           .values({ name, slug: tagSlug })
