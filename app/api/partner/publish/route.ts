@@ -19,19 +19,22 @@ const seoSchema = z
   })
   .optional();
 
+/** Upsert body: slug required; other fields optional on update, required on create. */
 const bodySchema = z.object({
   slug: z.string().min(1).max(200),
-  title: z.string().min(1).max(200),
-  excerpt: z.string().min(1),
-  contentMarkdown: z.string().min(1),
+  title: z.string().min(1).max(200).optional(),
+  excerpt: z.string().min(1).optional(),
+  contentMarkdown: z.string().min(1).optional(),
   coverImageUrl: z.string().url().optional().nullable(),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
   seo: seoSchema,
-  postCard: z.object({
-    imageUrl: z.string().url(),
-    caption: z.string().optional(),
-  }),
+  postCard: z
+    .object({
+      imageUrl: z.string().url().optional(),
+      caption: z.string().optional(),
+    })
+    .optional(),
   isVentura: z.boolean().optional(),
 });
 
@@ -57,12 +60,12 @@ export async function POST(request: Request) {
 
   try {
     const result = await publishPartnerBundle(parsed.data);
-    return NextResponse.json({ success: true, ...result }, { status: 201 });
+    return NextResponse.json(
+      { success: true, ...result },
+      { status: result.created ? 201 : 200 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Publish failed.";
-    if (message === "SLUG_CONFLICT") {
-      return NextResponse.json({ error: "Slug already exists." }, { status: 409 });
-    }
     console.error("[partner/publish]", error);
     return NextResponse.json({ error: message }, { status: 400 });
   }

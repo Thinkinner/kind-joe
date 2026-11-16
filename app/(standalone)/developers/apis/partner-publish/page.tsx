@@ -12,7 +12,9 @@ export default function PartnerPublishApiDocsPage() {
       <div className="not-prose mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
         <p className="font-semibold">Status</p>
         <p className="mt-1">
-          Implemented at <code>POST /api/partner/publish</code>. Deploy with{" "}
+          <code>POST /api/partner/publish</code> is an <strong>upsert</strong>. New slug → create
+          (201). Existing slug → update in place (200). Works for every article, including CMS /
+          Daily Brief stories. Title changes do not rename the slug. Deploy with{" "}
           <code>HOPE_PUBLISH_API_KEY</code> set in production.
         </p>
       </div>
@@ -24,6 +26,9 @@ export default function PartnerPublishApiDocsPage() {
         </li>
         <li>
           <code>POST /api/partner/publish</code> — create the live article
+        </li>
+        <li>
+          <code>PATCH /api/partner/articles/{"{slug}"}</code> — edit an existing article
         </li>
       </ul>
 
@@ -86,10 +91,31 @@ export default function PartnerPublishApiDocsPage() {
 }`}</code>
       </pre>
 
-      <h2>Response (201)</h2>
+      <h2>Upsert behavior</h2>
+      <ul>
+        <li>
+          <strong>New slug</strong> → create live article + post card, return <code>201</code>,{" "}
+          <code>created: true</code>
+        </li>
+        <li>
+          <strong>Existing slug</strong> → update that article in place (any origin: partner, CMS,
+          Daily Brief), return <code>200</code>, <code>created: false</code>
+        </li>
+        <li>
+          On update, only sent fields change. Changing <code>title</code> does{" "}
+          <strong>not</strong> change the slug/URL.
+        </li>
+        <li>
+          <code>publishedAt</code> stays as originally published. <code>updatedAt</code> is bumped
+          so the transparency panel can show “Last updated”.
+        </li>
+      </ul>
+
+      <h2>Response (201 create / 200 update)</h2>
       <pre>
         <code>{`{
   "success": true,
+  "created": true,
   "articleId": "…",
   "slug": "my-article-slug",
   "articleUrl": "https://www.kindjoe.com/my-article-slug",
@@ -110,8 +136,11 @@ export default function PartnerPublishApiDocsPage() {
         </thead>
         <tbody>
           <tr>
-            <td>Publish</td>
-            <td>Live article (<code>isDraft: false</code>, <code>publishedAt</code> = now)</td>
+            <td>Publish / upsert</td>
+            <td>
+              Create: live article (<code>isDraft: false</code>, <code>publishedAt</code> = now).
+              Update: keep <code>publishedAt</code>, bump <code>updatedAt</code>, never rename slug.
+            </td>
           </tr>
           <tr>
             <td>Author</td>
@@ -148,6 +177,36 @@ export default function PartnerPublishApiDocsPage() {
 HOPE_PUBLISH_API_KEY=<same secret as Kind Joe>`}</code>
       </pre>
 
+      <h2>Edit via the same publish endpoint</h2>
+      <p>
+        Muse should keep calling <code>POST /api/partner/publish</code> with the existing slug.
+        Prefer that over a separate edit route. Send the fields to change (full payload is fine).
+      </p>
+      <pre>
+        <code>{`curl -X POST "$KINDJOE_API_BASE_URL/api/partner/publish" \\
+  -H "Authorization: Bearer $HOPE_PUBLISH_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "slug": "existing-daily-brief-slug",
+    "title": "Corrected headline",
+    "excerpt": "Twelve word minimum excerpt still applies when you send excerpt.",
+    "contentMarkdown": "# Revised body…",
+    "coverImageUrl": "https://res.cloudinary.com/…/cover.jpg",
+    "category": "Local News",
+    "tags": ["oxnard-news"],
+    "seo": {
+      "title": "SEO title",
+      "description": "Seventy character minimum meta description still applies when you send it."
+    },
+    "postCard": { "imageUrl": "https://res.cloudinary.com/…/tile.jpg" },
+    "isVentura": false
+  }'`}</code>
+      </pre>
+      <p>
+        Expect <code>200</code> and <code>created: false</code>. The public URL stays{" "}
+        <code>/existing-daily-brief-slug</code> even if the title changed.
+      </p>
+
       <h2>Quick test</h2>
       <pre>
         <code>{`curl -X POST "$KINDJOE_API_BASE_URL/api/partner/publish" \\
@@ -176,7 +235,7 @@ HOPE_PUBLISH_API_KEY=<same secret as Kind Joe>`}</code>
           <code>400</code> — validation (excerpt, SEO, body)
         </li>
         <li>
-          <code>409</code> — slug conflict
+          No more <code>409</code> on existing slug — that path updates instead
         </li>
       </ul>
     </article>
