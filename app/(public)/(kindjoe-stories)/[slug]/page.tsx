@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
 
 import {
   getFullArticleBySlug,
@@ -40,12 +39,6 @@ import { getArticlePromoSettings } from "@/lib/content/article-promo-settings";
 
 export const revalidate = 60;
 
-const googleSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["500", "700"],
-  variable: "--font-google-sans",
-  display: "swap",
-});
 const inlineAdSlot = "8465535761";
 const sidebarAdSlot = "6300978111";
 
@@ -155,7 +148,7 @@ export default async function ArticleBySlug(props: {
   const chainEnabled = true;
 
   return (
-    <main className={`${theme.mainClassName} ${googleSans.variable}`}>
+    <main className={theme.mainClassName}>
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-5 lg:px-6">
         <div
           className={`grid gap-7 md:grid-cols-[minmax(0,1fr)_280px] md:items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] ${
